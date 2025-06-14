@@ -1,0 +1,175 @@
+/* ========= SMOKED CONCRETE PALETTE ========= */
+:root {
+  --color-bg-main: #E5E5E5;
+  --color-card: #F2F2F2;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #555555;
+  --color-accent-red: #E03A2F;
+  --color-accent-blue: #3A7DFF;
+  --color-border: #D1D1D1;
+}
+
+/* ========= GLOBAL ========= */
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ========= CARD / FORM CONTAINERS ========= */
+.auth-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* ========= TYPOGRAPHY ========= */
+h1, h2, h3, h4 {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.text-secondary-custom {
+  color: var(--color-text-secondary);
+}
+
+/* ========= BUTTONS ========= */
+.btn-primary-custom {
+  background-color: var(--color-text-primary);
+  color: white;
+  border: none;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-primary-custom:hover {
+  background-color: var(--color-accent-red);
+  color: white; /* keep text white */
+  transform: scale(1.015);
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+}
+
+
+.btn-primary-custom:active {
+  transform: scale(0.97);
+}
+
+.btn-accent-red {
+  background-color: var(--color-accent-red);
+  color: white;
+}
+
+.btn-accent-blue {
+  background-color: var(--color-accent-blue);
+  color: white;
+}
+
+/* ========= FORMS ========= */
+.form-control {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* ========= LINKS ========= */
+a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* ========= FLASH MESSAGES ========= */
+.alert {
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}
+
+/* ========= RESPONSIVE IMAGE SECTIONS ========= */
+.auth-image {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* ========= GOOGLE BUTTON ========= */
+.google-btn {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none !important;
+}
+
+.google-btn:hover {
+  color: #202124;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+  text-decoration: none !important;
+}
+
+.google-btn span {
+  text-decoration: none !important;
+}
+
+.promo-banner {
+  background-color: var(--color-bg-main);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.promo-banner .left-content {
+  max-width: 55%;
+}
+
+.promo-banner .right-image {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .promo-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .promo-banner .left-content {
+    max-width: 100%;
+  }
+  .promo-banner .right-image {
+    margin-top: 1rem;
+  }
+}
+
+.navbar {
+  background-color: #000 !important;
+}
+
+/* ========= NAVBAR LINK HOVER ANIMATION ========= */
+.navbar-nav .nav-link {
+  position: relative;
+  color: white;
+  font-weight: 400;
+  padding-bottom: 4px;
+}
+
+.navbar-nav .nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background-color: var(--color-accent-red);
+  transition: width 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link.active::after {
+  width: 100%;
+}

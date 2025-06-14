@@ -1,0 +1,89 @@
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #000;">
+  <div class="container">
+    <!-- Brand Logo -->
+    <a class="navbar-brand fw-bold d-flex align-items-center me-4" href="/">
+      <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749818108/laceduplogoblackbg_new-removebg-preview_i3keeo.png" alt="LacedUp Logo" height="60" class="me-2" />
+    </a>
+
+    <!-- Toggler for mobile -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
+      aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Links & Search -->
+    <div class="collapse navbar-collapse justify-content-between" id="navbarNavDropdown">
+      <!-- Center Nav Links -->
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-4">
+        <li class="nav-item">
+          <a class="nav-link <% if (active === 'home') { %>active fw-bold<% } %>" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <% if (active === 'shop') { %>active fw-bold<% } %>" href="/shop">Shop</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/about">About</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/contact">Contact</a>
+        </li>
+      </ul>
+
+      <!-- Search + Auth Buttons -->
+      <div class="d-flex align-items-center">
+        <form id="search-form" class="position-relative me-3" role="search" method="GET" action="/shop">
+          <div class="input-group">
+            <input 
+              type="text"
+              class="form-control pe-5"
+              name="q"
+              id="search-input"
+              placeholder="Search sneakers..."
+              value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+              oninput="toggleClearButton()"
+            >
+
+            <!-- Clear 'X' button -->
+            <button 
+              type="button" 
+              id="clear-x" 
+              onclick="clearSearch()" 
+              class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5" 
+              style="z-index: 5; display: none;">
+              <i class="bi bi-x-lg"></i>
+            </button>
+
+            <!-- Search icon button -->
+            <button class="btn btn-outline-light" type="submit">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+        </form>
+
+        <% if (user) { %>
+          <a href="/wishlist" class="btn btn-outline-light me-2">Wishlist</a>
+          <a href="/cart" class="btn btn-outline-light me-2">Cart</a>
+          <a href="/profile" class="btn btn-light text-dark fw-semibold">Profile</a>
+        <% } else { %>
+          <a href="/login" class="btn btn-outline-light me-2">Login</a>
+          <a href="/signup" class="btn btn-light text-dark fw-semibold">Sign Up</a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script>
+  function clearSearch() {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    document.getElementById('clear-x').style.display = 'none';
+    input.form.dispatchEvent(new Event('submit'));
+  }
+
+  function toggleClearButton() {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('clear-x');
+    clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+  }
+</script>

@@ -1,0 +1,266 @@
+<!-- <h1><%= title %></h1> -->
+
+<div class="container product-management">
+  <h2 class="mb-4 fw-bold">All Products</h2>
+
+  <!-- Search + Add Product -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="GET" action="/admin/products" class="d-flex" style="max-width: 300px;">
+      <input 
+        type="text" 
+        name="q" 
+        value="<%= searchQuery || '' %>" 
+        class="form-control me-2" 
+        placeholder="Search products..."
+      />
+      <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
+    </form>
+
+    <a href="/admin/products/add" class="btn btn-dark">
+      + Add Product
+    </a>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>Brand</th>
+          <th>Category</th>
+          <th>Main Image</th>
+          <th>Sale Price</th>
+          <th>Regular Price</th>
+          <th>Stock</th>
+          <th>Status</th>
+          <th>Created Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="product-table-body">
+        <% products.forEach((product, index) => { %>
+          <tr>
+            <td><%= index + 1 + ((currentPage - 1) * 10) %></td>
+            <td><%= product.productName %></td>
+            <td><%= product.brand || '—' %></td>
+            <td><%= product.category?.name || '—' %></td>
+            <td>
+              <img src="<%= product.mainImage %>" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>₹<%= product.salePrice %></td>
+            <td>₹<%= product.regularPrice %></td>
+            <td><%= product.stock %></td>
+            <td>
+            <div class="form-check form-switch d-flex justify-content-center">
+              <input 
+                class="form-check-input toggle-status" 
+                type="checkbox" 
+                data-id="<%= product._id %>" 
+                <%= product.isListed ? 'checked' : '' %>
+              >
+            </div>
+            </td>
+            <td><%= product.createdAt.toISOString().split('T')[0] %></td>
+            <td>
+              <a href="/admin/products/<%= product._id %>/edit" class="btn btn-sm btn-edit me-1">
+                <i class="bi bi-pencil-square me-1"></i> Edit
+              </a>
+              <button class="btn btn-sm text-danger btn-delete" data-id="<%= product._id %>">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <nav class="d-flex justify-content-center mt-4">
+    <ul class="pagination" id="pagination-container"></ul>
+  </nav>
+
+</div>
+
+<!-- Add Product Modal
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/admin/products" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Product Name</label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Price</label>
+              <input type="number" name="price" class="form-control" required>
+            </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Stock</label>
+              <input type="number" name="stock" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-select" required>
+                <% categories.forEach(cat => { %>
+                  <option value="<%= cat._id %>"><%= cat.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Upload Images (Min: 3)</label>
+              <input type="file" name="images" accept="image/*" multiple class="form-control" required>
+              <small class="text-muted">Hold Ctrl (or Cmd) to select multiple images</small>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-dark">Add Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const paginationContainer = document.getElementById('pagination-container');
+    const searchInput = document.querySelector('input[name="q"]');
+
+    async function fetchProducts(query = '', page = 1) {
+      const res = await fetch(`/admin/products/api?q=${encodeURIComponent(query)}&page=${page}`);
+      const data = await res.json();
+
+      const tableBody = document.getElementById('product-table-body');
+
+      const rows = data.products.map((product, index) => `
+        <tr>
+          <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
+          <td>${product.productName}</td>
+          <td>${product.brand || '—'}</td>
+          <td>${product.category?.name || '—'}</td>
+          <td><img src="${product.mainImage}" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" /></td>
+          <td>₹${product.salePrice}</td>
+          <td>₹${product.regularPrice}</td>
+          <td>${product.stock}</td>
+          <td>
+            <div class="form-check form-switch d-flex justify-content-center">
+              <input class="form-check-input toggle-status" type="checkbox" data-id="${product._id}" ${product.isListed ? 'checked' : ''}>
+            </div>
+          </td>
+          <td>${new Date(product.createdAt).toISOString().split('T')[0]}</td>
+          <td>
+            <a href="/admin/products/${product._id}/edit" class="btn btn-sm btn-edit me-1">
+              <i class="bi bi-pencil-square me-1"></i> Edit
+            </a>
+            <button class="btn btn-sm text-danger btn-delete" data-id="${product._id}">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      tableBody.innerHTML = rows;
+
+      // ✅ Re-bind toggle switch listeners
+      document.querySelectorAll('.toggle-status').forEach(input => {
+        input.addEventListener('change', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          try {
+            const res = await fetch(`/admin/products/api/${id}/toggle`, {
+              method: 'PATCH'
+            });
+            const data = await res.json();
+            if (!data.success) throw new Error('Toggle failed');
+          } catch (err) {
+            Swal.fire({
+              icon: 'error',
+              title: 'Toggle Failed',
+              text: err.message || 'Something went wrong',
+              confirmButtonColor: '#d33'
+            });
+            e.target.checked = !e.target.checked;
+          }
+        });
+      });
+
+      // ✅ Pagination
+      renderPagination(paginationContainer, data.currentPage, data.totalPages, (newPage) => {
+        fetchProducts(searchInput.value, newPage);
+      });
+    }
+
+    // Initial fetch
+    fetchProducts(searchInput.value);
+  });
+</script>
+
+
+<!-- Soft Delete Script -->
+<script>
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('.btn-delete')) {
+      const btn = e.target.closest('.btn-delete');
+      const productId = btn.dataset.id;
+
+      const confirmed = await Swal.fire({
+        icon: 'warning',
+        title: 'Are you sure?',
+        text: 'This product will be moved to trash.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (!confirmed.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/admin/products/api/${productId}/delete`, {
+          method: 'PATCH'
+        });
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response from server. Expected JSON.");
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'The product has been soft deleted.',
+            confirmButtonColor: '#111'
+          });
+          window.location.reload();
+        } else {
+          throw new Error(data.message || 'Delete failed.');
+        }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops!',
+          text: err.message || 'Something went wrong.',
+          confirmButtonColor: '#d33'
+        });
+      }
+    }
+  });
+</script>

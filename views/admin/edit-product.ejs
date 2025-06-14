@@ -1,0 +1,256 @@
+<!-- <h1><%= title %></h1> -->
+
+<div class="container my-4">
+
+  <form id="edit-product-form">
+    <!-- Basic Info -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Name *</label>
+          <input type="text" name="productName" class="form-control" value="<%= product.productName %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Brand *</label>
+          <input type="text" name="brand" class="form-control" value="<%= product.brand %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category *</label>
+          <select name="category" class="form-select" required>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Stock Quantity *</label>
+          <input type="number" name="stock" class="form-control" value="<%= product.stock %>" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-cash-coin me-2"></i>Pricing & Offers</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Regular Price *</label>
+          <input type="number" name="regularPrice" class="form-control" value="<%= product.regularPrice %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Sale Price *</label>
+          <input type="number" name="salePrice" class="form-control" value="<%= product.salePrice %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Offer (%)</label>
+          <input type="number" name="productOffer" class="form-control" value="<%= product.productOffer %>">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Features *</label>
+          <input type="text" name="features" class="form-control" value="<%= product.features %>" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-card-text me-2"></i>Product Details</h5>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea name="description" class="form-control" rows="4" required><%= product.description %></textarea>
+      </div>
+    </div>
+
+    <!-- Images -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>⭐ Click the star icon to set a main image (currently handled by upload order)</li>
+          <li>📥 Upload at least <strong>3 images</strong></li>
+          <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
+        </ul>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Upload Images (Min: 3)</label>
+        <input type="file" id="image-input" accept="image/*" multiple class="form-control">
+        <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+        <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex justify-content-end gap-2">
+      <a href="/admin/products" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-dark">
+        <i class="bi bi-save me-1"></i> Save Changes
+      </button>
+    </div>
+  </form>
+</div>
+
+<script>
+  const productId = "<%= product._id %>";
+  const container = document.getElementById('image-preview-container');
+  const mainIndexInput = document.getElementById('mainImageIndex');
+  const input = document.getElementById('image-input');
+  let base64Images = [];
+  let filesToCrop = [];
+  let currentFileIndex = 0;
+  let cropper;
+
+  // Prefill existing images
+  const existingMain = "<%= product.mainImage %>";
+  const existingSubs = <%- JSON.stringify(product.subImages) %>;
+  const preloadedImages = [existingMain, ...existingSubs];
+
+  preloadedImages.forEach((url, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.classList.add('image-wrapper');
+    if (index === 0) {
+      wrapper.classList.add('main');
+      mainIndexInput.value = 0;
+    }
+    wrapper.innerHTML = `
+      <img src="${url}" />
+      <button class="btn-remove" onclick="removeImage(${index})">×</button>
+      <button class="btn-main ${index === 0 ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+    `;
+    container.appendChild(wrapper);
+    // Note: We won't push URL directly into base64 array — user must reupload/crop images.
+  });
+
+  input.addEventListener('change', (e) => {
+    filesToCrop = Array.from(e.target.files);
+    currentFileIndex = 0;
+    cropNextImage();
+  });
+
+  function cropNextImage() {
+    if (currentFileIndex >= filesToCrop.length) return;
+    const file = filesToCrop[currentFileIndex];
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        currentFileIndex++;
+        cropNextImage();
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function showCropModal(imageSrc, onCropDone) {
+    const existing = document.getElementById('cropModal');
+    if (existing) existing.remove();
+
+    const modalHtml = `
+      <div class="modal fade" id="cropModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content p-4 text-center">
+            <h5 class="mb-3">Crop Image</h5>
+            <div class="d-flex justify-content-center mb-3">
+              <img id="crop-image" src="${imageSrc}" style="height: 450px;" />
+            </div>
+            <div class="d-flex justify-content-center gap-2">
+              <button class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-dark" id="crop-save">Crop & Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    const modalEl = document.getElementById('cropModal');
+    const cropModal = new bootstrap.Modal(modalEl);
+    cropModal.show();
+
+    const imageEl = document.getElementById('crop-image');
+    imageEl.onload = () => {
+      cropper = new Cropper(imageEl, { aspectRatio: 1 });
+    };
+
+    document.getElementById('crop-save').onclick = () => {
+      const cropped = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+      base64Images.push(cropped);
+      renderThumbnails();
+      cropModal.hide();
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        modalEl.remove();
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+        if (typeof onCropDone === 'function') onCropDone();
+      });
+    };
+  }
+
+  function renderThumbnails() {
+    container.innerHTML = '';
+    base64Images.forEach((img, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('image-wrapper');
+      if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
+      wrapper.innerHTML = `
+        <img src="${img}" />
+        <button class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+      `;
+      container.appendChild(wrapper);
+    });
+  }
+
+  function setMainImage(index) {
+    mainIndexInput.value = index;
+    renderThumbnails();
+  }
+
+  function removeImage(index) {
+    base64Images.splice(index, 1);
+    if (mainIndexInput.value == index) mainIndexInput.value = '';
+    renderThumbnails();
+  }
+
+  // Form submit
+  document.getElementById('edit-product-form').addEventListener('submit', async function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const formData = new FormData(form);
+
+    base64Images.forEach((b64, i) => {
+      formData.append('base64Images', b64);
+    });
+
+    try {
+        const res = await fetch(`/admin/products/api/${productId}`, {
+        method: 'PATCH',
+        body: formData
+      });
+        const contentType = res.headers.get("content-type");
+
+        if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("Invalid response from server. Expected JSON.");
+        }
+
+        const data = await res.json();
+        if (res.ok && data.success) {
+            await Swal.fire({
+            icon: 'success',
+            title: 'Product Edited Successfully!',
+            text: 'Your product changes were saved.',
+            confirmButtonColor: '#111'
+        });
+        window.location.href = '/admin/products';
+        } else {
+            throw new Error(data.message || 'Failed to update');
+        }
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops!',
+        text: err.message,
+        confirmButtonColor: '#d33'
+      });
+    }
+  });
+</script>

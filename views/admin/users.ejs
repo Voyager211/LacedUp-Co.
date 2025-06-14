@@ -1,0 +1,185 @@
+<!-- <h1 class="fw-bold mb-1"><%= title %></h1> -->
+
+<div class="user-management-page">
+  <!-- Search bar -->
+  <form class="mb-4 position-relative" id="search-form">
+    <div class="input-group">
+      <input 
+        type="text" 
+        class="form-control pe-5"
+        name="q"
+        id="search-input"
+        placeholder="Search users"
+        value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+        oninput="toggleClearButton()"
+      >
+      <!-- 'X' clear button -->
+      <button type="button" id="clear-x" onclick="clearSearch()" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5" style="z-index: 5; display: none;">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <!-- Search submit button -->
+      <button class="btn btn-outline-secondary" type="submit">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </form>
+
+  <!-- Users Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Customer</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th>Join Date</th>
+          <th>Status</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="user-table-body">
+        <!-- Dynamic rows will be injected here -->
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <nav class="mt-4">
+      <ul class="pagination justify-content-center" id="pagination-container">
+        <!-- Dynamic pagination will be injected here -->
+      </ul>
+    </nav>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.getElementById('search-input');
+    const tableBody = document.getElementById('user-table-body');
+    const paginationContainer = document.getElementById('pagination-container');
+    const searchForm = document.getElementById('search-form');
+
+    async function fetchAndRenderUsers(query = '', page = 1) {
+      const res = await fetch(`/admin/users/api?q=${encodeURIComponent(query)}&page=${page}`);
+      const data = await res.json();
+
+      // Render rows with numbering
+      const rows = data.users.map((user, index) => `
+        <tr>
+          <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
+          <td class="d-flex align-items-center gap-2">
+            <div class="avatar-circle">${user.name ? user.name[0].toUpperCase() : 'U'}</div>
+            <span>${user.name || 'Unnamed'}</span>
+          </td>
+          <td>${user.email}</td>
+          <td>${user.phone || 'N/A'}</td>
+          <td>${new Date(user.createdAt).toLocaleDateString('en-US')}</td>
+          <td>
+            ${user.isBlocked ? 
+              '<span class="badge bg-danger-subtle text-danger fw-semibold">Blocked</span>' : 
+              '<span class="badge bg-success-subtle text-success fw-semibold">Active</span>'}
+          </td>
+          <td>
+            <button 
+              class="btn btn-sm toggle-status-btn ${user.isBlocked ? 'btn-success' : 'btn-danger'}"
+              data-user-id="${user._id}"
+              data-action="${user.isBlocked ? 'unblock' : 'block'}">
+              ${user.isBlocked ? 'Unblock' : 'Block'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+      tableBody.innerHTML = rows;
+
+      // Render pagination
+      let paginationHTML = '';
+      for (let i = 1; i <= data.totalPages; i++) {
+        paginationHTML += `
+          <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+            <a class="page-link" href="#" data-page="${i}">${i}</a>
+          </li>
+        `;
+      }
+      paginationContainer.innerHTML = paginationHTML;
+    }
+
+    // Initial load
+    fetchAndRenderUsers(searchInput.value);
+
+    // Handle search
+    searchForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      fetchAndRenderUsers(searchInput.value);
+    });
+
+    // Handle pagination clicks
+    paginationContainer.addEventListener('click', (e) => {
+      if (e.target.tagName === 'A') {
+        e.preventDefault();
+        const page = parseInt(e.target.dataset.page);
+        fetchAndRenderUsers(searchInput.value, page);
+      }
+    });
+
+    // Handle block/unblock
+    tableBody.addEventListener('click', async (e) => {
+      if (e.target.classList.contains('toggle-status-btn')) {
+        const userId = e.target.dataset.userId;
+        const action = e.target.dataset.action;
+
+        const confirmation = await Swal.fire({
+          title: `${action === 'block' ? 'Block' : 'Unblock'} user?`,
+          text: `Are you sure you want to ${action} this user?`,
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: action === 'block' ? '#d33' : '#28a745',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: `Yes, ${action}`
+        });
+
+        if (!confirmation.isConfirmed) return;
+
+        try {
+          const res = await fetch(`/admin/users/${userId}/${action}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json'
+            }
+          });
+
+          const result = await res.json();
+          if (result.success) {
+            await fetchAndRenderUsers(searchInput.value);
+            Swal.fire({
+              icon: 'success',
+              title: `${action === 'block' ? 'Blocked' : 'Unblocked'}!`,
+              text: `User has been ${action}ed successfully.`,
+              timer: 1500,
+              showConfirmButton: false
+            });
+          } else {
+            Swal.fire('Error', result.message || 'Something went wrong.', 'error');
+          }
+        } catch (err) {
+          console.error(err);
+          Swal.fire('Server error', 'Please try again later.', 'error');
+        }
+      }
+    });
+
+    // Clear search input
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      document.getElementById('clear-x').style.display = 'none';
+      input.form.dispatchEvent(new Event('submit')); // re-trigger search
+    }
+
+    // Toggle clear button visibility
+    function toggleClearButton() {
+      const input = document.getElementById('search-input');
+      const clearBtn = document.getElementById('clear-x');
+      clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+    }
+  }); 
+</script>

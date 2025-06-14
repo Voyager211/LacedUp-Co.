@@ -1,0 +1,19 @@
+<%- include('../user/partials/banner') %>
+
+<section class="mb-5">
+  <h3 class="mb-3 fw-bold">New Arrivals</h3>
+  <div class="row">
+    <% newArrivals.forEach(product => { %>
+      <%- include('../user/partials/product-card', { product, user }) %>
+    <% }) %>
+  </div>
+</section>
+
+<section class="mb-5">
+  <h3 class="mb-3 fw-bold">Best Sellers</h3>
+  <div class="row">
+    <% bestSellers.forEach(product => { %>
+      <%- include('../user/partials/product-card', { product, user }) %>
+    <% }) %>
+  </div>
+</section>

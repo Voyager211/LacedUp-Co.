@@ -1,0 +1,337 @@
+<!-- <h1><%= title %></h1> -->
+
+<div class="container my-4">
+  <h2 class="fw-bold mb-4">Add New Product</h2>
+
+  <form id="add-product-form">
+    <!-- Basic Info -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Name *</label>
+          <input type="text" name="productName" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Brand *</label>
+          <input type="text" name="brand" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category *</label>
+          <select name="category" class="form-select" required>
+            <option value="" disabled selected>Select Category</option>
+            <% categories.forEach(cat => { %>
+              <option value="<%= cat._id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Stock Quantity *</label>
+          <input type="number" name="stock" class="form-control" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-cash-coin me-2"></i>Pricing & Offers</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Regular Price *</label>
+          <input type="number" name="regularPrice" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Sale Price *</label>
+          <input type="number" name="salePrice" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Offer (%)</label>
+          <input type="number" name="productOffer" class="form-control">
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Features *</label>
+          <input type="text" name="features" class="form-control" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-card-text me-2"></i>Product Details</h5>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea name="description" class="form-control" rows="4" required></textarea>
+      </div>
+    </div>
+
+    <!-- Images -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>⭐ Click the star icon to set a main image (currently handled by upload order)</li>
+          <li>📥 Upload at least <strong>3 images</strong></li>
+          <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
+        </ul>
+      </div>
+      <div class="mb-3">
+        <div class="mb-3">
+            <label class="form-label">Upload Images (Min: 3)</label>
+            <input type="file" id="image-input" accept="image/*" multiple class="form-control">
+            <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+            <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex justify-content-end gap-2">
+      <a href="/admin/products" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-dark">
+        <i class="bi bi-save me-1"></i> Save Product
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+  .image-wrapper {
+    position: relative;
+    border: 2px solid transparent;
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+  .image-wrapper.main {
+    border-color: green;
+  }
+
+  .image-wrapper img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+
+  /* 🧼 Clean Close (X) Button */
+  .btn-remove {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 28px;
+    height: 28px;
+    background-color: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-remove:hover {
+    background-color: #bb2d3b;
+  }
+
+  /* ⭐ Modern Star Button */
+  .btn-main {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 28px;
+    height: 28px;
+    background-color: #fd7e14; /* orange */
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .btn-main.active {
+    background-color: #198754; /* green for selected */
+  }
+
+  .btn-main:hover {
+    transform: scale(1.05);
+  }
+
+</style>
+
+<script>
+  const input = document.getElementById('image-input');
+  const container = document.getElementById('image-preview-container');
+  const mainIndexInput = document.getElementById('mainImageIndex');
+  let imageFiles = [];
+  let base64Images = [];
+  let cropper;
+  let cropModal;
+
+  let filesToCrop = [];
+  let currentFileIndex = 0;
+
+  input.addEventListener('change', (e) => {
+    filesToCrop = Array.from(e.target.files);
+    currentFileIndex = 0;
+    cropNextImage();
+  });
+
+  function cropNextImage() {
+    if (currentFileIndex >= filesToCrop.length) return;
+
+    const file = filesToCrop[currentFileIndex];
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        currentFileIndex++;
+        cropNextImage(); // Proceed only after current crop is done
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+
+  function showCropModal(imageSrc, onCropDone) {
+    const existingModal = document.getElementById('cropModal');
+    if (existingModal) existingModal.remove();
+
+  const modalHtml = `
+    <div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content p-4 text-center">
+          <h5 class="mb-3">Crop Image</h5>
+          <div class="d-flex justify-content-center mb-3">
+            <img id="crop-image" src="${imageSrc}" style="height: 450px; max-width: 100%; object-fit: contain;" class="img-fluid" />
+          </div>
+          <div class="d-flex justify-content-center gap-2">
+            <button class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-dark" id="crop-save">Crop & Add</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+
+
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modalEl = document.getElementById('cropModal');
+    cropModal = new bootstrap.Modal(modalEl);
+    cropModal.show();
+
+    const imageEl = document.getElementById('crop-image');
+    imageEl.onload = () => {
+      cropper = new Cropper(imageEl, { aspectRatio: 1 });
+    };
+
+    document.getElementById('crop-save').onclick = () => {
+      const cropped = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+      base64Images.push(cropped);
+      renderThumbnails();
+      cropModal.hide();
+
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        modalEl.remove();
+        const backdrop = document.querySelector('.modal-backdrop');
+        if (backdrop) backdrop.remove();
+
+        if (typeof onCropDone === 'function') onCropDone(); // Go to next image
+      });
+    };
+  }
+
+
+  function renderThumbnails() {
+    container.innerHTML = '';
+    base64Images.forEach((img, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('image-wrapper');
+      if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
+
+      wrapper.innerHTML = `
+        <img src="${img}" />
+        <button class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+      `;
+      container.appendChild(wrapper);
+    });
+  }
+
+  function setMainImage(index) {
+    mainIndexInput.value = index;
+    renderThumbnails();
+  }
+
+  function removeImage(index) {
+    base64Images.splice(index, 1);
+    if (mainIndexInput.value == index) mainIndexInput.value = '';
+    renderThumbnails();
+  }
+
+  // Attach base64 to form submit
+  document.querySelector('form').addEventListener('submit', function (e) {
+    const hiddenContainer = document.createElement('div');
+    base64Images.forEach((b64, i) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'base64Images[]';
+      input.value = b64;
+      hiddenContainer.appendChild(input);
+    });
+    this.appendChild(hiddenContainer);
+  });
+
+  document.getElementById('add-product-form').addEventListener('submit', async function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const formData = new FormData(form);
+
+  // Attach base64 images manually
+  base64Images.forEach((b64, i) => {
+    formData.append('base64Images[]', b64);
+  });
+
+  try {
+    const res = await fetch('/admin/products/api/add', {
+      method: 'POST',
+      body: formData,
+    });
+
+    const data = await res.json();
+
+    if (res.ok && data.success) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Product Added!',
+        text: 'Your new product has been successfully created.',
+        confirmButtonColor: '#111'
+      });
+      window.location.href = '/admin/products';
+    } else {
+      throw new Error(data.message || 'Failed to add product');
+    }
+  } catch (err) {
+    console.error('Error:', err);
+    Swal.fire({
+      icon: 'error',
+      title: 'Oops!',
+      text: err.message || 'Something went wrong. Try again.',
+      confirmButtonColor: '#d33'
+    });
+  }
+});
+
+</script>

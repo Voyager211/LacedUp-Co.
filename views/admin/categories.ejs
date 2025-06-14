@@ -1,0 +1,301 @@
+<!-- <h1 class="page-title"><%= title %></h1> -->
+
+<div class="category-management container">
+  <h2 class="mb-4 fw-bold">All Categories</h2>
+
+  <!-- Search and Add -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <form id="search-form" class="position-relative d-flex" style="max-width: 300px;">
+      <div class="input-group">
+        <input 
+          type="text" 
+          id="search-input"
+          class="form-control pe-5" 
+          placeholder="Search Categories..." 
+          oninput="toggleClearButton()"
+        >
+        <button type="button" id="clear-x" onclick="clearSearch()" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5" style="z-index: 5; display: none;">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="btn btn-outline-secondary" type="submit">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </form>
+
+    <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
+      + Add New Category
+    </button>
+  </div>
+
+  <!-- Add Category Modal -->
+  <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <form id="add-category-form">
+          <div class="modal-header">
+            <h5 class="modal-title" id="addCategoryModalLabel">Add New Category</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="name" class="form-label">Category Name</label>
+              <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label">Description</label>
+              <textarea class="form-control" id="description" name="description" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-dark">Add Category</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="table-light">
+        <tr>
+          <th>#</th>
+          <th>Category Name</th>
+          <th>Description</th>
+          <th>Status</th>
+          <th>Created Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="d-flex justify-content-center">
+    <ul class="pagination mt-3"></ul>
+  </div>
+
+  <!-- Edit Modal Template (Dynamic Injection) -->
+  <div id="edit-modals-container"></div>
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('search-input');
+  const paginationContainer = document.querySelector('.pagination');
+  const tableBody = document.querySelector('tbody');
+  const editModalContainer = document.getElementById('edit-modals-container');
+
+  async function fetchCategories(query = '', page = 1) {
+    const res = await fetch(`/admin/categories/api?q=${encodeURIComponent(query)}&page=${page}`);
+    const data = await res.json();
+
+    const rows = data.categories.map((cat, index) => `
+      <tr>
+        <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
+        <td class="fw-semibold">${cat.name}</td>
+        <td>${cat.description || '—'}</td>
+        <td>
+          <div class="form-check form-switch d-flex justify-content-center">
+            <input class="form-check-input toggle-status" type="checkbox"
+              data-id="${cat._id}" ${cat.isActive ? 'checked' : ''}>
+          </div>
+        </td>
+        <td>${new Date(cat.createdAt).toISOString().split('T')[0]}</td>
+        <td>
+          <button class="btn btn-sm btn-edit me-1" data-id="${cat._id}" data-bs-toggle="modal" data-bs-target="#editCategoryModal${cat._id}">
+            <i class="bi bi-pencil-square me-1"></i> Edit
+          </button>
+          <button class="btn btn-sm btn-delete" data-id="${cat._id}">
+            <i class="bi bi-trash me-1"></i> Delete
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    tableBody.innerHTML = rows;
+
+    // Inject edit modals
+    const modals = data.categories.map(cat => `
+      <div class="modal fade" id="editCategoryModal${cat._id}" tabindex="-1" aria-labelledby="editCategoryModalLabel${cat._id}" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form class="edit-category-form" data-id="${cat._id}">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editCategoryModalLabel${cat._id}">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Category Name</label>
+                  <input type="text" class="form-control" name="name" value="${cat.name}" required>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" name="description" rows="3">${cat.description || ''}</textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-dark">Save Changes</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    `).join('');
+
+    editModalContainer.innerHTML = modals;
+
+    paginationContainer.innerHTML = '';
+    for (let i = 1; i <= data.totalPages; i++) {
+      paginationContainer.innerHTML += `
+        <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" data-page="${i}">${i}</a>
+        </li>`;
+    }
+  }
+
+  fetchCategories(searchInput.value);
+
+  document.getElementById('search-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    fetchCategories(searchInput.value);
+  });
+
+  paginationContainer.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A') {
+      e.preventDefault();
+      const page = parseInt(e.target.dataset.page);
+      fetchCategories(searchInput.value, page);
+    }
+  });
+
+  document.querySelector('#add-category-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = {
+      name: e.target.name.value,
+      description: e.target.description.value,
+    };
+
+    try {
+      const res = await fetch('/admin/categories/api', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formData)
+      });
+
+      if (res.ok) {
+        document.getElementById('addCategoryModal').querySelector('.btn-close').click();
+        await fetchCategories(searchInput.value);
+        Swal.fire('Added!', 'Category has been added.', 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      Swal.fire('Error', 'Could not add category.', 'error');
+    }
+  });
+
+  document.addEventListener('submit', async (e) => {
+    if (e.target.classList.contains('edit-category-form')) {
+      e.preventDefault();
+      const form = e.target;
+      const id = form.dataset.id;
+      const formData = {
+        name: form.name.value,
+        description: form.description.value
+      };
+
+      try {
+        const res = await fetch(`/admin/categories/api/${id}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(formData)
+        });
+
+        if (res.ok) {
+          document.getElementById(`editCategoryModal${id}`).querySelector('.btn-close').click();
+          await fetchCategories(searchInput.value);
+          Swal.fire('Updated!', 'Category updated successfully.', 'success');
+        } else {
+          Swal.fire('Error', 'Update failed.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire('Error', 'Could not update category.', 'error');
+      }
+    }
+  });
+
+  tableBody.addEventListener('click', async (e) => {
+    if (e.target.closest('.btn-delete')) {
+      const id = e.target.closest('.btn-delete').dataset.id;
+
+      const confirmed = await Swal.fire({
+        title: 'Delete this category?',
+        text: 'This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Yes, delete'
+      });
+
+      if (confirmed.isConfirmed) {
+        const res = await fetch(`/admin/categories/api/${id}/soft-delete`, {
+          method: 'PATCH'
+        });
+        if (res.ok) {
+          await fetchCategories(searchInput.value);
+          Swal.fire('Deleted!', 'Category removed.', 'success');
+        }
+      }
+    }
+  });
+
+  tableBody.addEventListener('change', async (e) => {
+    if (e.target.classList.contains('toggle-status')) {
+      const id = e.target.dataset.id;
+
+      const confirmed = await Swal.fire({
+        title: 'Toggle category status?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Yes',
+        cancelButtonText: 'Cancel'
+      });
+
+      if (confirmed.isConfirmed) {
+        const res = await fetch(`/admin/categories/api/${id}/toggle`, { method: 'PATCH' });
+        if (!res.ok) {
+          Swal.fire('Error', 'Could not update status.', 'error');
+        }
+      } else {
+        e.target.checked = !e.target.checked;
+      }
+    }
+  });
+
+  window.clearSearch = () => {
+    const input = document.getElementById('search-input');
+    input.value = '';
+    document.getElementById('clear-x').style.display = 'none';
+    input.form.dispatchEvent(new Event('submit'));
+  };
+
+  window.toggleClearButton = () => {
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('clear-x');
+    clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
+  };
+
+  toggleClearButton();
+});
+</script>
