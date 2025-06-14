@@ -23,7 +23,7 @@ body > .d-flex {
   color: white;
   display: flex;
   flex-direction: column;
-  justify-content: space-between; /* keeps logout at bottom */
+  justify-content: space-between;
   padding: 1rem 0;
 }
 
@@ -64,7 +64,7 @@ body > .d-flex {
 
 /* Admin content area scrollable */
 .admin-content {
-  margin-left: 250px; /* width of fixed sidebar */
+  margin-left: 250px;
   height: 100vh;
   overflow-y: auto;
   padding: 2rem;
@@ -184,3 +184,85 @@ body > .d-flex {
 .modal .modal-footer .btn {
   min-width: 120px;
 }
+
+/* Updated Product Image Styling for Thumbnails */
+.image-wrapper {
+  width: 150px;
+  height: 150px;
+  border: 2px solid transparent;
+  border-radius: 8px;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+.image-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 5px;
+}
+
+#image-preview-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+/* Buttons inside image thumbnail */
+.btn-remove,
+.btn-main {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  color: #fff;
+}
+
+.btn-remove {
+  background: #dc3545;
+  top: 6px;
+  right: 6px;
+}
+
+.btn-main {
+  background: #fd7e14;
+  bottom: 6px;
+  right: 6px;
+}
+
+.btn-main.active {
+  background-color: #198754;
+}
+
+/* Crop button style */
+.btn-crop {
+  position: absolute;
+  bottom: 5px;
+  left: 5px;
+  width: 28px;
+  height: 28px;
+  background-color: #0d6efd; /* Bootstrap blue */
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.btn-crop:hover {
+  background-color: #084298;
+}
+

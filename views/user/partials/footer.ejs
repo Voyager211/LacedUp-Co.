@@ -1,43 +1,72 @@
-<footer class="bg-dark text-light pt-5 pb-3 mt-5">
+<footer class="footer-black text-light pt-5 mt-5 pb-5">
   <div class="container">
     <div class="row">
-      <!-- Logo + Copyright -->
-      <div class="col-md-3 mb-3">
-        <a href="/" class="d-inline-flex align-items-center mb-2 text-light text-decoration-none">
-          <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png" alt="LacedUp Logo" style="height: 36px;" />
+      <!-- Logo & Tagline -->
+      <div class="col-md-3 mb-5">
+        <a href="/" class="d-inline-flex align-items-center mb-3 text-light text-decoration-none">
+          <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749818108/laceduplogoblackbg_new-removebg-preview_i3keeo.png" alt="LacedUp Logo" style="height: 48px;" />
         </a>
-        <p class="text-muted mt-2 mb-0">© <%= new Date().getFullYear() %></p>
+        <p class="small fw-bold text-muted">WHERE STYLE MEETS STREET CULTURE</p>
+        <!-- Social Icons -->
+        <div class="d-flex gap-3 mt-3">
+          <a href="#" class="text-muted"><i class="bi bi-instagram fs-5"></i></a>
+          <a href="#" class="text-muted"><i class="bi bi-facebook fs-5"></i></a>
+          <a href="#" class="text-muted"><i class="bi bi-twitter-x fs-5"></i></a>
+        </div>
       </div>
 
-      <!-- Footer Links Column 1 -->
-      <div class="col-md-3 mb-3">
-        <h5>Shop</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item mb-2"><a href="/shop" class="nav-link p-0 text-muted">All Products</a></li>
-          <li class="nav-item mb-2"><a href="/categories" class="nav-link p-0 text-muted">Categories</a></li>
-          <li class="nav-item mb-2"><a href="/brands" class="nav-link p-0 text-muted">Brands</a></li>
+      <!-- Shop Links -->
+      <div class="col-md-3 mb-5">
+        <h6 class="text-white fw-bold mb-3">Shop</h6>
+        <ul class="nav flex-column gap-1">
+          <li class="nav-item"><a href="/shop" class="nav-link p-0 text-muted">New Arrivals</a></li>
+          <li class="nav-item"><a href="/shop" class="nav-link p-0 text-muted">Bestsellers</a></li>
+          <li class="nav-item"><a href="/categories" class="nav-link p-0 text-muted">Sneakers</a></li>
+          <li class="nav-item"><a href="/categories" class="nav-link p-0 text-muted">Limited Editions</a></li>
         </ul>
       </div>
 
-      <!-- Footer Links Column 2 -->
-      <div class="col-md-3 mb-3">
-        <h5>Company</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item mb-2"><a href="/about" class="nav-link p-0 text-muted">About Us</a></li>
-          <li class="nav-item mb-2"><a href="/contact" class="nav-link p-0 text-muted">Contact</a></li>
-          <li class="nav-item mb-2"><a href="/faq" class="nav-link p-0 text-muted">FAQ</a></li>
+      <!-- About Links -->
+      <div class="col-md-3 mb-5">
+        <h6 class="text-white fw-bold mb-3">About</h6>
+        <ul class="nav flex-column gap-1">
+          <li class="nav-item"><a href="/about" class="nav-link p-0 text-muted">Our Story</a></li>
+          <li class="nav-item"><a href="/about" class="nav-link p-0 text-muted">Culture</a></li>
+          <li class="nav-item"><a href="/contact" class="nav-link p-0 text-muted">Events</a></li>
+          <li class="nav-item"><a href="/contact" class="nav-link p-0 text-muted">Careers</a></li>
         </ul>
       </div>
 
-      <!-- Footer Links Column 3 -->
-      <div class="col-md-3 mb-3">
-        <h5>Support</h5>
-        <ul class="nav flex-column">
-          <li class="nav-item mb-2"><a href="/returns" class="nav-link p-0 text-muted">Returns</a></li>
-          <li class="nav-item mb-2"><a href="/terms" class="nav-link p-0 text-muted">Terms</a></li>
-          <li class="nav-item mb-2"><a href="/privacy" class="nav-link p-0 text-muted">Privacy Policy</a></li>
+      <!-- Customer Service -->
+      <div class="col-md-3 mb-5">
+        <h6 class="text-white fw-bold mb-3">Customer Service</h6>
+        <ul class="nav flex-column gap-1">
+          <li class="nav-item"><a href="/contact" class="nav-link p-0 text-muted">Contact</a></li>
+          <li class="nav-item"><a href="/faq" class="nav-link p-0 text-muted">FAQs</a></li>
+          <li class="nav-item"><a href="/returns" class="nav-link p-0 text-muted">Shipping & Returns</a></li>
+          <li class="nav-item"><a href="/terms" class="nav-link p-0 text-muted">Payment & Policies</a></li>
         </ul>
       </div>
+    </div>
+
+    <!-- Divider -->
+    <hr class="border-top" />
+
+    <!-- Bottom Footer -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center pt-3">
+      <p class="text-muted small mb-2 mb-md-0">© <%= new Date().getFullYear() %> LacedUp Co. All rights reserved.</p>
+      <div class="d-flex gap-3 footer-icons">
+        <i class="bi bi-credit-card-2-back fs-5 text-muted"></i>
+        <i class="bi bi-paypal fs-5 text-muted"></i>
+        <i class="bi bi-apple fs-5 text-muted"></i>
+      </div>
+    </div>
+
+    <!-- Centered Legal Links -->
+    <div class="text-center mt-3 small">
+      <a href="/privacy" class="text-muted mx-2">Privacy Policy</a>
+      <a href="/terms" class="text-muted mx-2">Terms of Service</a>
+      <a href="/cookies" class="text-muted mx-2">Cookie Policy</a>
     </div>
   </div>
 </footer>

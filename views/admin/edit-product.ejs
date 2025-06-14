@@ -106,20 +106,20 @@
   const preloadedImages = [existingMain, ...existingSubs];
 
   preloadedImages.forEach((url, index) => {
-    const wrapper = document.createElement('div');
-    wrapper.classList.add('image-wrapper');
-    if (index === 0) {
-      wrapper.classList.add('main');
-      mainIndexInput.value = 0;
-    }
-    wrapper.innerHTML = `
-      <img src="${url}" />
-      <button class="btn-remove" onclick="removeImage(${index})">×</button>
-      <button class="btn-main ${index === 0 ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
-    `;
-    container.appendChild(wrapper);
-    // Note: We won't push URL directly into base64 array — user must reupload/crop images.
-  });
+    fetch(url)
+      .then(res => res.blob())
+      .then(blob => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          base64Images.push(reader.result);
+          renderThumbnails(); // This will render with crop button too
+          if (index === 0) {
+            mainIndexInput.value = 0;
+          }
+        };
+        reader.readAsDataURL(blob);
+      });
+});
 
   input.addEventListener('change', (e) => {
     filesToCrop = Array.from(e.target.files);
@@ -168,7 +168,7 @@
 
     const imageEl = document.getElementById('crop-image');
     imageEl.onload = () => {
-      cropper = new Cropper(imageEl, { aspectRatio: 1 });
+      cropper = new Cropper(imageEl, { aspectRatio: NaN });
     };
 
     document.getElementById('crop-save').onclick = () => {
@@ -187,16 +187,59 @@
 
   function renderThumbnails() {
     container.innerHTML = '';
-    base64Images.forEach((img, index) => {
+
+    for (let i = 0; i < 3; i++) {
       const wrapper = document.createElement('div');
       wrapper.classList.add('image-wrapper');
-      if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
-      wrapper.innerHTML = `
-        <img src="${img}" />
-        <button class="btn-remove" onclick="removeImage(${index})">×</button>
-        <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
-      `;
+
+      if (base64Images[i]) {
+        // Image exists in slot
+        wrapper.innerHTML = `
+          <img src="${base64Images[i]}" />
+          <button type="button" class="btn-remove" onclick="removeImage(${i})">×</button>
+          <button type="button" class="btn-main ${mainIndexInput.value == i ? 'active' : ''}" onclick="setMainImage(${i})">&#9733;</button>
+          <button type="button" class="btn-crop" onclick="reCropImage(${i})"><i class='bi bi-scissors'></i></button>
+        `;
+        if (parseInt(mainIndexInput.value) === i) {
+          wrapper.classList.add('main');
+        }
+      } else {
+        // Empty slot with "+" icon
+        wrapper.innerHTML = `
+          <div class="add-slot d-flex justify-content-center align-items-center h-100" onclick="addImageToSlot(${i})" title="Click to upload image">
+            <i class="bi bi-plus-lg fs-2 text-muted"></i>
+          </div>
+        `;
+      }
+
       container.appendChild(wrapper);
+    }
+  }
+
+function addImageToSlot(slotIndex) {
+  input.value = ''; // Reset input to allow re-uploading same file
+  input.click();
+
+  input.onchange = () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        base64Images[slotIndex] = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+        renderThumbnails();
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
+  function reCropImage(index) {
+    showCropModal(base64Images[index], () => {
+      const cropped = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+      base64Images[index] = cropped;
+      renderThumbnails();
     });
   }
 
@@ -209,6 +252,8 @@
     base64Images.splice(index, 1);
     if (mainIndexInput.value == index) mainIndexInput.value = '';
     renderThumbnails();
+
+    input.value = '';
   }
 
   // Form submit
@@ -222,28 +267,28 @@
     });
 
     try {
-        const res = await fetch(`/admin/products/api/${productId}`, {
+      const res = await fetch(`/admin/products/api/${productId}`, {
         method: 'PATCH',
         body: formData
       });
-        const contentType = res.headers.get("content-type");
+      const contentType = res.headers.get("content-type");
 
-        if (!contentType || !contentType.includes("application/json")) {
+      if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Invalid response from server. Expected JSON.");
-        }
+      }
 
-        const data = await res.json();
-        if (res.ok && data.success) {
-            await Swal.fire({
-            icon: 'success',
-            title: 'Product Edited Successfully!',
-            text: 'Your product changes were saved.',
-            confirmButtonColor: '#111'
+      const data = await res.json();
+      if (res.ok && data.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Product Edited Successfully!',
+          text: 'Your product changes were saved.',
+          confirmButtonColor: '#111'
         });
         window.location.href = '/admin/products';
-        } else {
-            throw new Error(data.message || 'Failed to update');
-        }
+      } else {
+        throw new Error(data.message || 'Failed to update');
+      }
     } catch (err) {
       Swal.fire({
         icon: 'error',

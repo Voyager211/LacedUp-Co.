@@ -173,3 +173,59 @@ a:hover {
 .navbar-nav .nav-link.active::after {
   width: 100%;
 }
+
+/* ========= AUTH BUTTON HOVER (RED BG, WHITE TEXT) ========= */
+.btn.btn-outline-light:hover,
+.btn.btn-light.text-dark.fw-semibold:hover {
+  background-color: var(--color-accent-red) !important;
+  color: white !important;
+  border-color: var(--color-accent-red) !important;
+}
+
+/* Product card styling */
+.product-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.product-card:hover {
+  transform: translateY(-15px);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.25);
+}
+
+/* Footer */
+.footer-black {
+  background-color: #000;
+  color: #ccc;
+  padding-bottom: 3rem; /* ✅ add this for spacing below the footer */
+}
+
+
+.footer-black a,
+.footer-black .nav-link,
+.footer-black p,
+.footer-black h6 {
+  color: #ccc !important;
+}
+
+.footer-black a:hover,
+.footer-black .nav-link:hover {
+  color: white !important;
+  text-decoration: underline;
+}
+
+.footer-black .nav-link {
+  font-size: 0.95rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+/* Footer Enhancements */
+.footer-black hr {
+  border-color: #ccc !important; /* Ensure the line is visible */
+}
+
+.footer-black .footer-icons i {
+  color: #ccc !important;  /* Match list item color */
+  opacity: 1;              /* Make sure they're not faded */
+}

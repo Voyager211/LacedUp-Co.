@@ -1,40 +1,8 @@
 const Category = require('../../models/Category');
 const { getPagination } = require('../../utils/pagination');
 
+// Render EJS page
 exports.listCategories = async (req, res) => {
-    try {
-        const q = req.query.q || '';
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10;
-
-        const query = {
-            name: { $regex: q, $options: 'i' },
-            isDeleted: false
-        };
-
-        const { data: categories, totalPages } = await getPagination(
-            Category.find(query).sort({ createdAt: -1 }),
-            Category,
-            query,
-            page,
-            limit
-        );
-
-        res.render('admin/categories', {
-            categories,
-            currentPage: page,
-            totalPages,
-            searchQuery: q,
-            title: "Category Management"
-        });
-    } catch (error) {
-        console.error('Error listing categories:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-// Fetch-based category listing
-exports.apiCategories = async (req, res) => {
   try {
     const q = req.query.q || '';
     const page = parseInt(req.query.page) || 1;
@@ -46,80 +14,80 @@ exports.apiCategories = async (req, res) => {
     };
 
     const { data: categories, totalPages } = await getPagination(
-      Category.find(query).sort({ createdAt: -1 }),
+      Category.find(query).populate('parent', 'name').sort({ createdAt: -1 }),
       Category,
       query,
       page,
       limit
     );
 
-    res.json({ categories, currentPage: page, totalPages });
+    const allCategories = await Category.find({ isDeleted: false }); // for parent dropdown
+
+    res.render('admin/categories', {
+      categories,
+      allCategories, // 👈 for parent dropdown
+      currentPage: page,
+      totalPages,
+      searchQuery: q,
+      title: "Category Management"
+    });
+  } catch (error) {
+    console.error('Error listing categories:', error);
+    res.status(500).send('Internal Server Error');
+  }
+};
+
+// JSON API - Fetch category list (AJAX)
+exports.apiCategories = async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const parentFilter = req.query.parent;
+
+    const query = {
+      name: { $regex: q, $options: 'i' },
+      isDeleted: false
+    };
+
+    // ✅ Enhanced parent filtering logic
+    if (parentFilter === 'none') {
+      query.parent = null; // main categories only
+    } else if (parentFilter === 'sub') {
+      query.parent = { $ne: null }; // only subcategories
+    } else if (parentFilter) {
+      query.parent = parentFilter; // filter by specific parent ID
+    }
+
+    const { data: categories, totalPages } = await getPagination(
+      Category.find(query).populate('parent', 'name').sort({ createdAt: -1 }),
+      Category,
+      query,
+      page,
+      limit
+    );
+
+    const allCategories = await Category.find({ isDeleted: false });
+
+    res.json({ categories, allCategories, currentPage: page, totalPages });
   } catch (err) {
     console.error('Error fetching categories:', err);
     res.status(500).json({ message: 'Internal Server Error' });
   }
 };
 
-// exports.createCategory = async (req, res) => {
-//     try {
-//         await Category.create({
-//             name: req.body.name,
-//             description: req.body.description
-//         });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error creating category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
 
-// exports.toggleCategoryStatus = async (req, res) => {
-//     try {
-//         const category = await Category.findById(req.params.id);
-//         if (category) {
-//             category.isActive = !category.isActive;
-//             await category.save();
-//         }
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error toggling category status:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
 
-// exports.updateCategory = async (req, res) => {
-//     try {
-//         await Category.findByIdAndUpdate(req.params.id, {
-//             name: req.body.name,
-//             description: req.body.description
-//         });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error updating category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// exports.softDeleteCategory = async (req, res) => {
-//     try {
-//         await Category.findByIdAndUpdate(req.params.id, { isDeleted: true });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error soft deleting category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// Add category via fetch
+// Create category (AJAX)
 exports.apiCreateCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, parent } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Category name is required' });
     }
 
-    await Category.create({ name, description });
+    await Category.create({ name, description, parent: parent || null });
     res.json({ success: true });
   } catch (err) {
     console.error('Create Error:', err);
@@ -127,13 +95,17 @@ exports.apiCreateCategory = async (req, res) => {
   }
 };
 
-// Update category via fetch
+// Update category (AJAX)
 exports.apiUpdateCategory = async (req, res) => {
   try {
+    const { name, description, parent } = req.body;
+
     await Category.findByIdAndUpdate(req.params.id, {
-      name: req.body.name,
-      description: req.body.description
+      name,
+      description,
+      parent: parent || null
     });
+
     res.json({ success: true });
   } catch (err) {
     console.error('Update Error:', err);
@@ -141,7 +113,7 @@ exports.apiUpdateCategory = async (req, res) => {
   }
 };
 
-// Toggle status via fetch
+// Toggle category status
 exports.apiToggleStatus = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
@@ -156,7 +128,7 @@ exports.apiToggleStatus = async (req, res) => {
   }
 };
 
-// Soft delete via fetch
+// Soft delete category
 exports.apiSoftDeleteCategory = async (req, res) => {
   try {
     await Category.findByIdAndUpdate(req.params.id, { isDeleted: true });
