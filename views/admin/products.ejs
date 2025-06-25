@@ -5,16 +5,37 @@
 
   <!-- Search + Add Product -->
   <div class="d-flex justify-content-between align-items-center mb-3">
-    <form method="GET" action="/admin/products" class="d-flex" style="max-width: 300px;">
-      <input 
-        type="text" 
-        name="q" 
-        value="<%= searchQuery || '' %>" 
-        class="form-control me-2" 
-        placeholder="Search products..."
-      />
-      <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
-    </form>
+    <div class="d-flex align-items-center gap-3">
+      <!-- Search Form with Clear Button -->
+      <form method="GET" action="/admin/products" class="d-flex position-relative" style="max-width: 300px;">
+        <div class="search-input-container position-relative">
+          <input
+            type="text"
+            name="q"
+            id="admin-search-input"
+            value="<%= searchQuery || '' %>"
+            class="form-control pe-5"
+            placeholder="Search products..."
+          />
+          <button type="button" id="admin-clear-search" class="clear-btn <%= searchQuery ? '' : 'd-none' %>">
+            <i class="bi bi-x-lg"></i>
+          </button>
+          <button class="btn btn-outline-secondary search-btn" type="submit">
+            <i class="bi bi-search"></i>
+          </button>
+        </div>
+      </form>
+
+      <!-- Filter and Sort Buttons -->
+      <div class="d-flex gap-2">
+        <button type="button" id="filter-btn" class="btn btn-dark btn-sm">
+          <i class="bi bi-funnel me-1"></i> Filter
+        </button>
+        <button type="button" id="sort-btn" class="btn btn-dark btn-sm">
+          <i class="bi bi-sort-down me-1"></i> Sort
+        </button>
+      </div>
+    </div>
 
     <a href="/admin/products/add" class="btn btn-dark">
       + Add Product
@@ -83,6 +104,118 @@
     <ul class="pagination" id="pagination-container"></ul>
   </nav>
 
+  <!-- Filter Dropdown Modal -->
+  <div id="filter-dropdown" class="dropdown-modal" style="display: none;">
+    <div class="dropdown-content">
+      <div class="dropdown-header">
+        <h6 class="mb-0">Filter Products</h6>
+        <button type="button" class="btn-close-dropdown" id="close-filter">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="dropdown-body">
+        <div class="row">
+          <!-- Category Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Category</label>
+            <select id="filter-category" class="form-select">
+              <option value="">All Categories</option>
+              <% categories.forEach(cat => { %>
+              <option value="<%= cat._id %>"><%= cat.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <!-- Brand Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Brand</label>
+            <input type="text" id="filter-brand" class="form-control" placeholder="Enter brand name">
+          </div>
+
+          <!-- Price Range -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Min Price</label>
+            <input type="number" id="filter-min-price" class="form-control" placeholder="Min price">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Max Price</label>
+            <input type="number" id="filter-max-price" class="form-control" placeholder="Max price">
+          </div>
+
+          <!-- Status Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Status</label>
+            <select id="filter-status" class="form-select">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+
+          <!-- Stock Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Stock</label>
+            <select id="filter-stock" class="form-select">
+              <option value="">All Stock</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock (< 10)</option>
+              <option value="out-of-stock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dropdown-footer">
+          <button type="button" class="btn btn-outline-secondary" id="reset-filters">Reset</button>
+          <button type="button" class="btn btn-apply-filters" id="apply-filters">Apply Filters</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sort Dropdown Modal -->
+  <div id="sort-dropdown" class="dropdown-modal" style="display: none;">
+    <div class="dropdown-content">
+      <div class="dropdown-header">
+        <h6 class="mb-0">Sort Products</h6>
+        <button type="button" class="btn-close-dropdown" id="close-sort">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="dropdown-body">
+        <div class="sort-options">
+          <div class="sort-option" data-sort="name-asc">
+            <i class="bi bi-sort-alpha-down me-2"></i>
+            Name: A - Z
+          </div>
+          <div class="sort-option" data-sort="name-desc">
+            <i class="bi bi-sort-alpha-up me-2"></i>
+            Name: Z - A
+          </div>
+          <div class="sort-option" data-sort="price-asc">
+            <i class="bi bi-sort-numeric-down me-2"></i>
+            Price: Low to High
+          </div>
+          <div class="sort-option" data-sort="price-desc">
+            <i class="bi bi-sort-numeric-up me-2"></i>
+            Price: High to Low
+          </div>
+          <div class="sort-option" data-sort="date-newest">
+            <i class="bi bi-calendar-plus me-2"></i>
+            Date: Newest First
+          </div>
+          <div class="sort-option" data-sort="date-oldest">
+            <i class="bi bi-calendar-minus me-2"></i>
+            Date: Oldest First
+          </div>
+          <div class="sort-option" data-sort="status">
+            <i class="bi bi-toggle-on me-2"></i>
+            Status: Active First
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <!-- Add Product Modal
@@ -142,11 +275,170 @@
   document.addEventListener('DOMContentLoaded', () => {
     const paginationContainer = document.getElementById('pagination-container');
     const searchInput = document.querySelector('input[name="q"]');
+    const clearBtn = document.getElementById('admin-clear-search');
 
-    async function fetchProducts(query = '', page = 1) {
-      const res = await fetch(`/admin/products/api?q=${encodeURIComponent(query)}&page=${page}`);
+    // ✅ Search input clear button functionality
+    searchInput.addEventListener('input', function() {
+      if (this.value.trim()) {
+        clearBtn.classList.remove('d-none');
+      } else {
+        clearBtn.classList.add('d-none');
+      }
+    });
+
+    clearBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      clearBtn.classList.add('d-none');
+      // Trigger search to reset results
+      fetchProducts('', 1);
+    });
+
+    // ✅ Filter and Sort dropdown functionality
+    const filterBtn = document.getElementById('filter-btn');
+    const sortBtn = document.getElementById('sort-btn');
+    const filterDropdown = document.getElementById('filter-dropdown');
+    const sortDropdown = document.getElementById('sort-dropdown');
+    const closeFilterBtn = document.getElementById('close-filter');
+    const closeSortBtn = document.getElementById('close-sort');
+    const applyFiltersBtn = document.getElementById('apply-filters');
+    const resetFiltersBtn = document.getElementById('reset-filters');
+
+    // Current filter state
+    let currentFilters = {
+      category: '',
+      brand: '',
+      minPrice: '',
+      maxPrice: '',
+      status: '',
+      stock: '',
+      sort: ''
+    };
+
+    // Show/hide dropdown functions
+    function showDropdown(dropdown) {
+      dropdown.style.display = 'flex';
+      setTimeout(() => dropdown.classList.add('show'), 10);
+    }
+
+    function hideDropdown(dropdown) {
+      dropdown.classList.remove('show');
+      setTimeout(() => dropdown.style.display = 'none', 300);
+    }
+
+    // Event listeners for dropdown buttons
+    filterBtn.addEventListener('click', () => showDropdown(filterDropdown));
+    sortBtn.addEventListener('click', () => showDropdown(sortDropdown));
+    closeFilterBtn.addEventListener('click', () => hideDropdown(filterDropdown));
+    closeSortBtn.addEventListener('click', () => hideDropdown(sortDropdown));
+
+    // Close dropdowns when clicking outside
+    [filterDropdown, sortDropdown].forEach(dropdown => {
+      dropdown.addEventListener('click', (e) => {
+        if (e.target === dropdown) {
+          hideDropdown(dropdown);
+        }
+      });
+    });
+
+    // Sort option selection
+    document.querySelectorAll('.sort-option').forEach(option => {
+      option.addEventListener('click', function() {
+        // Remove active class from all options
+        document.querySelectorAll('.sort-option').forEach(opt => opt.classList.remove('active'));
+        // Add active class to clicked option
+        this.classList.add('active');
+
+        currentFilters.sort = this.dataset.sort;
+        hideDropdown(sortDropdown);
+
+        // Apply sort immediately
+        fetchProductsWithFilters();
+      });
+    });
+
+    // Apply filters functionality
+    applyFiltersBtn.addEventListener('click', function() {
+      currentFilters.category = document.getElementById('filter-category').value;
+      currentFilters.brand = document.getElementById('filter-brand').value;
+      currentFilters.minPrice = document.getElementById('filter-min-price').value;
+      currentFilters.maxPrice = document.getElementById('filter-max-price').value;
+      currentFilters.status = document.getElementById('filter-status').value;
+      currentFilters.stock = document.getElementById('filter-stock').value;
+
+      hideDropdown(filterDropdown);
+      fetchProductsWithFilters();
+    });
+
+    // Reset filters functionality
+    resetFiltersBtn.addEventListener('click', function() {
+      // Clear all filter inputs
+      document.getElementById('filter-category').value = '';
+      document.getElementById('filter-brand').value = '';
+      document.getElementById('filter-min-price').value = '';
+      document.getElementById('filter-max-price').value = '';
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-stock').value = '';
+
+      // Clear search input
+      searchInput.value = '';
+      clearBtn.classList.add('d-none');
+
+      // Remove active sort
+      document.querySelectorAll('.sort-option').forEach(opt => opt.classList.remove('active'));
+
+      // Reset filter state
+      currentFilters = {
+        category: '',
+        brand: '',
+        minPrice: '',
+        maxPrice: '',
+        status: '',
+        stock: '',
+        sort: ''
+      };
+
+      hideDropdown(filterDropdown);
+      fetchProductsWithFilters();
+    });
+
+    // Enhanced fetch function with filters
+    async function fetchProductsWithFilters(page = 1) {
+      const params = new URLSearchParams();
+
+      // Add search query
+      if (searchInput.value.trim()) {
+        params.append('q', searchInput.value.trim());
+      }
+
+      // Add filters
+      Object.keys(currentFilters).forEach(key => {
+        if (currentFilters[key]) {
+          params.append(key, currentFilters[key]);
+        }
+      });
+
+      params.append('page', page);
+
+      const res = await fetch(`/admin/products/api?${params.toString()}`);
       const data = await res.json();
 
+      updateProductTable(data);
+    }
+
+    // Legacy function for backward compatibility
+    async function fetchProducts(query = '', page = 1) {
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      params.append('page', page);
+
+      const res = await fetch(`/admin/products/api?${params.toString()}`);
+      const data = await res.json();
+
+      updateProductTable(data);
+    }
+
+    // Function to update the product table
+    function updateProductTable(data) {
       const tableBody = document.getElementById('product-table-body');
 
       const rows = data.products.map((product, index) => `
@@ -178,17 +470,56 @@
 
       tableBody.innerHTML = rows;
 
-      // ✅ Re-bind toggle switch listeners
+      // ✅ Re-bind toggle switch listeners with SweetAlert confirmation
       document.querySelectorAll('.toggle-status').forEach(input => {
         input.addEventListener('change', async (e) => {
           const id = e.target.getAttribute('data-id');
+          const isCurrentlyListed = e.target.checked;
+          const action = isCurrentlyListed ? 'unblock' : 'block';
+          const actionText = isCurrentlyListed ? 'unblock' : 'block';
+
+          // Show confirmation dialog
+          const confirmed = await Swal.fire({
+            icon: 'question',
+            title: `Are you sure you want to ${actionText} this product?`,
+            text: `This will ${isCurrentlyListed ? 'show' : 'hide'} the product on the shop page.`,
+            showCancelButton: true,
+            confirmButtonText: `Yes, ${actionText} it!`,
+            confirmButtonColor: isCurrentlyListed ? '#28a745' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: true
+          });
+
+          if (!confirmed.isConfirmed) {
+            // Revert the toggle if user cancels
+            e.target.checked = !e.target.checked;
+            return;
+          }
+
+          // Show loading state
+          const originalText = e.target.parentElement.innerHTML;
+          e.target.disabled = true;
+
           try {
             const res = await fetch(`/admin/products/api/${id}/toggle`, {
               method: 'PATCH'
             });
             const data = await res.json();
-            if (!data.success) throw new Error('Toggle failed');
+
+            if (!data.success) throw new Error(data.message || 'Toggle failed');
+
+            // Show success message
+            await Swal.fire({
+              icon: 'success',
+              title: 'Success!',
+              text: `Product has been ${actionText}ed successfully.`,
+              confirmButtonColor: '#111',
+              timer: 2000,
+              showConfirmButton: false
+            });
+
           } catch (err) {
+            // Show error and revert toggle
             Swal.fire({
               icon: 'error',
               title: 'Toggle Failed',
@@ -196,18 +527,30 @@
               confirmButtonColor: '#d33'
             });
             e.target.checked = !e.target.checked;
+          } finally {
+            e.target.disabled = false;
           }
         });
       });
 
-      // ✅ Pagination
+      // ✅ Pagination - use appropriate fetch function
       renderPagination(paginationContainer, data.currentPage, data.totalPages, (newPage) => {
-        fetchProducts(searchInput.value, newPage);
+        // Check if we have active filters
+        const hasFilters = Object.values(currentFilters).some(value => value !== '');
+        if (hasFilters || searchInput.value.trim()) {
+          fetchProductsWithFilters(newPage);
+        } else {
+          fetchProducts(searchInput.value, newPage);
+        }
       });
     }
 
     // Initial fetch
-    fetchProducts(searchInput.value);
+    if (searchInput.value.trim()) {
+      fetchProducts(searchInput.value);
+    } else {
+      fetchProductsWithFilters();
+    }
   });
 </script>
 

@@ -1,0 +1,57 @@
+<% if (totalPages && totalPages > 1) { %>
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center" id="pagination-container">
+      <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+        <a class="page-link" href="#" data-page="<%= currentPage - 1 %>">Previous</a>
+      </li>
+
+      <% for (let i = 1; i <= totalPages; i++) { %>
+        <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+          <a class="page-link" href="#" data-page="<%= i %>"><%= i %></a>
+        </li>
+      <% } %>
+
+      <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+        <a class="page-link" href="#" data-page="<%= currentPage + 1 %>">Next</a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Inline fetch-based pagination logic -->
+  <script>
+    document.addEventListener('click', function (e) {
+      const target = e.target.closest('.page-link');
+      if (!target || !target.dataset.page) return;
+
+      e.preventDefault();
+      const page = parseInt(target.dataset.page);
+      if (!isNaN(page) && typeof fetchCallback === 'function') {
+        fetchCallback(page);
+      }
+    });
+  </script>
+
+  <style>
+    .pagination .page-item.active .page-link {
+      background-color: #1a1a1a;
+      border-color: #1a1a1a;
+      color: white;
+    }
+
+    .pagination .page-link {
+      color: #333;
+      border-radius: 6px;
+      margin: 0 2px;
+    }
+
+    .pagination .page-link:hover {
+      background-color: #f2f2f2;
+      color: #000;
+    }
+
+    .pagination .page-item.disabled .page-link {
+      color: #bbb;
+      cursor: not-allowed;
+    }
+  </style>
+<% } %>

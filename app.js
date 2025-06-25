@@ -1,5 +1,6 @@
 require('dotenv').config(); // ✅ Load .env FIRST
 
+// Package imports
 const express = require('express');
 const app = express();
 const mongoose = require('mongoose');
@@ -10,9 +11,12 @@ const passport = require('passport');
 const methodOverride = require('method-override');
 const expressLayouts = require('express-ejs-layouts');
 
+// Middleware imports
 const connectDB = require('./config/db');
 const isAdmin = require('./middlewares/isAdmin');
+const { addUserContext } = require('./middlewares/user-middleware');
 
+// Route imports
 const adminAuthRoutes = require('./routes/admin/auth');
 const adminUserRoutes = require('./routes/admin/user');
 const adminCategoryRoutes = require('./routes/admin/category');
@@ -20,6 +24,7 @@ const adminProductRoutes = require('./routes/admin/product');
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
+const userProductRoutes = require('./routes/user/product-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -58,12 +63,14 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ROUTES
+app.use(addUserContext);
 
+// ROUTES
 // ✅ User Routes First
 app.use('/', landingRoutes);
 app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
+app.use('/', userProductRoutes);
 
 
 

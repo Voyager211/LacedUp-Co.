@@ -108,9 +108,86 @@ exports.apiProducts = async (req, res) => {
     const q = req.query.q || '';
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
-    const query = { productName: { $regex: q, $options: 'i' }, isDeleted: false };
+
+    // Build query object with advanced filters
+    const query = { isDeleted: false };
+
+    // Search filter
+    if (q) {
+      query.productName = { $regex: q, $options: 'i' };
+    }
+
+    // Category filter
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    // Brand filter
+    if (req.query.brand) {
+      query.brand = { $regex: req.query.brand, $options: 'i' };
+    }
+
+    // Price range filters
+    if (req.query.minPrice || req.query.maxPrice) {
+      query.salePrice = {};
+      if (req.query.minPrice) {
+        query.salePrice.$gte = parseFloat(req.query.minPrice);
+      }
+      if (req.query.maxPrice) {
+        query.salePrice.$lte = parseFloat(req.query.maxPrice);
+      }
+    }
+
+    // Status filter
+    if (req.query.status !== undefined && req.query.status !== '') {
+      query.isListed = req.query.status === 'true';
+    }
+
+    // Stock filter
+    if (req.query.stock) {
+      switch (req.query.stock) {
+        case 'in-stock':
+          query.stock = { $gt: 0 };
+          break;
+        case 'low-stock':
+          query.stock = { $gt: 0, $lt: 10 };
+          break;
+        case 'out-of-stock':
+          query.stock = 0;
+          break;
+      }
+    }
+
+    // Build sort object
+    let sortQuery = { createdAt: -1 }; // default sort
+    if (req.query.sort) {
+      switch (req.query.sort) {
+        case 'name-asc':
+          sortQuery = { productName: 1 };
+          break;
+        case 'name-desc':
+          sortQuery = { productName: -1 };
+          break;
+        case 'price-asc':
+          sortQuery = { salePrice: 1 };
+          break;
+        case 'price-desc':
+          sortQuery = { salePrice: -1 };
+          break;
+        case 'date-newest':
+          sortQuery = { createdAt: -1 };
+          break;
+        case 'date-oldest':
+          sortQuery = { createdAt: 1 };
+          break;
+        case 'status':
+          sortQuery = { isListed: -1, createdAt: -1 };
+          break;
+      }
+    }
+
     const { data: products, totalPages } = await getPagination(
-      Product.find(query).populate('category').sort({ createdAt: -1 }),
+      Product.find(query).populate('category').sort(sortQuery),
       Product,
       query,
       page,

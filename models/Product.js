@@ -1,10 +1,15 @@
 const mongoose = require('mongoose');
+const slugify = require('slugify');
 const Schema = mongoose.Schema;
 
 const productSchema = new mongoose.Schema({
   productName: { 
     type: String, 
     required: true 
+  },
+  slug: {
+    type: String,
+    unique: true
   },
   description: { 
     type: String, 
@@ -65,5 +70,14 @@ const productSchema = new mongoose.Schema({
   isListed: { type: Boolean, default: true },
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
+
+
+// Auto-generate slug on productName change
+productSchema.pre('save', function (next) {
+  if (this.isModified('productName')) {
+    this.slug = slugify(this.productName, { lower: true, strict: true });
+  }
+  next();
+});
 
 module.exports = mongoose.model('Product', productSchema);

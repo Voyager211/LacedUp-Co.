@@ -3,41 +3,26 @@
 <div class="category-management container">
   <h2 class="mb-4 fw-bold">All Categories</h2>
 
-  <!-- Search + Filter + Add -->
-  <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+  <!-- Search and Add -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <form id="search-form" class="position-relative d-flex" style="max-width: 300px;">
+      <div class="input-group">
+        <input 
+          type="text" 
+          id="search-input"
+          class="form-control pe-5" 
+          placeholder="Search Categories..." 
+          oninput="toggleClearButton()"
+        >
+        <button type="button" id="clear-x" onclick="clearSearch()" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5" style="z-index: 5; display: none;">
+          <i class="bi bi-x-lg"></i>
+        </button>
+        <button class="btn btn-outline-secondary" type="submit">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
+    </form>
 
-    <div class="d-flex gap-2 flex-grow-1" style="max-width: 500px;">
-      <!-- Search Form -->
-      <form id="search-form" class="position-relative flex-grow-1">
-        <div class="input-group">
-          <input 
-            type="text" 
-            id="search-input"
-            class="form-control pe-5" 
-            placeholder="Search Categories..." 
-            oninput="toggleClearButton()"
-          >
-          <button type="button" id="clear-x" onclick="clearSearch()" class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5" style="z-index: 5; display: none;">
-            <i class="bi bi-x-lg"></i>
-          </button>
-          <button class="btn btn-outline-secondary" type="submit">
-            <i class="bi bi-search"></i>
-          </button>
-        </div>
-      </form>
-
-      <!-- Filter Dropdown -->
-      <select id="main-category-filter" class="form-select" style="min-width: 180px;">
-        <option value="">All Categories</option>
-        <option value="none">Only Main Categories</option>
-        <option value="sub">Only Subcategories</option>
-        <% allCategories.forEach(cat => { %>
-          <option value="<%= cat._id %>">Under: <%= cat.name %></option>
-        <% }) %>
-      </select>
-    </div>
-
-    <!-- Add New Category Button -->
     <button type="button" class="btn btn-dark" data-bs-toggle="modal" data-bs-target="#addCategoryModal">
       + Add New Category
     </button>
@@ -60,15 +45,6 @@
             <div class="mb-3">
               <label for="description" class="form-label">Description</label>
               <textarea class="form-control" id="description" name="description" rows="3"></textarea>
-            </div>
-            <div class="mb-3">
-              <label for="parent" class="form-label">Parent Category</label>
-              <select class="form-select" id="parent" name="parent">
-                <option value="">— Main Category —</option>
-                <% allCategories.forEach(cat => { %>
-                  <option value="<%= cat._id %>"><%= cat.name %></option>
-                <% }) %>
-              </select>
             </div>
           </div>
           <div class="modal-footer">
@@ -107,29 +83,26 @@
 
 </div>
 
-
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('search-input');
-  const filterSelect = document.getElementById('main-category-filter');
   const paginationContainer = document.querySelector('.pagination');
   const tableBody = document.querySelector('tbody');
   const editModalContainer = document.getElementById('edit-modals-container');
 
-  async function fetchCategories(query = '', parent = '', page = 1) {
-    const url = `/admin/categories/api?q=${encodeURIComponent(query)}&parent=${parent}&page=${page}`;
-    const res = await fetch(url);
+  async function fetchCategories(query = '', page = 1) {
+    const res = await fetch(`/admin/categories/api?q=${encodeURIComponent(query)}&page=${page}`);
     const data = await res.json();
 
-    // Table rows
     const rows = data.categories.map((cat, index) => `
       <tr>
         <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
-        <td class="fw-semibold">${cat.name} ${cat.parent ? `<span class="badge bg-secondary ms-2">${cat.parent.name}</span>` : ''}</td>
+        <td class="fw-semibold">${cat.name}</td>
         <td>${cat.description || '—'}</td>
         <td>
           <div class="form-check form-switch d-flex justify-content-center">
-            <input class="form-check-input toggle-status" type="checkbox" data-id="${cat._id}" ${cat.isActive ? 'checked' : ''}>
+            <input class="form-check-input toggle-status" type="checkbox"
+              data-id="${cat._id}" ${cat.isActive ? 'checked' : ''}>
           </div>
         </td>
         <td>${new Date(cat.createdAt).toISOString().split('T')[0]}</td>
@@ -146,56 +119,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     tableBody.innerHTML = rows;
 
-    // Edit modals
-    editModalContainer.innerHTML = data.categories.map(cat => {
-      const parentOptions = data.allCategories
-        .filter(c => c._id !== cat._id)
-        .map(parentCat => `
-          <option value="${parentCat._id}" ${cat.parent && cat.parent._id === parentCat._id ? 'selected' : ''}>
-            ${parentCat.name}
-          </option>
-        `).join('');
-
-      return `
-        <div class="modal fade" id="editCategoryModal${cat._id}" tabindex="-1" aria-labelledby="editCategoryModalLabel${cat._id}" aria-hidden="true">
-          <div class="modal-dialog">
-            <div class="modal-content">
-              <form class="edit-category-form" data-id="${cat._id}">
-                <div class="modal-header">
-                  <h5 class="modal-title" id="editCategoryModalLabel${cat._id}">Edit Category</h5>
-                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    // Inject edit modals
+    const modals = data.categories.map(cat => `
+      <div class="modal fade" id="editCategoryModal${cat._id}" tabindex="-1" aria-labelledby="editCategoryModalLabel${cat._id}" aria-hidden="true">
+        <div class="modal-dialog">
+          <div class="modal-content">
+            <form class="edit-category-form" data-id="${cat._id}">
+              <div class="modal-header">
+                <h5 class="modal-title" id="editCategoryModalLabel${cat._id}">Edit Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">Category Name</label>
+                  <input type="text" class="form-control" name="name" value="${cat.name}" required>
                 </div>
-                <div class="modal-body">
-                  <div class="mb-3">
-                    <label class="form-label">Category Name</label>
-                    <input type="text" class="form-control" name="name" value="${cat.name}" required>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Description</label>
-                    <textarea class="form-control" name="description" rows="3">${cat.description || ''}</textarea>
-                  </div>
-                  <div class="mb-3">
-                    <label class="form-label">Parent Category</label>
-                    <select class="form-select" name="parent">
-                      <option value="">— Main Category —</option>
-                      <% allCategories.forEach(cat => { %>
-                        <option value="<%= cat._id %>"><%= cat.name %></option>
-                      <% }) %>
-                    </select>
-                  </div>
+                <div class="mb-3">
+                  <label class="form-label">Description</label>
+                  <textarea class="form-control" name="description" rows="3">${cat.description || ''}</textarea>
                 </div>
-                <div class="modal-footer">
-                  <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
-                  <button type="submit" class="btn btn-dark">Save Changes</button>
-                </div>
-              </form>
-            </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-dark">Save Changes</button>
+              </div>
+            </form>
           </div>
         </div>
-      `;
-    }).join('');
+      </div>
+    `).join('');
 
-    // Pagination
+    editModalContainer.innerHTML = modals;
+
     paginationContainer.innerHTML = '';
     for (let i = 1; i <= data.totalPages; i++) {
       paginationContainer.innerHTML += `
@@ -205,44 +160,40 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  fetchCategories(searchInput.value, filterSelect.value);
+  fetchCategories(searchInput.value);
 
   document.getElementById('search-form').addEventListener('submit', (e) => {
     e.preventDefault();
-    fetchCategories(searchInput.value, filterSelect.value);
-  });
-
-  filterSelect.addEventListener('change', () => {
-    fetchCategories(searchInput.value, filterSelect.value);
+    fetchCategories(searchInput.value);
   });
 
   paginationContainer.addEventListener('click', (e) => {
     if (e.target.tagName === 'A') {
       e.preventDefault();
       const page = parseInt(e.target.dataset.page);
-      fetchCategories(searchInput.value, filterSelect.value, page);
+      fetchCategories(searchInput.value, page);
     }
   });
 
-  document.getElementById('add-category-form').addEventListener('submit', async (e) => {
+  document.querySelector('#add-category-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const form = e.target;
     const formData = {
-      name: form.name.value,
-      description: form.description.value,
-      parent: form.parent?.value || null
+      name: e.target.name.value,
+      description: e.target.description.value,
     };
 
     try {
       const res = await fetch('/admin/categories/api', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify(formData)
       });
 
       if (res.ok) {
         document.getElementById('addCategoryModal').querySelector('.btn-close').click();
-        await fetchCategories(searchInput.value, filterSelect.value);
+        await fetchCategories(searchInput.value);
         Swal.fire('Added!', 'Category has been added.', 'success');
       }
     } catch (err) {
@@ -256,11 +207,9 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       const form = e.target;
       const id = form.dataset.id;
-
       const formData = {
         name: form.name.value,
-        description: form.description.value,
-        parent: form.parent.value || null
+        description: form.description.value
       };
 
       try {
@@ -274,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (res.ok) {
           document.getElementById(`editCategoryModal${id}`).querySelector('.btn-close').click();
-          await fetchCategories(searchInput.value, filterSelect.value);
+          await fetchCategories(searchInput.value);
           Swal.fire('Updated!', 'Category updated successfully.', 'success');
         } else {
           Swal.fire('Error', 'Update failed.', 'error');
@@ -304,7 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
           method: 'PATCH'
         });
         if (res.ok) {
-          await fetchCategories(searchInput.value, filterSelect.value);
+          await fetchCategories(searchInput.value);
           Swal.fire('Deleted!', 'Category removed.', 'success');
         }
       }
@@ -335,19 +284,18 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   window.clearSearch = () => {
-    searchInput.value = '';
+    const input = document.getElementById('search-input');
+    input.value = '';
     document.getElementById('clear-x').style.display = 'none';
-    searchInput.form.dispatchEvent(new Event('submit'));
+    input.form.dispatchEvent(new Event('submit'));
   };
 
   window.toggleClearButton = () => {
-    document.getElementById('clear-x').style.display = searchInput.value.length > 0 ? 'block' : 'none';
+    const input = document.getElementById('search-input');
+    const clearBtn = document.getElementById('clear-x');
+    clearBtn.style.display = input.value.length > 0 ? 'block' : 'none';
   };
 
   toggleClearButton();
 });
 </script>
-
-
-
-

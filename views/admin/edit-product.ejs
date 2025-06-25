@@ -90,6 +90,271 @@
   </form>
 </div>
 
+<style>
+  .image-wrapper {
+    position: relative;
+    border: 3px solid transparent;
+    padding: 8px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #e9ecef, #dee2e6) border-box;
+    width: 120px;
+    height: 120px;
+  }
+
+  .image-wrapper.main {
+    border-color: transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #198754, #20c997) border-box;
+    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.3);
+  }
+
+  .image-wrapper:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .image-wrapper img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .add-slot {
+    width: 100%;
+    height: 100%;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  .add-slot:hover {
+    border-color: #6c757d;
+    background-color: #f8f9fa;
+  }
+
+  /* 🧼 Enhanced Close (X) Button */
+  .btn-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #dc3545, #bb2d3b);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-remove:hover {
+    background: linear-gradient(135deg, #bb2d3b, #a02834);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.6);
+  }
+
+  .btn-remove:active {
+    transform: scale(0.95) rotate(90deg);
+  }
+
+  /* ⭐ Enhanced Star Button */
+  .btn-main {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #fd7e14, #e8690b);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(253, 126, 20, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-main.active {
+    background: linear-gradient(135deg, #198754, #146c43);
+    box-shadow: 0 6px 20px rgba(25, 135, 84, 0.6);
+    transform: scale(1.1);
+  }
+
+  .btn-main:hover {
+    transform: scale(1.15) rotate(18deg);
+    box-shadow: 0 6px 20px rgba(253, 126, 20, 0.6);
+  }
+
+  .btn-main.active:hover {
+    transform: scale(1.15) rotate(18deg);
+    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.7);
+  }
+
+  .btn-main:active {
+    transform: scale(0.95);
+  }
+
+  /* 🔄 Crop Button */
+  .btn-crop {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #6f42c1, #5a2d91);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-crop:hover {
+    background: linear-gradient(135deg, #5a2d91, #4c2577);
+    transform: scale(1.1) rotate(-15deg);
+    box-shadow: 0 6px 20px rgba(111, 66, 193, 0.6);
+  }
+
+  .btn-crop:active {
+    transform: scale(0.95);
+  }
+
+  /* ========= OPTIMIZED CROPPER MODAL ========= */
+  .cropper-modal-custom {
+    max-width: 1200px;
+    width: 95vw;
+  }
+
+  .cropper-modal-content {
+    height: 700px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cropper-modal-content .modal-header {
+    flex-shrink: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+  }
+
+  .cropper-modal-content .modal-footer {
+    flex-shrink: 0;
+    height: 70px;
+    display: flex;
+    align-items: center;
+  }
+
+  .cropper-modal-content .modal-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .cropper-image-container {
+    width: 1000px;
+    height: 550px;
+    max-width: 85%;
+    max-height: 100%;
+    position: relative;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cropper-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+  }
+
+  /* Enhanced cropper elements for better visibility */
+  .cropper-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .cropper-canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  .cropper-drag-box,
+  .cropper-crop-box {
+    border-radius: 4px;
+  }
+
+  .cropper-view-box {
+    outline: 2px solid rgba(224, 58, 47, 0.8);
+    outline-color: rgba(224, 58, 47, 0.8);
+  }
+
+  .cropper-point {
+    width: 10px !important;
+    height: 10px !important;
+    background-color: #E03A2F !important;
+    border: 2px solid #fff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .cropper-line {
+    background-color: #E03A2F !important;
+    opacity: 0.7 !important;
+  }
+
+  .cropper-point.point-se {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-nw {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-ne {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-sw {
+    width: 12px !important;
+    height: 12px !important;
+  }
+</style>
+
 <script>
   const productId = "<%= product._id %>";
   const container = document.getElementById('image-preview-container');
@@ -146,15 +411,19 @@
 
     const modalHtml = `
       <div class="modal fade" id="cropModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content p-4 text-center">
-            <h5 class="mb-3">Crop Image</h5>
-            <div class="d-flex justify-content-center mb-3">
-              <img id="crop-image" src="${imageSrc}" style="height: 450px;" />
+        <div class="modal-dialog modal-dialog-centered cropper-modal-custom">
+          <div class="modal-content cropper-modal-content">
+            <div class="modal-header border-0 pb-2">
+              <h5 class="modal-title mx-auto mb-0">Crop Image</h5>
             </div>
-            <div class="d-flex justify-content-center gap-2">
-              <button class="btn btn-outline-dark" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-dark" id="crop-save">Crop & Add</button>
+            <div class="modal-body p-2">
+              <div class="cropper-image-container">
+                <img id="crop-image" src="${imageSrc}" />
+              </div>
+            </div>
+            <div class="modal-footer border-0 pt-2 justify-content-center">
+              <button class="btn btn-outline-dark px-4" data-bs-dismiss="modal">Cancel</button>
+              <button class="btn btn-dark px-4" id="crop-save">Crop & Add</button>
             </div>
           </div>
         </div>
@@ -168,11 +437,62 @@
 
     const imageEl = document.getElementById('crop-image');
     imageEl.onload = () => {
-      cropper = new Cropper(imageEl, { aspectRatio: NaN });
+      cropper = new Cropper(imageEl, {
+        aspectRatio: NaN,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.6,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+        responsive: true,
+        checkCrossOrigin: false,
+        checkOrientation: false,
+        modal: true,
+        background: true,
+        minContainerWidth: 300,
+        minContainerHeight: 300,
+        minCanvasWidth: 200,
+        minCanvasHeight: 200,
+        minCropBoxWidth: 100,
+        minCropBoxHeight: 100,
+        scalable: true,
+        zoomable: true,
+        zoomOnTouch: true,
+        zoomOnWheel: true,
+        wheelZoomRatio: 0.1,
+        cropBoxResizable: true,
+        cropBoxMovable: true,
+        ready: function () {
+          // Ensure the cropper utilizes the full container space
+          this.cropper.reset();
+          // Force the cropper to center and scale the image properly
+          const containerData = this.cropper.getContainerData();
+          const imageData = this.cropper.getImageData();
+
+          // Calculate optimal scale to fit image in container while maintaining aspect ratio
+          const scaleX = containerData.width / imageData.naturalWidth;
+          const scaleY = containerData.height / imageData.naturalHeight;
+          const scale = Math.min(scaleX, scaleY) * 0.8; // 0.8 to leave some padding
+
+          // Center and scale the image
+          this.cropper.zoomTo(scale);
+          this.cropper.center();
+        }
+      });
     };
 
     document.getElementById('crop-save').onclick = () => {
-      const cropped = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+      const cropped = cropper.getCroppedCanvas({
+        width: 800,
+        height: 800,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      }).toDataURL('image/jpeg', 0.9);
       base64Images.push(cropped);
       renderThumbnails();
       cropModal.hide();
@@ -227,7 +547,12 @@ function addImageToSlot(slotIndex) {
     const reader = new FileReader();
     reader.onload = () => {
       showCropModal(reader.result, () => {
-        base64Images[slotIndex] = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+        base64Images[slotIndex] = cropper.getCroppedCanvas({
+          width: 800,
+          height: 800,
+          imageSmoothingEnabled: true,
+          imageSmoothingQuality: 'high'
+        }).toDataURL('image/jpeg', 0.9);
         renderThumbnails();
       });
     };
@@ -237,7 +562,12 @@ function addImageToSlot(slotIndex) {
 
   function reCropImage(index) {
     showCropModal(base64Images[index], () => {
-      const cropped = cropper.getCroppedCanvas().toDataURL('image/jpeg');
+      const cropped = cropper.getCroppedCanvas({
+        width: 800,
+        height: 800,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      }).toDataURL('image/jpeg', 0.9);
       base64Images[index] = cropped;
       renderThumbnails();
     });

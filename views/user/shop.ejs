@@ -1,0 +1,641 @@
+<% var title = "Shop Sneakers"; %>
+
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar Filters -->
+    <aside id="filter-sidebar" class="col-md-3 mb-4" style="display: none;">
+        <form id="filter-form" class="filter-sidebar p-3">
+            <!-- Hide Filters Button -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Filters</h5>
+                <button type="button" id="hide-filters-btn" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Hide Filters
+                </button>
+            </div>
+
+            <!-- Category -->
+            <div class="mb-4">
+                <label class="form-label">Category</label>
+                <select id="category-select" class="form-select">
+                    <option value="">All Categories</option>
+                    <% categories.forEach(cat => { %>
+                    <option value="<%= cat._id %>"><%= cat.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <!-- Size Filter -->
+            <div class="mb-4">
+                <label class="form-label">Size</label>
+                <div class="size-filter">
+                    <div class="size-option" data-size="5">UK 5</div>
+                    <div class="size-option" data-size="6">UK 6</div>
+                    <div class="size-option" data-size="7">UK 7</div>
+                    <div class="size-option" data-size="8">UK 8</div>
+                    <div class="size-option" data-size="9">UK 9</div>
+                    <div class="size-option" data-size="10">UK 10</div>
+                    <div class="size-option" data-size="11">UK 11</div>
+                    <div class="size-option" data-size="12">UK 12</div>
+                </div>
+            </div>
+
+            <!-- Price Range -->
+            <div class="mb-4">
+                <label class="form-label">Price Range</label>
+                <div class="d-flex gap-2">
+                    <input type="number" id="min-price" class="form-control" placeholder="Min">
+                    <input type="number" id="max-price" class="form-control" placeholder="Max">
+                </div>
+            </div>
+
+            <!-- Apply Filters Button -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-apply-filters">
+                    Apply Filters
+                </button>
+                <button type="button" id="reset-filters" class="btn btn-reset-filters">
+                    Reset All
+                </button>
+            </div>
+        </form>
+    </aside>
+
+
+    <!-- Main Section -->
+    <section id="main-section" class="col-12">
+      <!-- Top Controls Bar -->
+      <div class="top-controls-bar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <!-- Left Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Product Count -->
+            <div class="product-count">
+              Products (<span id="product-count"><%= products.length %></span>)
+            </div>
+
+            <!-- View Filters Button -->
+            <button type="button" id="view-filters-btn" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-funnel"></i> View Filters
+            </button>
+          </div>
+
+          <!-- Right Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Search Input -->
+            <div class="search-input-container" style="min-width: 250px;">
+              <input type="text" id="top-search-input" class="form-control pe-5" placeholder="Search products...">
+              <button type="button" id="top-clear-search" class="clear-btn">
+                <i class="bi bi-x-lg"></i>
+              </button>
+              <i class="bi bi-search search-icon"></i>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="d-flex align-items-center gap-2">
+              <label for="top-sort-select" class="fw-semibold text-nowrap">Sort By:</label>
+              <select id="top-sort-select" class="form-select form-select-sm" style="min-width: 150px;">
+                <option value="">Default</option>
+                <option value="nameAZ">Name: A - Z</option>
+                <option value="nameZA">Name: Z - A</option>
+                <option value="priceLow">Price: Low to High</option>
+                <option value="priceHigh">Price: High to Low</option>
+                <option value="newest">Newest</option>
+                <option value="featured">Featured</option>
+                <option value="rating">Rating</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Grid -->
+      <div class="row" id="product-grid">
+        <% products.forEach(product => { %>
+          <%- include('partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+
+      <!-- No Results -->
+      <div id="no-results" class="text-center my-5 d-none">
+        <h5 class="text-muted">No sneakers found matching your filters.</h5>
+      </div>
+
+      <!-- Pagination -->
+      <div id="pagination-wrapper">
+        <%- include('partials/pagination', { currentPage, totalPages }) %>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- ============================================
+     🧠 Script 1: Fetch-Based Dynamic Product Loading Logic
+     - Handles state-based query building
+     - Injects product grid + pagination
+     - Pushes URL state
+     - Restores filters on back/forward navigation
+============================================= -->
+<script>
+  let currentFilters = {
+    q: '',
+    sort: '',
+    category: '',
+    brand: '',
+    minPrice: '',
+    maxPrice: '',
+    sizes: []
+  };
+
+  // Helper function to render products
+  function renderProducts(products) {
+    const productGrid = document.getElementById('product-grid');
+    if (!products || products.length === 0) {
+      productGrid.innerHTML = '';
+      return;
+    }
+
+    productGrid.innerHTML = products.map(product => `
+      <div class="col-6 col-md-4 col-lg-3 mb-4">
+        <div class="card h-100 border-0 shadow-sm product-card bg-white">
+          <a href="/product/${product.slug || product._id}" class="text-decoration-none text-dark">
+            <img src="${product.mainImage}" class="card-img-top img-fluid" alt="${product.productName}" style="object-fit: cover; height: 200px;">
+          </a>
+          <div class="card-body d-flex flex-column justify-content-between">
+            <div>
+              <h6 class="fw-bold mb-1">${product.productName}</h6>
+              <p class="text-muted mb-1">${product.brand}</p>
+              <div class="d-flex align-items-center gap-2">
+                <p class="mb-0 fw-semibold text-danger">₹${product.salePrice}</p>
+                ${product.regularPrice !== product.salePrice ?
+                  `<p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice}</p>` : ''}
+              </div>
+              <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-sm btn-outline-secondary wishlist-btn" data-id="${product._id}">
+                <i class="bi bi-heart"></i>
+              </button>
+              <button class="btn btn-sm btn-dark cart-btn" data-id="${product._id}">
+                <i class="bi bi-cart-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Helper function to render pagination
+  function renderPagination(pagination) {
+    const paginationWrapper = document.getElementById('pagination-wrapper');
+    if (!pagination || pagination.totalPages <= 1) {
+      paginationWrapper.innerHTML = '';
+      return;
+    }
+
+    const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
+
+    let paginationHTML = `
+      <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+          <li class="page-item ${!hasPrevPage ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
+          </li>
+    `;
+
+    for (let i = 1; i <= totalPages; i++) {
+      paginationHTML += `
+        <li class="page-item ${i === currentPage ? 'active' : ''}">
+          <a class="page-link" href="#" data-page="${i}">${i}</a>
+        </li>
+      `;
+    }
+
+    paginationHTML += `
+          <li class="page-item ${!hasNextPage ? 'disabled' : ''}">
+            <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
+          </li>
+        </ul>
+      </nav>
+    `;
+
+    paginationWrapper.innerHTML = paginationHTML;
+
+    // Add click handlers for pagination
+    paginationWrapper.querySelectorAll('.page-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = parseInt(link.dataset.page);
+        if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
+          fetchCallback(page);
+        }
+      });
+    });
+  }
+
+  function fetchCallback(page = 1) {
+    const params = new URLSearchParams();
+    if (currentFilters.q) params.append('q', currentFilters.q);
+    if (currentFilters.sort) params.append('sort', currentFilters.sort);
+    if (currentFilters.minPrice) params.append('minPrice', currentFilters.minPrice);
+    if (currentFilters.maxPrice) params.append('maxPrice', currentFilters.maxPrice);
+    if (currentFilters.category) params.append('category', currentFilters.category);
+    if (currentFilters.brand) params.append('brand', currentFilters.brand);
+    currentFilters.sizes.forEach(size => params.append('size', size));
+    params.append('page', page);
+
+    fetch(`/api/shop?${params.toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Update product grid
+          renderProducts(data.products);
+
+          // Update pagination
+          renderPagination(data.pagination);
+
+          // Update product count
+          document.getElementById('product-count').textContent = data.pagination.totalProducts || data.products.length;
+
+          // Show/hide no results message
+          document.getElementById('no-results').classList.toggle('d-none', data.products.length > 0);
+
+          // Push state to browser history
+          history.pushState(null, '', `/shop?${params.toString()}`);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching products:', err);
+      });
+  }
+
+  // 🌐 Restore filters on browser back/forward buttons
+  window.addEventListener('popstate', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    currentFilters.q = urlParams.get('q') || '';
+    currentFilters.sort = urlParams.get('sort') || '';
+    currentFilters.minPrice = urlParams.get('minPrice') || '';
+    currentFilters.maxPrice = urlParams.get('maxPrice') || '';
+    currentFilters.category = urlParams.get('category') || '';
+    currentFilters.brand = urlParams.get('brand') || '';
+    currentFilters.sizes = urlParams.getAll('size');
+    const page = parseInt(urlParams.get('page')) || 1;
+
+    fetchCallback(page);
+  });
+</script>
+
+<!-- =================================================
+     💡 Script 2: Enhanced UI Interaction
+     - ❌ Toggle & clear search input (both sidebar and top)
+     - 🎯 Size filter selection
+     - � Reset all filters functionality
+     - �📋 Collect all filter inputs on Apply button
+     - 🛒 Triggers fetchCallback only on submit
+================================================== -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get top search and sort elements
+    const topSearchInput = document.getElementById('top-search-input');
+    const topClearBtn = document.getElementById('top-clear-search');
+    const topSortSelect = document.getElementById('top-sort-select');
+
+    // Filter sidebar toggle elements
+    const filterSidebar = document.getElementById('filter-sidebar');
+    const mainSection = document.getElementById('main-section');
+    const viewFiltersBtn = document.getElementById('view-filters-btn');
+    const hideFiltersBtn = document.getElementById('hide-filters-btn');
+
+    // Filter sidebar toggle functionality
+    function showFilters() {
+      filterSidebar.style.display = 'block';
+      mainSection.classList.remove('col-12');
+      mainSection.classList.add('col-md-9');
+      viewFiltersBtn.style.display = 'none';
+    }
+
+    function hideFilters() {
+      filterSidebar.style.display = 'none';
+      mainSection.classList.remove('col-md-9');
+      mainSection.classList.add('col-12');
+      viewFiltersBtn.style.display = 'inline-block';
+    }
+
+    // Event listeners for filter toggle
+    viewFiltersBtn.addEventListener('click', showFilters);
+    hideFiltersBtn.addEventListener('click', hideFilters);
+
+    // Debounce function for search
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Function to perform immediate search
+    function performSearch() {
+      currentFilters.q = topSearchInput.value.trim();
+      fetchCallback(1);
+    }
+
+    // Function to perform immediate sort
+    function performSort() {
+      currentFilters.sort = topSortSelect.value;
+      fetchCallback(1);
+    }
+
+    // ❌ Toggle 'X' clear button visibility for top search
+    function toggleTopClearButton() {
+      topClearBtn.style.display = topSearchInput.value.trim() ? 'block' : 'none';
+    }
+
+    // Debounced search function (300ms delay)
+    const debouncedSearch = debounce(performSearch, 300);
+
+    // Top search input event listeners
+    topSearchInput.addEventListener('input', function () {
+      toggleTopClearButton();
+      debouncedSearch(); // Trigger search with debounce
+    });
+
+    // Enter key support for immediate search
+    topSearchInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        performSearch(); // Immediate search on Enter
+      }
+    });
+
+    // Search icon click for immediate search
+    const searchIcon = document.querySelector('.top-controls-bar .search-icon');
+    if (searchIcon) {
+      searchIcon.addEventListener('click', function() {
+        performSearch(); // Immediate search on icon click
+      });
+    }
+
+    // ❌ Clear search field
+    topClearBtn.addEventListener('click', () => {
+      topSearchInput.value = '';
+      topClearBtn.style.display = 'none';
+      currentFilters.q = '';
+      fetchCallback(1); // Refresh results when clearing search
+    });
+
+    // Top sort dropdown - immediate sort on change
+    topSortSelect.addEventListener('change', function() {
+      performSort(); // Immediate sort on selection change
+    });
+
+    // 🎯 Size filter selection
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => {
+      option.addEventListener('click', function() {
+        this.classList.toggle('selected');
+      });
+    });
+
+    // 🔄 Reset all filters
+    document.getElementById('reset-filters').addEventListener('click', function() {
+      // Clear all form inputs
+      topSearchInput.value = '';
+      topSortSelect.value = '';
+      document.getElementById('category-select').value = '';
+      document.getElementById('min-price').value = '';
+      document.getElementById('max-price').value = '';
+
+      // Clear size selections
+      sizeOptions.forEach(option => option.classList.remove('selected'));
+
+      // Hide clear button
+      topClearBtn.style.display = 'none';
+
+      // Reset filters and fetch
+      currentFilters = {
+        q: '',
+        sort: '',
+        category: '',
+        brand: '',
+        minPrice: '',
+        maxPrice: '',
+        sizes: []
+      };
+
+      fetchCallback(1);
+    });
+
+    // 🧠 Handle Apply Filters form submission
+    document.getElementById('filter-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // 📋 Read values from form elements (sync with top controls)
+      currentFilters.q = topSearchInput.value.trim();
+      currentFilters.sort = topSortSelect.value;
+      currentFilters.category = document.getElementById('category-select').value;
+      currentFilters.minPrice = document.getElementById('min-price').value.trim();
+      currentFilters.maxPrice = document.getElementById('max-price').value.trim();
+
+      // Get selected sizes
+      const selectedSizes = [];
+      sizeOptions.forEach(option => {
+        if (option.classList.contains('selected')) {
+          selectedSizes.push(option.dataset.size);
+        }
+      });
+      currentFilters.sizes = selectedSizes;
+
+      // 🚀 Trigger product fetch
+      fetchCallback(1);
+    });
+
+    // Initialize clear button state
+    toggleTopClearButton();
+
+    // Initialize pagination if products exist
+    const initialPagination = {
+      currentPage: <%= currentPage %>,
+      totalPages: <%= totalPages %>,
+      hasNextPage: <%= currentPage < totalPages %>,
+      hasPrevPage: <%= currentPage > 1 %>
+    };
+
+    if (initialPagination.totalPages > 1) {
+      renderPagination(initialPagination);
+    }
+  });
+</script>
+
+<style>
+/* Filter Sidebar Toggle Styles */
+#view-filters-btn {
+  background: white;
+  border: 3px solid #e03a2f;
+  color: #e03a2f;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+#view-filters-btn:hover {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+}
+
+#hide-filters-btn {
+  background: white;
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+#hide-filters-btn:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Filter Sidebar Styles */
+.filter-sidebar {
+  background: white;
+  border: 3px solid #e03a2f;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(224, 58, 47, 0.1);
+}
+
+/* Apply Filters Button */
+.btn-apply-filters {
+  background: black;
+  border: 2px solid black;
+  color: white;
+  font-weight: 600;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-apply-filters:hover {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Reset Filters Button */
+.btn-reset-filters {
+  background: white;
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  font-weight: 500;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-reset-filters:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Size Filter Options */
+.size-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-option {
+  padding: 8px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  text-align: center;
+  min-width: 60px;
+}
+
+.size-option:hover {
+  border-color: #e03a2f;
+  color: #e03a2f;
+}
+
+.size-option.selected {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+}
+
+/* Search Input Styling */
+.search-input-container {
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6c757d;
+  pointer-events: none;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  display: none;
+  z-index: 10;
+}
+
+.clear-btn:hover {
+  color: #e03a2f;
+}
+
+/* Top Controls Bar */
+.top-controls-bar {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Product Count */
+.product-count {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .top-controls-bar .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .search-input-container {
+    min-width: 100% !important;
+    margin-bottom: 10px;
+  }
+
+  #view-filters-btn {
+    align-self: flex-start;
+    margin-bottom: 10px;
+  }
+}
+</style>
+
+
