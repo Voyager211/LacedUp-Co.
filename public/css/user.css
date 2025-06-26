@@ -186,11 +186,16 @@ a:hover {
 .product-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   cursor: pointer;
+  /* Ensure product cards stay below search elements */
+  position: relative;
+  z-index: 10;
 }
 
 .product-card:hover {
   transform: translateY(-15px);
   box-shadow: 0 16px 28px rgba(0, 0, 0, 0.25);
+  /* Maintain z-index even on hover */
+  z-index: 10;
 }
 
 /* Footer */
@@ -289,6 +294,8 @@ a:hover {
 /* ========= SEARCH INPUT WITH ICON ========= */
 .search-input-container {
   position: relative;
+  /* Ensure search container is above top controls bar */
+  z-index: 200;
 }
 
 .search-input-container .search-icon {
@@ -362,12 +369,17 @@ a:hover {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   padding: 1rem 1.5rem;
   margin-bottom: 1.5rem;
+  /* Ensure top controls bar is above product cards */
+  position: relative;
+  z-index: 100;
 }
 
 .top-controls-bar:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
+
+/* Search dropdown z-index hierarchy ensures proper layering */
 
 .product-count {
   font-weight: 600;

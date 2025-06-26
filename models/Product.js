@@ -58,10 +58,6 @@ const productSchema = new mongoose.Schema({
   subImages: [{ 
     type: String 
   }],
-  isBlocked: { 
-    type: Boolean, 
-    default: false 
-  },
   status: {
     type: String,
     enum: ["Available", "Not Available"],

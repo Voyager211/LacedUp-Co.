@@ -20,7 +20,7 @@ exports.getProducts = async (req, res) => {
 
     const filter = {
       isDeleted: false,
-      isBlocked: false
+      isListed: true
     };
 
     if (category) filter.category = category;
@@ -112,12 +112,12 @@ exports.getProducts = async (req, res) => {
 exports.loadShopPage = async (req, res) => {
   try {
     const categories = await Category.find({ isDeleted: false, isActive: true }).lean();
-    const brands = await Product.distinct('brand', { isDeleted: false, isBlocked: false });
+    const brands = await Product.distinct('brand', { isDeleted: false, isListed: true });
 
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
 
-    const filter = { isDeleted: false, isBlocked: false };
+    const filter = { isDeleted: false, isListed: true };
 
     const { data: paginatedProducts, totalPages } = await getPagination(
       Product.find(filter).sort({ createdAt: -1 }),
@@ -142,3 +142,138 @@ exports.loadShopPage = async (req, res) => {
     res.status(500).send('Internal Server Error');
   }
 };
+
+// API: Get search suggestions for dropdown
+exports.getSearchSuggestions = async (req, res) => {
+  try {
+    const query = req.query.q || '';
+
+    if (!query || query.length < 2) {
+      return res.json({ success: true, suggestions: [] });
+    }
+
+    // Simplified filter - try to match the working main search logic exactly
+    const filter = {
+      isDeleted: false,
+      isListed: true,
+      $or: [
+        { productName: { $regex: query, $options: 'i' } },
+        { brand: { $regex: query, $options: 'i' } }
+      ]
+    };
+
+    // Get limited results for suggestions (8 products max)
+    const suggestions = await Product.find(filter)
+      .populate({ path: 'category', select: 'name' })
+      .select('productName brand mainImage salePrice category slug')
+      .sort({ createdAt: -1 })
+      .limit(8)
+      .lean();
+
+    // Only include products that have a category
+    const filteredSuggestions = suggestions.filter(p => p.category && p.category.name);
+
+    res.json({
+      success: true,
+      suggestions: filteredSuggestions,
+      query: query
+    });
+
+  } catch (err) {
+    console.error('Error in getSearchSuggestions:', err);
+    res.status(500).json({ success: false, message: 'Something went wrong' });
+  }
+};
+
+// Product details page
+exports.loadProductDetails = async (req, res) => {
+  try {
+    const productId = req.params.id;
+
+    const product = await Product.findById(productId)
+      .populate('category')
+      .lean();
+
+    const reviews = await Review.find({
+      product: productId,
+      isHidden: false
+    })
+      .populate('user', 'fullname')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Related products from same category (excluding current product)
+    let relatedProductsRaw = [];
+    if (product.category && product.category.isActive) {
+      relatedProductsRaw = await Product.find({
+        category: product.category._id,
+        _id: { $ne: productId },
+        isDeleted: false,
+        isBlocked: false,
+        isListed: true
+      })
+        .populate({
+          path: 'category',
+          match: { isActive: true },
+          select: 'name'
+        })
+        .sort({ createdAt: -1 })
+        .limit(4)
+        .lean();
+
+      relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null);
+    }
+
+    // Add rating stats to related products
+    const relatedProducts = await Promise.all(
+      relatedProductsRaw.map(async (relatedProduct) => {
+        const reviews = await Review.find({ product: relatedProduct._id, isHidden: false });
+        const totalReviews = reviews.length;
+        const averageRating = totalReviews > 0
+          ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+          : 0;
+        return {
+          ...relatedProduct,
+          averageRating,
+          totalReviews
+        };
+      })
+    );
+
+    // Stats for current product
+    const totalReviews = reviews.length;
+    let averageRating = 0;
+    const ratingCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    const ratingBreakdown = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    if (totalReviews > 0) {
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0);
+      averageRating = totalRating / totalReviews;
+
+      reviews.forEach(review => {
+        ratingCounts[review.rating]++;
+      });
+
+      Object.keys(ratingBreakdown).forEach(rating => {
+        ratingBreakdown[rating] = (ratingCounts[rating] / totalReviews) * 100;
+      });
+    }
+
+    res.render('user/product-details', {
+      product,
+      reviews,
+      relatedProducts,
+      averageRating,
+      totalReviews,
+      ratingCounts,
+      ratingBreakdown
+    });
+
+  } catch (err) {
+    console.error('❌ Error loading product details:', err);
+    res.status(500).render('error', {
+      message: 'Internal server error'
+    });
+  }
+};
+

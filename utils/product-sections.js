@@ -3,7 +3,7 @@ const Product = require('../models/Product');
 async function getHomepageProducts() {
   const newArrivals = await Product.find({
     isDeleted: false,
-    isBlocked: false
+    isListed: true
   })
     .populate({
       path: 'category',
@@ -14,7 +14,7 @@ async function getHomepageProducts() {
 
   const bestSellers = await Product.find({
     isDeleted: false,
-    isBlocked: false
+    isListed: true
   })
     .populate({
       path: 'category',
