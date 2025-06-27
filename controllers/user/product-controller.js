@@ -188,14 +188,19 @@ exports.getSearchSuggestions = async (req, res) => {
 // Product details page
 exports.loadProductDetails = async (req, res) => {
   try {
-    const productId = req.params.id;
+    const productSlug = req.params.slug;
 
-    const product = await Product.findById(productId)
+    // Find product by slug
+    const product = await Product.findOne({ slug: productSlug })
       .populate('category')
       .lean();
 
+    if (!product) {
+      return res.status(404).render('error', { message: 'Product not found' });
+    }
+
     const reviews = await Review.find({
-      product: productId,
+      product: product._id,
       isHidden: false
     })
       .populate('user', 'fullname')
@@ -207,7 +212,7 @@ exports.loadProductDetails = async (req, res) => {
     if (product.category && product.category.isActive) {
       relatedProductsRaw = await Product.find({
         category: product.category._id,
-        _id: { $ne: productId },
+        _id: { $ne: product._id },
         isDeleted: false,
         isBlocked: false,
         isListed: true
@@ -227,10 +232,10 @@ exports.loadProductDetails = async (req, res) => {
     // Add rating stats to related products
     const relatedProducts = await Promise.all(
       relatedProductsRaw.map(async (relatedProduct) => {
-        const reviews = await Review.find({ product: relatedProduct._id, isHidden: false });
-        const totalReviews = reviews.length;
+        const relReviews = await Review.find({ product: relatedProduct._id, isHidden: false });
+        const totalReviews = relReviews.length;
         const averageRating = totalReviews > 0
-          ? reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
+          ? relReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
           : 0;
         return {
           ...relatedProduct,
@@ -260,6 +265,9 @@ exports.loadProductDetails = async (req, res) => {
     }
 
     res.render('user/product-details', {
+      title: product.productName,
+      layout: 'user/layouts/user-layout',
+      active: 'shop',
       product,
       reviews,
       relatedProducts,
@@ -276,4 +284,5 @@ exports.loadProductDetails = async (req, res) => {
     });
   }
 };
+
 

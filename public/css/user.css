@@ -182,6 +182,305 @@ a:hover {
   border-color: var(--color-accent-red) !important;
 }
 
+/* ========= NAVBAR ICON BUTTONS ========= */
+.navbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: white;
+  text-decoration: none;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+  position: relative;
+}
+
+.navbar-icon-btn:hover {
+  color: var(--color-accent-red) !important;
+  transform: scale(1.1);
+  text-decoration: none;
+}
+
+.navbar-icon-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 58, 47, 0.3);
+}
+
+/* Remove dropdown arrow for profile button */
+.navbar-icon-btn.dropdown-toggle::after {
+  display: none;
+}
+
+/* ========= PROFILE DROPDOWN ========= */
+.profile-dropdown {
+  background-color: white;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  min-width: 200px;
+  margin-top: 0.5rem;
+}
+
+.profile-dropdown .dropdown-header {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+}
+
+.profile-dropdown .dropdown-item {
+  color: var(--color-text-primary);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.profile-dropdown .dropdown-item:hover {
+  background-color: var(--color-accent-red);
+  color: white;
+  transform: translateX(5px);
+}
+
+.profile-dropdown .dropdown-item.logout-btn {
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background-color: transparent;
+  border-radius: 6px;
+  margin: 0.25rem 1rem; /* Increased horizontal margin to match dropdown padding */
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-align: center;
+  max-width: calc(100% - 2rem); /* Ensure button doesn't exceed container width */
+  box-sizing: border-box;
+}
+
+.profile-dropdown .dropdown-item.logout-btn:hover {
+  background-color: #dc3545;
+  color: white;
+  transform: translateX(0); /* Override the general dropdown item transform */
+  border-color: #dc3545;
+}
+
+.profile-dropdown .dropdown-divider {
+  border-color: var(--color-border);
+  margin: 0.5rem 0;
+}
+
+/* ========= RESPONSIVE NAVBAR ICONS ========= */
+@media (max-width: 768px) {
+  .navbar-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .profile-dropdown {
+    min-width: 180px;
+    margin-top: 0.25rem;
+  }
+
+  .profile-dropdown .dropdown-item {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .profile-dropdown .dropdown-item.logout-btn {
+    margin: 0.25rem 0.8rem; /* Adjust margin for mobile */
+    max-width: calc(100% - 1.6rem);
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    margin-right: 0.5rem !important;
+  }
+
+  .profile-dropdown {
+    min-width: 160px;
+  }
+
+  .navbar-search-container {
+    min-width: 200px;
+  }
+
+  .navbar-search-suggestions-dropdown {
+    max-height: 300px;
+  }
+}
+
+/* ========= NAVBAR SEARCH DROPDOWN ========= */
+.navbar-search-container {
+  min-width: 250px;
+  z-index: 1010; /* Higher than Bootstrap's navbar z-index */
+}
+
+.navbar-search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-height: 400px;
+  overflow-y: auto;
+  display: none;
+  width: 100%;
+  z-index: 1020; /* Highest z-index to ensure it appears above everything */
+  margin-top: 4px;
+}
+
+.navbar-search-suggestions-dropdown.show {
+  display: block;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:hover,
+.navbar-search-suggestions-dropdown .suggestion-item.highlighted {
+  background-color: #f8f9fa;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-content {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-details {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-brand {
+  font-weight: 500;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-price {
+  font-weight: 600;
+  color: var(--color-accent-red);
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading,
+.navbar-search-suggestions-dropdown .suggestions-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* Ensure navbar has proper z-index hierarchy */
+.navbar {
+  z-index: 1000;
+}
+
+.navbar .dropdown-menu {
+  z-index: 1015;
+}
+
+/* ========= PAGE TRANSITION EFFECTS ========= */
+.page-transition-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.page-transition-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.page-fade-out {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.page-fade-in {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Loading spinner for transitions */
+.transition-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.transition-text {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  text-align: center;
+}
+
 /* Product card styling */
 .product-card {
   transition: transform 0.3s ease, box-shadow 0.3s ease;

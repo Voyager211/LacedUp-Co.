@@ -2,9 +2,9 @@ const Product = require('../models/Product');
 
 const ensureVisible = async (req, res, next) => {
   try {
-    const productId = req.params.id;
+    const productSlug = req.params.slug;
 
-    const product = await Product.findById(productId).select('isBlocked isDeleted');
+    const product = await Product.findOne({ slug: productSlug }).select('isBlocked isDeleted');
 
     if (!product || product.isDeleted || product.isBlocked) {
       return res.redirect('/shop');

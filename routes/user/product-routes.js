@@ -14,7 +14,7 @@ router.get('/api/shop', productController.getProducts);
 router.get('/api/search-suggestions', productController.getSearchSuggestions);
 
 // Product-details page
-router.get('/product/:id', ensureVisible, productController.loadProductDetails);
+router.get('/product/:slug', ensureVisible, productController.loadProductDetails);
 
 
 module.exports = router;

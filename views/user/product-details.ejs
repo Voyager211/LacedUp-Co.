@@ -1,0 +1,146 @@
+<% var title = product.productName %>
+
+<div class="container my-5">
+  <!-- 1. Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Sneakers', href: '/shop' },
+      { label: product.productName }
+    ]
+  }) %>
+
+
+  <!-- 2. Main Content Row -->
+  <div class="row gy-4">
+    <!-- LEFT: Image Gallery -->
+    <div class="col-md-6">
+      <div class="border p-2 rounded bg-white position-relative">
+        <img id="main-image" src="<%= product.mainImage %>" class="img-fluid w-100" alt="<%= product.productName %>">
+      </div>
+      <% if (product.subImages && product.subImages.length) { %>
+        <div class="d-flex gap-2 mt-3 overflow-auto">
+          <% product.subImages.forEach(img => { %>
+            <img src="<%= img %>" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;" alt="Thumbnail">
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- RIGHT: Product Info -->
+    <div class="col-md-6">
+      <h2 class="fw-bold"><%= product.productName %></h2>
+      <p class="text-muted mb-1"><%= product.brand %></p>
+
+      <!-- Rating -->
+      <div class="d-flex align-items-center mb-3">
+        <span class="text-warning me-2">
+          <% for (let i = 1; i <= 5; i++) { %>
+            <% if (i <= Math.round(averageRating)) { %>
+              <i class="bi bi-star-fill"></i>
+            <% } else { %>
+              <i class="bi bi-star"></i>
+            <% } %>
+          <% } %>
+        </span>
+        <small class="text-muted">(<%= totalReviews %> reviews)</small>
+      </div>
+
+      <!-- Price -->
+      <div class="d-flex align-items-center gap-3 mb-2">
+        <h4 class="text-danger mb-0">₹<%= product.salePrice %></h4>
+        <span class="text-muted text-decoration-line-through">₹<%= product.regularPrice %></span>
+        <span class="badge bg-success">
+          <%=
+            Math.round(((product.regularPrice - product.salePrice) / product.regularPrice) * 100)
+          %>% OFF
+        </span>
+      </div>
+
+      <div class="mb-3">
+        <i class="bi bi-ticket"></i> <a href="#" class="text-decoration-none">Apply Coupon</a>
+      </div>
+
+      <!-- Stock -->
+      <div class="mb-3">
+        <% if (product.stock > 10) { %>
+          <span class="badge bg-success">In Stock</span>
+        <% } else if (product.stock > 0) { %>
+          <span class="badge bg-warning text-dark">Few Left</span>
+        <% } else { %>
+          <span class="badge bg-danger">Sold Out</span>
+        <% } %>
+      </div>
+
+      <!-- Features -->
+      <ul class="list-unstyled mt-4">
+        <% product.features.split(',').forEach(item => { %>
+          <li><i class="bi bi-check-circle text-success me-2"></i> <%= item.trim() %></li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Divider -->
+  <hr class="my-5">
+
+  <!-- 4. Reviews Section -->
+  <div id="reviews-section">
+    <h5 class="fw-bold mb-4">Customer Reviews</h5>
+
+    <!-- Average Rating Summary -->
+    <div class="mb-4">
+      <h1 class="display-4"><%= averageRating.toFixed(1) %> <small class="text-muted fs-5">/ 5</small></h1>
+      <div>
+        <% for (let star = 5; star >= 1; star--) { %>
+          <div class="d-flex align-items-center gap-2">
+            <span><%= star %> <i class="bi bi-star-fill text-warning"></i></span>
+            <div class="progress flex-grow-1" style="height: 8px;">
+              <div class="progress-bar bg-warning" role="progressbar" style="width: <%= ratingBreakdown[star] || 0 %>%"></div>
+            </div>
+            <small><%= ratingCounts[star] %></small>
+          </div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- Individual Reviews -->
+    <div class="mt-4">
+      <% if (reviews.length > 0) { %>
+        <% reviews.forEach(r => { %>
+          <div class="mb-4">
+            <h6 class="mb-1"><%= r.user.fullname %></h6>
+            <div class="text-warning small mb-1">
+              <% for (let i = 1; i <= 5; i++) { %>
+                <i class="bi <%= i <= r.rating ? 'bi-star-fill' : 'bi-star' %>"></i>
+              <% } %>
+            </div>
+            <p><%= r.comment %></p>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p>No reviews yet.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <!-- 5. Related Products -->
+  <div class="mt-5">
+    <h5 class="fw-bold mb-4">You might also like</h5>
+    <div class="row">
+      <% relatedProducts.forEach(rp => { %>
+        <%- include('partials/product-card', { product: rp }) %>
+      <% }) %>
+    </div>
+  </div>
+</div>
+
+<!-- Drift.js (for zoom) -->
+<script src="https://unpkg.com/vanilla-drift@1.4.0/dist/Drift.min.js"></script>
+<script>
+  new Drift(document.querySelector('#main-image'), {
+    paneContainer: document.querySelector('.col-md-6'),
+    inlinePane: false,
+    hoverBoundingBox: true
+  });
+</script>

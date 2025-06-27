@@ -27,11 +27,19 @@
 
 <body>
 
+  <!-- Page Transition Overlay -->
+  <div id="page-transition-overlay" class="page-transition-overlay">
+    <div class="text-center">
+      <div class="transition-spinner"></div>
+      <div class="transition-text" id="transition-text">Loading...</div>
+    </div>
+  </div>
+
   <!-- Navbar Include -->
   <%- include('../partials/navbar') %>
 
   <!-- Main Content -->
-  <main>
+  <main id="main-content">
     <%- body %>
   </main>
 
@@ -40,5 +48,158 @@
 
   <!-- Bootstrap JS -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Page Transition Script -->
+  <script>
+    // Page transition utilities
+    window.PageTransition = {
+      overlay: null,
+      transitionText: null,
+      mainContent: null,
+
+      init() {
+        this.overlay = document.getElementById('page-transition-overlay');
+        this.transitionText = document.getElementById('transition-text');
+        this.mainContent = document.getElementById('main-content');
+      },
+
+      show(text = 'Loading...') {
+        if (!this.overlay) this.init();
+        this.transitionText.textContent = text;
+        this.overlay.classList.add('show');
+      },
+
+      hide() {
+        if (!this.overlay) this.init();
+        this.overlay.classList.remove('show');
+      },
+
+      fadeOut(callback, text = 'Loading...') {
+        if (!this.mainContent) this.init();
+        this.mainContent.style.opacity = '0';
+        this.show(text);
+
+        // Store the callback and timeout for potential cleanup
+        this.currentTimeout = setTimeout(() => {
+          if (callback) callback();
+        }, 300);
+      },
+
+      fadeIn() {
+        if (!this.mainContent) this.init();
+        this.hide();
+
+        // Clear any pending timeouts
+        if (this.currentTimeout) {
+          clearTimeout(this.currentTimeout);
+          this.currentTimeout = null;
+        }
+
+        setTimeout(() => {
+          this.mainContent.style.opacity = '1';
+        }, 100);
+      },
+
+      // Force clear all transitions (for browser navigation)
+      forceReset() {
+        if (!this.overlay || !this.mainContent) this.init();
+
+        // Clear any pending timeouts
+        if (this.currentTimeout) {
+          clearTimeout(this.currentTimeout);
+          this.currentTimeout = null;
+        }
+
+        // Immediately hide overlay and show content
+        this.overlay.classList.remove('show');
+        this.mainContent.style.opacity = '1';
+      }
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      PageTransition.init();
+
+      // Fade in the page on load
+      setTimeout(() => {
+        PageTransition.fadeIn();
+      }, 100);
+
+      // Handle browser back/forward button navigation
+      window.addEventListener('popstate', function(event) {
+        // Force reset all transitions when browser navigates
+        PageTransition.forceReset();
+      });
+
+      // Handle page visibility changes (when user comes back to tab)
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          // Page became visible, ensure transitions are cleared
+          PageTransition.forceReset();
+        }
+      });
+
+      // Handle beforeunload to clear transitions
+      window.addEventListener('beforeunload', function() {
+        PageTransition.forceReset();
+      });
+
+      // Global AJAX error handler for blocked users
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        return originalFetch.apply(this, args)
+          .then(response => {
+            // Check if response indicates user is blocked
+            if (response.status === 403) {
+              return response.json().then(data => {
+                if (data.blocked) {
+                  // Show blocked user alert and redirect
+                  Swal.fire({
+                    icon: 'warning',
+                    title: 'Account Blocked',
+                    text: data.error || 'Your account has been blocked. Please contact support.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#dc3545',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                  }).then(() => {
+                    window.location.href = data.redirect || '/login';
+                  });
+                  throw new Error('User blocked');
+                }
+                throw new Error(data.error || 'Request failed');
+              });
+            }
+            return response;
+          });
+      };
+
+      // Add crossfade transitions to navigation links (excluding auth pages)
+      const navLinks = document.querySelectorAll('a[href]:not([href*="/login"]):not([href*="/signup"]):not([href*="/logout"]):not([href^="mailto:"]):not([href^="tel:"]):not([href^="#"]):not([target="_blank"])');
+
+      navLinks.forEach(link => {
+        // Skip external links and special cases
+        if (link.hostname && link.hostname !== window.location.hostname) return;
+        if (link.classList.contains('no-transition')) return;
+        if (link.closest('.dropdown-menu')) return; // Skip dropdown items for now
+
+        link.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+
+          // Skip if it's the current page
+          if (href === window.location.pathname) return;
+
+          // Skip if it's a form submission or special action
+          if (this.closest('form') || this.type === 'submit') return;
+
+          e.preventDefault();
+
+          PageTransition.fadeOut(() => {
+            window.location.href = href;
+          }, 'Loading...');
+        });
+      });
+    });
+  </script>
 </body>
 </html>

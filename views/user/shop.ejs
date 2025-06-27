@@ -61,6 +61,15 @@
     </aside>
 
 
+    <!-- Breadcrumbs -->
+    <%- include('partials/breadcrumb', {
+      breadcrumbs: [
+        { label: 'Home', href: '/' },
+        { label: 'Sneakers' }
+      ]
+    }) %>
+
+
     <!-- Main Section -->
     <section id="main-section" class="col-12">
       <!-- Top Controls Bar -->

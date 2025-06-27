@@ -14,6 +14,11 @@ module.exports = function (passport) {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) return done(null, false, { message: 'Invalid credentials' });
 
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return done(null, false, { message: 'Your account has been blocked. Please contact support.' });
+      }
+
       return done(null, user);
     } catch (err) {
       return done(err);
@@ -36,6 +41,11 @@ module.exports = function (passport) {
           googleId: profile.id,
           password: 'unused'
         });
+      }
+
+      // Check if user is blocked
+      if (user.isBlocked) {
+        return done(null, false, { message: 'Your account has been blocked. Please contact support.' });
       }
 
       return done(null, user);

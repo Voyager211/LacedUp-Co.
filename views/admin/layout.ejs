@@ -12,7 +12,15 @@
 </head>
 <body>
 
-  <div class="d-flex" style="min-height: 100vh;">
+  <!-- Page Transition Overlay -->
+  <div id="admin-transition-overlay" class="page-transition-overlay">
+    <div class="text-center">
+      <div class="transition-spinner"></div>
+      <div class="transition-text" id="admin-transition-text">Loading...</div>
+    </div>
+  </div>
+
+  <div class="d-flex" style="min-height: 100vh;" id="admin-main-content">
     <%- include('./partials/sidebar') %>
 
     <main class="admin-content">
@@ -26,9 +34,77 @@
 
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> <!-- ✅ Added this line -->
-  
+
   <!-- Pagination Utility -->
   <script src="/js/utils/pagination.js"></script>
+
+  <!-- Admin Page Transition Script -->
+  <script>
+    // Admin page transition utilities
+    window.AdminTransition = {
+      overlay: null,
+      transitionText: null,
+      mainContent: null,
+
+      init() {
+        this.overlay = document.getElementById('admin-transition-overlay');
+        this.transitionText = document.getElementById('admin-transition-text');
+        this.mainContent = document.getElementById('admin-main-content');
+      },
+
+      show(text = 'Loading...') {
+        if (!this.overlay) this.init();
+        this.transitionText.textContent = text;
+        this.overlay.classList.add('show');
+      },
+
+      hide() {
+        if (!this.overlay) this.init();
+        this.overlay.classList.remove('show');
+      },
+
+      fadeOut(callback, text = 'Loading...') {
+        if (!this.mainContent) this.init();
+        this.mainContent.style.opacity = '0';
+        this.show(text);
+        setTimeout(() => {
+          if (callback) callback();
+        }, 300);
+      },
+
+      fadeIn() {
+        if (!this.mainContent) this.init();
+        this.hide();
+        setTimeout(() => {
+          this.mainContent.style.opacity = '1';
+        }, 100);
+      }
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      AdminTransition.init();
+
+      // Fade in the page on load
+      setTimeout(() => {
+        AdminTransition.fadeIn();
+      }, 100);
+
+      // Admin logout transition
+      const adminLogoutBtn = document.querySelector('.logout-btn');
+      if (adminLogoutBtn) {
+        adminLogoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+
+          // Start fade out transition
+          AdminTransition.fadeOut(() => {
+            // Redirect to logout after fade out completes
+            window.location.href = '/admin/logout';
+          }, 'Logging out...');
+        });
+      }
+    });
+  </script>
   
   <script>
     // Block/Unblock Alerts

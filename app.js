@@ -15,6 +15,7 @@ const expressLayouts = require('express-ejs-layouts');
 const connectDB = require('./config/db');
 const isAdmin = require('./middlewares/isAdmin');
 const { addUserContext } = require('./middlewares/user-middleware');
+const checkUserBlocked = require('./middlewares/checkUserBlocked');
 
 // Route imports
 const adminAuthRoutes = require('./routes/admin/auth');
@@ -64,6 +65,9 @@ app.use(passport.initialize());
 app.use(passport.session());
 
 app.use(addUserContext);
+
+// Check if user is blocked on every request (after passport session)
+app.use(checkUserBlocked);
 
 // ROUTES
 // ✅ User Routes First

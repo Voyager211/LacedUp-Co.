@@ -1,4 +1,12 @@
-<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center" style="background-color: #E5E5E5;">
+<!-- Login Success Transition Overlay -->
+<div id="login-transition-overlay" class="page-transition-overlay">
+  <div class="text-center">
+    <div class="transition-spinner"></div>
+    <div class="transition-text" id="login-transition-text">Logging in...</div>
+  </div>
+</div>
+
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center" style="background-color: #E5E5E5;" id="login-main-content">
   <div class="row shadow rounded overflow-hidden" style="max-width: 900px;">
     <div class="col-md-6 d-none d-md-block p-0">
       <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749657503/user-login-image_gcethm.jpg" alt="login" class="img-fluid h-100" style="object-fit: cover;">
@@ -45,6 +53,44 @@
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+  // Login transition utilities
+  const LoginTransition = {
+    overlay: null,
+    transitionText: null,
+    mainContent: null,
+
+    init() {
+      this.overlay = document.getElementById('login-transition-overlay');
+      this.transitionText = document.getElementById('login-transition-text');
+      this.mainContent = document.getElementById('login-main-content');
+    },
+
+    show(text = 'Logging in...') {
+      if (!this.overlay) this.init();
+      this.transitionText.textContent = text;
+      this.overlay.classList.add('show');
+    },
+
+    hide() {
+      if (!this.overlay) this.init();
+      this.overlay.classList.remove('show');
+    },
+
+    fadeOut(callback, text = 'Logging in...') {
+      if (!this.mainContent) this.init();
+      this.mainContent.style.opacity = '0';
+      this.show(text);
+      setTimeout(() => {
+        if (callback) callback();
+      }, 300);
+    }
+  };
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    LoginTransition.init();
+  });
+
   document.getElementById('login-form').addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -61,20 +107,32 @@
       const data = await res.json();
 
       if (res.ok) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Logged in!',
-          showConfirmButton: false,
-          timer: 1500
-        }).then(() => {
-          window.location.href = '/';
-        });
+        // Start login success transition
+        LoginTransition.fadeOut(() => {
+          // Redirect to home page after transition
+          window.location.href = '/home';
+        }, 'Welcome back!');
       } else {
-        Swal.fire({
-          icon: 'error',
-          title: 'Login Failed',
-          text: data.error || 'Invalid credentials'
-        });
+        const errorMessage = data.error || 'Invalid credentials';
+
+        // Check if it's a blocked user error
+        if (errorMessage.includes('blocked')) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Account Blocked',
+            text: errorMessage,
+            confirmButtonText: 'Contact Support',
+            confirmButtonColor: '#dc3545',
+            showCancelButton: true,
+            cancelButtonText: 'OK'
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Login Failed',
+            text: errorMessage
+          });
+        }
       }
     } catch (err) {
       Swal.fire({
