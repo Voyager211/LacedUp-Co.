@@ -32,7 +32,7 @@ exports.postSignup = async (req, res) => {
      // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
     
@@ -42,8 +42,20 @@ exports.postSignup = async (req, res) => {
    return res.status(200).json({ success: true, redirect: `/verify-otp?email=${encodeURIComponent(email)}` });
 
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Internal server error.' });
+    console.error('Signup Error:', err);
+
+    // Provide specific error messages for email issues
+    if (err.message && err.message.includes('Email authentication failed')) {
+      return res.status(500).json({
+        error: 'Email service configuration error. Please contact support.'
+      });
+    } else if (err.message && err.message.includes('Email service not configured')) {
+      return res.status(500).json({
+        error: 'Email service is temporarily unavailable. Please try again later.'
+      });
+    } else {
+      return res.status(500).json({ error: 'Failed to create account. Please try again.' });
+    }
   }
 };
 
@@ -141,7 +153,7 @@ exports.resendOtp = async (req, res) => {
     // Generate new OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 2 * 60 * 1000;
+    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
@@ -152,7 +164,19 @@ exports.resendOtp = async (req, res) => {
 
   } catch (err) {
     console.error('Resend OTP Error:', err);
-    return res.status(500).json({ error: 'Failed to resend OTP.' });
+
+    // Provide specific error messages for email issues
+    if (err.message && err.message.includes('Email authentication failed')) {
+      return res.status(500).json({
+        error: 'Email service configuration error. Please contact support.'
+      });
+    } else if (err.message && err.message.includes('Email service not configured')) {
+      return res.status(500).json({
+        error: 'Email service is temporarily unavailable. Please try again later.'
+      });
+    } else {
+      return res.status(500).json({ error: 'Failed to resend OTP. Please try again.' });
+    }
   }
 };
 
@@ -176,7 +200,7 @@ exports.sendResetOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     console.log (otp);
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 2 * 60 * 1000;
+    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
@@ -190,7 +214,19 @@ exports.sendResetOtp = async (req, res) => {
     });
   } catch (err) {
     console.error('Reset OTP Error:', err);
-    return res.status(500).json({ error: 'Internal server error.' });
+
+    // Provide specific error messages for email issues
+    if (err.message && err.message.includes('Email authentication failed')) {
+      return res.status(500).json({
+        error: 'Email service configuration error. Please contact support.'
+      });
+    } else if (err.message && err.message.includes('Email service not configured')) {
+      return res.status(500).json({
+        error: 'Email service is temporarily unavailable. Please try again later.'
+      });
+    } else {
+      return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
+    }
   }
 };
 
@@ -246,6 +282,45 @@ exports.getResetPasswordPage = (req, res) => {
     layout: 'user/layouts/auth-layout',
     email
   });
+};
+
+// POST: Resend OTP for password reset
+exports.resendResetOtp = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    // Generate new OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    console.log('Reset OTP resend:', otp);
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
+
+    user.otpHash = otpHash;
+    user.otpExpiresAt = otpExpiresAt;
+    await user.save();
+
+    await sendOtp(user, otp);
+    return res.status(200).json({ success: true });
+
+  } catch (err) {
+    console.error('Resend Reset OTP Error:', err);
+
+    // Provide specific error messages for email issues
+    if (err.message && err.message.includes('Email authentication failed')) {
+      return res.status(500).json({
+        error: 'Email service configuration error. Please contact support.'
+      });
+    } else if (err.message && err.message.includes('Email service not configured')) {
+      return res.status(500).json({
+        error: 'Email service is temporarily unavailable. Please try again later.'
+      });
+    } else {
+      return res.status(500).json({ error: 'Failed to resend OTP. Please try again.' });
+    }
+  }
 };
 
 // POST: Final password update

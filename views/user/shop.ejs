@@ -218,10 +218,13 @@
   // Helper function to render pagination
   function renderPagination(pagination) {
     const paginationWrapper = document.getElementById('pagination-wrapper');
-    if (!pagination || pagination.totalPages <= 1) {
+    if (!pagination) {
       paginationWrapper.innerHTML = '';
       return;
     }
+
+    // Always show pagination controls, even for single page
+    const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
 
     const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
 
@@ -233,7 +236,9 @@
           </li>
     `;
 
-    for (let i = 1; i <= totalPages; i++) {
+    // Always show at least one page number, even if totalPages is 0 or 1
+    const pagesToShow = Math.max(1, totalPages);
+    for (let i = 1; i <= pagesToShow; i++) {
       paginationHTML += `
         <li class="page-item ${i === currentPage ? 'active' : ''}">
           <a class="page-link" href="#" data-page="${i}">${i}</a>
@@ -651,17 +656,17 @@
     // Initialize clear button state
     toggleTopClearButton();
 
-    // Initialize pagination if products exist
+    // Always initialize pagination controls
     const initialPagination = {
       currentPage: <%= currentPage %>,
       totalPages: <%= totalPages %>,
       hasNextPage: <%= currentPage < totalPages %>,
-      hasPrevPage: <%= currentPage > 1 %>
+      hasPrevPage: <%= currentPage > 1 %>,
+      totalProducts: <%= products.length %>
     };
 
-    if (initialPagination.totalPages > 1) {
-      renderPagination(initialPagination);
-    }
+    // Always render pagination controls, even for single page or few products
+    renderPagination(initialPagination);
   });
 </script>
 
@@ -981,4 +986,77 @@
 }
 </style>
 
+<script>
+// Additional script for cart/wishlist authentication handling
+document.addEventListener('DOMContentLoaded', function() {
+  // Function to handle fade-out transition and redirect
+  function redirectToLogin() {
+    document.body.style.transition = 'opacity 0.4s ease';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 400);
+  }
 
+  // Handle cart and wishlist buttons with authentication check
+  document.addEventListener('click', function(e) {
+    // Cart button handling
+    if (e.target.closest('.cart-btn')) {
+      e.preventDefault();
+      const button = e.target.closest('.cart-btn');
+      const productId = button.dataset.id;
+
+      <% if (!user) { %>
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+
+      // User authenticated - handle cart functionality
+      console.log('Adding to cart:', productId);
+
+      // Show success feedback
+      const originalContent = button.innerHTML;
+      button.innerHTML = '<i class="bi bi-check-circle"></i>';
+      button.classList.add('btn-success');
+      button.classList.remove('btn-dark');
+
+      setTimeout(() => {
+        button.innerHTML = originalContent;
+        button.classList.remove('btn-success');
+        button.classList.add('btn-dark');
+      }, 2000);
+    }
+
+    // Wishlist button handling
+    if (e.target.closest('.wishlist-btn')) {
+      e.preventDefault();
+      const button = e.target.closest('.wishlist-btn');
+      const productId = button.dataset.id;
+
+      <% if (!user) { %>
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+
+      // User authenticated - handle wishlist functionality
+      console.log('Adding to wishlist:', productId);
+
+      // Toggle heart icon and color
+      const icon = button.querySelector('i');
+      if (icon.classList.contains('bi-heart')) {
+        icon.classList.remove('bi-heart');
+        icon.classList.add('bi-heart-fill');
+        button.classList.remove('btn-outline-secondary');
+        button.classList.add('btn-danger');
+      } else {
+        icon.classList.remove('bi-heart-fill');
+        icon.classList.add('bi-heart');
+        button.classList.remove('btn-danger');
+        button.classList.add('btn-outline-secondary');
+      }
+    }
+  });
+});
+</script>

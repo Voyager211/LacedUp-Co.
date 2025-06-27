@@ -15,10 +15,12 @@
         <button type="submit" class="btn btn-primary-custom w-100">Verify OTP</button>
       </form>
 
-      <p class="text-center text-secondary mt-3" id="timer">Code expires in: <span id="countdown">02:00</span></p>
+      <p class="text-center text-secondary mt-3" id="timer">Code expires in: <span id="countdown">00:30</span></p>
 
       <div class="text-center mt-3">
-        <a href="#" class="text-decoration-none" id="resend-btn">Resend OTP</a>
+        <a href="#" id="resend-btn" class="text-decoration-none" style="color: #6c757d; pointer-events: none; cursor: not-allowed;">
+          <span id="resend-text">Resend OTP in <span id="resend-countdown">30</span>s</span>
+        </a>
       </div>
     </div>
   </div>
@@ -28,15 +30,59 @@
 <script>
   const form = document.getElementById('otp-form');
   const countdownSpan = document.getElementById('countdown');
-  let timer = 120;
+  const resendBtn = document.getElementById('resend-btn');
+  const resendText = document.getElementById('resend-text');
+  const resendCountdownSpan = document.getElementById('resend-countdown');
+  let timer = 30; // 30 seconds for OTP expiration
+  let resendTimer = 30; // 30 seconds for resend button
+  let timerInterval;
+  let resendInterval;
 
   function updateCountdown() {
-    const min = Math.floor(timer / 60).toString().padStart(2, '0');
-    const sec = (timer % 60).toString().padStart(2, '0');
-    countdownSpan.textContent = `${min}:${sec}`;
-    if (timer > 0) timer--;
+    const sec = timer.toString().padStart(2, '0');
+    countdownSpan.textContent = `00:${sec}`;
+    if (timer > 0) {
+      timer--;
+    } else {
+      clearInterval(timerInterval);
+      // OTP expired, enable resend button
+      enableResendButton();
+    }
   }
-  setInterval(updateCountdown, 1000);
+
+  function updateResendCountdown() {
+    resendCountdownSpan.textContent = resendTimer;
+    if (resendTimer > 0) {
+      resendTimer--;
+    } else {
+      clearInterval(resendInterval);
+      enableResendButton();
+    }
+  }
+
+  function enableResendButton() {
+    resendBtn.style.pointerEvents = 'auto';
+    resendBtn.style.color = '#007bff';
+    resendBtn.style.cursor = 'pointer';
+    resendText.innerHTML = 'Resend OTP';
+  }
+
+  function startResendTimer() {
+    resendTimer = 30;
+    resendBtn.style.pointerEvents = 'none';
+    resendBtn.style.color = '#6c757d';
+    resendBtn.style.cursor = 'not-allowed';
+
+    resendInterval = setInterval(() => {
+      updateResendCountdown();
+    }, 1000);
+  }
+
+  // Start timers on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    timerInterval = setInterval(updateCountdown, 1000);
+    startResendTimer();
+  });
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -56,7 +102,7 @@
           icon: 'success',
           title: 'OTP Verified',
           showConfirmButton: false,
-          timer: 1500
+          timer: 1000
         }).then(() => {
           window.location.href = '/home';
         });
@@ -76,10 +122,21 @@
     }
   });
 
-  document.getElementById('resend-btn').addEventListener('click', async (e) => {
+  resendBtn.addEventListener('click', async (e) => {
     e.preventDefault();
+
+    // Check if button is disabled
+    if (resendBtn.style.pointerEvents === 'none') return;
+
     const email = document.getElementById('email').value.trim();
+
     try {
+      // Show loading state
+      const originalText = resendText.innerHTML;
+      resendText.innerHTML = 'Sending...';
+      resendBtn.style.pointerEvents = 'none';
+      resendBtn.style.color = '#6c757d';
+
       const res = await fetch('/resend-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -88,13 +145,41 @@
 
       const data = await res.json();
       if (res.ok) {
-        Swal.fire('OTP Sent!', 'A new OTP has been sent to your email.', 'success');
-        timer = 120; // reset timer
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Sent!',
+          text: 'A new OTP has been sent to your email.',
+          showConfirmButton: false,
+          timer: 1500
+        });
+
+        // Reset both timers
+        clearInterval(timerInterval);
+        clearInterval(resendInterval);
+        timer = 30;
+        timerInterval = setInterval(updateCountdown, 1000);
+        startResendTimer();
       } else {
-        Swal.fire('Error', data.error || 'Could not resend OTP.', 'error');
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.error || 'Could not resend OTP.'
+        });
+
+        resendText.innerHTML = originalText;
+        resendBtn.style.pointerEvents = 'auto';
+        resendBtn.style.color = '#007bff';
       }
     } catch (err) {
-      Swal.fire('Error', 'Something went wrong!', 'error');
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Something went wrong!'
+      });
+
+      resendText.innerHTML = 'Resend OTP';
+      resendBtn.style.pointerEvents = 'auto';
+      resendBtn.style.color = '#007bff';
     }
   });
 </script>

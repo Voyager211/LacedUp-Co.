@@ -33,9 +33,11 @@ exports.postLogin = (req, res, next) => {
                     req.session.role = 'admin';
 
                     if (req.body.remember) {
+                        // Extended session for "Remember Me" - 30 days
                         req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
                     } else {
-                        req.session.cookie.expires = false;
+                        // Standard admin session - 60 minutes
+                        req.session.cookie.maxAge = 60 * 60 * 1000;
                     }
 
                     res.redirect('/admin/dashboard');

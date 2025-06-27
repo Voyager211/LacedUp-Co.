@@ -44,8 +44,8 @@
     </table>
 
     <!-- Pagination -->
-    <nav class="mt-4">
-      <ul class="pagination justify-content-center" id="pagination-container">
+    <nav class="d-flex justify-content-center mt-4">
+      <ul class="pagination" id="pagination-container">
         <!-- Dynamic pagination will be injected here -->
       </ul>
     </nav>
@@ -80,11 +80,11 @@
               '<span class="badge bg-success-subtle text-success fw-semibold">Active</span>'}
           </td>
           <td>
-            <button 
+            <button
               class="btn btn-sm toggle-status-btn ${user.isBlocked ? 'btn-success' : 'btn-danger'}"
               data-user-id="${user._id}"
               data-action="${user.isBlocked ? 'unblock' : 'block'}">
-              ${user.isBlocked ? 'Unblock' : 'Block'}
+              <i class="bi ${user.isBlocked ? 'bi-unlock' : 'bi-lock'}"></i> ${user.isBlocked ? 'Unblock' : 'Block'}
             </button>
           </td>
         </tr>

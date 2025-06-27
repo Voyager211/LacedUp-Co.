@@ -119,10 +119,38 @@ exports.apiCreateCategory = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Category name is required' });
     }
 
-    await Category.create({ name, description });
-    res.json({ success: true });
+    // Trim and validate name
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return res.status(400).json({ success: false, message: 'Category name cannot be empty' });
+    }
+
+    // Check for case-insensitive uniqueness
+    const existingCategory = await Category.findOne({
+      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
+      isDeleted: false
+    });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'A category with this name already exists'
+      });
+    }
+
+    await Category.create({ name: trimmedName, description: description || '' });
+    res.json({ success: true, message: 'Category created successfully' });
   } catch (err) {
     console.error('Create Error:', err);
+
+    // Handle MongoDB duplicate key error (in case the unique index catches it)
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'A category with this name already exists'
+      });
+    }
+
     res.status(500).json({ success: false, message: 'Failed to create category' });
   }
 };
@@ -130,13 +158,50 @@ exports.apiCreateCategory = async (req, res) => {
 // Update category via fetch
 exports.apiUpdateCategory = async (req, res) => {
   try {
-    await Category.findByIdAndUpdate(req.params.id, {
-      name: req.body.name,
-      description: req.body.description
+    const { name, description } = req.body;
+    const categoryId = req.params.id;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Category name is required' });
+    }
+
+    // Trim and validate name
+    const trimmedName = name.trim();
+    if (!trimmedName) {
+      return res.status(400).json({ success: false, message: 'Category name cannot be empty' });
+    }
+
+    // Check for case-insensitive uniqueness (excluding current category)
+    const existingCategory = await Category.findOne({
+      name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
+      isDeleted: false,
+      _id: { $ne: categoryId }
     });
-    res.json({ success: true });
+
+    if (existingCategory) {
+      return res.status(400).json({
+        success: false,
+        message: 'A category with this name already exists'
+      });
+    }
+
+    await Category.findByIdAndUpdate(categoryId, {
+      name: trimmedName,
+      description: description || ''
+    });
+
+    res.json({ success: true, message: 'Category updated successfully' });
   } catch (err) {
     console.error('Update Error:', err);
+
+    // Handle MongoDB duplicate key error
+    if (err.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: 'A category with this name already exists'
+      });
+    }
+
     res.status(500).json({ success: false, message: 'Failed to update category' });
   }
 };

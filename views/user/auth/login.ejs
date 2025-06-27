@@ -30,7 +30,7 @@
 
         <!-- 🔽 Forgot Password link -->
         <div class="mb-3 text-end">
-          <a href="/forgot-password" class="text-decoration-none text-secondary">Forgot Password?</a>
+          <a href="#" id="forgot-password-link" class="text-decoration-none text-secondary">Forgot Password?</a>
         </div>
 
         <button type="submit" class="btn btn-primary-custom w-100">Log In</button>
@@ -39,16 +39,16 @@
 
       <div class="text-center my-3 text-secondary">or</div>
 
-      <a href="/google"
+      <button type="button" id="google-login-btn"
         class="btn border d-flex align-items-center justify-content-center gap-2 w-100 google-btn"
         style="background-color: #fff; color: #555; border: 1px solid #ddd;">
         <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749704859/Made_by_Google_ybszlk.jpg"
             alt="Google Logo" width="20" height="20" class="me-2">
-        <span>Sign up with Google</span>
-      </a>
+        <span>Sign in with Google</span>
+      </button>
 
 
-      <p class="mt-4 text-center text-secondary">Don't have an account? <a href="/signup">Sign Up</a></p>
+      <p class="mt-4 text-center text-secondary">Don't have an account? <a href="#" id="signup-link">Sign Up</a></p>
     </div>
   </div>
 </div>
@@ -92,6 +92,74 @@
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
     LoginTransition.init();
+
+    // Check for OAuth error parameters in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+    const message = urlParams.get('message');
+
+    if (error === 'blocked' && message) {
+      // Show blocked user error for OAuth
+      Swal.fire({
+        icon: 'warning',
+        title: 'Account Blocked',
+        text: decodeURIComponent(message),
+        confirmButtonText: 'Contact Support',
+        confirmButtonColor: '#dc3545',
+        showCancelButton: true,
+        cancelButtonText: 'OK'
+      });
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error === 'oauth_failed') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Login Failed',
+        text: 'Google login failed. Please try again.'
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error === 'oauth_error') {
+      Swal.fire({
+        icon: 'error',
+        title: 'Authentication Error',
+        text: 'There was an error with Google authentication. Please try again.'
+      });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    // Google OAuth button handler
+    const googleBtn = document.getElementById('google-login-btn');
+    if (googleBtn) {
+      googleBtn.addEventListener('click', function() {
+        // Start transition animation
+        LoginTransition.fadeOut(() => {
+          // Redirect to Google OAuth
+          window.location.href = '/google';
+        }, 'Connecting to Google...');
+      });
+    }
+
+    // Forgot Password link handler
+    const forgotPasswordLink = document.getElementById('forgot-password-link');
+    if (forgotPasswordLink) {
+      forgotPasswordLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        LoginTransition.fadeOut(() => {
+          window.location.href = '/forgot-password';
+        }, 'Loading...');
+      });
+    }
+
+    // Sign Up link handler
+    const signupLink = document.getElementById('signup-link');
+    if (signupLink) {
+      signupLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        LoginTransition.fadeOut(() => {
+          window.location.href = '/signup';
+        }, 'Loading...');
+      });
+    }
 
     // Initialize form validation
     const validator = new FormValidator('login-form');

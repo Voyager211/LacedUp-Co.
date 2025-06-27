@@ -14,13 +14,54 @@
         </div>
         <button type="submit" class="btn btn-primary-custom w-100">Verify OTP</button>
       </form>
+
+      <div class="text-center mt-3">
+        <a href="#" id="resend-btn" class="text-decoration-none" style="color: #6c757d; cursor: not-allowed;">
+          <span id="resend-text">Resend OTP in <span id="countdown">30</span>s</span>
+        </a>
+      </div>
     </div>
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
   const form = document.getElementById('otp-form');
+  const resendBtn = document.getElementById('resend-btn');
+  const resendText = document.getElementById('resend-text');
+  const countdownSpan = document.getElementById('countdown');
+  let resendTimer = 30;
+  let resendInterval;
 
+  // Initialize resend timer
+  function startResendTimer() {
+    resendTimer = 30;
+    resendBtn.style.pointerEvents = 'none';
+    resendBtn.style.color = '#6c757d';
+    resendBtn.style.cursor = 'not-allowed';
+
+    resendInterval = setInterval(() => {
+      resendTimer--;
+      countdownSpan.textContent = resendTimer;
+
+      if (resendTimer <= 0) {
+        clearInterval(resendInterval);
+        resendBtn.style.pointerEvents = 'auto';
+        resendBtn.style.color = '#007bff';
+        resendBtn.style.cursor = 'pointer';
+        resendText.innerHTML = 'Resend OTP';
+      } else {
+        resendText.innerHTML = `Resend OTP in <span id="countdown">${resendTimer}</span>s`;
+      }
+    }, 1000);
+  }
+
+  // Start timer on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    startResendTimer();
+  });
+
+  // OTP form submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('email').value.trim();
@@ -40,7 +81,7 @@
           icon: 'success',
           title: 'OTP Verified',
           showConfirmButton: false,
-          timer: 1500
+          timer: 1000
         }).then(() => {
           window.location.href = data.redirect;
         });
@@ -57,6 +98,72 @@
         title: 'Error',
         text: 'Something went wrong!'
       });
+    }
+  });
+
+  // Resend OTP functionality
+  resendBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    // Check if button is disabled (using pointer events)
+    if (resendBtn.style.pointerEvents === 'none') return;
+
+    const email = document.getElementById('email').value.trim();
+
+    try {
+      // Show loading state
+      const originalText = resendText.innerHTML;
+      resendText.innerHTML = 'Sending...';
+      resendBtn.style.pointerEvents = 'none';
+      resendBtn.style.color = '#6c757d';
+      resendBtn.style.cursor = 'not-allowed';
+
+      const res = await fetch('/resend-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Sent!',
+          text: 'A new OTP has been sent to your email.',
+          showConfirmButton: false,
+          timer: 1500
+        });
+
+        // Restart the timer
+        clearInterval(resendInterval);
+        startResendTimer();
+      } else {
+        // Show error and restore button
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.error || 'Could not resend OTP. Please try again.'
+        });
+
+        resendText.innerHTML = originalText;
+        resendBtn.style.pointerEvents = 'auto';
+        resendBtn.style.color = '#007bff';
+        resendBtn.style.cursor = 'pointer';
+      }
+    } catch (err) {
+      // Show error and restore button
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Something went wrong! Please try again.'
+      });
+
+      resendText.innerHTML = 'Resend OTP';
+      resendBtn.style.pointerEvents = 'auto';
+      resendBtn.style.color = '#007bff';
+      resendBtn.style.cursor = 'pointer';
     }
   });
 </script>

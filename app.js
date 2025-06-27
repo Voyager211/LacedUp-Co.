@@ -26,6 +26,7 @@ const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
 const userProductRoutes = require('./routes/user/product-routes');
+const userReviewRoutes = require('./routes/user/review-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -44,13 +45,17 @@ app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.use(flash());
 
-// Session configuration with dynamic session names based on route
+// Session configuration with dynamic session names and durations based on route
 app.use((req, res, next) => {
-  // Determine session name based on route
+  // Determine session name and duration based on route
   const isAdminRoute = req.path.startsWith('/admin');
   const sessionName = isAdminRoute ? 'admin.sid' : 'user.sid';
 
-  // Apply session middleware with appropriate name
+  // Different session durations: 60 minutes for admin, 20 minutes for user
+  const sessionDuration = isAdminRoute ? 60 * 60 : 20 * 60; // in seconds
+  const cookieMaxAge = sessionDuration * 1000; // in milliseconds
+
+  // Apply session middleware with appropriate name and duration
   const sessionMiddleware = session({
     name: sessionName,
     secret: process.env.SESSION_SECRET || 'yourSecretKey',
@@ -58,10 +63,10 @@ app.use((req, res, next) => {
     saveUninitialized: false,
     store: MongoStore.create({
       client: mongoose.connection.getClient(),
-      ttl: 20 * 60
+      ttl: sessionDuration
     }),
     cookie: {
-      maxAge: 20 * 60 * 1000,
+      maxAge: cookieMaxAge,
       httpOnly: true,
       sameSite: 'lax'
     }
@@ -85,6 +90,7 @@ app.use('/', landingRoutes);
 app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
 app.use('/', userProductRoutes);
+app.use('/', userReviewRoutes);
 
 
 

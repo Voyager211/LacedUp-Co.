@@ -15,13 +15,55 @@
   <div class="row gy-4">
     <!-- LEFT: Image Gallery -->
     <div class="col-md-6">
-      <div class="border p-2 rounded bg-white position-relative">
-        <img id="main-image" src="<%= product.mainImage %>" class="img-fluid w-100" alt="<%= product.productName %>">
+      <div class="row">
+        <!-- Main Image Container -->
+        <div class="col-12">
+          <div class="border p-2 rounded bg-white position-relative image-gallery-container">
+            <!-- Main Image with Navigation Controls -->
+            <div class="main-image-wrapper position-relative">
+              <img id="main-image" src="<%= product.mainImage %>" class="img-fluid w-100" alt="<%= product.productName %>" style="cursor: zoom-in;">
+
+              <!-- Navigation Controls -->
+              <%
+                const allImages = [product.mainImage, ...(product.subImages || [])];
+                if (allImages.length > 1) {
+              %>
+                <button class="btn btn-dark btn-sm position-absolute top-50 start-0 translate-middle-y ms-2 nav-btn" id="prev-btn" style="z-index: 10; opacity: 0.8;">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+                <button class="btn btn-dark btn-sm position-absolute top-50 end-0 translate-middle-y me-2 nav-btn" id="next-btn" style="z-index: 10; opacity: 0.8;">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              <% } %>
+            </div>
+
+            <!-- Image Counter -->
+            <% if (allImages.length > 1) { %>
+              <div class="position-absolute bottom-0 end-0 bg-dark text-white px-2 py-1 rounded-top-start" style="font-size: 0.8rem; z-index: 10;">
+                <span id="current-image-index">1</span> / <%= allImages.length %>
+              </div>
+            <% } %>
+          </div>
+        </div>
+
+        <!-- Zoom Pane Container -->
+        <div class="col-12 mt-3">
+          <div id="zoom-pane-container" class="border rounded bg-white" style="height: 400px; display: none;">
+            <!-- Drift.js will inject the zoom pane here -->
+          </div>
+        </div>
       </div>
-      <% if (product.subImages && product.subImages.length) { %>
-        <div class="d-flex gap-2 mt-3 overflow-auto">
-          <% product.subImages.forEach(img => { %>
-            <img src="<%= img %>" class="img-thumbnail" style="width: 80px; height: 80px; object-fit: cover;" alt="Thumbnail">
+
+      <!-- Thumbnail Gallery -->
+      <% if (allImages.length > 1) { %>
+        <div class="d-flex gap-2 mt-3 overflow-auto thumbnail-gallery">
+          <% allImages.forEach((img, index) => { %>
+            <img src="<%= img %>"
+                 class="img-thumbnail thumbnail-image <%= index === 0 ? 'active' : '' %>"
+                 style="width: 80px; height: 80px; object-fit: cover; cursor: pointer; transition: all 0.3s ease;"
+                 alt="Thumbnail <%= index + 1 %>"
+                 data-index="<%= index %>"
+                 data-src="<%= img %>">
           <% }) %>
         </div>
       <% } %>
@@ -61,23 +103,81 @@
         <i class="bi bi-ticket"></i> <a href="#" class="text-decoration-none">Apply Coupon</a>
       </div>
 
-      <!-- Stock -->
-      <div class="mb-3">
-        <% if (product.stock > 10) { %>
-          <span class="badge bg-success">In Stock</span>
-        <% } else if (product.stock > 0) { %>
-          <span class="badge bg-warning text-dark">Few Left</span>
-        <% } else { %>
-          <span class="badge bg-danger">Sold Out</span>
-        <% } %>
+      <!-- Stock Display with Enhanced Styling -->
+      <% if (product.stock <= 0) { %>
+        <!-- Sold Out State -->
+        <div class="mb-4">
+          <h4 class="text-danger fw-bold mb-2">Sold Out</h4>
+          <p class="text-muted mb-3">This item is currently out of stock</p>
+
+          <!-- Notify Me Section -->
+          <div class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              <div class="col-8">
+                <input type="email" class="form-control" id="notify-email" placeholder="Enter email to get notified" required>
+              </div>
+              <div class="col-4">
+                <button class="btn btn-danger w-100" id="notify-btn">
+                  NOTIFY ME
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% } else { %>
+        <!-- In Stock State -->
+        <div class="mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold">Stock:</span>
+            <% if (product.stock >= 5) { %>
+              <span class="badge bg-success px-3 py-2">
+                <i class="bi bi-check-circle me-1"></i>
+                <%= product.stock %> Available
+              </span>
+            <% } else { %>
+              <span class="badge bg-danger px-3 py-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Only <%= product.stock %> Left - Low Stock!
+              </span>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+
+      <!-- Product Description -->
+      <div class="mb-4">
+        <h6 class="fw-semibold mb-2">Description</h6>
+        <p class="text-muted"><%= product.description %></p>
       </div>
 
+      <!-- Action Buttons -->
+      <% if (product.stock > 0) { %>
+        <div class="d-flex gap-3 mb-4">
+          <button class="btn btn-dark flex-fill add-to-cart-btn" data-product-id="<%= product._id %>">
+            <i class="bi bi-cart-plus me-2"></i>Add to Cart
+          </button>
+          <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
+            <i class="bi bi-heart"></i>
+          </button>
+        </div>
+      <% } else { %>
+        <!-- Only show wishlist button for out of stock items -->
+        <div class="d-flex justify-content-end mb-4">
+          <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
+            <i class="bi bi-heart me-2"></i>Add to Wishlist
+          </button>
+        </div>
+      <% } %>
+
       <!-- Features -->
-      <ul class="list-unstyled mt-4">
-        <% product.features.split(',').forEach(item => { %>
-          <li><i class="bi bi-check-circle text-success me-2"></i> <%= item.trim() %></li>
-        <% }) %>
-      </ul>
+      <div class="mb-4">
+        <h6 class="fw-semibold mb-2">Features</h6>
+        <ul class="list-unstyled">
+          <% product.features.split(',').forEach(item => { %>
+            <li class="mb-1"><i class="bi bi-check-circle text-success me-2"></i> <%= item.trim() %></li>
+          <% }) %>
+        </ul>
+      </div>
     </div>
   </div>
 
@@ -102,6 +202,55 @@
           </div>
         <% } %>
       </div>
+    </div>
+
+    <!-- Review Submission Form -->
+    <div class="mb-5">
+      <% if (user) { %>
+        <div class="border rounded p-4 bg-light">
+          <h6 class="fw-semibold mb-3">Write a Review</h6>
+          <form id="review-form" novalidate>
+            <input type="hidden" name="productId" value="<%= product._id %>">
+
+            <!-- Rating Stars -->
+            <div class="mb-3">
+              <label class="form-label">Rating *</label>
+              <div class="rating-stars d-flex gap-1 mb-2">
+                <% for (let i = 1; i <= 5; i++) { %>
+                  <i class="bi bi-star rating-star" data-rating="<%= i %>" style="font-size: 1.5rem; cursor: pointer; color: #ddd; transition: color 0.2s ease;"></i>
+                <% } %>
+              </div>
+              <input type="hidden" name="rating" id="rating-input" required>
+              <div class="invalid-feedback">Please select a rating.</div>
+            </div>
+
+            <!-- Review Title -->
+            <div class="mb-3">
+              <label for="review-title" class="form-label">Review Title *</label>
+              <input type="text" class="form-control" id="review-title" name="title" maxlength="100" required>
+              <div class="invalid-feedback">Please provide a review title (max 100 characters).</div>
+            </div>
+
+            <!-- Review Comment -->
+            <div class="mb-3">
+              <label for="review-comment" class="form-label">Your Review *</label>
+              <textarea class="form-control" id="review-comment" name="comment" rows="4" maxlength="1000" required placeholder="Share your experience with this product..."></textarea>
+              <div class="form-text">Maximum 1000 characters</div>
+              <div class="invalid-feedback">Please write your review (max 1000 characters).</div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" class="btn btn-dark">
+              <i class="bi bi-send me-2"></i>Submit Review
+            </button>
+          </form>
+        </div>
+      <% } else { %>
+        <div class="alert alert-info d-flex align-items-center">
+          <i class="bi bi-info-circle me-2"></i>
+          <span>You must <a href="/login" class="alert-link">login first</a> to submit a review.</span>
+        </div>
+      <% } %>
     </div>
 
     <!-- Individual Reviews -->
@@ -138,9 +287,774 @@
 <!-- Drift.js (for zoom) -->
 <script src="https://unpkg.com/vanilla-drift@1.4.0/dist/Drift.min.js"></script>
 <script>
-  new Drift(document.querySelector('#main-image'), {
-    paneContainer: document.querySelector('.col-md-6'),
-    inlinePane: false,
-    hoverBoundingBox: true
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM Content Loaded - Starting image gallery initialization...');
+
+    // Wait a bit to ensure all elements are rendered
+    setTimeout(function() {
+      console.log('🔍 Starting delayed initialization...');
+
+      // Image Gallery Functionality
+      const mainImage = document.getElementById('main-image');
+      const thumbnails = document.querySelectorAll('.thumbnail-image');
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const currentIndexSpan = document.getElementById('current-image-index');
+      const zoomPaneContainer = document.getElementById('zoom-pane-container');
+
+      console.log('📋 Elements found:', {
+        mainImage: !!mainImage,
+        mainImageSrc: mainImage ? mainImage.src : 'N/A',
+        thumbnails: thumbnails.length,
+        prevBtn: !!prevBtn,
+        nextBtn: !!nextBtn,
+        currentIndexSpan: !!currentIndexSpan,
+        zoomPaneContainer: !!zoomPaneContainer,
+        DriftLoaded: typeof Drift !== 'undefined'
+      });
+
+      let currentImageIndex = 0;
+      const allImages = <%- JSON.stringify([product.mainImage, ...(product.subImages || [])]) %>;
+      console.log('🖼️ All images:', allImages);
+
+      let drift = null;
+
+      // Check if Drift.js is loaded
+      if (typeof Drift === 'undefined') {
+        console.error('❌ Drift.js library not loaded!');
+        return;
+      }
+
+      function initializeDrift() {
+        console.log('🔧 Initializing Drift.js...');
+
+        if (!mainImage || !zoomPaneContainer) {
+          console.error('❌ Missing required elements for Drift.js:', {
+            mainImage: !!mainImage,
+            zoomPaneContainer: !!zoomPaneContainer
+          });
+          return;
+        }
+
+        try {
+          // Destroy existing instance
+          if (drift) {
+            console.log('🗑️ Destroying existing Drift instance');
+            drift.destroy();
+          }
+
+          // Show zoom container initially to test
+          zoomPaneContainer.style.display = 'block';
+          zoomPaneContainer.style.background = '#f8f9fa';
+          zoomPaneContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #6c757d;">Hover over the image to see zoom</div>';
+
+          console.log('🎯 Creating new Drift instance with config:', {
+            paneContainer: zoomPaneContainer,
+            mainImageSrc: mainImage.src
+          });
+
+          drift = new Drift(mainImage, {
+            paneContainer: zoomPaneContainer,
+            inlinePane: true,
+            inlineOffsetX: 0,
+            inlineOffsetY: 0,
+            hoverBoundingBox: true,
+            touchDelay: 150,
+            containInline: false,
+            zoomFactor: 3,
+            sourceAttribute: 'src',
+            onShow: function() {
+              console.log('✅ Drift zoom showing!');
+              zoomPaneContainer.style.display = 'block';
+            },
+            onHide: function() {
+              console.log('🔒 Drift zoom hiding');
+              zoomPaneContainer.style.display = 'none';
+            }
+          });
+
+          console.log('✅ Drift.js initialized successfully!');
+
+          // Test hover events manually
+          mainImage.addEventListener('mouseenter', function() {
+            console.log('🖱️ Mouse entered main image');
+          });
+
+          mainImage.addEventListener('mouseleave', function() {
+            console.log('🖱️ Mouse left main image');
+          });
+
+        } catch (error) {
+          console.error('❌ Error initializing Drift.js:', error);
+        }
+      }
+
+      // Initialize Drift.js
+      initializeDrift();
+
+      // Function to update main image
+      function updateMainImage(index) {
+        console.log('🔄 updateMainImage called with index:', index);
+        if (index >= 0 && index < allImages.length) {
+          currentImageIndex = index;
+          mainImage.src = allImages[index];
+          console.log('✅ Updated main image to:', allImages[index]);
+
+          // Update current image counter
+          if (currentIndexSpan) {
+            currentIndexSpan.textContent = index + 1;
+            console.log('📊 Updated counter to:', index + 1);
+          }
+
+          // Update thumbnail active state
+          thumbnails.forEach((thumb, i) => {
+            thumb.classList.toggle('active', i === index);
+          });
+          console.log('🖼️ Updated thumbnail active states');
+
+          // Reinitialize Drift.js for the new image
+          setTimeout(() => {
+            initializeDrift();
+            console.log('🔧 Reinitialized Drift.js');
+          }, 100);
+        }
+      }
+
+      // Thumbnail click handlers
+      thumbnails.forEach((thumbnail, index) => {
+        thumbnail.addEventListener('click', () => {
+          console.log('🖼️ Thumbnail clicked, index:', index);
+          updateMainImage(index);
+        });
+
+        // Add hover effect
+        thumbnail.addEventListener('mouseenter', () => {
+          if (!thumbnail.classList.contains('active')) {
+            thumbnail.style.opacity = '0.7';
+          }
+        });
+
+        thumbnail.addEventListener('mouseleave', () => {
+          thumbnail.style.opacity = '1';
+        });
+      });
+
+      // Enhanced Navigation Button Handlers
+      console.log('🔧 Setting up navigation button handlers...');
+
+      function setupNavigationButtons() {
+        // Remove any existing event listeners by cloning elements
+        if (prevBtn) {
+          const newPrevBtn = prevBtn.cloneNode(true);
+          prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
+
+          newPrevBtn.addEventListener('click', function(e) {
+            console.log('⬅️ PREV BUTTON CLICKED!');
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
+            console.log('📍 Moving from index', currentImageIndex, 'to', newIndex);
+            updateMainImage(newIndex);
+          });
+
+          newPrevBtn.addEventListener('mousedown', function() {
+            console.log('⬅️ Prev button mousedown');
+            this.style.transform = 'scale(0.9)';
+          });
+
+          newPrevBtn.addEventListener('mouseup', function() {
+            console.log('⬅️ Prev button mouseup');
+            this.style.transform = 'scale(1)';
+          });
+
+          console.log('✅ Prev button handler attached');
+        }
+
+        if (nextBtn) {
+          const newNextBtn = nextBtn.cloneNode(true);
+          nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
+
+          newNextBtn.addEventListener('click', function(e) {
+            console.log('➡️ NEXT BUTTON CLICKED!');
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+
+            const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
+            console.log('📍 Moving from index', currentImageIndex, 'to', newIndex);
+            updateMainImage(newIndex);
+          });
+
+          newNextBtn.addEventListener('mousedown', function() {
+            console.log('➡️ Next button mousedown');
+            this.style.transform = 'scale(0.9)';
+          });
+
+          newNextBtn.addEventListener('mouseup', function() {
+            console.log('➡️ Next button mouseup');
+            this.style.transform = 'scale(1)';
+          });
+
+          console.log('✅ Next button handler attached');
+        }
+      }
+
+      // Setup navigation buttons
+      setupNavigationButtons();
+
+      // Global click handler as backup
+      document.addEventListener('click', function(e) {
+        const target = e.target.closest('#prev-btn, #next-btn');
+        if (target) {
+          console.log('🎯 Global click detected on:', target.id);
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (target.id === 'prev-btn') {
+            const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
+            updateMainImage(newIndex);
+          } else if (target.id === 'next-btn') {
+            const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
+            updateMainImage(newIndex);
+          }
+        }
+      });
+
+      // Visual test for buttons
+      setTimeout(() => {
+        console.log('🧪 Testing button visibility...');
+        const currentPrevBtn = document.getElementById('prev-btn');
+        const currentNextBtn = document.getElementById('next-btn');
+
+        if (currentPrevBtn) {
+          console.log('✅ Prev button found in DOM');
+          currentPrevBtn.style.border = '3px solid lime';
+          setTimeout(() => currentPrevBtn.style.border = '', 2000);
+        } else {
+          console.log('❌ Prev button NOT found in DOM');
+        }
+
+        if (currentNextBtn) {
+          console.log('✅ Next button found in DOM');
+          currentNextBtn.style.border = '3px solid lime';
+          setTimeout(() => currentNextBtn.style.border = '', 2000);
+        } else {
+          console.log('❌ Next button NOT found in DOM');
+        }
+      }, 1000);
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+          console.log('⌨️ Left arrow key pressed');
+          const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
+          updateMainImage(newIndex);
+        } else if (e.key === 'ArrowRight') {
+          console.log('⌨️ Right arrow key pressed');
+          const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
+          updateMainImage(newIndex);
+        }
+      });
+
+    }, 500); // End of setTimeout
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' && prevBtn) {
+        prevBtn.click();
+      } else if (e.key === 'ArrowRight' && nextBtn) {
+        nextBtn.click();
+      }
+    });
+
+    // Notify Me functionality for out of stock products
+    const notifyBtn = document.getElementById('notify-btn');
+    const notifyEmail = document.getElementById('notify-email');
+
+    if (notifyBtn && notifyEmail) {
+      notifyBtn.addEventListener('click', async function() {
+        const email = notifyEmail.value.trim();
+
+        if (!email) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Email Required',
+            text: 'Please enter your email address to get notified.',
+            confirmButtonColor: '#e03a2f'
+          });
+          return;
+        }
+
+        // Basic email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          Swal.fire({
+            icon: 'error',
+            title: 'Invalid Email',
+            text: 'Please enter a valid email address.',
+            confirmButtonColor: '#e03a2f'
+          });
+          return;
+        }
+
+        // Show loading state
+        const originalText = notifyBtn.innerHTML;
+        notifyBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Setting up...';
+        notifyBtn.disabled = true;
+
+        try {
+          // TODO: Implement actual notification signup API
+          // For now, just show success message
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Notification Set!',
+            text: 'We\'ll notify you when this product is back in stock.',
+            confirmButtonColor: '#28a745'
+          });
+
+          notifyEmail.value = '';
+
+        } catch (error) {
+          console.error('Notification signup error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Signup Failed',
+            text: 'Failed to set up notification. Please try again.',
+            confirmButtonColor: '#e03a2f'
+          });
+        } finally {
+          notifyBtn.innerHTML = originalText;
+          notifyBtn.disabled = false;
+        }
+      });
+    }
+
+    // Add to Cart functionality
+    const addToCartBtn = document.querySelector('.add-to-cart-btn');
+    if (addToCartBtn) {
+      addToCartBtn.addEventListener('click', function() {
+        const productId = this.dataset.productId;
+
+        // Check if user is authenticated
+        <% if (!user) { %>
+          // Show fade-out transition and redirect to login
+          document.body.style.transition = 'opacity 0.4s ease';
+          document.body.style.opacity = '0';
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 400);
+          return;
+        <% } %>
+
+        // Add to cart logic for authenticated users
+        // TODO: Implement actual cart functionality
+        console.log('Adding product to cart:', productId);
+
+        // Show success feedback
+        const originalText = this.innerHTML;
+        this.innerHTML = '<i class="bi bi-check-circle me-2"></i>Added!';
+        this.classList.add('btn-success');
+        this.classList.remove('btn-dark');
+
+        setTimeout(() => {
+          this.innerHTML = originalText;
+          this.classList.remove('btn-success');
+          this.classList.add('btn-dark');
+        }, 2000);
+      });
+    }
+
+    // Add to Wishlist functionality
+    const addToWishlistBtn = document.querySelector('.add-to-wishlist-btn');
+    if (addToWishlistBtn) {
+      addToWishlistBtn.addEventListener('click', function() {
+        const productId = this.dataset.productId;
+
+        // Check if user is authenticated
+        <% if (!user) { %>
+          // Show fade-out transition and redirect to login
+          document.body.style.transition = 'opacity 0.4s ease';
+          document.body.style.opacity = '0';
+          setTimeout(() => {
+            window.location.href = '/login';
+          }, 400);
+          return;
+        <% } %>
+
+        // Add to wishlist logic for authenticated users
+        // TODO: Implement actual wishlist functionality
+        console.log('Adding product to wishlist:', productId);
+
+        // Toggle heart icon and color
+        const icon = this.querySelector('i');
+        if (icon.classList.contains('bi-heart')) {
+          icon.classList.remove('bi-heart');
+          icon.classList.add('bi-heart-fill');
+          this.classList.remove('btn-outline-danger');
+          this.classList.add('btn-danger');
+        } else {
+          icon.classList.remove('bi-heart-fill');
+          icon.classList.add('bi-heart');
+          this.classList.remove('btn-danger');
+          this.classList.add('btn-outline-danger');
+        }
+      });
+    }
+
+    // Review Form Functionality
+    const reviewForm = document.getElementById('review-form');
+    const ratingStars = document.querySelectorAll('.rating-star');
+    const ratingInput = document.getElementById('rating-input');
+
+    if (reviewForm) {
+      // Rating stars interaction
+      ratingStars.forEach((star, index) => {
+        star.addEventListener('mouseenter', () => {
+          highlightStars(index + 1);
+        });
+
+        star.addEventListener('mouseleave', () => {
+          const currentRating = parseInt(ratingInput.value) || 0;
+          highlightStars(currentRating);
+        });
+
+        star.addEventListener('click', () => {
+          const rating = index + 1;
+          ratingInput.value = rating;
+          highlightStars(rating);
+
+          // Remove any existing validation feedback
+          ratingInput.classList.remove('is-invalid');
+          const feedback = ratingInput.parentElement.querySelector('.invalid-feedback');
+          if (feedback) feedback.style.display = 'none';
+        });
+      });
+
+      function highlightStars(rating) {
+        ratingStars.forEach((star, index) => {
+          if (index < rating) {
+            star.style.color = '#ffc107';
+            star.classList.remove('bi-star');
+            star.classList.add('bi-star-fill');
+          } else {
+            star.style.color = '#ddd';
+            star.classList.remove('bi-star-fill');
+            star.classList.add('bi-star');
+          }
+        });
+      }
+
+      // Form submission
+      reviewForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Validate form
+        let isValid = true;
+        const formData = new FormData(this);
+
+        // Validate rating
+        if (!ratingInput.value) {
+          ratingInput.classList.add('is-invalid');
+          const feedback = ratingInput.parentElement.querySelector('.invalid-feedback');
+          if (feedback) feedback.style.display = 'block';
+          isValid = false;
+        }
+
+        // Validate title
+        const titleInput = document.getElementById('review-title');
+        if (!titleInput.value.trim()) {
+          titleInput.classList.add('is-invalid');
+          isValid = false;
+        } else {
+          titleInput.classList.remove('is-invalid');
+        }
+
+        // Validate comment
+        const commentInput = document.getElementById('review-comment');
+        if (!commentInput.value.trim()) {
+          commentInput.classList.add('is-invalid');
+          isValid = false;
+        } else {
+          commentInput.classList.remove('is-invalid');
+        }
+
+        if (!isValid) return;
+
+        // Submit review
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Submitting...';
+        submitBtn.disabled = true;
+
+        try {
+          const response = await fetch('/api/reviews', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              productId: formData.get('productId'),
+              rating: parseInt(formData.get('rating')),
+              title: formData.get('title'),
+              comment: formData.get('comment')
+            })
+          });
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            // Show success message
+            Swal.fire({
+              icon: 'success',
+              title: 'Review Submitted!',
+              text: 'Thank you for your review. It will be visible after approval.',
+              confirmButtonColor: '#111'
+            }).then(() => {
+              // Reload page to show new review
+              window.location.reload();
+            });
+          } else {
+            throw new Error(result.message || 'Failed to submit review');
+          }
+        } catch (error) {
+          console.error('Review submission error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Submission Failed',
+            text: error.message || 'Failed to submit review. Please try again.',
+            confirmButtonColor: '#d33'
+          });
+        } finally {
+          submitBtn.innerHTML = originalText;
+          submitBtn.disabled = false;
+        }
+      });
+    }
   });
 </script>
+
+<style>
+/* Image Gallery Styles */
+.image-gallery-container {
+  overflow: hidden;
+}
+
+.main-image-wrapper {
+  overflow: hidden;
+}
+
+.nav-btn {
+  transition: all 0.3s ease !important;
+  border-radius: 50% !important;
+  width: 45px !important;
+  height: 45px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  pointer-events: auto !important;
+  z-index: 9999 !important;
+  position: absolute !important;
+  border: 3px solid #343a40 !important;
+  background-color: #343a40 !important;
+  color: white !important;
+  font-size: 18px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+}
+
+.nav-btn:hover {
+  opacity: 1 !important;
+  background-color: #e03a2f !important;
+  border-color: #e03a2f !important;
+  transform: scale(1.15) !important;
+  color: white !important;
+  box-shadow: 0 4px 12px rgba(224, 58, 47, 0.4) !important;
+}
+
+.nav-btn:active {
+  transform: scale(0.9) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3) !important;
+}
+
+.nav-btn:focus {
+  outline: none !important;
+  box-shadow: 0 0 0 3px rgba(224, 58, 47, 0.5) !important;
+}
+
+/* Ensure buttons are above ALL other elements */
+.main-image-wrapper {
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+.nav-btn i {
+  pointer-events: none !important;
+  font-size: inherit !important;
+}
+
+/* Specific positioning for prev/next buttons */
+#prev-btn {
+  left: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+#next-btn {
+  right: 10px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+}
+
+#prev-btn:hover {
+  transform: translateY(-50%) scale(1.15) !important;
+}
+
+#next-btn:hover {
+  transform: translateY(-50%) scale(1.15) !important;
+}
+
+#prev-btn:active {
+  transform: translateY(-50%) scale(0.9) !important;
+}
+
+#next-btn:active {
+  transform: translateY(-50%) scale(0.9) !important;
+}
+
+.thumbnail-image {
+  border: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.thumbnail-image:hover {
+  border-color: #e03a2f;
+  transform: scale(1.05);
+}
+
+.thumbnail-image.active {
+  border-color: #e03a2f;
+  box-shadow: 0 0 10px rgba(224, 58, 47, 0.3);
+}
+
+/* Action Button Styles */
+.add-to-cart-btn {
+  transition: all 0.3s ease;
+  font-weight: 600;
+}
+
+.add-to-cart-btn:hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.add-to-wishlist-btn {
+  transition: all 0.3s ease;
+  width: 50px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.add-to-wishlist-btn:hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Stock Badge Styles */
+.badge {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+/* Zoom cursor - moved to Drift.js section */
+
+/* Drift.js Zoom Pane Styles */
+#zoom-pane-container {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+  background: white;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  min-height: 400px;
+}
+
+.drift-zoom-pane {
+  border: none !important;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: white;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.drift-zoom-pane img {
+  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Main image hover effect */
+#main-image {
+  transition: transform 0.3s ease;
+  cursor: crosshair;
+}
+
+#main-image:hover {
+  transform: scale(1.02);
+}
+
+/* Stock Status Styles */
+.sold-out-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border: 2px solid #dee2e6;
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.sold-out-section h4 {
+  color: #dc3545;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.sold-out-section p {
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+#notify-btn {
+  transition: all 0.3s ease;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+#notify-btn:hover {
+  background-color: #c82333;
+  border-color: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+#notify-email {
+  border: 2px solid #dee2e6;
+  transition: all 0.3s ease;
+}
+
+#notify-email:focus {
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+</style>

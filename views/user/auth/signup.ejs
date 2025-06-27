@@ -38,13 +38,13 @@
 
       <div class="text-center my-3 text-secondary">or</div>
 
-      <a href="/google"
+      <button type="button" id="google-signup-btn"
         class="btn border d-flex align-items-center justify-content-center gap-2 w-100 google-btn"
         style="background-color: #fff; color: #555; border: 1px solid #ddd;">
         <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749704859/Made_by_Google_ybszlk.jpg"
             alt="Google Logo" width="20" height="20" class="me-2">
         <span>Sign up with Google</span>
-      </a>
+      </button>
 
 
 
@@ -58,6 +58,15 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    // Google OAuth button handler
+    const googleBtn = document.getElementById('google-signup-btn');
+    if (googleBtn) {
+      googleBtn.addEventListener('click', function() {
+        // Redirect to Google OAuth
+        window.location.href = '/google';
+      });
+    }
+
     // Initialize form validation
     const validator = new FormValidator('signup-form');
 
