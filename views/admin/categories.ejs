@@ -32,18 +32,18 @@
   <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-labelledby="addCategoryModalLabel" aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <form id="add-category-form">
+        <form id="add-category-form" novalidate>
           <div class="modal-header">
             <h5 class="modal-title" id="addCategoryModalLabel">Add New Category</h5>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label for="name" class="form-label">Category Name</label>
+              <label for="name" class="form-label">Category Name *</label>
               <input type="text" class="form-control" id="name" name="name" required>
             </div>
             <div class="mb-3">
-              <label for="description" class="form-label">Description</label>
+              <label for="description" class="form-label">Description (Optional)</label>
               <textarea class="form-control" id="description" name="description" rows="3"></textarea>
             </div>
           </div>
@@ -83,6 +83,7 @@
 
 </div>
 
+<script src="/js/validation.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('search-input');
@@ -124,14 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="modal fade" id="editCategoryModal${cat._id}" tabindex="-1" aria-labelledby="editCategoryModalLabel${cat._id}" aria-hidden="true">
         <div class="modal-dialog">
           <div class="modal-content">
-            <form class="edit-category-form" data-id="${cat._id}">
+            <form class="edit-category-form" data-id="${cat._id}" novalidate>
               <div class="modal-header">
                 <h5 class="modal-title" id="editCategoryModalLabel${cat._id}">Edit Category</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body">
                 <div class="mb-3">
-                  <label class="form-label">Category Name</label>
+                  <label class="form-label">Category Name *</label>
                   <input type="text" class="form-control" name="name" value="${cat.name}" required>
                 </div>
                 <div class="mb-3">
@@ -151,6 +152,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
     editModalContainer.innerHTML = modals;
 
+    // Initialize validation for all edit forms
+    data.categories.forEach(cat => {
+      setTimeout(() => {
+        const editForm = document.querySelector(`form[data-id="${cat._id}"]`);
+        if (editForm) {
+          const validator = new FormValidator(editForm.id || `edit-form-${cat._id}`);
+          if (!editForm.id) editForm.id = `edit-form-${cat._id}`;
+
+          // Store validator reference for later use
+          editForm.validator = validator;
+
+          // Override submit function
+          validator.submitForm = async function() {
+            const formData = {
+              name: editForm.name.value.trim(),
+              description: editForm.description.value.trim()
+            };
+
+            try {
+              const res = await fetch(`/admin/categories/api/${cat._id}`, {
+                method: 'PATCH',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+              });
+
+              if (res.ok) {
+                document.getElementById(`editCategoryModal${cat._id}`).querySelector('.btn-close').click();
+                await fetchCategories(searchInput.value);
+                Swal.fire('Updated!', 'Category updated successfully.', 'success');
+              } else {
+                const errorData = await res.json();
+                Swal.fire('Error', errorData.error || 'Update failed.', 'error');
+              }
+            } catch (err) {
+              console.error(err);
+              Swal.fire('Error', 'Could not update category.', 'error');
+            }
+          };
+        }
+      }, 100);
+    });
+
     paginationContainer.innerHTML = '';
     for (let i = 1; i <= data.totalPages; i++) {
       paginationContainer.innerHTML += `
@@ -161,6 +206,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   fetchCategories(searchInput.value);
+
+  // Initialize validation for add category form
+  const addCategoryValidator = new FormValidator('add-category-form');
 
   document.getElementById('search-form').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -175,11 +223,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.querySelector('#add-category-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  // Override add category form submission with validation
+  addCategoryValidator.submitForm = async function() {
     const formData = {
-      name: e.target.name.value,
-      description: e.target.description.value,
+      name: document.getElementById('name').value.trim(),
+      description: document.getElementById('description').value.trim(),
     };
 
     try {
@@ -195,45 +243,20 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('addCategoryModal').querySelector('.btn-close').click();
         await fetchCategories(searchInput.value);
         Swal.fire('Added!', 'Category has been added.', 'success');
+        // Clear form
+        document.getElementById('add-category-form').reset();
+        addCategoryValidator.clearAllErrors();
+      } else {
+        const errorData = await res.json();
+        Swal.fire('Error', errorData.error || 'Could not add category.', 'error');
       }
     } catch (err) {
       console.error(err);
       Swal.fire('Error', 'Could not add category.', 'error');
     }
-  });
+  };
 
-  document.addEventListener('submit', async (e) => {
-    if (e.target.classList.contains('edit-category-form')) {
-      e.preventDefault();
-      const form = e.target;
-      const id = form.dataset.id;
-      const formData = {
-        name: form.name.value,
-        description: form.description.value
-      };
-
-      try {
-        const res = await fetch(`/admin/categories/api/${id}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(formData)
-        });
-
-        if (res.ok) {
-          document.getElementById(`editCategoryModal${id}`).querySelector('.btn-close').click();
-          await fetchCategories(searchInput.value);
-          Swal.fire('Updated!', 'Category updated successfully.', 'success');
-        } else {
-          Swal.fire('Error', 'Update failed.', 'error');
-        }
-      } catch (err) {
-        console.error(err);
-        Swal.fire('Error', 'Could not update category.', 'error');
-      }
-    }
-  });
+  // Edit form submission is now handled by individual validators
 
   tableBody.addEventListener('click', async (e) => {
     if (e.target.closest('.btn-delete')) {

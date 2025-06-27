@@ -12,20 +12,25 @@
       </div>
       <h3 class="fw-bold mb-3 text-center" style="color: #1A1A1A;">Create your account</h3>
 
-      <form id="signup-form">
+      <form id="signup-form" novalidate>
         <div class="mb-3">
+          <label for="name" class="form-label">Full Name *</label>
           <input type="text" id="name" name="name" class="form-control" placeholder="Fullname" required>
         </div>
         <div class="mb-3">
+          <label for="phone" class="form-label">Phone Number *</label>
           <input type="tel" id="phone" name="phone" class="form-control" placeholder="Phone" required>
         </div>
         <div class="mb-3">
+          <label for="email" class="form-label">Email *</label>
           <input type="email" id="email" name="email" class="form-control" placeholder="Email address" required>
         </div>
         <div class="mb-3">
+          <label for="password" class="form-label">Password *</label>
           <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
         </div>
         <div class="mb-3">
+          <label for="confirmPassword" class="form-label">Confirm Password *</label>
           <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Confirm Password" required>
         </div>
         <button type="submit" class="btn btn-primary-custom w-100">Sign Up</button>
@@ -49,50 +54,55 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/validation.js"></script>
 
 <script>
-  document.getElementById('signup-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
+  document.addEventListener('DOMContentLoaded', function() {
+    // Initialize form validation
+    const validator = new FormValidator('signup-form');
 
-    const payload = {
-      name: document.getElementById('name').value.trim(),
-      phone: document.getElementById('phone').value.trim(),
-      email: document.getElementById('email').value.trim(),
-      password: document.getElementById('password').value.trim(),
-      confirmPassword: document.getElementById('confirmPassword').value.trim(),
-    };
+    // Override the form submission to handle validation
+    validator.submitForm = async function() {
+      const payload = {
+        name: document.getElementById('name').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        password: document.getElementById('password').value.trim(),
+        confirmPassword: document.getElementById('confirmPassword').value.trim(),
+      };
 
-    try {
-      const res = await fetch('/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.redirect) {
-        Swal.fire({
-          icon: 'success',
-          title: 'Account created!',
-          showConfirmButton: false,
-          timer: 1500
-        }).then(() => {
-          window.location.href = data.redirect;
+      try {
+        const res = await fetch('/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
         });
-      } else {
+
+        const data = await res.json();
+
+        if (res.ok && data.redirect) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Account created!',
+            showConfirmButton: false,
+            timer: 1500
+          }).then(() => {
+            window.location.href = data.redirect;
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Signup Failed',
+            text: data.error || 'Please check your inputs.'
+          });
+        }
+      } catch (err) {
         Swal.fire({
           icon: 'error',
-          title: 'Signup Failed',
-          text: data.error || 'Please check your inputs.'
+          title: 'Oops!',
+          text: 'Something went wrong!'
         });
       }
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops!',
-        text: 'Something went wrong!'
-      });
-    }
+    };
   });
 </script>

@@ -44,21 +44,31 @@ app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.use(flash());
 
-// Session
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'yourSecretKey',
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({
-    client: mongoose.connection.getClient(),
-    ttl: 20 * 60
-  }),
-  cookie: {
-    maxAge: 20 * 60 * 1000,
-    httpOnly: true,
-    sameSite: 'lax'
-  }
-}));
+// Session configuration with dynamic session names based on route
+app.use((req, res, next) => {
+  // Determine session name based on route
+  const isAdminRoute = req.path.startsWith('/admin');
+  const sessionName = isAdminRoute ? 'admin.sid' : 'user.sid';
+
+  // Apply session middleware with appropriate name
+  const sessionMiddleware = session({
+    name: sessionName,
+    secret: process.env.SESSION_SECRET || 'yourSecretKey',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+      client: mongoose.connection.getClient(),
+      ttl: 20 * 60
+    }),
+    cookie: {
+      maxAge: 20 * 60 * 1000,
+      httpOnly: true,
+      sameSite: 'lax'
+    }
+  });
+
+  sessionMiddleware(req, res, next);
+});
 
 // Passport
 app.use(passport.initialize());

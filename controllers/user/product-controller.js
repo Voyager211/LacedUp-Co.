@@ -18,15 +18,43 @@ exports.getProducts = async (req, res) => {
     const maxPrice = parseFloat(req.query.maxPrice || req.query.max) || 1e9;
     const sizes = req.query.size ? (Array.isArray(req.query.size) ? req.query.size : [req.query.size]) : [];
 
+    // Get active category IDs to filter products
+    const activeCategories = await Category.find({
+      isDeleted: false,
+      isActive: true
+    }).select('_id').lean();
+    const activeCategoryIds = activeCategories.map(cat => cat._id);
+
     const filter = {
       isDeleted: false,
-      isListed: true
+      isListed: true,
+      category: { $in: activeCategoryIds } // Only products from active categories
     };
 
-    if (category) filter.category = category;
+    if (category) {
+      // Ensure the requested category is active
+      const requestedCategory = await Category.findById(category).select('isActive isDeleted').lean();
+      if (requestedCategory && !requestedCategory.isDeleted && requestedCategory.isActive) {
+        filter.category = category;
+      } else {
+        // If requested category is inactive, return empty results
+        return res.json({
+          success: true,
+          products: [],
+          pagination: {
+            totalPages: 0,
+            totalProducts: 0,
+            currentPage: page,
+            hasNextPage: false,
+            hasPrevPage: page > 1
+          }
+        });
+      }
+    }
+
     if (brand) filter.brand = { $regex: brand, $options: 'i' };
     if (search) {
-      // First, find categories that match the search term
+      // First, find categories that match the search term (only active ones)
       const matchingCategories = await Category.find({
         name: { $regex: search, $options: 'i' },
         isDeleted: false,
@@ -40,6 +68,15 @@ exports.getProducts = async (req, res) => {
         { brand: { $regex: search, $options: 'i' } },
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : [])
       ];
+
+      // Still need to ensure category is in active categories
+      if (filter.$or) {
+        filter.$and = [
+          { $or: filter.$or },
+          { category: { $in: activeCategoryIds } }
+        ];
+        delete filter.$or;
+      }
     }
 
     // Price range filter
@@ -112,15 +149,29 @@ exports.getProducts = async (req, res) => {
 exports.loadShopPage = async (req, res) => {
   try {
     const categories = await Category.find({ isDeleted: false, isActive: true }).lean();
-    const brands = await Product.distinct('brand', { isDeleted: false, isListed: true });
+
+    // Get active category IDs for filtering products
+    const activeCategoryIds = categories.map(cat => cat._id);
+
+    // Only get brands from products that belong to active categories
+    const brands = await Product.distinct('brand', {
+      isDeleted: false,
+      isListed: true,
+      category: { $in: activeCategoryIds }
+    });
 
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
 
-    const filter = { isDeleted: false, isListed: true };
+    // Filter products to only include those from active categories
+    const filter = {
+      isDeleted: false,
+      isListed: true,
+      category: { $in: activeCategoryIds }
+    };
 
     const { data: paginatedProducts, totalPages } = await getPagination(
-      Product.find(filter).sort({ createdAt: -1 }),
+      Product.find(filter).populate('category').sort({ createdAt: -1 }),
       Product,
       filter,
       page,
@@ -152,10 +203,18 @@ exports.getSearchSuggestions = async (req, res) => {
       return res.json({ success: true, suggestions: [] });
     }
 
-    // Simplified filter - try to match the working main search logic exactly
+    // Get active category IDs to filter products
+    const activeCategories = await Category.find({
+      isDeleted: false,
+      isActive: true
+    }).select('_id').lean();
+    const activeCategoryIds = activeCategories.map(cat => cat._id);
+
+    // Filter to only include products from active categories
     const filter = {
       isDeleted: false,
       isListed: true,
+      category: { $in: activeCategoryIds },
       $or: [
         { productName: { $regex: query, $options: 'i' } },
         { brand: { $regex: query, $options: 'i' } }
@@ -164,7 +223,11 @@ exports.getSearchSuggestions = async (req, res) => {
 
     // Get limited results for suggestions (8 products max)
     const suggestions = await Product.find(filter)
-      .populate({ path: 'category', select: 'name' })
+      .populate({
+        path: 'category',
+        match: { isActive: true, isDeleted: false },
+        select: 'name'
+      })
       .select('productName brand mainImage salePrice category slug')
       .sort({ createdAt: -1 })
       .limit(8)
@@ -195,8 +258,34 @@ exports.loadProductDetails = async (req, res) => {
       .populate('category')
       .lean();
 
-    if (!product) {
-      return res.status(404).render('error', { message: 'Product not found' });
+    // Check if product exists and is not deleted
+    if (!product || product.isDeleted) {
+      return res.status(404).render('errors/404', {
+        title: 'Product Not Found',
+        message: 'The product you are looking for does not exist or has been removed.',
+        layout: 'user/layouts/user-layout',
+        active: 'shop'
+      });
+    }
+
+    // Check if product is blocked/unlisted
+    if (!product.isListed) {
+      return res.status(404).render('errors/404', {
+        title: 'Product Not Available',
+        message: 'This product is currently not available.',
+        layout: 'user/layouts/user-layout',
+        active: 'shop'
+      });
+    }
+
+    // Check if product's category exists and is active
+    if (!product.category || product.category.isDeleted || !product.category.isActive) {
+      return res.status(404).render('errors/404', {
+        title: 'Product Not Available',
+        message: 'This product is no longer available as its category has been disabled.',
+        layout: 'user/layouts/user-layout',
+        active: 'shop'
+      });
     }
 
     const reviews = await Review.find({
@@ -214,8 +303,7 @@ exports.loadProductDetails = async (req, res) => {
         category: product.category._id,
         _id: { $ne: product._id },
         isDeleted: false,
-        isBlocked: false,
-        isListed: true
+        isListed: true // Fixed: removed isBlocked which doesn't exist
       })
         .populate({
           path: 'category',
@@ -226,6 +314,7 @@ exports.loadProductDetails = async (req, res) => {
         .limit(4)
         .lean();
 
+      // Filter out products whose categories became null (inactive categories)
       relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null);
     }
 
@@ -279,8 +368,11 @@ exports.loadProductDetails = async (req, res) => {
 
   } catch (err) {
     console.error('❌ Error loading product details:', err);
-    res.status(500).render('error', {
-      message: 'Internal server error'
+    res.status(500).render('errors/server-error', {
+      title: 'Server Error',
+      message: 'Something went wrong while loading the product details.',
+      layout: 'user/layouts/user-layout',
+      active: 'shop'
     });
   }
 };

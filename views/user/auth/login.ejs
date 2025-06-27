@@ -18,11 +18,13 @@
       </div>
       <h3 class="fw-bold mb-3 text-center" style="color: #1A1A1A;">Log into your account</h3>
 
-      <form id="login-form">
+      <form id="login-form" novalidate>
         <div class="mb-3">
+          <label for="email" class="form-label">Email *</label>
           <input type="email" name="email" id="email" class="form-control" placeholder="Email address" required>
         </div>
         <div class="mb-3">
+          <label for="password" class="form-label">Password *</label>
           <input type="password" name="password" id="password" class="form-control" placeholder="Password" required>
         </div>
 
@@ -52,6 +54,7 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="/js/validation.js"></script>
 <script>
   // Login transition utilities
   const LoginTransition = {
@@ -89,57 +92,60 @@
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function() {
     LoginTransition.init();
-  });
 
-  document.getElementById('login-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
+    // Initialize form validation
+    const validator = new FormValidator('login-form');
 
-    const email = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value.trim();
+    // Override the form submission to handle validation
+    const originalSubmitForm = validator.submitForm;
+    validator.submitForm = async function() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
 
-    try {
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+      try {
+        const res = await fetch('/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
 
-      const data = await res.json();
+        const data = await res.json();
 
-      if (res.ok) {
-        // Start login success transition
-        LoginTransition.fadeOut(() => {
-          // Redirect to home page after transition
-          window.location.href = '/home';
-        }, 'Welcome back!');
-      } else {
-        const errorMessage = data.error || 'Invalid credentials';
-
-        // Check if it's a blocked user error
-        if (errorMessage.includes('blocked')) {
-          Swal.fire({
-            icon: 'warning',
-            title: 'Account Blocked',
-            text: errorMessage,
-            confirmButtonText: 'Contact Support',
-            confirmButtonColor: '#dc3545',
-            showCancelButton: true,
-            cancelButtonText: 'OK'
-          });
+        if (res.ok) {
+          // Start login success transition
+          LoginTransition.fadeOut(() => {
+            // Redirect to home page after transition
+            window.location.href = '/home';
+          }, 'Welcome back!');
         } else {
-          Swal.fire({
-            icon: 'error',
-            title: 'Login Failed',
-            text: errorMessage
-          });
+          const errorMessage = data.error || 'Invalid credentials';
+
+          // Check if it's a blocked user error
+          if (errorMessage.includes('blocked')) {
+            Swal.fire({
+              icon: 'warning',
+              title: 'Account Blocked',
+              text: errorMessage,
+              confirmButtonText: 'Contact Support',
+              confirmButtonColor: '#dc3545',
+              showCancelButton: true,
+              cancelButtonText: 'OK'
+            });
+          } else {
+            Swal.fire({
+              icon: 'error',
+              title: 'Login Failed',
+              text: errorMessage
+            });
+          }
         }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops!',
+          text: 'Something went wrong!'
+        });
       }
-    } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops!',
-        text: 'Something went wrong!'
-      });
-    }
+    };
   });
 </script>

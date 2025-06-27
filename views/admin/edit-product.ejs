@@ -2,7 +2,7 @@
 
 <div class="container my-4">
 
-  <form id="edit-product-form">
+  <form id="edit-product-form" novalidate>
     <!-- Basic Info -->
     <div class="border rounded p-4 mb-4 bg-light-subtle">
       <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
@@ -355,6 +355,7 @@
   }
 </style>
 
+<script src="/js/validation.js"></script>
 <script>
   const productId = "<%= product._id %>";
   const container = document.getElementById('image-preview-container');
@@ -586,10 +587,12 @@ function addImageToSlot(slotIndex) {
     input.value = '';
   }
 
-  // Form submit
-  document.getElementById('edit-product-form').addEventListener('submit', async function (e) {
-    e.preventDefault();
-    const form = e.target;
+  // Initialize form validation
+  const editProductValidator = new FormValidator('edit-product-form');
+
+  // Override submit function with validation
+  editProductValidator.submitForm = async function() {
+    const form = document.getElementById('edit-product-form');
     const formData = new FormData(form);
 
     base64Images.forEach((b64, i) => {
@@ -627,5 +630,5 @@ function addImageToSlot(slotIndex) {
         confirmButtonColor: '#d33'
       });
     }
-  });
+  };
 </script>

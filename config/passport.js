@@ -79,14 +79,15 @@ module.exports = function (passport) {
   //   }
   // }));
 
-  // Serialize/Deserialize
+  // Serialize/Deserialize with role-based session keys
   passport.serializeUser((user, done) => {
-    done(null, user.id);
+    // Include role in serialization to separate admin and user sessions
+    done(null, { id: user.id, role: user.role });
   });
 
-  passport.deserializeUser(async (id, done) => {
+  passport.deserializeUser(async (data, done) => {
     try {
-      const user = await User.findById(id);
+      const user = await User.findById(data.id);
       done(null, user);
     } catch (err) {
       done(err);

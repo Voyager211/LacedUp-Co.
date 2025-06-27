@@ -3,7 +3,7 @@
 <div class="container my-4">
   <h2 class="fw-bold mb-4">Add New Product</h2>
 
-  <form id="add-product-form">
+  <form id="add-product-form" novalidate>
     <!-- Basic Info -->
     <div class="border rounded p-4 mb-4 bg-light-subtle">
       <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
@@ -333,6 +333,7 @@
 
 </style>
 
+<script src="/js/validation.js"></script>
 <script>
   const input = document.getElementById('image-input');
   const container = document.getElementById('image-preview-container');
@@ -513,45 +514,47 @@
     this.appendChild(hiddenContainer);
   });
 
-  document.getElementById('add-product-form').addEventListener('submit', async function (e) {
-  e.preventDefault();
+  // Initialize form validation
+  const productValidator = new FormValidator('add-product-form');
 
-  const form = e.target;
-  const formData = new FormData(form);
+  // Override submit function with validation
+  productValidator.submitForm = async function() {
+    const form = document.getElementById('add-product-form');
+    const formData = new FormData(form);
 
-  // Attach base64 images manually
-  base64Images.forEach((b64, i) => {
-    formData.append('base64Images[]', b64);
-  });
-
-  try {
-    const res = await fetch('/admin/products/api/add', {
-      method: 'POST',
-      body: formData,
+    // Attach base64 images manually
+    base64Images.forEach((b64, i) => {
+      formData.append('base64Images[]', b64);
     });
 
-    const data = await res.json();
-
-    if (res.ok && data.success) {
-      await Swal.fire({
-        icon: 'success',
-        title: 'Product Added!',
-        text: 'Your new product has been successfully created.',
-        confirmButtonColor: '#111'
+    try {
+      const res = await fetch('/admin/products/api/add', {
+        method: 'POST',
+        body: formData,
       });
-      window.location.href = '/admin/products';
-    } else {
-      throw new Error(data.message || 'Failed to add product');
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Product Added!',
+          text: 'Your new product has been successfully created.',
+          confirmButtonColor: '#111'
+        });
+        window.location.href = '/admin/products';
+      } else {
+        throw new Error(data.message || 'Failed to add product');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops!',
+        text: err.message || 'Something went wrong. Try again.',
+        confirmButtonColor: '#d33'
+      });
     }
-  } catch (err) {
-    console.error('Error:', err);
-    Swal.fire({
-      icon: 'error',
-      title: 'Oops!',
-      text: err.message || 'Something went wrong. Try again.',
-      confirmButtonColor: '#d33'
-    });
-  }
-});
+  };
 
 </script>
