@@ -20,8 +20,13 @@
         <div class="col-12">
           <div class="border p-2 rounded bg-white position-relative image-gallery-container">
             <!-- Main Image with Navigation Controls -->
-            <div class="main-image-wrapper position-relative">
+            <div class="main-image-wrapper position-relative" id="mainImageContainer">
               <img id="main-image" src="<%= product.mainImage %>" class="img-fluid w-100" alt="<%= product.productName %>" style="cursor: zoom-in;">
+
+              <!-- Magnifier for hover zoom -->
+              <div id="magnifier" class="magnifier">
+                <img id="magnifierImage" class="magnifier-image" src="<%= product.mainImage %>" alt="Magnified view">
+              </div>
 
               <!-- Navigation Controls -->
               <%
@@ -46,12 +51,7 @@
           </div>
         </div>
 
-        <!-- Zoom Pane Container -->
-        <div class="col-12 mt-3">
-          <div id="zoom-pane-container" class="border rounded bg-white" style="height: 400px; display: none;">
-            <!-- Drift.js will inject the zoom pane here -->
-          </div>
-        </div>
+
       </div>
 
       <!-- Thumbnail Gallery -->
@@ -284,289 +284,175 @@
   </div>
 </div>
 
-<!-- Drift.js (for zoom) -->
-<script src="https://unpkg.com/vanilla-drift@1.4.0/dist/Drift.min.js"></script>
+<!-- Image Gallery JavaScript -->
+
+
+
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 DOM Content Loaded - Starting image gallery initialization...');
+  document.addEventListener('DOMContentLoaded', function () {
+    // Updated to work with existing HTML structure
+    const mainImage = document.getElementById('main-image'); // Updated selector
+    const magnifier = document.getElementById('magnifier');
+    const magnifierImage = document.getElementById('magnifierImage');
+    const fullscreenModal = document.getElementById('fullscreenModal');
+    const fullscreenImage = document.getElementById('fullscreenImage');
+    const fullscreenZoomBtn = document.getElementById('fullscreenZoomBtn');
+    const imageCounter = document.getElementById('imageCounter');
+    const imageTitle = document.querySelector('.image-title');
+    const subImageElements = document.querySelectorAll('.thumbnail-image'); // Updated to use existing thumbnails
 
-    // Wait a bit to ensure all elements are rendered
-    setTimeout(function() {
-      console.log('🔍 Starting delayed initialization...');
+    let currentZoomed = false;
+    let currentImageIndex = 0;
+    let productImages = [];
 
-      // Image Gallery Functionality
-      const mainImage = document.getElementById('main-image');
-      const thumbnails = document.querySelectorAll('.thumbnail-image');
-      const prevBtn = document.getElementById('prev-btn');
-      const nextBtn = document.getElementById('next-btn');
-      const currentIndexSpan = document.getElementById('current-image-index');
-      const zoomPaneContainer = document.getElementById('zoom-pane-container');
-
-      console.log('📋 Elements found:', {
-        mainImage: !!mainImage,
-        mainImageSrc: mainImage ? mainImage.src : 'N/A',
-        thumbnails: thumbnails.length,
-        prevBtn: !!prevBtn,
-        nextBtn: !!nextBtn,
-        currentIndexSpan: !!currentIndexSpan,
-        zoomPaneContainer: !!zoomPaneContainer,
-        DriftLoaded: typeof Drift !== 'undefined'
+    // Collect images for fullscreen zoom
+    function collectProductImages() {
+      const mainImgSrc = mainImage.getAttribute('src');
+      productImages = [mainImgSrc];
+      subImageElements.forEach(img => {
+        const src = img.getAttribute('src');
+        if (!productImages.includes(src)) {
+          productImages.push(src);
+        }
       });
+    }
 
-      let currentImageIndex = 0;
-      const allImages = <%- JSON.stringify([product.mainImage, ...(product.subImages || [])]) %>;
-      console.log('🖼️ All images:', allImages);
+    // Update fullscreen image and counter
+    function updateFullscreenImage() {
+      if (fullscreenImage && imageCounter) {
+        fullscreenImage.src = productImages[currentImageIndex];
+        imageCounter.textContent = `${currentImageIndex + 1} / ${productImages.length}`;
+      }
+    }
 
-      let drift = null;
+    // Navigate fullscreen - make functions global for HTML onclick handlers
+    window.previousImage = function() {
+      if (currentImageIndex > 0) {
+        currentImageIndex--;
+        updateFullscreenImage();
+      }
+    }
 
-      // Check if Drift.js is loaded
-      if (typeof Drift === 'undefined') {
-        console.error('❌ Drift.js library not loaded!');
+    window.nextImage = function() {
+      if (currentImageIndex < productImages.length - 1) {
+        currentImageIndex++;
+        updateFullscreenImage();
+      }
+    }
+
+    function setupKeyboardNavigation() {
+      document.addEventListener('keydown', function (event) {
+        if (fullscreenModal && fullscreenModal.classList.contains('active')) {
+          if (event.key === 'ArrowLeft') {
+            previousImage();
+          } else if (event.key === 'ArrowRight') {
+            nextImage();
+          } else if (event.key === 'Escape') {
+            closeFullscreenZoom();
+          }
+        }
+      });
+    }
+
+    // Magnifier logic - adapted for existing structure
+    function setupMagnifier() {
+      const container = document.querySelector('.main-image-wrapper'); // Use existing container
+      if (!container || !magnifier || !magnifierImage) {
+        console.log('Magnifier elements not found, skipping magnifier setup');
         return;
       }
 
-      function initializeDrift() {
-        console.log('🔧 Initializing Drift.js...');
+      container.addEventListener('mousemove', function (e) {
+        const rect = container.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
 
-        if (!mainImage || !zoomPaneContainer) {
-          console.error('❌ Missing required elements for Drift.js:', {
-            mainImage: !!mainImage,
-            zoomPaneContainer: !!zoomPaneContainer
-          });
-          return;
-        }
+        magnifier.style.display = 'block';
+        magnifier.style.left = `${x - magnifier.offsetWidth / 2}px`;
+        magnifier.style.top = `${y - magnifier.offsetHeight / 2}px`;
 
-        try {
-          // Destroy existing instance
-          if (drift) {
-            console.log('🗑️ Destroying existing Drift instance');
-            drift.destroy();
-          }
+        const zoomFactor = 2;
+        magnifierImage.style.width = `${container.offsetWidth * zoomFactor}px`;
+        magnifierImage.style.height = `${container.offsetHeight * zoomFactor}px`;
 
-          // Show zoom container initially to test
-          zoomPaneContainer.style.display = 'block';
-          zoomPaneContainer.style.background = '#f8f9fa';
-          zoomPaneContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: #6c757d;">Hover over the image to see zoom</div>';
+        const magnifierRect = magnifier.getBoundingClientRect();
+        const mx = x / container.offsetWidth * magnifierImage.offsetWidth - magnifier.offsetWidth / 2;
+        const my = y / container.offsetHeight * magnifierImage.offsetHeight - magnifier.offsetHeight / 2;
 
-          console.log('🎯 Creating new Drift instance with config:', {
-            paneContainer: zoomPaneContainer,
-            mainImageSrc: mainImage.src
-          });
+        magnifierImage.style.left = `-${mx}px`;
+        magnifierImage.style.top = `-${my}px`;
+      });
 
-          drift = new Drift(mainImage, {
-            paneContainer: zoomPaneContainer,
-            inlinePane: true,
-            inlineOffsetX: 0,
-            inlineOffsetY: 0,
-            hoverBoundingBox: true,
-            touchDelay: 150,
-            containInline: false,
-            zoomFactor: 3,
-            sourceAttribute: 'src',
-            onShow: function() {
-              console.log('✅ Drift zoom showing!');
-              zoomPaneContainer.style.display = 'block';
-            },
-            onHide: function() {
-              console.log('🔒 Drift zoom hiding');
-              zoomPaneContainer.style.display = 'none';
+      container.addEventListener('mouseleave', function () {
+        magnifier.style.display = 'none';
+      });
+    }
+
+    function openFullscreenZoom() {
+      if (fullscreenModal) {
+        fullscreenModal.classList.add('active');
+        currentImageIndex = 0;
+        updateFullscreenImage();
+      }
+    }
+
+    function closeFullscreenZoom() {
+      if (fullscreenModal && fullscreenImage) {
+        fullscreenModal.classList.remove('active');
+        fullscreenImage.classList.remove('zoomed');
+        currentZoomed = false;
+      }
+    }
+
+    function toggleFullscreenZoom() {
+      if (fullscreenImage) {
+        currentZoomed = !currentZoomed;
+        fullscreenImage.classList.toggle('zoomed', currentZoomed);
+      }
+    }
+
+    // Initialize everything
+    function initializeImageZoom() {
+      collectProductImages();
+      setupMagnifier();
+      setupKeyboardNavigation();
+
+      // Add click handler to main image for fullscreen zoom
+      if (mainImage) {
+        mainImage.addEventListener('click', openFullscreenZoom);
+      }
+
+      // Add click handler for fullscreen zoom button if it exists
+      if (fullscreenZoomBtn) {
+        fullscreenZoomBtn.addEventListener('click', toggleFullscreenZoom);
+      }
+
+      // Update magnifier image when main image changes
+      const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+          if (mutation.type === 'attributes' && mutation.attributeName === 'src') {
+            if (magnifierImage) {
+              magnifierImage.src = mainImage.src;
             }
-          });
-
-          console.log('✅ Drift.js initialized successfully!');
-
-          // Test hover events manually
-          mainImage.addEventListener('mouseenter', function() {
-            console.log('🖱️ Mouse entered main image');
-          });
-
-          mainImage.addEventListener('mouseleave', function() {
-            console.log('🖱️ Mouse left main image');
-          });
-
-        } catch (error) {
-          console.error('❌ Error initializing Drift.js:', error);
-        }
-      }
-
-      // Initialize Drift.js
-      initializeDrift();
-
-      // Function to update main image
-      function updateMainImage(index) {
-        console.log('🔄 updateMainImage called with index:', index);
-        if (index >= 0 && index < allImages.length) {
-          currentImageIndex = index;
-          mainImage.src = allImages[index];
-          console.log('✅ Updated main image to:', allImages[index]);
-
-          // Update current image counter
-          if (currentIndexSpan) {
-            currentIndexSpan.textContent = index + 1;
-            console.log('📊 Updated counter to:', index + 1);
           }
-
-          // Update thumbnail active state
-          thumbnails.forEach((thumb, i) => {
-            thumb.classList.toggle('active', i === index);
-          });
-          console.log('🖼️ Updated thumbnail active states');
-
-          // Reinitialize Drift.js for the new image
-          setTimeout(() => {
-            initializeDrift();
-            console.log('🔧 Reinitialized Drift.js');
-          }, 100);
-        }
-      }
-
-      // Thumbnail click handlers
-      thumbnails.forEach((thumbnail, index) => {
-        thumbnail.addEventListener('click', () => {
-          console.log('🖼️ Thumbnail clicked, index:', index);
-          updateMainImage(index);
-        });
-
-        // Add hover effect
-        thumbnail.addEventListener('mouseenter', () => {
-          if (!thumbnail.classList.contains('active')) {
-            thumbnail.style.opacity = '0.7';
-          }
-        });
-
-        thumbnail.addEventListener('mouseleave', () => {
-          thumbnail.style.opacity = '1';
         });
       });
 
-      // Enhanced Navigation Button Handlers
-      console.log('🔧 Setting up navigation button handlers...');
-
-      function setupNavigationButtons() {
-        // Remove any existing event listeners by cloning elements
-        if (prevBtn) {
-          const newPrevBtn = prevBtn.cloneNode(true);
-          prevBtn.parentNode.replaceChild(newPrevBtn, prevBtn);
-
-          newPrevBtn.addEventListener('click', function(e) {
-            console.log('⬅️ PREV BUTTON CLICKED!');
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
-            console.log('📍 Moving from index', currentImageIndex, 'to', newIndex);
-            updateMainImage(newIndex);
-          });
-
-          newPrevBtn.addEventListener('mousedown', function() {
-            console.log('⬅️ Prev button mousedown');
-            this.style.transform = 'scale(0.9)';
-          });
-
-          newPrevBtn.addEventListener('mouseup', function() {
-            console.log('⬅️ Prev button mouseup');
-            this.style.transform = 'scale(1)';
-          });
-
-          console.log('✅ Prev button handler attached');
-        }
-
-        if (nextBtn) {
-          const newNextBtn = nextBtn.cloneNode(true);
-          nextBtn.parentNode.replaceChild(newNextBtn, nextBtn);
-
-          newNextBtn.addEventListener('click', function(e) {
-            console.log('➡️ NEXT BUTTON CLICKED!');
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-
-            const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
-            console.log('📍 Moving from index', currentImageIndex, 'to', newIndex);
-            updateMainImage(newIndex);
-          });
-
-          newNextBtn.addEventListener('mousedown', function() {
-            console.log('➡️ Next button mousedown');
-            this.style.transform = 'scale(0.9)';
-          });
-
-          newNextBtn.addEventListener('mouseup', function() {
-            console.log('➡️ Next button mouseup');
-            this.style.transform = 'scale(1)';
-          });
-
-          console.log('✅ Next button handler attached');
-        }
+      if (mainImage) {
+        observer.observe(mainImage, { attributes: true, attributeFilter: ['src'] });
       }
+    }
 
-      // Setup navigation buttons
-      setupNavigationButtons();
+    // Initialize the image zoom functionality
+    initializeImageZoom();
 
-      // Global click handler as backup
-      document.addEventListener('click', function(e) {
-        const target = e.target.closest('#prev-btn, #next-btn');
-        if (target) {
-          console.log('🎯 Global click detected on:', target.id);
-          e.preventDefault();
-          e.stopPropagation();
-
-          if (target.id === 'prev-btn') {
-            const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
-            updateMainImage(newIndex);
-          } else if (target.id === 'next-btn') {
-            const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
-            updateMainImage(newIndex);
-          }
-        }
-      });
-
-      // Visual test for buttons
-      setTimeout(() => {
-        console.log('🧪 Testing button visibility...');
-        const currentPrevBtn = document.getElementById('prev-btn');
-        const currentNextBtn = document.getElementById('next-btn');
-
-        if (currentPrevBtn) {
-          console.log('✅ Prev button found in DOM');
-          currentPrevBtn.style.border = '3px solid lime';
-          setTimeout(() => currentPrevBtn.style.border = '', 2000);
-        } else {
-          console.log('❌ Prev button NOT found in DOM');
-        }
-
-        if (currentNextBtn) {
-          console.log('✅ Next button found in DOM');
-          currentNextBtn.style.border = '3px solid lime';
-          setTimeout(() => currentNextBtn.style.border = '', 2000);
-        } else {
-          console.log('❌ Next button NOT found in DOM');
-        }
-      }, 1000);
-
-      // Keyboard navigation
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowLeft') {
-          console.log('⌨️ Left arrow key pressed');
-          const newIndex = currentImageIndex > 0 ? currentImageIndex - 1 : allImages.length - 1;
-          updateMainImage(newIndex);
-        } else if (e.key === 'ArrowRight') {
-          console.log('⌨️ Right arrow key pressed');
-          const newIndex = currentImageIndex < allImages.length - 1 ? currentImageIndex + 1 : 0;
-          updateMainImage(newIndex);
-        }
-      });
-
-    }, 500); // End of setTimeout
-
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' && prevBtn) {
-        prevBtn.click();
-      } else if (e.key === 'ArrowRight' && nextBtn) {
-        nextBtn.click();
-      }
+    console.log('New image zoomer initialized with elements:', {
+      mainImage: !!mainImage,
+      magnifier: !!magnifier,
+      magnifierImage: !!magnifierImage,
+      fullscreenModal: !!fullscreenModal,
+      fullscreenImage: !!fullscreenImage,
+      productImages: productImages.length
     });
 
     // Notify Me functionality for out of stock products
@@ -976,44 +862,7 @@
   font-weight: 500;
 }
 
-/* Zoom cursor - moved to Drift.js section */
 
-/* Drift.js Zoom Pane Styles */
-#zoom-pane-container {
-  position: relative;
-  overflow: hidden;
-  transition: all 0.3s ease;
-  background: white;
-  border: 2px solid #dee2e6;
-  border-radius: 8px;
-  min-height: 400px;
-}
-
-.drift-zoom-pane {
-  border: none !important;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  background: white;
-  width: 100% !important;
-  height: 100% !important;
-}
-
-.drift-zoom-pane img {
-  border-radius: 8px;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* Main image hover effect */
-#main-image {
-  transition: transform 0.3s ease;
-  cursor: crosshair;
-}
-
-#main-image:hover {
-  transform: scale(1.02);
-}
 
 /* Stock Status Styles */
 .sold-out-section {
@@ -1058,3 +907,302 @@
   box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
 }
 </style>
+
+
+/* Image Zoomer 27/06/2025 */
+<style>
+  /* Main container for zoomable image */
+  .image-zoom-container {
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Hover magnifier glass */
+  .magnifier {
+    position: absolute;
+    width: 150px;
+    height: 150px;
+    border: 3px solid #111827;
+    border-radius: 50%;
+    background: white;
+    display: none;
+    pointer-events: none;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+  }
+
+  .magnifier-image {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  /* Zoom overlay (if used) */
+  .zoom-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+  }
+
+  .zoom-overlay.active {
+    display: flex;
+  }
+
+  .zoomed-image {
+    max-width: 90%;
+    max-height: 90%;
+    object-fit: contain;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    cursor: zoom-out;
+    transform: scale(1);
+    transition: transform 0.3s ease;
+  }
+
+  .zoomed-image.scaled {
+    transform: scale(2);
+    cursor: move;
+  }
+
+  /* Fullscreen modal zoom container */
+  .fullscreen-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(10px);
+  }
+
+  .fullscreen-modal.active {
+    display: flex;
+  }
+
+  .fullscreen-content {
+    position: relative;
+    max-width: 95vw;
+    max-height: 95vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .fullscreen-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 12px;
+    cursor: zoom-in;
+    transition: transform 0.3s ease;
+  }
+
+  .fullscreen-image.zoomed {
+    cursor: move;
+    transform: scale(2);
+  }
+
+  /* Fullscreen zoom controls (buttons) */
+  .fullscreen-controls {
+    position: absolute;
+    top: 2rem;
+    right: 2rem;
+    display: flex;
+    gap: 1rem;
+    z-index: 10;
+  }
+
+  .zoom-btn {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #111827;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+  }
+
+  .zoom-btn:hover {
+    background: white;
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .zoom-close {
+    background: rgba(239, 68, 68, 0.9);
+    color: white;
+  }
+
+  .zoom-close:hover {
+    background: rgba(239, 68, 68, 1);
+  }
+
+  /* Navigation buttons in fullscreen mode */
+  .fullscreen-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.9);
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #111827;
+    transition: all 0.3s ease;
+    z-index: 10;
+  }
+
+  .fullscreen-nav:hover {
+    background: white;
+    transform: translateY(-50%) scale(1.1);
+  }
+
+  .fullscreen-nav.prev {
+    left: 2rem;
+  }
+
+  .fullscreen-nav.next {
+    right: 2rem;
+  }
+
+  /* Info panel in fullscreen */
+  .fullscreen-info {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 1rem 2rem;
+    border-radius: 25px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+  }
+
+  .image-counter {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+  }
+
+  .image-title {
+    font-weight: 600;
+  }
+
+  /* Mobile-specific adjustments */
+  @media (max-width: 480px) {
+    .magnifier {
+      display: none !important; /* Disable magnifier on mobile */
+    }
+
+    .main-image {
+      cursor: pointer;
+    }
+
+    .fullscreen-controls {
+      top: 1rem;
+      right: 1rem;
+      gap: 0.5rem;
+    }
+
+    .zoom-btn {
+      width: 35px;
+      height: 35px;
+      font-size: 1rem;
+    }
+
+    .fullscreen-nav {
+      width: 40px;
+      height: 40px;
+      font-size: 1.25rem;
+    }
+
+    .fullscreen-nav.prev {
+      left: 1rem;
+    }
+
+    .fullscreen-nav.next {
+      right: 1rem;
+    }
+
+    .fullscreen-info {
+      bottom: 1rem;
+      padding: 0.75rem 1.5rem;
+      border-radius: 20px;
+    }
+
+    .image-counter {
+      font-size: 0.8rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .image-title {
+      font-size: 0.9rem;
+    }
+
+    .fullscreen-content {
+      max-width: 100vw;
+      max-height: 100vh;
+      padding: 1rem;
+    }
+
+    .fullscreen-image {
+      border-radius: 8px;
+    }
+  }
+
+</style>
+
+<!-- Fullscreen Modal for Image Zoom -->
+<div id="fullscreenModal" class="fullscreen-modal">
+  <div class="fullscreen-content">
+    <img id="fullscreenImage" class="fullscreen-image" src="" alt="Fullscreen view">
+
+    <!-- Fullscreen Controls -->
+    <div class="fullscreen-controls">
+      <button id="fullscreenZoomBtn" class="zoom-btn" title="Toggle Zoom">
+        <i class="bi bi-zoom-in"></i>
+      </button>
+      <button class="zoom-btn zoom-close" onclick="document.getElementById('fullscreenModal').classList.remove('active')" title="Close">
+        <i class="bi bi-x"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <button class="fullscreen-nav prev" onclick="previousImage()" title="Previous Image">
+      <i class="bi bi-chevron-left"></i>
+    </button>
+    <button class="fullscreen-nav next" onclick="nextImage()" title="Next Image">
+      <i class="bi bi-chevron-right"></i>
+    </button>
+
+    <!-- Info Panel -->
+    <div class="fullscreen-info">
+      <div id="imageCounter" class="image-counter">1 / 1</div>
+      <div class="image-title"><%= product.productName %></div>
+    </div>
+  </div>
+</div>
