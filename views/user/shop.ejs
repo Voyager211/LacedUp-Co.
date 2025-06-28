@@ -1,6 +1,14 @@
 <% var title = "Shop Sneakers"; %>
 
 <div class="container-fluid">
+      <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Sneakers' }
+    ]
+  }) %>
+
   <div class="row">
     <!-- Sidebar Filters -->
     <aside id="filter-sidebar" class="col-md-3 mb-4" style="display: none;">
@@ -61,13 +69,7 @@
     </aside>
 
 
-    <!-- Breadcrumbs -->
-    <%- include('partials/breadcrumb', {
-      breadcrumbs: [
-        { label: 'Home', href: '/' },
-        { label: 'Sneakers' }
-      ]
-    }) %>
+
 
 
     <!-- Main Section -->
@@ -79,7 +81,7 @@
           <div class="d-flex align-items-center gap-3 flex-wrap">
             <!-- Product Count -->
             <div class="product-count">
-              Products (<span id="product-count"><%= products.length %></span>)
+              Products (<span id="product-count"><%= totalProductCount || products.length %></span>)
             </div>
 
             <!-- View Filters Button -->
@@ -151,9 +153,65 @@
       </div>
 
       <!-- Pagination -->
-      <div id="pagination-wrapper">
-        <%- include('partials/pagination', { currentPage, totalPages }) %>
-      </div>
+      <% if (totalPages > 1) { %>
+        <div class="pagination-wrapper">
+          <div class="pagination">
+            <!-- Previous Button -->
+            <% if (hasPrevPage) { %>
+              <button
+                class="page-btn pagination-btn"
+                data-page="<%= prevPage %>"
+                data-category="<%= selectedCategory %>"
+                data-search="<%= search %>"
+                data-sort="<%= sortBy %>"
+                data-min="<%= minPrice %>"
+                data-max="<%= maxPrice %>">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            <% } else { %>
+              <button class="page-btn" disabled>
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            <% } %>
+
+            <!-- Page Numbers -->
+            <% pageNumbers.forEach(pageNum => { %>
+              <% if (pageNum === currentPage) { %>
+                <button class="page-btn active"><%= pageNum %></button>
+              <% } else { %>
+                <button
+                  class="page-btn pagination-btn"
+                  data-page="<%= pageNum %>"
+                  data-category="<%= selectedCategory %>"
+                  data-search="<%= search %>"
+                  data-sort="<%= sortBy %>"
+                  data-min="<%= minPrice %>"
+                  data-max="<%= maxPrice %>">
+                  <%= pageNum %>
+                </button>
+              <% } %>
+            <% }) %>
+
+            <!-- Next Button -->
+            <% if (hasNextPage) { %>
+              <button
+                class="page-btn pagination-btn"
+                data-page="<%= nextPage %>"
+                data-category="<%= selectedCategory %>"
+                data-search="<%= search %>"
+                data-sort="<%= sortBy %>"
+                data-min="<%= minPrice %>"
+                data-max="<%= maxPrice %>">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            <% } else { %>
+              <button class="page-btn" disabled>
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
     </section>
   </div>
 </div>
@@ -215,58 +273,7 @@
     `).join('');
   }
 
-  // Helper function to render pagination
-  function renderPagination(pagination) {
-    const paginationWrapper = document.getElementById('pagination-wrapper');
-    if (!pagination) {
-      paginationWrapper.innerHTML = '';
-      return;
-    }
 
-    // Always show pagination controls, even for single page
-    const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
-
-    const { currentPage, totalPages, hasNextPage, hasPrevPage } = pagination;
-
-    let paginationHTML = `
-      <nav class="mt-4">
-        <ul class="pagination justify-content-center">
-          <li class="page-item ${!hasPrevPage ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage - 1}">Previous</a>
-          </li>
-    `;
-
-    // Always show at least one page number, even if totalPages is 0 or 1
-    const pagesToShow = Math.max(1, totalPages);
-    for (let i = 1; i <= pagesToShow; i++) {
-      paginationHTML += `
-        <li class="page-item ${i === currentPage ? 'active' : ''}">
-          <a class="page-link" href="#" data-page="${i}">${i}</a>
-        </li>
-      `;
-    }
-
-    paginationHTML += `
-          <li class="page-item ${!hasNextPage ? 'disabled' : ''}">
-            <a class="page-link" href="#" data-page="${currentPage + 1}">Next</a>
-          </li>
-        </ul>
-      </nav>
-    `;
-
-    paginationWrapper.innerHTML = paginationHTML;
-
-    // Add click handlers for pagination
-    paginationWrapper.querySelectorAll('.page-link').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        const page = parseInt(link.dataset.page);
-        if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
-          fetchCallback(page);
-        }
-      });
-    });
-  }
 
   function fetchCallback(page = 1) {
     const params = new URLSearchParams();
@@ -286,17 +293,17 @@
           // Update product grid
           renderProducts(data.products);
 
-          // Update pagination
-          renderPagination(data.pagination);
-
           // Update product count
-          document.getElementById('product-count').textContent = data.pagination.totalProducts || data.products.length;
+          document.getElementById('product-count').textContent = data.totalProductCount || data.pagination.totalProducts || data.products.length;
 
           // Show/hide no results message
           document.getElementById('no-results').classList.toggle('d-none', data.products.length > 0);
 
           // Push state to browser history
           history.pushState(null, '', `/shop?${params.toString()}`);
+
+          // Note: Pagination is now handled by the custom implementation
+          // The page will reload with new pagination state
         }
       })
       .catch(err => {
@@ -656,19 +663,166 @@
     // Initialize clear button state
     toggleTopClearButton();
 
-    // Always initialize pagination controls
-    const initialPagination = {
-      currentPage: <%= currentPage %>,
-      totalPages: <%= totalPages %>,
-      hasNextPage: <%= currentPage < totalPages %>,
-      hasPrevPage: <%= currentPage > 1 %>,
-      totalProducts: <%= products.length %>
-    };
-
-    // Always render pagination controls, even for single page or few products
-    renderPagination(initialPagination);
+    // Pagination is now handled by the custom implementation in the HTML
   });
 </script>
+
+<!-- Custom Pagination JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const paginationContainer = document.querySelector('.pagination-wrapper');
+  const productGrid = document.getElementById('product-grid');
+
+  if (paginationContainer) {
+    paginationContainer.addEventListener('click', async (e) => {
+      if (e.target.closest('.pagination-btn')) {
+        const btn = e.target.closest('.pagination-btn');
+
+        const page = btn.dataset.page || 1;
+        const category = btn.dataset.category || '';
+        const search = btn.dataset.search || '';
+        const sort = btn.dataset.sort || '';
+        const minPrice = btn.dataset.min || '';
+        const maxPrice = btn.dataset.max || '';
+
+        try {
+          const url = `/shop?page=${page}&category=${category}&search=${search}&sort=${sort}&minPrice=${minPrice}&maxPrice=${maxPrice}`;
+
+          const res = await fetch(url, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          if (!res.ok) throw new Error('Failed to fetch products');
+
+          const html = await res.text();
+
+          // Replace the product grid and pagination content
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+
+          const newGrid = temp.querySelector('#product-grid');
+          const newPagination = temp.querySelector('.pagination-wrapper');
+
+          if (newGrid && productGrid) {
+            productGrid.innerHTML = newGrid.innerHTML;
+          }
+
+          if (newPagination && paginationContainer) {
+            paginationContainer.innerHTML = newPagination.innerHTML;
+          }
+
+        } catch (err) {
+          console.error('Pagination fetch error:', err);
+        }
+      }
+    });
+  }
+});
+</script>
+
+<style>
+/* Custom Pagination Styles */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Red hover effect for enabled buttons */
+.page-btn:not(:disabled):not(.active):hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+}
+
+/* Active page styling */
+.page-btn.active {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn.active:hover {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Disabled button styles */
+.page-btn:disabled {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-btn:disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon spacing */
+.page-btn i {
+  font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .page-btn {
+    min-width: 35px;
+    height: 35px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .page-btn i {
+    font-size: 0.8em;
+  }
+
+  .pagination {
+    gap: 0.25rem;
+  }
+}
+</style>
 
 <style>
 /* Filter Sidebar Toggle Styles */

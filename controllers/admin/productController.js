@@ -12,6 +12,9 @@ exports.listProducts = async (req, res) => {
     const limit = 10;
     const query = { productName: { $regex: q, $options: 'i' }, isDeleted: false };
 
+    // Get total count of all non-deleted products
+    const totalProductCount = await Product.countDocuments({ isDeleted: false });
+
     const { data: products, totalPages } = await getPagination(
       Product.find(query).populate('category').sort({ createdAt: -1 }),
       Product,
@@ -27,6 +30,7 @@ exports.listProducts = async (req, res) => {
       currentPage: page,
       totalPages,
       searchQuery: q,
+      totalProductCount,
       title: "Product Management"
     });
   } catch (err) {
@@ -186,6 +190,9 @@ exports.apiProducts = async (req, res) => {
       }
     }
 
+    // Get total count of all non-deleted products
+    const totalProductCount = await Product.countDocuments({ isDeleted: false });
+
     const { data: products, totalPages } = await getPagination(
       Product.find(query).populate('category').sort(sortQuery),
       Product,
@@ -193,7 +200,7 @@ exports.apiProducts = async (req, res) => {
       page,
       limit
     );
-    res.json({ products, totalPages, currentPage: page });
+    res.json({ products, totalPages, currentPage: page, totalProductCount });
   } catch (err) {
     console.error('Fetch Products Error:', err);
     res.status(500).json({ success: false });

@@ -21,7 +21,15 @@
 
       <div class="mb-3">
         <label for="password" class="form-label">Password</label>
-        <input type="password" class="form-control" id="password" name="password" required>
+        <div class="position-relative">
+          <input type="password" class="form-control pe-5" id="password" name="password" required>
+          <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y me-2 p-0 password-toggle-btn"
+                  id="admin-password-toggle"
+                  aria-label="Toggle password visibility"
+                  style="border: none; background: none; color: #6c757d; z-index: 5;">
+            <i class="bi bi-eye-slash" id="admin-password-toggle-icon"></i>
+          </button>
+        </div>
       </div>
 
       <div class="form-check mb-3">
@@ -33,3 +41,41 @@
     </form>
   </div>
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Password visibility toggle functionality
+    const passwordToggle = document.getElementById('admin-password-toggle');
+    const passwordInput = document.getElementById('password');
+    const passwordToggleIcon = document.getElementById('admin-password-toggle-icon');
+
+    if (passwordToggle && passwordInput && passwordToggleIcon) {
+      passwordToggle.addEventListener('click', function() {
+        const isPassword = passwordInput.type === 'password';
+
+        // Toggle input type
+        passwordInput.type = isPassword ? 'text' : 'password';
+
+        // Toggle icon
+        if (isPassword) {
+          passwordToggleIcon.classList.remove('bi-eye-slash');
+          passwordToggleIcon.classList.add('bi-eye');
+          passwordToggle.setAttribute('aria-label', 'Hide password');
+        } else {
+          passwordToggleIcon.classList.remove('bi-eye');
+          passwordToggleIcon.classList.add('bi-eye-slash');
+          passwordToggle.setAttribute('aria-label', 'Show password');
+        }
+      });
+
+      // Add hover effect
+      passwordToggle.addEventListener('mouseenter', function() {
+        this.style.color = '#dc3545';
+      });
+
+      passwordToggle.addEventListener('mouseleave', function() {
+        this.style.color = '#6c757d';
+      });
+    }
+  });
+</script>

@@ -74,9 +74,9 @@
   </div>
 
   <!-- Pagination -->
-  <nav class="d-flex justify-content-center mt-4">
-    <ul class="pagination" id="pagination-container"></ul>
-  </nav>
+  <div id="pagination-wrapper">
+    <%- include('partials/pagination', { currentPage, totalPages }) %>
+  </div>
 
   <!-- Edit Modal Template (Dynamic Injection) -->
   <div id="edit-modals-container"></div>
@@ -196,13 +196,113 @@ document.addEventListener('DOMContentLoaded', () => {
       }, 100);
     });
 
-    paginationContainer.innerHTML = '';
-    for (let i = 1; i <= data.totalPages; i++) {
-      paginationContainer.innerHTML += `
-        <li class="page-item ${i === data.currentPage ? 'active' : ''}">
-          <a class="page-link" href="#" data-page="${i}">${i}</a>
-        </li>`;
+    // Render enhanced pagination
+    const paginationWrapper = document.getElementById('pagination-wrapper');
+    if (!paginationWrapper) return;
+
+    if (data.totalPages <= 1) {
+      paginationWrapper.innerHTML = '';
+      return;
     }
+
+    let paginationHTML = `
+      <nav class="mt-4">
+        <ul class="pagination justify-content-center" id="pagination-container">
+          <!-- Previous Button -->
+          <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link pagination-btn ${data.currentPage === 1 ? 'disabled-btn' : ''}"
+               href="#"
+               data-page="${data.currentPage - 1}"
+               ${data.currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
+              <i class="bi bi-chevron-left"></i> Previous
+            </a>
+          </li>
+
+          <!-- Page Numbers -->
+    `;
+
+    for (let i = 1; i <= data.totalPages; i++) {
+      paginationHTML += `
+        <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+          <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+        </li>
+      `;
+    }
+
+    paginationHTML += `
+          <!-- Next Button -->
+          <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
+            <a class="page-link pagination-btn ${data.currentPage === data.totalPages ? 'disabled-btn' : ''}"
+               href="#"
+               data-page="${data.currentPage + 1}"
+               ${data.currentPage === data.totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
+              Next <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <!-- Enhanced Pagination Styles -->
+      <style>
+        .pagination {
+          margin-bottom: 0;
+        }
+
+        .pagination .page-item.active .page-link {
+          background-color: #1a1a1a;
+          border-color: #1a1a1a;
+          color: white;
+          font-weight: 600;
+        }
+
+        .pagination .page-link {
+          color: #333;
+          border: 1px solid #dee2e6;
+          border-radius: 6px;
+          margin: 0 2px;
+          padding: 8px 12px;
+          font-weight: 500;
+          transition: all 0.3s ease;
+          text-decoration: none;
+        }
+
+        /* Red hover effect for enabled buttons */
+        .pagination .page-link:not(.disabled-btn):hover {
+          background-color: #e03a2f;
+          border-color: #e03a2f;
+          color: white;
+          transform: translateY(-1px);
+          box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+        }
+
+        /* Disabled button styles */
+        .pagination .page-item.disabled .page-link,
+        .pagination .page-link.disabled-btn {
+          color: #6c757d;
+          background-color: #f8f9fa;
+          border-color: #dee2e6;
+          cursor: not-allowed;
+          opacity: 0.6;
+          pointer-events: none;
+        }
+
+        /* Active page styling */
+        .pagination .page-item.active .page-link:hover {
+          background-color: #1a1a1a;
+          border-color: #1a1a1a;
+          color: white;
+          transform: none;
+          box-shadow: none;
+        }
+
+        /* Icon spacing */
+        .pagination .page-link i {
+          font-size: 0.9em;
+        }
+      </style>
+    `;
+
+    paginationWrapper.innerHTML = paginationHTML;
   }
 
   fetchCategories(searchInput.value);
@@ -215,13 +315,24 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchCategories(searchInput.value);
   });
 
-  paginationContainer.addEventListener('click', (e) => {
-    if (e.target.tagName === 'A') {
-      e.preventDefault();
-      const page = parseInt(e.target.dataset.page);
-      fetchCategories(searchInput.value, page);
-    }
+  // Enhanced pagination click handler
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('.page-link');
+    if (!target || !target.dataset.page || target.classList.contains('disabled-btn')) return;
+
+    e.preventDefault();
+    const page = parseInt(target.dataset.page);
+
+    // Validate page number
+    if (isNaN(page) || page < 1) return;
+
+    fetchCategories(searchInput.value, page);
   });
+
+  // Set up global pagination callback for reusable component
+  window.paginationCallback = function(page) {
+    fetchCategories(searchInput.value, page);
+  };
 
   // Override add category form submission with validation
   addCategoryValidator.submitForm = async function() {

@@ -157,6 +157,33 @@ body > .d-flex {
   height: 1.1em;
 }
 
+/* ========= PASSWORD TOGGLE BUTTON ========= */
+.password-toggle-btn {
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-btn:hover {
+  color: #dc3545 !important;
+  transform: scale(1.1);
+}
+
+.password-toggle-btn:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.password-toggle-btn:active {
+  transform: scale(0.95);
+}
+
 /* Avatar circles */
 .avatar-circle {
   width: 36px;

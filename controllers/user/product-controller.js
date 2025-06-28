@@ -138,7 +138,8 @@ exports.getProducts = async (req, res) => {
         currentPage: page,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1
-      }
+      },
+      totalProductCount: totalProducts
     });
   } catch (err) {
     console.error('Error in getProducts:', err);
@@ -163,30 +164,132 @@ exports.loadShopPage = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
 
-    // Filter products to only include those from active categories
+    // Extract filter parameters from query
+    const selectedCategory = req.query.category || '';
+    const search = req.query.q || req.query.search || '';
+    const sortBy = req.query.sort || 'newest';
+    const minPrice = req.query.minPrice || '';
+    const maxPrice = req.query.maxPrice || '';
+
+    // Build filter based on query parameters
     const filter = {
       isDeleted: false,
       isListed: true,
       category: { $in: activeCategoryIds }
     };
 
+    // Apply search filter
+    if (search) {
+      filter.$or = [
+        { productName: { $regex: search, $options: 'i' } },
+        { brand: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Apply category filter
+    if (selectedCategory) {
+      filter.category = selectedCategory;
+    }
+
+    // Apply price range filter
+    if (minPrice || maxPrice) {
+      filter.salePrice = {};
+      if (minPrice) filter.salePrice.$gte = parseFloat(minPrice);
+      if (maxPrice) filter.salePrice.$lte = parseFloat(maxPrice);
+    }
+
+    // Build sort query
+    const sortMap = {
+      'priceLow': { salePrice: 1 },
+      'priceHigh': { salePrice: -1 },
+      'nameAZ': { productName: 1 },
+      'nameZA': { productName: -1 },
+      'newest': { createdAt: -1 },
+      'featured': { isFeatured: -1, createdAt: -1 },
+      'popularity': { sold: -1 },
+      'rating': { averageRating: -1 }
+    };
+    const sortQuery = sortMap[sortBy] || sortMap['newest'];
+
+    // Get total count of products matching filters
+    const totalProductCount = await Product.countDocuments(filter);
+
     const { data: paginatedProducts, totalPages } = await getPagination(
-      Product.find(filter).populate('category').sort({ createdAt: -1 }),
+      Product.find(filter).populate('category').sort(sortQuery),
       Product,
       filter,
       page,
       limit
     );
 
+    // Calculate pagination variables
+    const hasPrevPage = page > 1;
+    const hasNextPage = page < totalPages;
+    const prevPage = hasPrevPage ? page - 1 : null;
+    const nextPage = hasNextPage ? page + 1 : null;
+
+    // Generate page numbers array (show up to 5 pages around current page)
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+    // Adjust start page if we're near the end
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    // Check if this is an AJAX request for pagination
+    if (req.headers['x-requested-with'] === 'XMLHttpRequest') {
+      // For AJAX requests, render the page and return HTML
+      return res.render('user/shop', {
+        title: 'Shop Sneakers',
+        layout: 'user/layouts/user-layout',
+        active: 'shop',
+        categories,
+        brands,
+        products: paginatedProducts,
+        currentPage: page,
+        totalPages,
+        hasPrevPage,
+        hasNextPage,
+        prevPage,
+        nextPage,
+        pageNumbers,
+        selectedCategory,
+        search,
+        sortBy,
+        minPrice,
+        maxPrice,
+        totalProductCount
+      });
+    }
+
+    // For regular requests, render normally
     res.render('user/shop', {
       title: 'Shop Sneakers',
       layout: 'user/layouts/user-layout',
       active: 'shop',
       categories,
       brands,
-      products: paginatedProducts, // renamed correctly
+      products: paginatedProducts,
       currentPage: page,
-      totalPages
+      totalPages,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+      pageNumbers,
+      selectedCategory,
+      search,
+      sortBy,
+      minPrice,
+      maxPrice,
+      totalProductCount
     });
   } catch (err) {
     console.error('❌ Error loading shop page:', err);

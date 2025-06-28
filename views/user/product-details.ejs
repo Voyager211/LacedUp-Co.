@@ -446,6 +446,104 @@
     // Initialize the image zoom functionality
     initializeImageZoom();
 
+    // Add navigation functionality for main gallery view
+    function setupMainGalleryNavigation() {
+      const prevBtn = document.getElementById('prev-btn');
+      const nextBtn = document.getElementById('next-btn');
+      const currentIndexSpan = document.getElementById('current-image-index');
+      const thumbnails = document.querySelectorAll('.thumbnail-image');
+
+      let currentMainImageIndex = 0;
+
+      // Function to update main image and related elements
+      function updateMainImage(index) {
+        if (index >= 0 && index < productImages.length) {
+          currentMainImageIndex = index;
+
+          // Update main image
+          if (mainImage) {
+            mainImage.src = productImages[index];
+          }
+
+          // Update magnifier image
+          if (magnifierImage) {
+            magnifierImage.src = productImages[index];
+          }
+
+          // Update image counter
+          if (currentIndexSpan) {
+            currentIndexSpan.textContent = index + 1;
+          }
+
+          // Update thumbnail active states
+          thumbnails.forEach((thumb, i) => {
+            thumb.classList.toggle('active', i === index);
+          });
+
+          // Update fullscreen modal current index
+          currentImageIndex = index;
+
+          console.log('Main gallery image updated to index:', index);
+        }
+      }
+
+      // Previous button handler
+      if (prevBtn) {
+        prevBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Main gallery: Previous button clicked');
+          const newIndex = currentMainImageIndex > 0 ? currentMainImageIndex - 1 : productImages.length - 1;
+          updateMainImage(newIndex);
+        });
+      }
+
+      // Next button handler
+      if (nextBtn) {
+        nextBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Main gallery: Next button clicked');
+          const newIndex = currentMainImageIndex < productImages.length - 1 ? currentMainImageIndex + 1 : 0;
+          updateMainImage(newIndex);
+        });
+      }
+
+      // Thumbnail click handlers
+      thumbnails.forEach((thumbnail, index) => {
+        thumbnail.addEventListener('click', function() {
+          console.log('Main gallery: Thumbnail clicked, index:', index);
+          updateMainImage(index);
+        });
+      });
+
+      // Keyboard navigation for main gallery
+      document.addEventListener('keydown', function(e) {
+        // Only handle keyboard navigation if not in fullscreen mode
+        if (!fullscreenModal || !fullscreenModal.classList.contains('active')) {
+          if (e.key === 'ArrowLeft') {
+            console.log('Main gallery: Left arrow key pressed');
+            const newIndex = currentMainImageIndex > 0 ? currentMainImageIndex - 1 : productImages.length - 1;
+            updateMainImage(newIndex);
+          } else if (e.key === 'ArrowRight') {
+            console.log('Main gallery: Right arrow key pressed');
+            const newIndex = currentMainImageIndex < productImages.length - 1 ? currentMainImageIndex + 1 : 0;
+            updateMainImage(newIndex);
+          }
+        }
+      });
+
+      console.log('Main gallery navigation setup complete:', {
+        prevBtn: !!prevBtn,
+        nextBtn: !!nextBtn,
+        thumbnails: thumbnails.length,
+        productImages: productImages.length
+      });
+    }
+
+    // Setup main gallery navigation
+    setupMainGalleryNavigation();
+
     console.log('New image zoomer initialized with elements:', {
       mainImage: !!mainImage,
       magnifier: !!magnifier,
@@ -909,8 +1007,9 @@
 </style>
 
 
-/* Image Zoomer 27/06/2025 */
+
 <style>
+  /* Image Zoomer 27/06/2025 */
   /* Main container for zoomable image */
   .image-zoom-container {
     position: relative;
