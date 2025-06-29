@@ -4,6 +4,7 @@ const sendOtp = require('../../utils/sendOtp');
 const passport = require('passport');
 
 exports.getSignup = (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/home');
   res.render('user/auth/signup', {
     title: 'Sign Up',
     layout: 'user/layouts/auth-layout'
@@ -60,9 +61,18 @@ exports.postSignup = async (req, res) => {
 };
 
 exports.getLogin = (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/home');
+
+  // Handle error messages from URL parameters (fallback when flash is unavailable)
+  let errorMessage = null;
+  if (req.query.error) {
+    errorMessage = decodeURIComponent(req.query.error);
+  }
+
   res.render('user/auth/login', {
     title: 'Login',
-    layout: 'user/layouts/auth-layout'
+    layout: 'user/layouts/auth-layout',
+    errorMessage: errorMessage
   });
 };
 

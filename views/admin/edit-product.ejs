@@ -2,6 +2,12 @@
 
 <div class="container my-4">
 
+  <% if (message && message.length > 0) { %>
+    <div class="alert alert-danger" role="alert">
+      <%= message %>
+    </div>
+  <% } %>
+
   <form id="edit-product-form" novalidate>
     <!-- Basic Info -->
     <div class="border rounded p-4 mb-4 bg-light-subtle">
@@ -73,9 +79,21 @@
         </ul>
       </div>
       <div class="mb-3">
-        <label class="form-label">Upload Images (Min: 3)</label>
-        <input type="file" id="image-input" accept="image/*" multiple class="form-control">
+        <label class="form-label">Product Images (Min: 3, Max: 6)</label>
+
+        <!-- Bulk upload button -->
+        <div class="mb-3">
+          <button type="button" id="bulk-upload-btn" class="btn btn-outline-dark">
+            <i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)
+          </button>
+          <small class="text-muted ms-2">Select multiple images at once, or use the '+' placeholders below for individual uploads</small>
+        </div>
+
+        <!-- Hidden file inputs -->
+        <input type="file" id="image-input" accept="image/*" class="d-none">
+        <input type="file" id="bulk-input" accept="image/*" multiple class="d-none">
         <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+
         <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
       </div>
     </div>
@@ -241,6 +259,69 @@
     transform: scale(0.95);
   }
 
+  /* Image placeholder styles */
+  .image-placeholder {
+    cursor: pointer;
+    border: 3px dashed #dee2e6 !important;
+    background: #f8f9fa !important;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover {
+    border-color: #dc3545 !important;
+    background: #fff5f5 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+  }
+
+  .placeholder-content {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content {
+    color: #dc3545;
+  }
+
+  .placeholder-content i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content i {
+    transform: scale(1.1);
+  }
+
+  /* Bulk upload button styles */
+  #bulk-upload-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  #bulk-upload-btn:hover {
+    background-color: #212529;
+    border-color: #212529;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  #bulk-upload-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+
   /* ========= OPTIMIZED CROPPER MODAL ========= */
   .cropper-modal-custom {
     max-width: 1200px;
@@ -356,15 +437,63 @@
 </style>
 
 <script src="/js/validation.js"></script>
+<script src="/utils/imageValidation.js"></script>
 <script>
   const productId = "<%= product._id %>";
+  const input = document.getElementById('image-input');
+  const bulkInput = document.getElementById('bulk-input');
+  const bulkUploadBtn = document.getElementById('bulk-upload-btn');
   const container = document.getElementById('image-preview-container');
   const mainIndexInput = document.getElementById('mainImageIndex');
-  const input = document.getElementById('image-input');
+  let imageFiles = [];
   let base64Images = [];
+  let cropper;
+  let cropModal;
+
   let filesToCrop = [];
   let currentFileIndex = 0;
-  let cropper;
+  let currentUploadSlot = -1; // Track which slot is being uploaded to
+  let isProcessingBulk = false; // Track bulk upload state
+  const MAX_IMAGES = 6;
+  const MIN_IMAGES = 3;
+
+  // Validation error display functions
+  function showValidationErrors(errors) {
+    const errorContainer = document.getElementById('validation-errors') || createErrorContainer();
+    errorContainer.innerHTML = '';
+
+    errors.forEach(error => {
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'alert alert-danger alert-dismissible fade show';
+      errorDiv.innerHTML = `
+        ${error}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      `;
+      errorContainer.appendChild(errorDiv);
+    });
+
+    errorContainer.style.display = 'block';
+  }
+
+  function clearValidationErrors() {
+    const errorContainer = document.getElementById('validation-errors');
+    if (errorContainer) {
+      errorContainer.style.display = 'none';
+      errorContainer.innerHTML = '';
+    }
+  }
+
+  function createErrorContainer() {
+    const container = document.createElement('div');
+    container.id = 'validation-errors';
+    container.style.marginBottom = '1rem';
+
+    // Insert before the image preview container
+    const imageContainer = document.getElementById('image-preview-container');
+    imageContainer.parentNode.insertBefore(container, imageContainer);
+
+    return container;
+  }
 
   // Prefill existing images
   const existingMain = "<%= product.mainImage %>";
@@ -387,11 +516,141 @@
       });
 });
 
+  // Individual upload handler (enhanced)
   input.addEventListener('change', (e) => {
-    filesToCrop = Array.from(e.target.files);
-    currentFileIndex = 0;
-    cropNextImage();
+    const file = e.target.files[0]; // Single file selection
+
+    if (!file) return;
+
+    // Check maximum images limit
+    if (base64Images.length >= MAX_IMAGES) {
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate the selected file
+    const validation = ImageValidator.validateImageFile(file);
+
+    if (!validation.isValid) {
+      // Show validation errors
+      showValidationErrors([`${file.name}: ${validation.message}`]);
+      // Clear the input
+      e.target.value = '';
+      return;
+    }
+
+    // Clear any previous validation errors
+    clearValidationErrors();
+
+    // Process single file
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        // Image processing is handled by the crop save handler
+        // Just clean up after cropping is complete
+        e.target.value = '';
+        currentUploadSlot = -1;
+      });
+    };
+    reader.readAsDataURL(file);
   });
+
+  // Function to trigger file selection for a specific slot
+  function selectImageForSlot(slotIndex = -1) {
+    currentUploadSlot = slotIndex;
+    input.click();
+  }
+
+  // Bulk upload button event listener
+  bulkUploadBtn.addEventListener('click', () => {
+    if (isProcessingBulk) {
+      showValidationErrors(['Please wait for the current upload to complete.']);
+      return;
+    }
+    bulkInput.click();
+  });
+
+  // Bulk input change handler
+  bulkInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+
+    if (!files.length) return;
+
+    // Check if adding these files would exceed maximum
+    let filesToProcess = files;
+    if (base64Images.length + files.length > MAX_IMAGES) {
+      const availableSlots = MAX_IMAGES - base64Images.length;
+      if (availableSlots <= 0) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        e.target.value = '';
+        return;
+      }
+
+      filesToProcess = files.slice(0, availableSlots);
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed. Only the first ${availableSlots} images have been selected.`]);
+    }
+
+    // Validate all selected files
+    const validation = ImageValidator.validateMultipleImageFiles(filesToProcess);
+
+    if (!validation.isValid) {
+      // Show validation errors but continue with valid files if any
+      showValidationErrors(validation.errors);
+      if (validation.validFiles.length === 0) {
+        e.target.value = '';
+        return;
+      }
+      filesToProcess = validation.validFiles;
+    } else {
+      // Clear any previous validation errors
+      clearValidationErrors();
+    }
+
+    // Start bulk processing
+    processBulkUpload(filesToProcess);
+
+    // Clear the input for next use
+    e.target.value = '';
+  });
+
+  // Bulk upload processing function
+  function processBulkUpload(files) {
+    if (files.length === 0) return;
+
+    isProcessingBulk = true;
+    filesToCrop = files;
+    currentFileIndex = 0;
+
+    // Update button state
+    bulkUploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    bulkUploadBtn.disabled = true;
+
+    // Start processing first image
+    cropNextBulkImage();
+  }
+
+  function cropNextBulkImage() {
+    if (currentFileIndex >= filesToCrop.length) {
+      // Bulk processing complete
+      isProcessingBulk = false;
+      bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
+      bulkUploadBtn.disabled = false;
+      filesToCrop = [];
+      currentFileIndex = 0;
+      return;
+    }
+
+    const file = filesToCrop[currentFileIndex];
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        currentFileIndex++;
+        cropNextBulkImage(); // Process next image
+      });
+    };
+    reader.readAsDataURL(file);
+  }
 
   function cropNextImage() {
     if (currentFileIndex >= filesToCrop.length) return;
@@ -494,14 +753,24 @@
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
       }).toDataURL('image/jpeg', 0.9);
-      base64Images.push(cropped);
+
+      if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
+        // Replace existing image (re-cropping)
+        base64Images[currentUploadSlot] = cropped;
+      } else {
+        // Add new image
+        base64Images.push(cropped);
+      }
+
       renderThumbnails();
       cropModal.hide();
+
       modalEl.addEventListener('hidden.bs.modal', () => {
         modalEl.remove();
         const backdrop = document.querySelector('.modal-backdrop');
         if (backdrop) backdrop.remove();
-        if (typeof onCropDone === 'function') onCropDone();
+
+        if (typeof onCropDone === 'function') onCropDone(); // Execute callback
       });
     };
   }
@@ -509,68 +778,80 @@
   function renderThumbnails() {
     container.innerHTML = '';
 
-    for (let i = 0; i < 3; i++) {
+    // Render existing images
+    base64Images.forEach((img, index) => {
       const wrapper = document.createElement('div');
       wrapper.classList.add('image-wrapper');
+      if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
 
-      if (base64Images[i]) {
-        // Image exists in slot
-        wrapper.innerHTML = `
-          <img src="${base64Images[i]}" />
-          <button type="button" class="btn-remove" onclick="removeImage(${i})">×</button>
-          <button type="button" class="btn-main ${mainIndexInput.value == i ? 'active' : ''}" onclick="setMainImage(${i})">&#9733;</button>
-          <button type="button" class="btn-crop" onclick="reCropImage(${i})"><i class='bi bi-scissors'></i></button>
-        `;
-        if (parseInt(mainIndexInput.value) === i) {
-          wrapper.classList.add('main');
-        }
-      } else {
-        // Empty slot with "+" icon
-        wrapper.innerHTML = `
-          <div class="add-slot d-flex justify-content-center align-items-center h-100" onclick="addImageToSlot(${i})" title="Click to upload image">
-            <i class="bi bi-plus-lg fs-2 text-muted"></i>
-          </div>
-        `;
-      }
-
+      wrapper.innerHTML = `
+        <img src="${img}" />
+        <button class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button class="btn-crop" onclick="recropImage(${index})" title="Re-crop image"><i class="bi bi-scissors"></i></button>
+        <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+      `;
       container.appendChild(wrapper);
+    });
+
+    // Add placeholders based on current state
+    const currentImageCount = base64Images.length;
+
+    if (currentImageCount < MIN_IMAGES) {
+      // Show placeholders to reach minimum requirement
+      const placeholdersNeeded = MIN_IMAGES - currentImageCount;
+      for (let i = 0; i < placeholdersNeeded; i++) {
+        addPlaceholder();
+      }
+    } else if (currentImageCount >= MIN_IMAGES && currentImageCount < MAX_IMAGES) {
+      // After minimum met: show 1 additional placeholder
+      addPlaceholder();
     }
+    // If currentImageCount >= MAX_IMAGES, show no placeholders
   }
 
-function addImageToSlot(slotIndex) {
-  input.value = ''; // Reset input to allow re-uploading same file
-  input.click();
+  function addPlaceholder() {
+    const placeholder = document.createElement('div');
+    placeholder.classList.add('image-wrapper', 'image-placeholder');
+    placeholder.innerHTML = `
+      <div class="placeholder-content">
+        <i class="bi bi-plus-lg"></i>
+        <span>Add Image</span>
+      </div>
+    `;
 
-  input.onchange = () => {
-    const file = input.files[0];
-    if (!file) return;
+    // Add click handler to trigger file selection
+    placeholder.addEventListener('click', () => {
+      if (base64Images.length >= MAX_IMAGES) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        return;
+      }
+      selectImageForSlot(-1); // -1 indicates new image, not replacement
+    });
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      showCropModal(reader.result, () => {
-        base64Images[slotIndex] = cropper.getCroppedCanvas({
-          width: 800,
-          height: 800,
-          imageSmoothingEnabled: true,
-          imageSmoothingQuality: 'high'
-        }).toDataURL('image/jpeg', 0.9);
-        renderThumbnails();
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-}
+    container.appendChild(placeholder);
+  }
 
-  function reCropImage(index) {
+  function setMainImage(index) {
+    mainIndexInput.value = index;
+    renderThumbnails();
+  }
+
+  function removeImage(index) {
+    base64Images.splice(index, 1);
+    if (mainIndexInput.value == index) mainIndexInput.value = '';
+    renderThumbnails();
+  }
+
+  function recropImage(index) {
+    if (index < 0 || index >= base64Images.length) return;
+
+    // Set the current upload slot to the index being re-cropped
+    currentUploadSlot = index;
+
+    // Open crop modal with the existing image
     showCropModal(base64Images[index], () => {
-      const cropped = cropper.getCroppedCanvas({
-        width: 800,
-        height: 800,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
-      }).toDataURL('image/jpeg', 0.9);
-      base64Images[index] = cropped;
-      renderThumbnails();
+      // Reset upload slot after re-cropping
+      currentUploadSlot = -1;
     });
   }
 
@@ -594,6 +875,17 @@ function addImageToSlot(slotIndex) {
   editProductValidator.submitForm = async function() {
     const form = document.getElementById('edit-product-form');
     const formData = new FormData(form);
+
+    // Validate minimum image requirement
+    if (base64Images.length < MIN_IMAGES) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Images Required',
+        text: `Please upload at least ${MIN_IMAGES} images for the product.`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
 
     base64Images.forEach((b64, i) => {
       formData.append('base64Images', b64);
@@ -631,4 +923,10 @@ function addImageToSlot(slotIndex) {
       });
     }
   };
+
+  // Initialize the interface with placeholders on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    renderThumbnails();
+  });
+
 </script>

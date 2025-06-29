@@ -13,16 +13,16 @@
       </div>
     <% } %>
 
-    <form method="POST" action="/admin/login">
+    <form method="POST" action="/admin/login" novalidate>
       <div class="mb-3">
         <label for="email" class="form-label">Email address</label>
-        <input type="email" class="form-control" id="email" name="email" required>
+        <input type="email" class="form-control" id="email" name="email" value="<%= formData.email || '' %>">
       </div>
 
       <div class="mb-3">
         <label for="password" class="form-label">Password</label>
         <div class="position-relative">
-          <input type="password" class="form-control pe-5" id="password" name="password" required>
+          <input type="password" class="form-control pe-5" id="password" name="password">
           <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y me-2 p-0 password-toggle-btn"
                   id="admin-password-toggle"
                   aria-label="Toggle password visibility"
@@ -33,7 +33,7 @@
       </div>
 
       <div class="form-check mb-3">
-        <input type="checkbox" class="form-check-input" id="remember" name="remember">
+        <input type="checkbox" class="form-check-input" id="remember" name="remember" <%= formData.remember ? 'checked' : '' %>>
         <label class="form-check-label" for="remember">Remember me</label>
       </div>
 

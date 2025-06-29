@@ -88,10 +88,8 @@ class FormValidator {
     else if (value) {
       switch (fieldName.toLowerCase()) {
         case 'name':
-        case 'productname':
         case 'categoryname':
         case 'brand':
-        case 'features':
           const nameValidation = this.validateName(value);
           if (!nameValidation.isValid) {
             errorMessage = nameValidation.message;
@@ -99,6 +97,26 @@ class FormValidator {
           } else {
             // Auto-capitalize name
             input.value = this.capitalizeName(value);
+          }
+          break;
+
+        case 'productname':
+          const productNameValidation = this.validateProductName(value);
+          if (!productNameValidation.isValid) {
+            errorMessage = productNameValidation.message;
+            isValid = false;
+          } else {
+            // Auto-capitalize product name
+            input.value = this.capitalizeName(value);
+          }
+          break;
+
+        case 'features':
+          // Features field accepts any text content - no validation constraints
+          // Just ensure minimum length for meaningful content
+          if (value.length < 3) {
+            errorMessage = 'Features should be at least 3 characters long';
+            isValid = false;
           }
           break;
 
@@ -168,15 +186,30 @@ class FormValidator {
   validateName(value) {
     // Only alphabetic characters and spaces, minimum 2 characters
     const nameRegex = /^[a-zA-Z\s]+$/;
-    
+
     if (value.length < 2) {
       return { isValid: false, message: 'Name must be at least 2 characters long' };
     }
-    
+
     if (!nameRegex.test(value)) {
       return { isValid: false, message: 'Name should contain only alphabetic characters and spaces' };
     }
-    
+
+    return { isValid: true };
+  }
+
+  validateProductName(value) {
+    // Alphanumeric characters, spaces, and common product symbols, minimum 2 characters
+    const productNameRegex = /^[a-zA-Z0-9\s\-\+\&\(\)\.]+$/;
+
+    if (value.length < 2) {
+      return { isValid: false, message: 'Product name must be at least 2 characters long' };
+    }
+
+    if (!productNameRegex.test(value)) {
+      return { isValid: false, message: 'Product name should contain only letters, numbers, spaces, and common symbols (-, +, &, (), .)' };
+    }
+
     return { isValid: true };
   }
 

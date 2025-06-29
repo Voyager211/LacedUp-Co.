@@ -27,38 +27,12 @@ const checkUserBlocked = async (req, res, next) => {
     
     if (!currentUser) {
       // User doesn't exist anymore, log them out
-      req.logout(() => {
-        req.session.destroy((err) => {
-          if (err) console.error('Session destroy error:', err);
-          res.clearCookie('connect.sid');
-          return res.redirect('/login');
-        });
-      });
-      return;
+      return handleUserLogout(req, res, 'User account not found. Please log in again.');
     }
 
     if (currentUser.isBlocked) {
       // User is blocked, log them out and show error
-      req.logout(() => {
-        req.session.destroy((err) => {
-          if (err) console.error('Session destroy error:', err);
-          res.clearCookie('connect.sid');
-          
-          // For AJAX requests, return JSON response
-          if (req.xhr || req.headers.accept.indexOf('json') > -1) {
-            return res.status(403).json({
-              error: 'Your account has been blocked. Please contact support.',
-              blocked: true,
-              redirect: '/login'
-            });
-          }
-          
-          // For regular requests, redirect to login with error message
-          req.flash('error', 'Your account has been blocked. Please contact support.');
-          return res.redirect('/login');
-        });
-      });
-      return;
+      return handleUserLogout(req, res, 'Your account has been blocked. Please contact support for assistance.');
     }
 
     // User is not blocked, continue
@@ -69,5 +43,64 @@ const checkUserBlocked = async (req, res, next) => {
     next();
   }
 };
+
+/**
+ * Helper function to safely handle user logout with flash messages
+ * Sets flash message before destroying session to prevent crashes
+ */
+function handleUserLogout(req, res, errorMessage) {
+  // Check if this is an AJAX request
+  const isAjaxRequest = req.xhr || (req.headers && req.headers.accept && req.headers.accept.indexOf('json') > -1);
+
+  if (isAjaxRequest) {
+    // For AJAX requests, return JSON response immediately
+    return res.status(403).json({
+      error: errorMessage,
+      blocked: true,
+      redirect: '/login'
+    });
+  }
+
+  // For regular requests, handle session safely
+  try {
+    // Set flash message BEFORE destroying session (if session exists)
+    if (req.session && typeof req.flash === 'function') {
+      req.flash('error', errorMessage);
+    }
+
+    // Logout and destroy session
+    req.logout((logoutErr) => {
+      if (logoutErr) {
+        console.error('Logout error:', logoutErr);
+      }
+
+      // Destroy session safely
+      if (req.session && typeof req.session.destroy === 'function') {
+        req.session.destroy((destroyErr) => {
+          if (destroyErr) {
+            console.error('Session destroy error:', destroyErr);
+          }
+          res.clearCookie('connect.sid');
+
+          // If flash message couldn't be set, redirect with URL parameter
+          if (!req.session || typeof req.flash !== 'function') {
+            return res.redirect('/login?error=' + encodeURIComponent(errorMessage));
+          }
+
+          return res.redirect('/login');
+        });
+      } else {
+        // Session already destroyed or doesn't exist
+        res.clearCookie('connect.sid');
+        return res.redirect('/login?error=' + encodeURIComponent(errorMessage));
+      }
+    });
+  } catch (error) {
+    // Fallback for any unexpected errors
+    console.error('Error in handleUserLogout:', error);
+    res.clearCookie('connect.sid');
+    return res.redirect('/login?error=' + encodeURIComponent(errorMessage));
+  }
+}
 
 module.exports = checkUserBlocked;

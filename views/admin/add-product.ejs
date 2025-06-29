@@ -3,6 +3,12 @@
 <div class="container my-4">
   <h2 class="fw-bold mb-4">Add New Product</h2>
 
+  <% if (message && message.length > 0) { %>
+    <div class="alert alert-danger" role="alert">
+      <%= message %>
+    </div>
+  <% } %>
+
   <form id="add-product-form" novalidate>
     <!-- Basic Info -->
     <div class="border rounded p-4 mb-4 bg-light-subtle">
@@ -69,16 +75,29 @@
       <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
       <div class="alert alert-info small" role="alert">
         <ul class="mb-0 ps-3">
-          <li>⭐ Click the star icon to set a main image (currently handled by upload order)</li>
-          <li>📥 Upload at least <strong>3 images</strong></li>
+          <li>⭐ Click the star icon to set a main image</li>
+          <li>📥 Upload at least <strong>3 images</strong> (maximum 6 images)</li>
           <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
+          <li>➕ Click the '+' placeholders to upload individual images</li>
         </ul>
       </div>
       <div class="mb-3">
         <div class="mb-3">
-            <label class="form-label">Upload Images (Min: 3)</label>
-            <input type="file" id="image-input" accept="image/*" multiple class="form-control">
+            <label class="form-label">Product Images (Min: 3, Max: 6)</label>
+
+            <!-- Bulk upload button -->
+            <div class="mb-3">
+              <button type="button" id="bulk-upload-btn" class="btn btn-outline-dark">
+                <i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)
+              </button>
+              <small class="text-muted ms-2">Select multiple images at once, or use the '+' placeholders below for individual uploads</small>
+            </div>
+
+            <!-- Hidden file inputs -->
+            <input type="file" id="image-input" accept="image/*" class="d-none">
+            <input type="file" id="bulk-input" accept="image/*" multiple class="d-none">
             <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+
             <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
         </div>
       </div>
@@ -187,6 +206,37 @@
     transform: scale(0.95);
   }
 
+  /* 🔄 Crop Button */
+  .btn-crop {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #6f42c1, #5a2d91);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-crop:hover {
+    background: linear-gradient(135deg, #5a2d91, #4c2577);
+    transform: scale(1.1) rotate(-15deg);
+    box-shadow: 0 6px 20px rgba(111, 66, 193, 0.6);
+  }
+
+  .btn-crop:active {
+    transform: scale(0.95);
+  }
+
   /* Image wrapper enhancements */
   .image-wrapper {
     position: relative;
@@ -216,6 +266,69 @@
     object-fit: cover;
     border-radius: 8px;
     transition: all 0.3s ease;
+  }
+
+  /* Image placeholder styles */
+  .image-placeholder {
+    cursor: pointer;
+    border: 3px dashed #dee2e6 !important;
+    background: #f8f9fa !important;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover {
+    border-color: #dc3545 !important;
+    background: #fff5f5 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+  }
+
+  .placeholder-content {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content {
+    color: #dc3545;
+  }
+
+  .placeholder-content i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content i {
+    transform: scale(1.1);
+  }
+
+  /* Bulk upload button styles */
+  #bulk-upload-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  #bulk-upload-btn:hover {
+    background-color: #212529;
+    border-color: #212529;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  #bulk-upload-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
   }
 
   /* ========= OPTIMIZED CROPPER MODAL ========= */
@@ -334,8 +447,11 @@
 </style>
 
 <script src="/js/validation.js"></script>
+<script src="/utils/imageValidation.js"></script>
 <script>
   const input = document.getElementById('image-input');
+  const bulkInput = document.getElementById('bulk-input');
+  const bulkUploadBtn = document.getElementById('bulk-upload-btn');
   const container = document.getElementById('image-preview-container');
   const mainIndexInput = document.getElementById('mainImageIndex');
   let imageFiles = [];
@@ -345,27 +461,146 @@
 
   let filesToCrop = [];
   let currentFileIndex = 0;
+  let currentUploadSlot = -1; // Track which slot is being uploaded to
+  let isProcessingBulk = false; // Track bulk upload state
+  const MAX_IMAGES = 6;
+  const MIN_IMAGES = 3;
 
   input.addEventListener('change', (e) => {
-    filesToCrop = Array.from(e.target.files);
-    currentFileIndex = 0;
-    cropNextImage();
+    const file = e.target.files[0]; // Single file selection
+
+    if (!file) return;
+
+    // Check maximum images limit
+    if (base64Images.length >= MAX_IMAGES) {
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate the selected file
+    const validation = ImageValidator.validateImageFile(file);
+
+    if (!validation.isValid) {
+      // Show validation errors
+      showValidationErrors([`${file.name}: ${validation.message}`]);
+      // Clear the input
+      e.target.value = '';
+      return;
+    }
+
+    // Clear any previous validation errors
+    clearValidationErrors();
+
+    // Process single file
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        // Image processing is handled by the crop save handler
+        // Just clean up after cropping is complete
+        e.target.value = '';
+        currentUploadSlot = -1;
+      });
+    };
+    reader.readAsDataURL(file);
   });
 
-  function cropNextImage() {
-    if (currentFileIndex >= filesToCrop.length) return;
+  // Function to trigger file selection for a specific slot
+  function selectImageForSlot(slotIndex = -1) {
+    currentUploadSlot = slotIndex;
+    input.click();
+  }
+
+  // Bulk upload button event listener
+  bulkUploadBtn.addEventListener('click', () => {
+    if (isProcessingBulk) {
+      showValidationErrors(['Please wait for the current upload to complete.']);
+      return;
+    }
+    bulkInput.click();
+  });
+
+  // Bulk input change handler
+  bulkInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+
+    if (!files.length) return;
+
+    // Check if adding these files would exceed maximum
+    let filesToProcess = files;
+    if (base64Images.length + files.length > MAX_IMAGES) {
+      const availableSlots = MAX_IMAGES - base64Images.length;
+      if (availableSlots <= 0) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        e.target.value = '';
+        return;
+      }
+
+      filesToProcess = files.slice(0, availableSlots);
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed. Only the first ${availableSlots} images have been selected.`]);
+    }
+
+    // Validate all selected files
+    const validation = ImageValidator.validateMultipleImageFiles(filesToProcess);
+
+    if (!validation.isValid) {
+      // Show validation errors but continue with valid files if any
+      showValidationErrors(validation.errors);
+      if (validation.validFiles.length === 0) {
+        e.target.value = '';
+        return;
+      }
+      filesToProcess = validation.validFiles;
+    } else {
+      // Clear any previous validation errors
+      clearValidationErrors();
+    }
+
+    // Start bulk processing
+    processBulkUpload(filesToProcess);
+
+    // Clear the input for next use
+    e.target.value = '';
+  });
+
+
+  // Bulk upload processing function
+  function processBulkUpload(files) {
+    if (files.length === 0) return;
+
+    isProcessingBulk = true;
+    filesToCrop = files;
+    currentFileIndex = 0;
+
+    // Update button state
+    bulkUploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    bulkUploadBtn.disabled = true;
+
+    // Start processing first image
+    cropNextBulkImage();
+  }
+
+  function cropNextBulkImage() {
+    if (currentFileIndex >= filesToCrop.length) {
+      // Bulk processing complete
+      isProcessingBulk = false;
+      bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
+      bulkUploadBtn.disabled = false;
+      filesToCrop = [];
+      currentFileIndex = 0;
+      return;
+    }
 
     const file = filesToCrop[currentFileIndex];
     const reader = new FileReader();
     reader.onload = () => {
       showCropModal(reader.result, () => {
         currentFileIndex++;
-        cropNextImage(); // Proceed only after current crop is done
+        cropNextBulkImage(); // Process next image
       });
     };
     reader.readAsDataURL(file);
   }
-
 
   function showCropModal(imageSrc, onCropDone) {
     const existingModal = document.getElementById('cropModal');
@@ -459,7 +694,15 @@
         imageSmoothingEnabled: true,
         imageSmoothingQuality: 'high'
       }).toDataURL('image/jpeg', 0.9);
-      base64Images.push(cropped);
+
+      if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
+        // Replace existing image (re-cropping)
+        base64Images[currentUploadSlot] = cropped;
+      } else {
+        // Add new image
+        base64Images.push(cropped);
+      }
+
       renderThumbnails();
       cropModal.hide();
 
@@ -468,7 +711,7 @@
         const backdrop = document.querySelector('.modal-backdrop');
         if (backdrop) backdrop.remove();
 
-        if (typeof onCropDone === 'function') onCropDone(); // Go to next image
+        if (typeof onCropDone === 'function') onCropDone(); // Execute callback
       });
     };
   }
@@ -476,6 +719,8 @@
 
   function renderThumbnails() {
     container.innerHTML = '';
+
+    // Render existing images
     base64Images.forEach((img, index) => {
       const wrapper = document.createElement('div');
       wrapper.classList.add('image-wrapper');
@@ -484,10 +729,48 @@
       wrapper.innerHTML = `
         <img src="${img}" />
         <button class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button class="btn-crop" onclick="recropImage(${index})" title="Re-crop image"><i class="bi bi-scissors"></i></button>
         <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
       `;
       container.appendChild(wrapper);
     });
+
+    // Add placeholders based on current state
+    const currentImageCount = base64Images.length;
+
+    if (currentImageCount < MIN_IMAGES) {
+      // Show placeholders to reach minimum requirement
+      const placeholdersNeeded = MIN_IMAGES - currentImageCount;
+      for (let i = 0; i < placeholdersNeeded; i++) {
+        addPlaceholder();
+      }
+    } else if (currentImageCount >= MIN_IMAGES && currentImageCount < MAX_IMAGES) {
+      // After minimum met: show 1 additional placeholder
+      addPlaceholder();
+    }
+    // If currentImageCount >= MAX_IMAGES, show no placeholders
+  }
+
+  function addPlaceholder() {
+    const placeholder = document.createElement('div');
+    placeholder.classList.add('image-wrapper', 'image-placeholder');
+    placeholder.innerHTML = `
+      <div class="placeholder-content">
+        <i class="bi bi-plus-lg"></i>
+        <span>Add Image</span>
+      </div>
+    `;
+
+    // Add click handler to trigger file selection
+    placeholder.addEventListener('click', () => {
+      if (base64Images.length >= MAX_IMAGES) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        return;
+      }
+      selectImageForSlot(-1); // -1 indicates new image, not replacement
+    });
+
+    container.appendChild(placeholder);
   }
 
   function setMainImage(index) {
@@ -499,6 +782,41 @@
     base64Images.splice(index, 1);
     if (mainIndexInput.value == index) mainIndexInput.value = '';
     renderThumbnails();
+  }
+
+  function recropImage(index) {
+    if (index < 0 || index >= base64Images.length) return;
+
+    // Set the current upload slot to the index being re-cropped
+    currentUploadSlot = index;
+
+    // Open crop modal with the existing image
+    showCropModal(base64Images[index], () => {
+      // Reset upload slot after re-cropping
+      currentUploadSlot = -1;
+    });
+  }
+
+  // Validation error display functions
+  function showValidationErrors(errors) {
+    clearValidationErrors();
+
+    const imageSection = document.querySelector('#image-input').closest('.border');
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger mt-3 image-validation-errors';
+    errorDiv.innerHTML = `
+      <strong>Image Validation Errors:</strong>
+      <ul class="mb-0 mt-2">
+        ${errors.map(error => `<li>${error}</li>`).join('')}
+      </ul>
+    `;
+
+    imageSection.appendChild(errorDiv);
+  }
+
+  function clearValidationErrors() {
+    const existingErrors = document.querySelectorAll('.image-validation-errors');
+    existingErrors.forEach(error => error.remove());
   }
 
   // Attach base64 to form submit
@@ -521,6 +839,17 @@
   productValidator.submitForm = async function() {
     const form = document.getElementById('add-product-form');
     const formData = new FormData(form);
+
+    // Validate minimum image requirement
+    if (base64Images.length < MIN_IMAGES) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Images Required',
+        text: `Please upload at least ${MIN_IMAGES} images for the product.`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
 
     // Attach base64 images manually
     base64Images.forEach((b64, i) => {
@@ -556,5 +885,10 @@
       });
     }
   };
+
+  // Initialize the interface with placeholders on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    renderThumbnails();
+  });
 
 </script>

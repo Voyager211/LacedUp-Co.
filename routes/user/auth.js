@@ -1,6 +1,7 @@
 const express = require('express');
 const passport = require('passport');
 const authController = require('../../controllers/user/authController');
+const nocache = require('../../middlewares/nocache')
 const { isGuest } = require('../../middlewares/auth'); // ✅ Fixed double slashes
 
 const router = express.Router();
@@ -17,7 +18,7 @@ router.post('/resend-otp', isGuest, authController.resendOtp);
 
 
 // === Login ===
-router.get('/login', isGuest, authController.getLogin);
+router.get('/login', isGuest, nocache, authController.getLogin);
 router.post('/login', isGuest, authController.postLogin);
 
 // === Forgot Password Flow ===

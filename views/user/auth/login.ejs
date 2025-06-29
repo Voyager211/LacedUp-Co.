@@ -18,6 +18,12 @@
       </div>
       <h3 class="fw-bold mb-3 text-center" style="color: #1A1A1A;">Log into your account</h3>
 
+      <% if (errorMessage) { %>
+        <div class="alert alert-danger text-center py-2 mb-3" role="alert">
+          <%= errorMessage %>
+        </div>
+      <% } %>
+
       <form id="login-form" novalidate>
         <div class="mb-3">
           <label for="email" class="form-label">Email *</label>
@@ -101,7 +107,7 @@
   document.addEventListener('DOMContentLoaded', function() {
     LoginTransition.init();
 
-    // Check for OAuth error parameters in URL
+    // Check for error parameters in URL
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get('error');
     const message = urlParams.get('message');
@@ -116,6 +122,17 @@
         confirmButtonColor: '#dc3545',
         showCancelButton: true,
         cancelButtonText: 'OK'
+      });
+      // Clean up URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (error && error !== 'oauth_failed' && error !== 'oauth_error') {
+      // Handle general error messages (like blocked user from middleware)
+      Swal.fire({
+        icon: 'warning',
+        title: 'Account Issue',
+        text: decodeURIComponent(error),
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#dc3545'
       });
       // Clean up URL parameters
       window.history.replaceState({}, document.title, window.location.pathname);

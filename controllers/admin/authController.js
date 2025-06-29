@@ -2,10 +2,12 @@ const passport = require('passport');
 
 exports.getLogin = (req, res) => {
     try {
+        if (req.isAuthenticated()) return res.redirect('/admin/dashboard');
         res.render('admin/login', {
             title: 'Admin Login',
             layout: 'layouts/login-layout',
-            message: req.flash('error')
+            message: req.flash('error'),
+            formData: req.flash('formData')[0] || {}
         });
     } catch (error) {
         console.error('Error rendering login page:', error);
@@ -15,6 +17,23 @@ exports.getLogin = (req, res) => {
 
 exports.postLogin = (req, res, next) => {
     try {
+        // Server-side validation before authentication
+        const validationResult = validateLoginForm(req.body);
+
+        if (!validationResult.isValid) {
+            // Store form data to preserve user input
+            req.flash('formData', {
+                email: req.body.email ? req.body.email.trim() : '',
+                remember: req.body.remember || false
+            });
+            req.flash('error', validationResult.message);
+            return res.redirect('/admin/login');
+        }
+
+        // Trim and sanitize input before authentication
+        req.body.email = req.body.email.trim();
+        req.body.password = req.body.password.trim();
+
         passport.authenticate('local', {
             failureRedirect: '/admin/login',
             failureFlash: 'Invalid credentials'
@@ -85,3 +104,38 @@ exports.logout = (req, res) => {
         res.status(500).send('Internal Server Error');
     }
 };
+
+/**
+ * Server-side validation for admin login form
+ * @param {Object} formData - The form data from request body
+ * @returns {Object} - Validation result with isValid boolean and message
+ */
+function validateLoginForm(formData) {
+    const { email, password } = formData;
+
+    // Check if email is provided
+    if (!email || !email.trim()) {
+        return { isValid: false, message: 'Email is required' };
+    }
+
+    // Check if password is provided
+    if (!password || !password.trim()) {
+        return { isValid: false, message: 'Password is required' };
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const trimmedEmail = email.trim();
+
+    if (!emailRegex.test(trimmedEmail)) {
+        return { isValid: false, message: 'Please enter a valid email address' };
+    }
+
+    // Validate password length
+    const trimmedPassword = password.trim();
+    if (trimmedPassword.length < 6) {
+        return { isValid: false, message: 'Password must be at least 6 characters' };
+    }
+
+    return { isValid: true };
+}

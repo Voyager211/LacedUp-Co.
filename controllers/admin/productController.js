@@ -2,6 +2,7 @@ const Product = require('../../models/Product');
 const Category = require('../../models/Category');
 const { processImages } = require('../../utils/imageProcessor');
 const { getPagination } = require('../../utils/pagination');
+const { validateBase64Image, validateMultipleImageFiles } = require('../../utils/imageValidation');
 const sharp = require('sharp');
 
 // List all products (page render)
@@ -44,7 +45,8 @@ exports.renderAddPage = async (req, res) => {
   const categories = await Category.find({ isDeleted: false });
   res.render('admin/add-product', {
     title: "Add Product",
-    categories
+    categories,
+    message: req.flash('error')
   });
 };
 
@@ -56,6 +58,17 @@ exports.apiSubmitNewProduct = async (req, res) => {
 
     if (base64Images.length < 3) {
       return res.status(400).json({ success: false, message: 'Minimum 3 images required.' });
+    }
+
+    // Validate each base64 image
+    for (let i = 0; i < base64Images.length; i++) {
+      const validation = validateBase64Image(base64Images[i]);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: `Image ${i + 1}: ${validation.message}`
+        });
+      }
     }
 
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);
@@ -290,7 +303,8 @@ exports.renderEditPage = async (req, res) => {
     res.render('admin/edit-product', {
       title: 'Edit Product',
       product,
-      categories
+      categories,
+      message: req.flash('error')
     });
   } catch (err) {
     console.error('Render Edit Error:', err);
@@ -305,6 +319,17 @@ exports.apiUpdateProduct = async (req, res) => {
 
     if (!Array.isArray(base64Images) || base64Images.length < 3) {
       return res.status(400).json({ success: false, message: 'Minimum 3 images required.' });
+    }
+
+    // Validate each base64 image
+    for (let i = 0; i < base64Images.length; i++) {
+      const validation = validateBase64Image(base64Images[i]);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: `Image ${i + 1}: ${validation.message}`
+        });
+      }
     }
 
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);
