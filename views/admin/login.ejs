@@ -13,22 +13,19 @@
       </div>
     <% } %>
 
-    <form method="POST" action="/admin/login" novalidate>
+    <form id="admin-login-form" method="POST" action="/admin/login" novalidate>
       <div class="mb-3">
-        <label for="email" class="form-label">Email address</label>
-        <input type="email" class="form-control" id="email" name="email" value="<%= formData.email || '' %>">
+        <label for="email" class="form-label">Email address *</label>
+        <input type="email" class="form-control" id="email" name="email" value="<%= formData.email || '' %>" required>
       </div>
 
       <div class="mb-3">
-        <label for="password" class="form-label">Password</label>
+        <label for="password" class="form-label">Password *</label>
         <div class="position-relative">
-          <input type="password" class="form-control pe-5" id="password" name="password">
-          <button type="button" class="btn btn-link position-absolute top-50 end-0 translate-middle-y me-2 p-0 password-toggle-btn"
-                  id="admin-password-toggle"
-                  aria-label="Toggle password visibility"
-                  style="border: none; background: none; color: #6c757d; z-index: 5;">
+          <input type="password" class="form-control pe-5" id="password" name="password" required>
+          <div class="password-toggle-btn" id="admin-password-toggle" aria-label="Toggle password visibility">
             <i class="bi bi-eye-slash" id="admin-password-toggle-icon"></i>
-          </button>
+          </div>
         </div>
       </div>
 
@@ -42,6 +39,56 @@
   </div>
 </div>
 
+<style>
+  /* Fix visual interference between password visibility toggle and HTML5 validation icons */
+  input.form-control.is-invalid {
+    background-image: none !important;
+  }
+
+  /* Enhanced password visibility toggle with transparent container */
+  .password-toggle-btn {
+    position: absolute !important;
+    top: 50% !important;
+    right: 8px !important;
+    transform: translateY(-50%) !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 4px !important;
+    color: #6c757d !important;
+    z-index: 999 !important;
+    width: 28px !important;
+    height: 28px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    border-radius: 4px !important;
+    transition: all 0.3s ease !important;
+  }
+
+  .password-toggle-btn:hover {
+    background: rgba(220, 53, 69, 0.1) !important;
+    color: #dc3545 !important;
+  }
+
+  .password-toggle-btn:focus {
+    outline: none !important;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
+    background: rgba(220, 53, 69, 0.05) !important;
+  }
+
+  .password-toggle-btn:active {
+    background: rgba(220, 53, 69, 0.15) !important;
+    transform: translateY(-50%) scale(0.95) !important;
+  }
+
+  /* Ensure parent container has proper positioning context */
+  .position-relative {
+    position: relative !important;
+  }
+</style>
+
+<script src="/js/validation.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     // Password visibility toggle functionality
@@ -76,6 +123,107 @@
       passwordToggle.addEventListener('mouseleave', function() {
         this.style.color = '#6c757d';
       });
+    }
+
+    // Initialize form validation with admin-specific validation
+    const validator = new FormValidator('admin-login-form');
+
+    // Override the form submission to handle admin-specific validation
+    validator.submitForm = async function() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      // Apply the same validation logic as user-side login
+      const emailValidation = validateAdminEmail(email);
+      const passwordValidation = validateAdminPassword(password);
+
+      let hasErrors = false;
+
+      // Clear previous errors
+      clearFieldError(document.getElementById('email'));
+      clearFieldError(document.getElementById('password'));
+
+      // Show email validation errors
+      if (!emailValidation.isValid) {
+        showFieldError(document.getElementById('email'), emailValidation.message);
+        hasErrors = true;
+      }
+
+      // Show password validation errors
+      if (!passwordValidation.isValid) {
+        showFieldError(document.getElementById('password'), passwordValidation.message);
+        hasErrors = true;
+      }
+
+      // If validation passes, submit the form normally
+      if (!hasErrors) {
+        // Submit the form using traditional form submission
+        document.getElementById('admin-login-form').submit();
+      }
+    };
+
+    // Admin email validation using same regex as user-side
+    function validateAdminEmail(value) {
+      if (!value || !value.trim()) {
+        return { isValid: false, message: 'Email is required' };
+      }
+
+      // Must contain @, at least one dot after @, and end with valid domain
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const domainRegex = /\.(com|org|net|edu|gov|mil|int|co|in|uk|de|fr|jp|au|ca)$/i;
+
+      if (!emailRegex.test(value)) {
+        return { isValid: false, message: 'Please enter a valid email address' };
+      }
+
+      if (!domainRegex.test(value)) {
+        return { isValid: false, message: 'Email must end with a valid domain (com, org, net, etc.)' };
+      }
+
+      return { isValid: true };
+    }
+
+    // Admin password validation using same logic as user-side
+    function validateAdminPassword(value) {
+      if (!value || !value.trim()) {
+        return { isValid: false, message: 'Password is required' };
+      }
+
+      if (value.length < 6) {
+        return { isValid: false, message: 'Password must be at least 6 characters long' };
+      }
+
+      return { isValid: true };
+    }
+
+    // Field error display functions
+    function showFieldError(input, message) {
+      clearFieldError(input);
+
+      const errorDiv = document.createElement('div');
+      errorDiv.className = 'text-danger small validation-error field-error mt-1';
+      errorDiv.textContent = message;
+
+      // Insert error message after the input field or its parent container
+      const insertAfter = input.parentNode.classList.contains('position-relative') ?
+                         input.parentNode : input;
+      insertAfter.parentNode.insertBefore(errorDiv, insertAfter.nextSibling);
+
+      // Add error styling to input
+      input.classList.add('is-invalid');
+    }
+
+    function clearFieldError(input) {
+      // Remove error styling
+      input.classList.remove('is-invalid');
+
+      // Remove error message
+      const parentContainer = input.parentNode.classList.contains('position-relative') ?
+                             input.parentNode.parentNode : input.parentNode;
+      const errorDiv = parentContainer.querySelector('.field-error');
+      if (errorDiv) {
+        errorDiv.remove();
+      }
     }
   });
 </script>

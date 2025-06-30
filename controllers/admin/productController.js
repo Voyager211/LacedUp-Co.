@@ -71,6 +71,33 @@ exports.apiSubmitNewProduct = async (req, res) => {
       }
     }
 
+    // Parse and validate variants
+    let variants = [];
+    try {
+      variants = JSON.parse(req.body.variants || '[]');
+    } catch (parseError) {
+      return res.status(400).json({ success: false, message: 'Invalid variants data format.' });
+    }
+
+    // Validate that at least one variant exists
+    if (!variants || variants.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
+    }
+
+    // Validate each variant
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (!variant.size || typeof variant.size !== 'string') {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Size is required and must be a string.` });
+      }
+      if (typeof variant.stock !== 'number' || variant.stock < 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
+      }
+      if (typeof variant.salePrice !== 'number' || variant.salePrice <= 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Sale price must be a positive number.` });
+      }
+    }
+
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);
 
     const saveBase64Image = async (base64, index) => {
@@ -91,10 +118,9 @@ exports.apiSubmitNewProduct = async (req, res) => {
       brand: req.body.brand,
       category: req.body.category,
       regularPrice: req.body.regularPrice,
-      salePrice: req.body.salePrice,
       productOffer: req.body.productOffer || 0,
       features: req.body.features,
-      stock: req.body.stock,
+      variants: variants,
       mainImage,
       subImages,
     });
@@ -144,15 +170,17 @@ exports.apiProducts = async (req, res) => {
       query.brand = { $regex: req.query.brand, $options: 'i' };
     }
 
-    // Price range filters
+    // Price range filters (check variants for price range)
     if (req.query.minPrice || req.query.maxPrice) {
-      query.salePrice = {};
+      const priceFilter = {};
       if (req.query.minPrice) {
-        query.salePrice.$gte = parseFloat(req.query.minPrice);
+        priceFilter.$gte = parseFloat(req.query.minPrice);
       }
       if (req.query.maxPrice) {
-        query.salePrice.$lte = parseFloat(req.query.maxPrice);
+        priceFilter.$lte = parseFloat(req.query.maxPrice);
       }
+      // Filter products that have at least one variant within the price range
+      query['variants.salePrice'] = priceFilter;
     }
 
     // Status filter
@@ -160,17 +188,17 @@ exports.apiProducts = async (req, res) => {
       query.isListed = req.query.status === 'true';
     }
 
-    // Stock filter
+    // Stock filter (using totalStock instead of stock)
     if (req.query.stock) {
       switch (req.query.stock) {
         case 'in-stock':
-          query.stock = { $gt: 0 };
+          query.totalStock = { $gt: 0 };
           break;
         case 'low-stock':
-          query.stock = { $gt: 0, $lt: 10 };
+          query.totalStock = { $gt: 0, $lt: 10 };
           break;
         case 'out-of-stock':
-          query.stock = 0;
+          query.totalStock = 0;
           break;
       }
     }
@@ -186,10 +214,10 @@ exports.apiProducts = async (req, res) => {
           sortQuery = { productName: -1 };
           break;
         case 'price-asc':
-          sortQuery = { salePrice: 1 };
+          sortQuery = { regularPrice: 1 };
           break;
         case 'price-desc':
-          sortQuery = { salePrice: -1 };
+          sortQuery = { regularPrice: -1 };
           break;
         case 'date-newest':
           sortQuery = { createdAt: -1 };
@@ -220,19 +248,39 @@ exports.apiProducts = async (req, res) => {
   }
 };
 
-// API: Create product (file upload/multer)
+// API: Create product (file upload/multer) - DEPRECATED: Use apiSubmitNewProduct instead
 exports.apiCreateProduct = async (req, res) => {
   try {
     if (!req.files || req.files.length < 3) {
       return res.status(400).json({ success: false, message: 'Minimum 3 images required' });
     }
+
+    // Parse variants or use default variants if not provided
+    let variants = [];
+    try {
+      variants = req.body.variants ? JSON.parse(req.body.variants) : [
+        { size: "UK 6", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 7", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 8", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 9", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 10", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 }
+      ];
+    } catch (parseError) {
+      variants = [
+        { size: "UK 6", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 7", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 8", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 9", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
+        { size: "UK 10", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 }
+      ];
+    }
+
     const images = await processImages(req.files);
     await Product.create({
       productName: req.body.name,
       description: req.body.description,
       regularPrice: req.body.regularPrice,
-      salePrice: req.body.salePrice,
-      stock: req.body.stock,
+      variants: variants,
       category: req.body.category,
       mainImage: images[0],
       subImages: images.slice(1)
@@ -244,23 +292,7 @@ exports.apiCreateProduct = async (req, res) => {
   }
 };
 
-// API: Update product (fetch)
-exports.apiUpdateProduct = async (req, res) => {
-  try {
-    await Product.findByIdAndUpdate(req.params.id, {
-      productName: req.body.name,
-      description: req.body.description,
-      regularPrice: req.body.regularPrice,
-      salePrice: req.body.salePrice,
-      stock: req.body.stock,
-      category: req.body.category
-    });
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Update Product Error:', err);
-    res.status(500).json({ success: false });
-  }
-};
+// API: Update product (fetch) - DEPRECATED: Replaced by main apiUpdateProduct method above
 
 // API: Soft delete (fetch)
 exports.apiSoftDeleteProduct = async (req, res) => {
@@ -332,6 +364,33 @@ exports.apiUpdateProduct = async (req, res) => {
       }
     }
 
+    // Parse and validate variants
+    let variants = [];
+    try {
+      variants = JSON.parse(req.body.variants || '[]');
+    } catch (parseError) {
+      return res.status(400).json({ success: false, message: 'Invalid variants data format.' });
+    }
+
+    // Validate that at least one variant exists
+    if (!variants || variants.length === 0) {
+      return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
+    }
+
+    // Validate each variant
+    for (let i = 0; i < variants.length; i++) {
+      const variant = variants[i];
+      if (!variant.size || typeof variant.size !== 'string') {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Size is required and must be a string.` });
+      }
+      if (typeof variant.stock !== 'number' || variant.stock < 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
+      }
+      if (typeof variant.salePrice !== 'number' || variant.salePrice <= 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Sale price must be a positive number.` });
+      }
+    }
+
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);
 
     const saveBase64Image = async (base64, index) => {
@@ -352,10 +411,9 @@ exports.apiUpdateProduct = async (req, res) => {
       brand: req.body.brand,
       category: req.body.category,
       regularPrice: req.body.regularPrice,
-      salePrice: req.body.salePrice,
       productOffer: req.body.productOffer || 0,
       features: req.body.features,
-      stock: req.body.stock,
+      variants: variants,
       mainImage,
       subImages,
     });

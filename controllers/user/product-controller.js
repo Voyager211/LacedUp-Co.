@@ -79,19 +79,19 @@ exports.getProducts = async (req, res) => {
       }
     }
 
-    // Price range filter
-    filter.salePrice = { $gte: minPrice, $lte: maxPrice };
+    // Price range filter (check variants for price range)
+    if (minPrice > 0 || maxPrice < 1e9) {
+      filter['variants.salePrice'] = { $gte: minPrice, $lte: maxPrice };
+    }
 
-    // Size filter (if sizes are provided)
+    // Size filter (check variants for available sizes)
     if (sizes.length > 0) {
-      // Assuming sizes are stored in a sizes array field in the product model
-      // If sizes are stored differently, adjust this accordingly
-      filter.sizes = { $in: sizes };
+      filter['variants.size'] = { $in: sizes };
     }
 
     const sortMap = {
-      'priceLow': { salePrice: 1 },
-      'priceHigh': { salePrice: -1 },
+      'priceLow': { regularPrice: 1 },
+      'priceHigh': { regularPrice: -1 },
       'nameAZ': { productName: 1 },
       'nameZA': { productName: -1 },
       'newest': { createdAt: -1 },
@@ -99,8 +99,8 @@ exports.getProducts = async (req, res) => {
       'popularity': { sold: -1 },
       'rating': { averageRating: -1 },
       // Keep backward compatibility
-      'price-low': { salePrice: 1 },
-      'price-high': { salePrice: -1 },
+      'price-low': { regularPrice: 1 },
+      'price-high': { regularPrice: -1 },
       'name-az': { productName: 1 },
       'name-za': { productName: -1 }
     };
@@ -191,17 +191,18 @@ exports.loadShopPage = async (req, res) => {
       filter.category = selectedCategory;
     }
 
-    // Apply price range filter
+    // Apply price range filter (check variants for price range)
     if (minPrice || maxPrice) {
-      filter.salePrice = {};
-      if (minPrice) filter.salePrice.$gte = parseFloat(minPrice);
-      if (maxPrice) filter.salePrice.$lte = parseFloat(maxPrice);
+      const priceFilter = {};
+      if (minPrice) priceFilter.$gte = parseFloat(minPrice);
+      if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
+      filter['variants.salePrice'] = priceFilter;
     }
 
-    // Build sort query
+    // Build sort query (note: price sorting will use regularPrice since variants have multiple prices)
     const sortMap = {
-      'priceLow': { salePrice: 1 },
-      'priceHigh': { salePrice: -1 },
+      'priceLow': { regularPrice: 1 },
+      'priceHigh': { regularPrice: -1 },
       'nameAZ': { productName: 1 },
       'nameZA': { productName: -1 },
       'newest': { createdAt: -1 },
