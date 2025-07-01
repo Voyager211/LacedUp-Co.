@@ -90,59 +90,90 @@
 
       <!-- Price -->
       <div class="d-flex align-items-center gap-3 mb-2">
-        <h4 class="text-danger mb-0">₹<%= product.salePrice %></h4>
-        <span class="text-muted text-decoration-line-through">₹<%= product.regularPrice %></span>
-        <span class="badge bg-success">
-          <%=
-            Math.round(((product.regularPrice - product.salePrice) / product.regularPrice) * 100)
-          %>% OFF
-        </span>
+        <% if (product.variants && product.variants.length > 0) { %>
+          <%
+            // Calculate average sale price using the formula: regularPrice * (1 - productOffer/100)
+            const calculatedPrices = product.variants.map(v => {
+              const offer = v.productOffer || 0;
+              return product.regularPrice * (1 - offer / 100);
+            });
+            const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+          %>
+          <h4 class="text-danger mb-0" id="current-price">₹<%= avgPrice.toFixed(2) %></h4>
+          <span class="text-muted text-decoration-line-through">₹<%= product.regularPrice %></span>
+          <span class="badge bg-success" id="discount-badge">
+            <%= Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100) %>% OFF
+          </span>
+        <% } else { %>
+          <h4 class="text-danger mb-0">₹0.00</h4>
+          <span class="text-muted">No variants available</span>
+        <% } %>
       </div>
 
       <div class="mb-3">
         <i class="bi bi-ticket"></i> <a href="#" class="text-decoration-none">Apply Coupon</a>
       </div>
 
-      <!-- Stock Display with Enhanced Styling -->
-      <% if (product.stock <= 0) { %>
-        <!-- Sold Out State -->
+      <!-- Size Selection -->
+      <% if (product.variants && product.variants.length > 0) { %>
         <div class="mb-4">
-          <h4 class="text-danger fw-bold mb-2">Sold Out</h4>
-          <p class="text-muted mb-3">This item is currently out of stock</p>
+          <h6 class="fw-semibold mb-3">Select Size</h6>
+          <div class="d-flex flex-wrap gap-2" id="size-selection">
+            <% product.variants.forEach((variant, index) => { %>
+              <%
+                // Calculate sale price using the formula: regularPrice * (1 - productOffer/100)
+                const offer = variant.productOffer || 0;
+                const calculatedPrice = product.regularPrice * (1 - offer / 100);
+              %>
+              <button
+                class="btn btn-outline-dark size-btn"
+                data-size="<%= variant.size %>"
+                data-stock="<%= variant.stock %>"
+                data-price="<%= calculatedPrice %>"
+                data-variant-index="<%= index %>"
+                data-offer="<%= offer %>"
+                <%= variant.stock === 0 ? 'disabled' : '' %>
+              >
+                <%= variant.size %>
+                <% if (variant.stock === 0) { %>
+                  <br><small class="text-muted">Out of Stock</small>
+                <% } %>
+              </button>
+            <% }); %>
+          </div>
+          <small class="text-muted mt-2 d-block">Select a size to see availability and exact price. Click outside to deselect.</small>
+        </div>
+      <% } %>
 
-          <!-- Notify Me Section -->
-          <div class="border rounded p-3 bg-light">
-            <div class="row g-2">
-              <div class="col-8">
-                <input type="email" class="form-control" id="notify-email" placeholder="Enter email to get notified" required>
-              </div>
-              <div class="col-4">
-                <button class="btn btn-danger w-100" id="notify-btn">
-                  NOTIFY ME
-                </button>
-              </div>
+      <!-- Stock Display with Enhanced Styling -->
+      <div class="mb-3" id="stock-display">
+        <div class="d-flex align-items-center gap-2">
+          <span class="fw-semibold">Stock:</span>
+          <span id="stock-badge" class="badge bg-secondary px-3 py-2">
+            <i class="bi bi-info-circle me-1"></i>
+            Select a size to see availability
+          </span>
+        </div>
+      </div>
+
+      <!-- Notify Me Section (hidden by default) -->
+      <div class="mb-4 d-none" id="notify-section">
+        <h4 class="text-danger fw-bold mb-2">Out of Stock</h4>
+        <p class="text-muted mb-3">This size is currently out of stock</p>
+
+        <div class="border rounded p-3 bg-light">
+          <div class="row g-2">
+            <div class="col-8">
+              <input type="email" class="form-control" id="notify-email" placeholder="Enter email to get notified" required>
+            </div>
+            <div class="col-4">
+              <button class="btn btn-danger w-100" id="notify-btn">
+                NOTIFY ME
+              </button>
             </div>
           </div>
         </div>
-      <% } else { %>
-        <!-- In Stock State -->
-        <div class="mb-3">
-          <div class="d-flex align-items-center gap-2">
-            <span class="fw-semibold">Stock:</span>
-            <% if (product.stock >= 5) { %>
-              <span class="badge bg-success px-3 py-2">
-                <i class="bi bi-check-circle me-1"></i>
-                <%= product.stock %> Available
-              </span>
-            <% } else { %>
-              <span class="badge bg-danger px-3 py-2">
-                <i class="bi bi-exclamation-triangle me-1"></i>
-                Only <%= product.stock %> Left - Low Stock!
-              </span>
-            <% } %>
-          </div>
-        </div>
-      <% } %>
+      </div>
 
       <!-- Product Description -->
       <div class="mb-4">
@@ -151,23 +182,14 @@
       </div>
 
       <!-- Action Buttons -->
-      <% if (product.stock > 0) { %>
-        <div class="d-flex gap-3 mb-4">
-          <button class="btn btn-dark flex-fill add-to-cart-btn" data-product-id="<%= product._id %>">
-            <i class="bi bi-cart-plus me-2"></i>Add to Cart
-          </button>
-          <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
-            <i class="bi bi-heart"></i>
-          </button>
-        </div>
-      <% } else { %>
-        <!-- Only show wishlist button for out of stock items -->
-        <div class="d-flex justify-content-end mb-4">
-          <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
-            <i class="bi bi-heart me-2"></i>Add to Wishlist
-          </button>
-        </div>
-      <% } %>
+      <div class="d-flex gap-3 mb-4" id="action-buttons">
+        <button class="btn btn-dark flex-fill add-to-cart-btn" data-product-id="<%= product._id %>" id="add-to-cart-btn" disabled>
+          <i class="bi bi-cart-plus me-2"></i>Add to Cart
+        </button>
+        <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
+          <i class="bi bi-heart"></i>
+        </button>
+      </div>
 
       <!-- Features -->
       <div class="mb-4">
@@ -819,6 +841,171 @@
       });
     }
   });
+
+  // ========= VARIANT SELECTION FUNCTIONALITY =========
+  document.addEventListener('DOMContentLoaded', function() {
+    const sizeButtons = document.querySelectorAll('.size-btn');
+    const currentPrice = document.getElementById('current-price');
+    const discountBadge = document.getElementById('discount-badge');
+    const stockBadge = document.getElementById('stock-badge');
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    const notifySection = document.getElementById('notify-section');
+    const regularPrice = <%= product.regularPrice %>;
+
+    let selectedVariant = null;
+
+    // Initialize with no variant selected - show average price
+    initializeDefaultState();
+
+    // Add click handlers to size buttons
+    sizeButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        if (!this.disabled) {
+          if (this.classList.contains('active')) {
+            // Deselect if already selected
+            deselectVariant();
+          } else {
+            // Select this variant
+            selectVariant(this);
+          }
+        }
+      });
+    });
+
+    // Add click handler to deselect when clicking outside size selection
+    document.addEventListener('click', function(event) {
+      const sizeSelection = document.getElementById('size-selection');
+      if (sizeSelection && !sizeSelection.contains(event.target) && selectedVariant) {
+        deselectVariant();
+      }
+    });
+
+    function selectVariant(button) {
+      // Remove active class from all buttons
+      sizeButtons.forEach(btn => btn.classList.remove('active'));
+
+      // Add active class to selected button
+      button.classList.add('active');
+
+      // Get variant data
+      const size = button.dataset.size;
+      const stock = parseInt(button.dataset.stock);
+      const price = parseFloat(button.dataset.price);
+      const variantIndex = parseInt(button.dataset.variantIndex);
+
+      selectedVariant = { size, stock, price, variantIndex };
+
+      // Update price display
+      if (currentPrice) {
+        currentPrice.textContent = `₹${price.toFixed(2)}`;
+      }
+
+      // Update discount badge
+      if (discountBadge && regularPrice > 0) {
+        const discount = Math.round(((regularPrice - price) / regularPrice) * 100);
+        discountBadge.textContent = `${discount}% OFF`;
+      }
+
+      // Show and update stock display
+      if (stockBadge) {
+        stockBadge.style.display = 'inline-block';
+      }
+      updateStockDisplay(stock);
+
+      // Update add to cart button
+      updateAddToCartButton(stock);
+
+      // Store selected variant for cart operations
+      if (addToCartBtn) {
+        addToCartBtn.dataset.selectedVariant = JSON.stringify(selectedVariant);
+      }
+    }
+
+    function updateStockDisplay(stock) {
+      if (!stockBadge) return;
+
+      if (stock <= 0) {
+        stockBadge.className = 'badge bg-danger px-3 py-2';
+        stockBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Out of Stock';
+        notifySection?.classList.remove('d-none');
+      } else if (stock < 5) {
+        stockBadge.className = 'badge bg-warning px-3 py-2';
+        stockBadge.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Only ${stock} Left - Low Stock!`;
+        notifySection?.classList.add('d-none');
+      } else {
+        stockBadge.className = 'badge bg-success px-3 py-2';
+        stockBadge.innerHTML = `<i class="bi bi-check-circle me-1"></i>${stock} Available`;
+        notifySection?.classList.add('d-none');
+      }
+    }
+
+    function updateAddToCartButton(stock) {
+      if (!addToCartBtn) return;
+
+      if (stock <= 0) {
+        addToCartBtn.disabled = true;
+        addToCartBtn.innerHTML = '<i class="bi bi-x-circle me-2"></i>Out of Stock';
+        addToCartBtn.classList.remove('btn-dark');
+        addToCartBtn.classList.add('btn-secondary');
+      } else {
+        addToCartBtn.disabled = false;
+        addToCartBtn.innerHTML = '<i class="bi bi-cart-plus me-2"></i>Add to Cart';
+        addToCartBtn.classList.remove('btn-secondary');
+        addToCartBtn.classList.add('btn-dark');
+      }
+    }
+
+    function initializeDefaultState() {
+      // Calculate and display average price
+      const variants = Array.from(sizeButtons).map(btn => ({
+        price: parseFloat(btn.dataset.price),
+        offer: parseFloat(btn.dataset.offer) || 0
+      }));
+
+      if (variants.length > 0) {
+        const avgPrice = variants.reduce((sum, variant) => sum + variant.price, 0) / variants.length;
+        const avgOffer = variants.reduce((sum, variant) => sum + variant.offer, 0) / variants.length;
+
+        // Update price display
+        if (currentPrice) {
+          currentPrice.textContent = `₹${avgPrice.toFixed(2)}`;
+        }
+
+        // Update discount badge with average discount
+        if (discountBadge) {
+          discountBadge.textContent = `${Math.round(avgOffer)}% OFF`;
+        }
+      }
+
+      // Hide stock badge initially
+      if (stockBadge) {
+        stockBadge.style.display = 'none';
+      }
+
+      // Disable add to cart button (no variant selected)
+      if (addToCartBtn) {
+        addToCartBtn.disabled = true;
+        addToCartBtn.innerHTML = '<i class="bi bi-hand-index me-2"></i>Select Size First';
+        addToCartBtn.classList.remove('btn-dark');
+        addToCartBtn.classList.add('btn-secondary');
+        addToCartBtn.removeAttribute('data-selected-variant');
+      }
+
+      // Hide notify section
+      notifySection?.classList.add('d-none');
+
+      // Reset selected variant
+      selectedVariant = null;
+    }
+
+    function deselectVariant() {
+      // Remove active class from all buttons
+      sizeButtons.forEach(btn => btn.classList.remove('active'));
+
+      // Reset to default state
+      initializeDefaultState();
+    }
+  });
 </script>
 
 <style>
@@ -1003,6 +1190,51 @@
 #notify-email:focus {
   border-color: #e03a2f;
   box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+/* Size Selection Styles */
+.size-btn {
+  min-width: 80px;
+  height: 50px;
+  border: 2px solid #dee2e6;
+  background: white;
+  color: #333;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.size-btn:hover:not(:disabled) {
+  border-color: #dc3545;
+  background: #fff5f5;
+  color: #dc3545;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.15);
+}
+
+.size-btn.active {
+  border-color: #dc3545;
+  background: #dc3545;
+  color: white;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.size-btn:disabled {
+  background: #f8f9fa;
+  border-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.size-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.size-btn small {
+  font-size: 0.7em;
+  line-height: 1;
 }
 </style>
 

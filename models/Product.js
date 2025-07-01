@@ -14,10 +14,12 @@ const variantSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  salePrice: {
+  productOffer: {
     type: Number,
     required: true,
-    min: 0
+    default: 0,
+    min: 0,
+    max: 100
   }
 }, { _id: true });
 
@@ -53,11 +55,11 @@ const productSchema = new mongoose.Schema({
   variants: {
     type: [variantSchema],
     default: [
-      { size: "UK 6", stock: 10, salePrice: 89.99 },
-      { size: "UK 7", stock: 15, salePrice: 89.99 },
-      { size: "UK 8", stock: 20, salePrice: 89.99 },
-      { size: "UK 9", stock: 12, salePrice: 89.99 },
-      { size: "UK 10", stock: 8, salePrice: 89.99 }
+      { size: "UK 6", stock: 10, productOffer: 0 },
+      { size: "UK 7", stock: 15, productOffer: 0 },
+      { size: "UK 8", stock: 20, productOffer: 0 },
+      { size: "UK 9", stock: 12, productOffer: 0 },
+      { size: "UK 10", stock: 8, productOffer: 0 }
     ]
   },
   totalStock: {
@@ -92,6 +94,34 @@ const productSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
+
+// Helper method to calculate sale price for a variant
+productSchema.methods.calculateVariantSalePrice = function(variant) {
+  const offer = variant.productOffer || 0;
+  return this.regularPrice * (1 - offer / 100);
+};
+
+// Helper method to get average sale price across all variants
+productSchema.methods.getAverageSalePrice = function() {
+  if (!this.variants || this.variants.length === 0) {
+    return this.regularPrice;
+  }
+
+  const totalSalePrice = this.variants.reduce((total, variant) => {
+    return total + this.calculateVariantSalePrice(variant);
+  }, 0);
+
+  return totalSalePrice / this.variants.length;
+};
+
+// Helper method to get sale price for a specific variant by size
+productSchema.methods.getVariantSalePrice = function(size) {
+  const variant = this.variants.find(v => v.size === size);
+  if (!variant) {
+    return this.regularPrice;
+  }
+  return this.calculateVariantSalePrice(variant);
+};
 
 // Auto-generate slug on productName change and calculate total stock from variants
 productSchema.pre('save', function (next) {

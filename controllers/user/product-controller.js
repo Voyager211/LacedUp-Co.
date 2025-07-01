@@ -109,8 +109,7 @@ exports.getProducts = async (req, res) => {
 
     const allProducts = await Product.find(filter)
       .populate({ path: 'category', match: { isActive: true }, select: 'name' })
-      .sort(sortQuery)
-      .lean();
+      .sort(sortQuery);
 
     const filteredProducts = allProducts.filter(p => p.category !== null);
     const totalProducts = filteredProducts.length;
@@ -359,8 +358,7 @@ exports.loadProductDetails = async (req, res) => {
 
     // Find product by slug
     const product = await Product.findOne({ slug: productSlug })
-      .populate('category')
-      .lean();
+      .populate('category');
 
     // Check if product exists and is not deleted
     if (!product || product.isDeleted) {
@@ -415,8 +413,7 @@ exports.loadProductDetails = async (req, res) => {
           select: 'name'
         })
         .sort({ createdAt: -1 })
-        .limit(4)
-        .lean();
+        .limit(4);
 
       // Filter out products whose categories became null (inactive categories)
       relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null);

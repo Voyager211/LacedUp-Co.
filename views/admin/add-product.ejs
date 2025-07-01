@@ -32,8 +32,8 @@
           </select>
         </div>
         <div class="col-md-6 mb-3">
-          <label class="form-label">Stock Quantity *</label>
-          <input type="number" name="stock" class="form-control" required>
+          <label class="form-label">Features *</label>
+          <input type="text" name="features" class="form-control" required>
         </div>
       </div>
     </div>
@@ -47,18 +47,32 @@
           <input type="number" name="regularPrice" class="form-control" required>
         </div>
         <div class="col-md-6 mb-3">
-          <label class="form-label">Sale Price *</label>
-          <input type="number" name="salePrice" class="form-control" required>
-        </div>
-        <div class="col-md-6 mb-3">
           <label class="form-label">Product Offer (%)</label>
           <input type="number" name="productOffer" class="form-control">
         </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Features *</label>
-          <input type="text" name="features" class="form-control" required>
-        </div>
       </div>
+    </div>
+
+    <!-- Product Variants -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>📏 Add different sizes with individual stock and discount percentages</li>
+          <li>✅ At least <strong>one variant</strong> is required</li>
+          <li>🇬🇧 Use UK size format (e.g., "UK 6", "UK 7", etc.)</li>
+          <li>💰 Discount percentage (0-100%) will be applied to regular price</li>
+          <li>➕ Click "Add Variant" to add more sizes</li>
+        </ul>
+      </div>
+
+      <div id="variants-container">
+        <!-- Variants will be dynamically added here -->
+      </div>
+
+      <button type="button" id="add-variant-btn" class="btn btn-outline-dark">
+        <i class="bi bi-plus-lg me-2"></i>Add Variant
+      </button>
     </div>
 
     <!-- Description -->
@@ -444,6 +458,99 @@
     height: 12px !important;
   }
 
+  /* ========= VARIANTS MANAGEMENT STYLES ========= */
+  .variant-row {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .variant-row:hover {
+    border-color: #dc3545;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .variant-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .variant-number {
+    background: linear-gradient(135deg, #dc3545, #bb2d3b);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  .remove-variant-btn {
+    background: linear-gradient(135deg, #dc3545, #bb2d3b);
+    color: white;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .remove-variant-btn:hover {
+    background: linear-gradient(135deg, #bb2d3b, #a02834);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+
+  .remove-variant-btn:active {
+    transform: scale(0.95) rotate(90deg);
+  }
+
+  #add-variant-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+    border: 2px dashed #6c757d;
+    background: transparent;
+  }
+
+  #add-variant-btn:hover {
+    background-color: #212529;
+    border-color: #212529;
+    border-style: solid;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .variant-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 15px;
+  }
+
+  @media (max-width: 768px) {
+    .variant-fields {
+      grid-template-columns: 1fr;
+    }
+  }
+
 </style>
 
 <script src="/js/validation.js"></script>
@@ -465,6 +572,12 @@
   let isProcessingBulk = false; // Track bulk upload state
   const MAX_IMAGES = 6;
   const MIN_IMAGES = 3;
+
+  // Variants management
+  let variants = [];
+  let variantCounter = 0;
+  const variantsContainer = document.getElementById('variants-container');
+  const addVariantBtn = document.getElementById('add-variant-btn');
 
   input.addEventListener('change', (e) => {
     const file = e.target.files[0]; // Single file selection
@@ -819,6 +932,115 @@
     existingErrors.forEach(error => error.remove());
   }
 
+  // ========= VARIANTS MANAGEMENT FUNCTIONS =========
+  function addVariant(size = '', stock = '', productOffer = '') {
+    variantCounter++;
+    const variantId = `variant-${variantCounter}`;
+
+    const variantHtml = `
+      <div class="variant-row" data-variant-id="${variantId}">
+        <div class="variant-header">
+          <div class="d-flex align-items-center gap-2">
+            <div class="variant-number">${variants.length + 1}</div>
+            <span class="fw-semibold">Size Variant</span>
+          </div>
+          <button type="button" class="remove-variant-btn" onclick="removeVariant('${variantId}')">×</button>
+        </div>
+        <div class="variant-fields">
+          <div>
+            <label class="form-label">Size *</label>
+            <input type="text" class="form-control variant-size" placeholder="e.g., UK 6" value="${size}" required>
+          </div>
+          <div>
+            <label class="form-label">Stock *</label>
+            <input type="number" class="form-control variant-stock" placeholder="0" value="${stock}" min="0" required>
+          </div>
+          <div>
+            <label class="form-label">Discount % *</label>
+            <input type="number" class="form-control variant-product-offer" placeholder="0" value="${productOffer}" min="0" max="100" step="0.01" required>
+            <div class="form-text">Percentage discount (0-100%)</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    variantsContainer.insertAdjacentHTML('beforeend', variantHtml);
+    variants.push({ id: variantId, size, stock, productOffer });
+    updateVariantNumbers();
+  }
+
+  function removeVariant(variantId) {
+    const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
+    if (variantElement) {
+      variantElement.remove();
+      variants = variants.filter(v => v.id !== variantId);
+      updateVariantNumbers();
+    }
+  }
+
+  function updateVariantNumbers() {
+    const variantRows = document.querySelectorAll('.variant-row');
+    variantRows.forEach((row, index) => {
+      const numberElement = row.querySelector('.variant-number');
+      if (numberElement) {
+        numberElement.textContent = index + 1;
+      }
+    });
+  }
+
+  function getVariantsData() {
+    const variantRows = document.querySelectorAll('.variant-row');
+    const variantsData = [];
+
+    variantRows.forEach(row => {
+      const size = row.querySelector('.variant-size').value.trim();
+      const stock = parseInt(row.querySelector('.variant-stock').value) || 0;
+      const productOffer = parseFloat(row.querySelector('.variant-product-offer').value) || 0;
+
+      if (size) {
+        variantsData.push({ size, stock, productOffer });
+      }
+    });
+
+    return variantsData;
+  }
+
+  function validateVariants() {
+    const variantsData = getVariantsData();
+    const errors = [];
+
+    if (variantsData.length === 0) {
+      errors.push('At least one product variant is required.');
+      return { isValid: false, errors };
+    }
+
+    const sizes = new Set();
+    variantsData.forEach((variant, index) => {
+      if (!variant.size) {
+        errors.push(`Variant ${index + 1}: Size is required.`);
+      } else if (sizes.has(variant.size.toLowerCase())) {
+        errors.push(`Variant ${index + 1}: Duplicate size "${variant.size}".`);
+      } else {
+        sizes.add(variant.size.toLowerCase());
+      }
+
+      if (variant.stock < 0) {
+        errors.push(`Variant ${index + 1}: Stock cannot be negative.`);
+      }
+
+      if (variant.productOffer < 0 || variant.productOffer > 100) {
+        errors.push(`Variant ${index + 1}: Discount percentage must be between 0 and 100.`);
+      }
+    });
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  // Add variant button event listener
+  addVariantBtn.addEventListener('click', () => {
+    addVariant();
+  });
+
   // Attach base64 to form submit
   document.querySelector('form').addEventListener('submit', function (e) {
     const hiddenContainer = document.createElement('div');
@@ -851,10 +1073,26 @@
       return;
     }
 
+    // Validate variants
+    const variantValidation = validateVariants();
+    if (!variantValidation.isValid) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Variant Validation Failed',
+        html: `<ul style="text-align: left; margin: 0; padding-left: 20px;">${variantValidation.errors.map(error => `<li>${error}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
+
     // Attach base64 images manually
     base64Images.forEach((b64, i) => {
       formData.append('base64Images[]', b64);
     });
+
+    // Attach variants data
+    const variantsData = getVariantsData();
+    formData.append('variants', JSON.stringify(variantsData));
 
     try {
       const res = await fetch('/admin/products/api/add', {
@@ -889,6 +1127,12 @@
   // Initialize the interface with placeholders on page load
   document.addEventListener('DOMContentLoaded', function() {
     renderThumbnails();
+
+    // Add default variants for UK shoe sizes
+    const defaultSizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10'];
+    defaultSizes.forEach(size => {
+      addVariant(size, '10', '89.99');
+    });
   });
 
 </script>

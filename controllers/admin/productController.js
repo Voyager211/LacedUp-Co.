@@ -93,8 +93,8 @@ exports.apiSubmitNewProduct = async (req, res) => {
       if (typeof variant.stock !== 'number' || variant.stock < 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
       }
-      if (typeof variant.salePrice !== 'number' || variant.salePrice <= 0) {
-        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Sale price must be a positive number.` });
+      if (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
     }
 
@@ -179,8 +179,10 @@ exports.apiProducts = async (req, res) => {
       if (req.query.maxPrice) {
         priceFilter.$lte = parseFloat(req.query.maxPrice);
       }
-      // Filter products that have at least one variant within the price range
-      query['variants.salePrice'] = priceFilter;
+      // Note: Price filtering now needs to be done post-query since sale prices are calculated
+      // We'll filter by regularPrice as an approximation for now
+      // TODO: Implement proper calculated sale price filtering in a future update
+      query.regularPrice = priceFilter;
     }
 
     // Status filter
@@ -259,24 +261,24 @@ exports.apiCreateProduct = async (req, res) => {
     let variants = [];
     try {
       variants = req.body.variants ? JSON.parse(req.body.variants) : [
-        { size: "UK 6", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 7", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 8", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 9", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 10", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 }
+        { size: "UK 6", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 7", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 8", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 9", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 10", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 }
       ];
     } catch (parseError) {
       variants = [
-        { size: "UK 6", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 7", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 8", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 9", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 },
-        { size: "UK 10", stock: parseInt(req.body.stock) || 0, salePrice: parseFloat(req.body.salePrice) || 0 }
+        { size: "UK 6", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 7", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 8", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 9", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
+        { size: "UK 10", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 }
       ];
     }
 
     const images = await processImages(req.files);
-    await Product.create({
+    const product = new Product({
       productName: req.body.name,
       description: req.body.description,
       regularPrice: req.body.regularPrice,
@@ -285,6 +287,7 @@ exports.apiCreateProduct = async (req, res) => {
       mainImage: images[0],
       subImages: images.slice(1)
     });
+    await product.save();
     res.json({ success: true });
   } catch (err) {
     console.error('Create Product Error:', err);
@@ -386,8 +389,8 @@ exports.apiUpdateProduct = async (req, res) => {
       if (typeof variant.stock !== 'number' || variant.stock < 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
       }
-      if (typeof variant.salePrice !== 'number' || variant.salePrice <= 0) {
-        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Sale price must be a positive number.` });
+      if (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
     }
 
@@ -405,18 +408,25 @@ exports.apiUpdateProduct = async (req, res) => {
     const mainImage = savedUrls[mainImageIndex] || savedUrls[0];
     const subImages = savedUrls.filter((_, i) => i !== mainImageIndex);
 
-    await Product.findByIdAndUpdate(productId, {
-      productName: req.body.productName,
-      description: req.body.description,
-      brand: req.body.brand,
-      category: req.body.category,
-      regularPrice: req.body.regularPrice,
-      productOffer: req.body.productOffer || 0,
-      features: req.body.features,
-      variants: variants,
-      mainImage,
-      subImages,
-    });
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ success: false, message: 'Product not found.' });
+    }
+
+    // Update product fields
+    product.productName = req.body.productName;
+    product.description = req.body.description;
+    product.brand = req.body.brand;
+    product.category = req.body.category;
+    product.regularPrice = req.body.regularPrice;
+    product.productOffer = req.body.productOffer || 0;
+    product.features = req.body.features;
+    product.variants = variants;
+    product.mainImage = mainImage;
+    product.subImages = subImages;
+
+    // Save to trigger pre-save hook for totalStock calculation
+    await product.save();
 
     res.status(200).json({ success: true, message: 'Product Edited Successfully!' });
 

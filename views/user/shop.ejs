@@ -253,9 +253,12 @@
               <h6 class="fw-bold mb-1">${product.productName}</h6>
               <p class="text-muted mb-1">${product.brand}</p>
               <div class="d-flex align-items-center gap-2">
-                <p class="mb-0 fw-semibold text-danger">₹${product.salePrice}</p>
-                ${product.regularPrice !== product.salePrice ?
-                  `<p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice}</p>` : ''}
+                ${product.variants && product.variants.length > 0 ? (() => {
+                  const calculatedPrices = product.variants.map(v => product.regularPrice * (1 - (v.productOffer || 0) / 100));
+                  const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+                  return `<p class="mb-0 fw-semibold text-danger">₹${avgPrice.toFixed(2)}</p>`;
+                })() : '<p class="mb-0 fw-semibold text-danger">₹0.00</p>'}
+                <p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice}</p>
               </div>
               <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
             </div>
@@ -503,7 +506,13 @@
               <span class="suggestion-category">${product.category?.name || 'No Category'}</span>
             </div>
           </div>
-          <div class="suggestion-price">₹${product.salePrice}</div>
+          <div class="suggestion-price">
+            ${product.variants && product.variants.length > 0 ? (() => {
+              const calculatedPrices = product.variants.map(v => product.regularPrice * (1 - (v.productOffer || 0) / 100));
+              const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+              return `₹${avgPrice.toFixed(2)}`;
+            })() : '₹0.00'}
+          </div>
         </div>
       `).join('');
 
@@ -1166,20 +1175,20 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       <% } %>
 
-      // User authenticated - handle cart functionality
-      console.log('Adding to cart:', productId);
+      // User authenticated - redirect to product details for size selection
+      console.log('Redirecting to product details for size selection:', productId);
 
-      // Show success feedback
-      const originalContent = button.innerHTML;
-      button.innerHTML = '<i class="bi bi-check-circle"></i>';
-      button.classList.add('btn-success');
-      button.classList.remove('btn-dark');
+      // Find the product card to get the slug
+      const productCard = button.closest('.product-card');
+      const productLink = productCard.querySelector('a[href*="/product/"]');
 
-      setTimeout(() => {
-        button.innerHTML = originalContent;
-        button.classList.remove('btn-success');
-        button.classList.add('btn-dark');
-      }, 2000);
+      if (productLink) {
+        // Redirect to product details page for size selection
+        window.location.href = productLink.href;
+      } else {
+        // Fallback: redirect using product ID
+        window.location.href = `/product/${productId}`;
+      }
     }
 
     // Wishlist button handling

@@ -201,7 +201,13 @@ document.addEventListener('DOMContentLoaded', function() {
             <span class="suggestion-category">${product.category?.name || 'No Category'}</span>
           </div>
         </div>
-        <div class="suggestion-price">₹${product.salePrice}</div>
+        <div class="suggestion-price">
+          ${product.variants && product.variants.length > 0 ? (() => {
+            const prices = product.variants.map(v => v.salePrice);
+            const avgPrice = prices.reduce((sum, price) => sum + price, 0) / prices.length;
+            return `₹${avgPrice.toFixed(2)}`;
+          })() : '₹0.00'}
+        </div>
       </div>
     `).join('');
 

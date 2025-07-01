@@ -64,9 +64,8 @@
           <th>Brand</th>
           <th>Category</th>
           <th>Main Image</th>
-          <th>Sale Price</th>
           <th>Regular Price</th>
-          <th>Stock</th>
+          <th>Total Stock</th>
           <th>Status</th>
           <th>Created Date</th>
           <th>Actions</th>
@@ -82,9 +81,8 @@
             <td>
               <img src="<%= product.mainImage %>" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" />
             </td>
-            <td>₹<%= product.salePrice %></td>
-            <td>₹<%= product.regularPrice %></td>
-            <td><%= product.stock %></td>
+            <td>₹<%= product.regularPrice || 0 %></td>
+            <td><%= product.totalStock || 0 %></td>
             <td>
             <div class="form-check form-switch d-flex justify-content-center">
               <input 
@@ -582,9 +580,8 @@
           <td>${product.brand || '—'}</td>
           <td>${product.category?.name || '—'}</td>
           <td><img src="${product.mainImage}" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" /></td>
-          <td>₹${product.salePrice}</td>
-          <td>₹${product.regularPrice}</td>
-          <td>${product.stock}</td>
+          <td>₹${product.regularPrice || 0}</td>
+          <td>${product.totalStock || 0}</td>
           <td>
             <div class="form-check form-switch d-flex justify-content-center">
               <input class="form-check-input toggle-status" type="checkbox" data-id="${product._id}" ${product.isListed ? 'checked' : ''}>
