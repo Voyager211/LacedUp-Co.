@@ -79,10 +79,8 @@ exports.getProducts = async (req, res) => {
       }
     }
 
-    // Price range filter (check variants for price range)
-    if (minPrice > 0 || maxPrice < 1e9) {
-      filter['variants.salePrice'] = { $gte: minPrice, $lte: maxPrice };
-    }
+    // Price range filter will be applied after fetching products since we need to calculate sale prices
+    // Note: We'll filter by computed sale prices after the database query
 
     // Size filter (check variants for available sizes)
     if (sizes.length > 0) {
@@ -111,7 +109,25 @@ exports.getProducts = async (req, res) => {
       .populate({ path: 'category', match: { isActive: true }, select: 'name' })
       .sort(sortQuery);
 
-    const filteredProducts = allProducts.filter(p => p.category !== null);
+    // Filter out products with inactive categories
+    let filteredProducts = allProducts.filter(p => p.category !== null);
+
+    // Apply price range filter using computed sale prices
+    if (minPrice > 0 || maxPrice < 1e9) {
+      filteredProducts = filteredProducts.filter(product => {
+        if (!product.variants || product.variants.length === 0) {
+          return product.regularPrice >= minPrice && product.regularPrice <= maxPrice;
+        }
+
+        // Check if any variant's sale price falls within the range
+        return product.variants.some(variant => {
+          const offer = variant.productOffer || 0;
+          const salePrice = product.regularPrice * (1 - offer / 100);
+          return salePrice >= minPrice && salePrice <= maxPrice;
+        });
+      });
+    }
+
     const totalProducts = filteredProducts.length;
     const products = filteredProducts.slice(skip, skip + limit);
 
@@ -122,7 +138,25 @@ exports.getProducts = async (req, res) => {
         const avgRating = totalReviews > 0
           ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
           : 0;
-        return { ...product, averageRating: avgRating, totalReviews };
+
+        // Convert to plain object and add computed sale prices
+        const productObj = product.toObject();
+
+        // Add computed sale prices to variants
+        if (productObj.variants && productObj.variants.length > 0) {
+          productObj.variants = productObj.variants.map(variant => ({
+            ...variant,
+            salePrice: productObj.regularPrice * (1 - (variant.productOffer || 0) / 100)
+          }));
+
+          // Add average sale price for easy access
+          const avgSalePrice = productObj.variants.reduce((sum, v) => sum + v.salePrice, 0) / productObj.variants.length;
+          productObj.averageSalePrice = avgSalePrice;
+        } else {
+          productObj.averageSalePrice = productObj.regularPrice;
+        }
+
+        return { ...productObj, averageRating: avgRating, totalReviews };
       })
     );
 
@@ -190,13 +224,10 @@ exports.loadShopPage = async (req, res) => {
       filter.category = selectedCategory;
     }
 
-    // Apply price range filter (check variants for price range)
-    if (minPrice || maxPrice) {
-      const priceFilter = {};
-      if (minPrice) priceFilter.$gte = parseFloat(minPrice);
-      if (maxPrice) priceFilter.$lte = parseFloat(maxPrice);
-      filter['variants.salePrice'] = priceFilter;
-    }
+    // Price range filter will be applied after fetching products since we need to calculate sale prices
+    // Note: We'll filter by computed sale prices after the database query
+    const minPriceNum = minPrice ? parseFloat(minPrice) : 0;
+    const maxPriceNum = maxPrice ? parseFloat(maxPrice) : 1e9;
 
     // Build sort query (note: price sorting will use regularPrice since variants have multiple prices)
     const sortMap = {
@@ -211,16 +242,30 @@ exports.loadShopPage = async (req, res) => {
     };
     const sortQuery = sortMap[sortBy] || sortMap['newest'];
 
-    // Get total count of products matching filters
-    const totalProductCount = await Product.countDocuments(filter);
+    // Get all products first, then apply price filtering
+    const allProducts = await Product.find(filter).populate('category').sort(sortQuery);
 
-    const { data: paginatedProducts, totalPages } = await getPagination(
-      Product.find(filter).populate('category').sort(sortQuery),
-      Product,
-      filter,
-      page,
-      limit
-    );
+    // Apply price range filter using computed sale prices
+    let filteredProducts = allProducts;
+    if (minPriceNum > 0 || maxPriceNum < 1e9) {
+      filteredProducts = allProducts.filter(product => {
+        if (!product.variants || product.variants.length === 0) {
+          return product.regularPrice >= minPriceNum && product.regularPrice <= maxPriceNum;
+        }
+
+        // Check if any variant's sale price falls within the range
+        return product.variants.some(variant => {
+          const offer = variant.productOffer || 0;
+          const salePrice = product.regularPrice * (1 - offer / 100);
+          return salePrice >= minPriceNum && salePrice <= maxPriceNum;
+        });
+      });
+    }
+
+    const totalProductCount = filteredProducts.length;
+    const totalPages = Math.ceil(totalProductCount / limit);
+    const skip = (page - 1) * limit;
+    const paginatedProducts = filteredProducts.slice(skip, skip + limit);
 
     // Calculate pagination variables
     const hasPrevPage = page > 1;
@@ -419,7 +464,7 @@ exports.loadProductDetails = async (req, res) => {
       relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null);
     }
 
-    // Add rating stats to related products
+    // Add rating stats and computed sale prices to related products
     const relatedProducts = await Promise.all(
       relatedProductsRaw.map(async (relatedProduct) => {
         const relReviews = await Review.find({ product: relatedProduct._id, isHidden: false });
@@ -427,8 +472,26 @@ exports.loadProductDetails = async (req, res) => {
         const averageRating = totalReviews > 0
           ? relReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
           : 0;
+
+        // Convert to plain object and add computed sale prices
+        const productObj = relatedProduct.toObject();
+
+        // Add computed sale prices to variants
+        if (productObj.variants && productObj.variants.length > 0) {
+          productObj.variants = productObj.variants.map(variant => ({
+            ...variant,
+            salePrice: productObj.regularPrice * (1 - (variant.productOffer || 0) / 100)
+          }));
+
+          // Add average sale price for easy access
+          const avgSalePrice = productObj.variants.reduce((sum, v) => sum + v.salePrice, 0) / productObj.variants.length;
+          productObj.averageSalePrice = avgSalePrice;
+        } else {
+          productObj.averageSalePrice = productObj.regularPrice;
+        }
+
         return {
-          ...relatedProduct,
+          ...productObj,
           averageRating,
           totalReviews
         };
