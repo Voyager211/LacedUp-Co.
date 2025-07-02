@@ -14,14 +14,31 @@ const variantSchema = new mongoose.Schema({
     default: 0,
     min: 0
   },
-  productOffer: {
+  basePrice: {
     type: Number,
     required: true,
+    min: 0
+  },
+  variantSpecificOffer: {
+    type: Number,
+    default: 0,
+    min: 0,
+    max: 100
+  },
+  // Keep old field for backward compatibility during migration
+  productOffer: {
+    type: Number,
     default: 0,
     min: 0,
     max: 100
   }
 }, { _id: true });
+
+// Virtual field for calculated final price
+variantSchema.virtual('finalPrice').get(function() {
+  const offer = this.variantSpecificOffer || 0;
+  return this.basePrice * (1 - offer / 100);
+});
 
 const productSchema = new mongoose.Schema({
   productName: {
@@ -54,13 +71,7 @@ const productSchema = new mongoose.Schema({
   },
   variants: {
     type: [variantSchema],
-    default: [
-      { size: "UK 6", stock: 10, productOffer: 0 },
-      { size: "UK 7", stock: 15, productOffer: 0 },
-      { size: "UK 8", stock: 20, productOffer: 0 },
-      { size: "UK 9", stock: 12, productOffer: 0 },
-      { size: "UK 10", stock: 8, productOffer: 0 }
-    ]
+    default: []
   },
   totalStock: {
     type: Number,
@@ -95,32 +106,50 @@ const productSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-// Helper method to calculate sale price for a variant
-productSchema.methods.calculateVariantSalePrice = function(variant) {
-  const offer = variant.productOffer || 0;
-  return this.regularPrice * (1 - offer / 100);
+// Helper method to calculate final price for a variant
+productSchema.methods.calculateVariantFinalPrice = function(variant) {
+  if (!variant.basePrice) {
+    // Fallback for migration period - use old logic
+    const offer = variant.productOffer || variant.variantSpecificOffer || 0;
+    return this.regularPrice * (1 - offer / 100);
+  }
+  const offer = variant.variantSpecificOffer || 0;
+  return variant.basePrice * (1 - offer / 100);
 };
 
-// Helper method to get average sale price across all variants
-productSchema.methods.getAverageSalePrice = function() {
+// Helper method to get average final price across all variants
+productSchema.methods.getAverageFinalPrice = function() {
   if (!this.variants || this.variants.length === 0) {
     return this.regularPrice;
   }
 
-  const totalSalePrice = this.variants.reduce((total, variant) => {
-    return total + this.calculateVariantSalePrice(variant);
+  const totalFinalPrice = this.variants.reduce((total, variant) => {
+    return total + this.calculateVariantFinalPrice(variant);
   }, 0);
 
-  return totalSalePrice / this.variants.length;
+  return totalFinalPrice / this.variants.length;
 };
 
-// Helper method to get sale price for a specific variant by size
-productSchema.methods.getVariantSalePrice = function(size) {
+// Helper method to get final price for a specific variant by size
+productSchema.methods.getVariantFinalPrice = function(size) {
   const variant = this.variants.find(v => v.size === size);
   if (!variant) {
     return this.regularPrice;
   }
-  return this.calculateVariantSalePrice(variant);
+  return this.calculateVariantFinalPrice(variant);
+};
+
+// Legacy methods for backward compatibility during migration
+productSchema.methods.calculateVariantSalePrice = function(variant) {
+  return this.calculateVariantFinalPrice(variant);
+};
+
+productSchema.methods.getAverageSalePrice = function() {
+  return this.getAverageFinalPrice();
+};
+
+productSchema.methods.getVariantSalePrice = function(size) {
+  return this.getVariantFinalPrice(size);
 };
 
 // Auto-generate slug on productName change and calculate total stock from variants

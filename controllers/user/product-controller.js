@@ -119,11 +119,10 @@ exports.getProducts = async (req, res) => {
           return product.regularPrice >= minPrice && product.regularPrice <= maxPrice;
         }
 
-        // Check if any variant's sale price falls within the range
+        // Check if any variant's final price falls within the range
         return product.variants.some(variant => {
-          const offer = variant.productOffer || 0;
-          const salePrice = product.regularPrice * (1 - offer / 100);
-          return salePrice >= minPrice && salePrice <= maxPrice;
+          const finalPrice = product.calculateVariantFinalPrice(variant);
+          return finalPrice >= minPrice && finalPrice <= maxPrice;
         });
       });
     }
@@ -139,20 +138,22 @@ exports.getProducts = async (req, res) => {
           ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
           : 0;
 
-        // Convert to plain object and add computed sale prices
+        // Convert to plain object and add computed final prices
         const productObj = product.toObject();
 
-        // Add computed sale prices to variants
+        // Add computed final prices to variants
         if (productObj.variants && productObj.variants.length > 0) {
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            salePrice: productObj.regularPrice * (1 - (variant.productOffer || 0) / 100)
+            finalPrice: product.calculateVariantFinalPrice(variant)
           }));
 
-          // Add average sale price for easy access
-          const avgSalePrice = productObj.variants.reduce((sum, v) => sum + v.salePrice, 0) / productObj.variants.length;
-          productObj.averageSalePrice = avgSalePrice;
+          // Add average final price for easy access
+          productObj.averageFinalPrice = product.getAverageFinalPrice();
+          // Keep averageSalePrice for backward compatibility
+          productObj.averageSalePrice = productObj.averageFinalPrice;
         } else {
+          productObj.averageFinalPrice = productObj.regularPrice;
           productObj.averageSalePrice = productObj.regularPrice;
         }
 
@@ -253,11 +254,10 @@ exports.loadShopPage = async (req, res) => {
           return product.regularPrice >= minPriceNum && product.regularPrice <= maxPriceNum;
         }
 
-        // Check if any variant's sale price falls within the range
+        // Check if any variant's final price falls within the range
         return product.variants.some(variant => {
-          const offer = variant.productOffer || 0;
-          const salePrice = product.regularPrice * (1 - offer / 100);
-          return salePrice >= minPriceNum && salePrice <= maxPriceNum;
+          const finalPrice = product.calculateVariantFinalPrice(variant);
+          return finalPrice >= minPriceNum && finalPrice <= maxPriceNum;
         });
       });
     }
@@ -376,13 +376,36 @@ exports.getSearchSuggestions = async (req, res) => {
         match: { isActive: true, isDeleted: false },
         select: 'name'
       })
-      .select('productName brand mainImage salePrice category slug')
+      .select('productName brand mainImage category slug regularPrice variants')
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();
 
-    // Only include products that have a category
-    const filteredSuggestions = suggestions.filter(p => p.category && p.category.name);
+    // Only include products that have a category and add computed final prices
+    const filteredSuggestions = suggestions
+      .filter(p => p.category && p.category.name)
+      .map(productData => {
+        // Create a temporary Product instance to use model methods
+        const tempProduct = new Product(productData);
+
+        // Add computed final prices to variants
+        if (productData.variants && productData.variants.length > 0) {
+          productData.variants = productData.variants.map(variant => ({
+            ...variant,
+            finalPrice: tempProduct.calculateVariantFinalPrice(variant)
+          }));
+
+          // Add average final price for easy access
+          productData.averageFinalPrice = tempProduct.getAverageFinalPrice();
+          // Keep averageSalePrice for backward compatibility
+          productData.averageSalePrice = productData.averageFinalPrice;
+        } else {
+          productData.averageFinalPrice = productData.regularPrice;
+          productData.averageSalePrice = productData.regularPrice;
+        }
+
+        return productData;
+      });
 
     res.json({
       success: true,
@@ -473,20 +496,22 @@ exports.loadProductDetails = async (req, res) => {
           ? relReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
           : 0;
 
-        // Convert to plain object and add computed sale prices
+        // Convert to plain object and add computed final prices
         const productObj = relatedProduct.toObject();
 
-        // Add computed sale prices to variants
+        // Add computed final prices to variants
         if (productObj.variants && productObj.variants.length > 0) {
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            salePrice: productObj.regularPrice * (1 - (variant.productOffer || 0) / 100)
+            finalPrice: relatedProduct.calculateVariantFinalPrice(variant)
           }));
 
-          // Add average sale price for easy access
-          const avgSalePrice = productObj.variants.reduce((sum, v) => sum + v.salePrice, 0) / productObj.variants.length;
-          productObj.averageSalePrice = avgSalePrice;
+          // Add average final price for easy access
+          productObj.averageFinalPrice = relatedProduct.getAverageFinalPrice();
+          // Keep averageSalePrice for backward compatibility
+          productObj.averageSalePrice = productObj.averageFinalPrice;
         } else {
+          productObj.averageFinalPrice = productObj.regularPrice;
           productObj.averageSalePrice = productObj.regularPrice;
         }
 
@@ -517,6 +542,25 @@ exports.loadProductDetails = async (req, res) => {
       });
     }
 
+    // Calculate average final price for the template with error handling
+    let averageFinalPrice;
+    try {
+      averageFinalPrice = product.getAverageFinalPrice();
+    } catch (error) {
+      console.error('Error calculating average final price:', error);
+      // Fallback calculation
+      if (product.variants && product.variants.length > 0) {
+        const totalPrice = product.variants.reduce((sum, variant) => {
+          const basePrice = variant.basePrice || product.regularPrice;
+          const offer = variant.variantSpecificOffer || variant.productOffer || 0;
+          return sum + (basePrice * (1 - offer / 100));
+        }, 0);
+        averageFinalPrice = totalPrice / product.variants.length;
+      } else {
+        averageFinalPrice = product.regularPrice;
+      }
+    }
+
     res.render('user/product-details', {
       title: product.productName,
       layout: 'user/layouts/user-layout',
@@ -527,7 +571,8 @@ exports.loadProductDetails = async (req, res) => {
       averageRating,
       totalReviews,
       ratingCounts,
-      ratingBreakdown
+      ratingBreakdown,
+      averageFinalPrice
     });
 
   } catch (err) {

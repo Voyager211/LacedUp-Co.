@@ -254,13 +254,28 @@
               <p class="text-muted mb-1">${product.brand}</p>
               <div class="d-flex align-items-center gap-2">
                 ${product.variants && product.variants.length > 0 ? (() => {
-                  // Use the computed averageSalePrice if available, otherwise calculate it
-                  if (product.averageSalePrice) {
+                  // Use the computed averageFinalPrice or averageSalePrice if available
+                  if (product.averageFinalPrice) {
+                    return `<p class="mb-0 fw-semibold text-danger">₹${product.averageFinalPrice.toFixed(2)}</p>`;
+                  } else if (product.averageSalePrice) {
                     return `<p class="mb-0 fw-semibold text-danger">₹${product.averageSalePrice.toFixed(2)}</p>`;
                   } else {
-                    const calculatedPrices = product.variants.map(v => product.regularPrice * (1 - (v.productOffer || 0) / 100));
-                    const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
-                    return `<p class="mb-0 fw-semibold text-danger">₹${avgPrice.toFixed(2)}</p>`;
+                    // Fallback: use finalPrice from variants if available, otherwise calculate
+                    if (product.variants[0].finalPrice !== undefined) {
+                      const avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
+                      return `<p class="mb-0 fw-semibold text-danger">₹${avgPrice.toFixed(2)}</p>`;
+                    } else {
+                      // Legacy calculation for backward compatibility
+                      const calculatedPrices = product.variants.map(v => {
+                        if (v.basePrice) {
+                          return v.basePrice * (1 - (v.variantSpecificOffer || 0) / 100);
+                        } else {
+                          return product.regularPrice * (1 - (v.productOffer || 0) / 100);
+                        }
+                      });
+                      const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+                      return `<p class="mb-0 fw-semibold text-danger">₹${avgPrice.toFixed(2)}</p>`;
+                    }
                   }
                 })() : '<p class="mb-0 fw-semibold text-danger">₹0.00</p>'}
                 <p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice || 0}</p>
@@ -512,17 +527,27 @@
             </div>
           </div>
           <div class="suggestion-price">
-            ${product.variants && product.variants.length > 0 ? (() => {
-              // Use the computed averageSalePrice if available, otherwise calculate it
-              if (product.averageSalePrice) {
-                return `₹${product.averageSalePrice.toFixed(2)}`;
+            ${product.averageFinalPrice ? `₹${product.averageFinalPrice.toFixed(2)}` : (product.averageSalePrice ? `₹${product.averageSalePrice.toFixed(2)}` : (product.variants && product.variants.length > 0 ? (() => {
+              // Use computed finalPrice from variants if available, otherwise calculate it
+              if (product.variants[0].finalPrice !== undefined) {
+                const avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
+                return `₹${avgPrice.toFixed(2)}`;
+              } else if (product.variants[0].salePrice !== undefined) {
+                const avgPrice = product.variants.reduce((sum, v) => sum + v.salePrice, 0) / product.variants.length;
+                return `₹${avgPrice.toFixed(2)}`;
               } else {
-                const calculatedPrices = product.variants.map(v => product.regularPrice * (1 - (v.productOffer || 0) / 100));
+                // Legacy calculation for backward compatibility
+                const calculatedPrices = product.variants.map(v => {
+                  if (v.basePrice) {
+                    return v.basePrice * (1 - (v.variantSpecificOffer || 0) / 100);
+                  } else {
+                    return product.regularPrice * (1 - (v.productOffer || 0) / 100);
+                  }
+                });
                 const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
                 return `₹${avgPrice.toFixed(2)}`;
               }
-            })() : '₹0.00'}
-          </div>
+            })() : `₹${product.regularPrice?.toFixed(2) || '0.00'}`))}
         </div>
       `).join('');
 

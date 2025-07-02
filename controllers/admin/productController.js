@@ -3,6 +3,7 @@ const Category = require('../../models/Category');
 const { processImages } = require('../../utils/imageProcessor');
 const { getPagination } = require('../../utils/pagination');
 const { validateBase64Image, validateMultipleImageFiles } = require('../../utils/imageValidation');
+const { getImagesToDelete, deleteFiles } = require('../../utils/fileCleanup');
 const sharp = require('sharp');
 
 // List all products (page render)
@@ -93,7 +94,16 @@ exports.apiSubmitNewProduct = async (req, res) => {
       if (typeof variant.stock !== 'number' || variant.stock < 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
       }
-      if (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100) {
+      // Validate basePrice (required for new pricing structure)
+      if (typeof variant.basePrice !== 'number' || variant.basePrice <= 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Base price is required and must be a positive number.` });
+      }
+      // Validate variantSpecificOffer (optional, defaults to 0)
+      if (variant.variantSpecificOffer !== undefined && (typeof variant.variantSpecificOffer !== 'number' || variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100)) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Variant specific offer must be a number between 0 and 100.` });
+      }
+      // Keep productOffer validation for backward compatibility
+      if (variant.productOffer !== undefined && (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100)) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
     }
@@ -118,7 +128,7 @@ exports.apiSubmitNewProduct = async (req, res) => {
       brand: req.body.brand,
       category: req.body.category,
       regularPrice: req.body.regularPrice,
-      productOffer: req.body.productOffer || 0,
+      productOffer: req.body.productOffer || 0, // Keep for backward compatibility
       features: req.body.features,
       variants: variants,
       mainImage,
@@ -250,50 +260,7 @@ exports.apiProducts = async (req, res) => {
   }
 };
 
-// API: Create product (file upload/multer) - DEPRECATED: Use apiSubmitNewProduct instead
-exports.apiCreateProduct = async (req, res) => {
-  try {
-    if (!req.files || req.files.length < 3) {
-      return res.status(400).json({ success: false, message: 'Minimum 3 images required' });
-    }
-
-    // Parse variants or use default variants if not provided
-    let variants = [];
-    try {
-      variants = req.body.variants ? JSON.parse(req.body.variants) : [
-        { size: "UK 6", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 7", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 8", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 9", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 10", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 }
-      ];
-    } catch (parseError) {
-      variants = [
-        { size: "UK 6", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 7", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 8", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 9", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 },
-        { size: "UK 10", stock: parseInt(req.body.stock) || 0, productOffer: parseFloat(req.body.productOffer) || 0 }
-      ];
-    }
-
-    const images = await processImages(req.files);
-    const product = new Product({
-      productName: req.body.name,
-      description: req.body.description,
-      regularPrice: req.body.regularPrice,
-      variants: variants,
-      category: req.body.category,
-      mainImage: images[0],
-      subImages: images.slice(1)
-    });
-    await product.save();
-    res.json({ success: true });
-  } catch (err) {
-    console.error('Create Product Error:', err);
-    res.status(500).json({ success: false, message: 'Failed to create product' });
-  }
-};
+// DEPRECATED METHOD REMOVED - Use apiSubmitNewProduct instead
 
 // API: Update product (fetch) - DEPRECATED: Replaced by main apiUpdateProduct method above
 
@@ -356,6 +323,14 @@ exports.apiUpdateProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Minimum 3 images required.' });
     }
 
+    if (base64Images.length > 6) {
+      return res.status(400).json({ success: false, message: 'Maximum 6 images allowed per product.' });
+    }
+
+    if (base64Images.length > 6) {
+      return res.status(400).json({ success: false, message: 'Maximum 6 images allowed per product.' });
+    }
+
     // Validate each base64 image
     for (let i = 0; i < base64Images.length; i++) {
       const validation = validateBase64Image(base64Images[i]);
@@ -389,7 +364,16 @@ exports.apiUpdateProduct = async (req, res) => {
       if (typeof variant.stock !== 'number' || variant.stock < 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Stock must be a non-negative number.` });
       }
-      if (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100) {
+      // Validate basePrice (required for new pricing structure)
+      if (typeof variant.basePrice !== 'number' || variant.basePrice <= 0) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Base price is required and must be a positive number.` });
+      }
+      // Validate variantSpecificOffer (optional, defaults to 0)
+      if (variant.variantSpecificOffer !== undefined && (typeof variant.variantSpecificOffer !== 'number' || variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100)) {
+        return res.status(400).json({ success: false, message: `Variant ${i + 1}: Variant specific offer must be a number between 0 and 100.` });
+      }
+      // Keep productOffer validation for backward compatibility
+      if (variant.productOffer !== undefined && (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100)) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
     }
@@ -413,13 +397,17 @@ exports.apiUpdateProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found.' });
     }
 
+    // Get old images for cleanup
+    const oldImages = [product.mainImage, ...product.subImages];
+    console.log('🔍 Old images before update:', oldImages);
+
     // Update product fields
     product.productName = req.body.productName;
     product.description = req.body.description;
     product.brand = req.body.brand;
     product.category = req.body.category;
     product.regularPrice = req.body.regularPrice;
-    product.productOffer = req.body.productOffer || 0;
+    product.productOffer = req.body.productOffer || 0; // Keep for backward compatibility
     product.features = req.body.features;
     product.variants = variants;
     product.mainImage = mainImage;
@@ -427,6 +415,16 @@ exports.apiUpdateProduct = async (req, res) => {
 
     // Save to trigger pre-save hook for totalStock calculation
     await product.save();
+
+    // Clean up orphaned image files
+    const newImages = [mainImage, ...subImages];
+    const imagesToDelete = getImagesToDelete(oldImages, newImages);
+
+    if (imagesToDelete.length > 0) {
+      console.log('🧹 Cleaning up orphaned images:', imagesToDelete);
+      const cleanupResult = await deleteFiles(imagesToDelete);
+      console.log('✅ Cleanup completed:', cleanupResult);
+    }
 
     res.status(200).json({ success: true, message: 'Product Edited Successfully!' });
 

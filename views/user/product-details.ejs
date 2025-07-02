@@ -92,12 +92,19 @@
       <div class="d-flex align-items-center gap-3 mb-2">
         <% if (product.variants && product.variants.length > 0) { %>
           <%
-            // Calculate average sale price using the formula: regularPrice * (1 - productOffer/100)
-            const calculatedPrices = product.variants.map(v => {
-              const offer = v.productOffer || 0;
-              return product.regularPrice * (1 - offer / 100);
-            });
-            const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+            // Use the pre-computed average final price from the controller with fallback
+            let avgPrice;
+            if (typeof averageFinalPrice !== 'undefined') {
+              avgPrice = averageFinalPrice;
+            } else {
+              // Fallback calculation if averageFinalPrice is not provided
+              const totalPrice = product.variants.reduce((sum, variant) => {
+                const basePrice = variant.basePrice || product.regularPrice;
+                const offer = variant.variantSpecificOffer || variant.productOffer || 0;
+                return sum + (basePrice * (1 - offer / 100));
+              }, 0);
+              avgPrice = totalPrice / product.variants.length;
+            }
           %>
           <h4 class="text-danger mb-0" id="current-price">₹<%= avgPrice.toFixed(2) %></h4>
           <span class="text-muted text-decoration-line-through">₹<%= product.regularPrice %></span>
@@ -117,15 +124,16 @@
           <div class="d-flex flex-wrap gap-2" id="size-selection">
             <% product.variants.forEach((variant, index) => { %>
               <%
-                // Calculate sale price using the formula: regularPrice * (1 - productOffer/100)
-                const offer = variant.productOffer || 0;
-                const calculatedPrice = product.regularPrice * (1 - offer / 100);
+                // Calculate final price using the new pricing structure
+                const basePrice = variant.basePrice || product.regularPrice;
+                const offer = variant.variantSpecificOffer || variant.productOffer || 0;
+                const finalPrice = basePrice * (1 - offer / 100);
               %>
               <button
                 class="btn btn-outline-dark size-btn"
                 data-size="<%= variant.size %>"
                 data-stock="<%= variant.stock %>"
-                data-price="<%= calculatedPrice %>"
+                data-price="<%= finalPrice %>"
                 data-variant-index="<%= index %>"
                 data-offer="<%= offer %>"
                 <%= variant.stock === 0 ? 'disabled' : '' %>

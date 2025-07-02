@@ -58,10 +58,12 @@
       <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
       <div class="alert alert-info small" role="alert">
         <ul class="mb-0 ps-3">
-          <li>📏 Add different sizes with individual stock and discount percentages</li>
+          <li>📏 Add different sizes with individual base prices and variant-specific offers</li>
           <li>✅ At least <strong>one variant</strong> is required</li>
           <li>🇬🇧 Use UK size format (e.g., "UK 6", "UK 7", etc.)</li>
-          <li>💰 Discount percentage (0-100%) will be applied to regular price</li>
+          <li>💰 Base Price: The intended selling price for each variant</li>
+          <li>🎯 Variant Specific Offer: Optional discount percentage (0-100%) applied to base price</li>
+          <li>📊 Final Price: Automatically calculated as Base Price - Variant Specific Offer</li>
           <li>➕ Click "Add Variant" to add more sizes</li>
         </ul>
       </div>
@@ -541,13 +543,21 @@
 
   .variant-fields {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
     gap: 15px;
+  }
+
+  @media (max-width: 1200px) {
+    .variant-fields {
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
   }
 
   @media (max-width: 768px) {
     .variant-fields {
       grid-template-columns: 1fr;
+      gap: 10px;
     }
   }
 
@@ -905,7 +915,7 @@
 
     // Open crop modal with the existing image
     showCropModal(base64Images[index], () => {
-      // Reset upload slot after re-cropping
+      // Reset upload slot after re-cropping is complete
       currentUploadSlot = -1;
     });
   }
@@ -933,7 +943,32 @@
   }
 
   // ========= VARIANTS MANAGEMENT FUNCTIONS =========
-  function addVariant(size = '', stock = '', productOffer = '') {
+
+  // Calculate final price for a variant
+  function calculateFinalPrice(variantId) {
+    const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
+    if (!variantElement) return;
+
+    const basePriceInput = variantElement.querySelector('.variant-base-price');
+    const offerInput = variantElement.querySelector('.variant-specific-offer');
+    const finalPriceInput = variantElement.querySelector('.variant-final-price');
+
+    const basePrice = parseFloat(basePriceInput.value) || 0;
+    const offer = parseFloat(offerInput.value) || 0;
+
+    const finalPrice = basePrice * (1 - offer / 100);
+    finalPriceInput.value = finalPrice.toFixed(2);
+
+    // Update the color based on discount
+    if (offer > 0) {
+      finalPriceInput.style.color = '#198754'; // Green for discounted
+      finalPriceInput.style.fontWeight = '700';
+    } else {
+      finalPriceInput.style.color = '#6c757d'; // Gray for no discount
+      finalPriceInput.style.fontWeight = '600';
+    }
+  }
+  function addVariant(size = '', stock = '', basePrice = '', variantSpecificOffer = '') {
     variantCounter++;
     const variantId = `variant-${variantCounter}`;
 
@@ -956,17 +991,27 @@
             <input type="number" class="form-control variant-stock" placeholder="0" value="${stock}" min="0" required>
           </div>
           <div>
-            <label class="form-label">Discount % *</label>
-            <input type="number" class="form-control variant-product-offer" placeholder="0" value="${productOffer}" min="0" max="100" step="0.01" required>
-            <div class="form-text">Percentage discount (0-100%)</div>
+            <label class="form-label">Base Price * (₹)</label>
+            <input type="number" class="form-control variant-base-price" placeholder="0" value="${basePrice}" min="0" step="0.01" required onchange="calculateFinalPrice('${variantId}')" oninput="calculateFinalPrice('${variantId}')">
+          </div>
+          <div>
+            <label class="form-label">Variant Specific Offer (%)</label>
+            <input type="number" class="form-control variant-specific-offer" placeholder="0" value="${variantSpecificOffer}" min="0" max="100" step="0.01" onchange="calculateFinalPrice('${variantId}')" oninput="calculateFinalPrice('${variantId}')">
+          </div>
+          <div>
+            <label class="form-label">Final Price (₹)</label>
+            <input type="number" class="form-control variant-final-price" placeholder="0" readonly style="background-color: #f8f9fa; font-weight: 600; color: #198754;">
           </div>
         </div>
       </div>
     `;
 
     variantsContainer.insertAdjacentHTML('beforeend', variantHtml);
-    variants.push({ id: variantId, size, stock, productOffer });
+    variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer });
     updateVariantNumbers();
+
+    // Calculate initial final price
+    setTimeout(() => calculateFinalPrice(variantId), 100);
   }
 
   function removeVariant(variantId) {
@@ -995,10 +1040,18 @@
     variantRows.forEach(row => {
       const size = row.querySelector('.variant-size').value.trim();
       const stock = parseInt(row.querySelector('.variant-stock').value) || 0;
-      const productOffer = parseFloat(row.querySelector('.variant-product-offer').value) || 0;
+      const basePrice = parseFloat(row.querySelector('.variant-base-price').value) || 0;
+      const variantSpecificOffer = parseFloat(row.querySelector('.variant-specific-offer').value) || 0;
 
-      if (size) {
-        variantsData.push({ size, stock, productOffer });
+      if (size && basePrice > 0) {
+        variantsData.push({
+          size,
+          stock,
+          basePrice,
+          variantSpecificOffer,
+          // Keep old field for backward compatibility during transition
+          productOffer: variantSpecificOffer
+        });
       }
     });
 
@@ -1028,8 +1081,12 @@
         errors.push(`Variant ${index + 1}: Stock cannot be negative.`);
       }
 
-      if (variant.productOffer < 0 || variant.productOffer > 100) {
-        errors.push(`Variant ${index + 1}: Discount percentage must be between 0 and 100.`);
+      if (!variant.basePrice || variant.basePrice <= 0) {
+        errors.push(`Variant ${index + 1}: Base price is required and must be greater than 0.`);
+      }
+
+      if (variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100) {
+        errors.push(`Variant ${index + 1}: Variant specific offer must be between 0 and 100.`);
       }
     });
 
@@ -1130,8 +1187,9 @@
 
     // Add default variants for UK shoe sizes
     const defaultSizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10'];
-    defaultSizes.forEach(size => {
-      addVariant(size, '10', '89.99');
+    const defaultStocks = [10, 15, 20, 12, 8];
+    defaultSizes.forEach((size, index) => {
+      addVariant(size, defaultStocks[index].toString(), '', '0');
     });
   });
 
