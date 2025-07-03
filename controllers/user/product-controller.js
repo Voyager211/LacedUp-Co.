@@ -138,14 +138,15 @@ exports.getProducts = async (req, res) => {
           ? reviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews
           : 0;
 
-        // Convert to plain object and add computed final prices
+        // Convert to plain object - finalPrice is now stored in database
         const productObj = product.toObject();
 
-        // Add computed final prices to variants
+        // finalPrice is already stored in variants, just ensure backward compatibility
         if (productObj.variants && productObj.variants.length > 0) {
+          // Ensure finalPrice exists for each variant (fallback for migration period)
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            finalPrice: product.calculateVariantFinalPrice(variant)
+            finalPrice: variant.finalPrice || product.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access
@@ -388,11 +389,11 @@ exports.getSearchSuggestions = async (req, res) => {
         // Create a temporary Product instance to use model methods
         const tempProduct = new Product(productData);
 
-        // Add computed final prices to variants
+        // finalPrice is now stored in database, ensure backward compatibility
         if (productData.variants && productData.variants.length > 0) {
           productData.variants = productData.variants.map(variant => ({
             ...variant,
-            finalPrice: tempProduct.calculateVariantFinalPrice(variant)
+            finalPrice: variant.finalPrice || tempProduct.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access
@@ -496,14 +497,14 @@ exports.loadProductDetails = async (req, res) => {
           ? relReviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews
           : 0;
 
-        // Convert to plain object and add computed final prices
+        // Convert to plain object - finalPrice is now stored in database
         const productObj = relatedProduct.toObject();
 
-        // Add computed final prices to variants
+        // finalPrice is already stored in variants, ensure backward compatibility
         if (productObj.variants && productObj.variants.length > 0) {
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            finalPrice: relatedProduct.calculateVariantFinalPrice(variant)
+            finalPrice: variant.finalPrice || relatedProduct.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access

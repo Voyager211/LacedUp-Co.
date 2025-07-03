@@ -1000,8 +1000,8 @@
 
   // ========= VARIANTS MANAGEMENT FUNCTIONS =========
 
-  // Calculate final price for a variant
-  function calculateFinalPrice(variantId) {
+  // Preview calculation for final price (backend will be the source of truth)
+  function previewFinalPrice(variantId) {
     const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
     if (!variantElement) return;
 
@@ -1009,23 +1009,30 @@
     const offerInput = variantElement.querySelector('.variant-specific-offer');
     const finalPriceInput = variantElement.querySelector('.variant-final-price');
 
-    const basePrice = parseFloat(basePriceInput.value) || 0;
+    const basePrice = Math.round(parseFloat(basePriceInput.value) || 0);
     const offer = parseFloat(offerInput.value) || 0;
 
-    const finalPrice = basePrice * (1 - offer / 100);
-    finalPriceInput.value = finalPrice.toFixed(2);
+    if (basePrice > 0) {
+      const previewPrice = basePrice * (1 - offer / 100);
+      finalPriceInput.value = previewPrice.toFixed(2);
 
-    // Update the color based on discount
-    if (offer > 0) {
-      finalPriceInput.style.color = '#198754'; // Green for discounted
-      finalPriceInput.style.fontWeight = '700';
+      // Check if this is a stored value or preview
+      const isStoredValue = finalPriceInput.dataset.isStored === 'true';
+      if (isStoredValue) {
+        finalPriceInput.style.color = '#198754'; // Green for stored values
+        finalPriceInput.title = 'Stored final price from database';
+      } else {
+        finalPriceInput.style.color = '#6c757d'; // Gray for preview
+        finalPriceInput.title = 'Preview - Final price will be calculated on save';
+      }
     } else {
-      finalPriceInput.style.color = '#6c757d'; // Gray for no discount
-      finalPriceInput.style.fontWeight = '600';
+      finalPriceInput.value = '0.00';
+      finalPriceInput.style.color = '#6c757d';
+      finalPriceInput.title = 'Enter base price to see preview';
     }
   }
 
-  function addVariant(size = '', stock = '', basePrice = '', variantSpecificOffer = '') {
+  function addVariant(size = '', stock = '', basePrice = '', variantSpecificOffer = '', finalPrice = '', isStored = false) {
     variantCounter++;
     const variantId = `variant-${variantCounter}`;
 
@@ -1049,26 +1056,31 @@
           </div>
           <div>
             <label class="form-label">Base Price * (₹)</label>
-            <input type="number" class="form-control variant-base-price" placeholder="0" value="${basePrice}" min="0" step="0.01" required onchange="calculateFinalPrice('${variantId}')" oninput="calculateFinalPrice('${variantId}')">
+            <input type="number" class="form-control variant-base-price" placeholder="0" value="${basePrice ? Math.round(basePrice) : ''}" min="0" step="1" required onchange="previewFinalPrice('${variantId}')" oninput="previewFinalPrice('${variantId}')">
           </div>
           <div>
             <label class="form-label">Variant Specific Offer (%)</label>
-            <input type="number" class="form-control variant-specific-offer" placeholder="0" value="${variantSpecificOffer}" min="0" max="100" step="0.01" onchange="calculateFinalPrice('${variantId}')" oninput="calculateFinalPrice('${variantId}')">
+            <input type="number" class="form-control variant-specific-offer" placeholder="0" value="${variantSpecificOffer}" min="0" max="100" step="0.01" onchange="previewFinalPrice('${variantId}')" oninput="previewFinalPrice('${variantId}')">
           </div>
           <div>
-            <label class="form-label">Final Price (₹)</label>
-            <input type="number" class="form-control variant-final-price" placeholder="0" readonly style="background-color: #f8f9fa; font-weight: 600; color: #198754;">
+            <label class="form-label">Final Price (₹) ${isStored ? '<small class="text-success">- Stored</small>' : '<small class="text-muted">- Preview</small>'}</label>
+            <input type="number" class="form-control variant-final-price" placeholder="0" value="${finalPrice}" readonly
+                   style="background-color: #f8f9fa; font-weight: 600; color: ${isStored ? '#198754' : '#6c757d'};"
+                   data-is-stored="${isStored}"
+                   title="${isStored ? 'Stored final price from database' : 'Preview - Final price will be calculated on save'}">
           </div>
         </div>
       </div>
     `;
 
     variantsContainer.insertAdjacentHTML('beforeend', variantHtml);
-    variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer });
+    variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer, finalPrice });
     updateVariantNumbers();
 
-    // Calculate initial final price
-    setTimeout(() => calculateFinalPrice(variantId), 100);
+    // Calculate initial preview for final price if not stored
+    if (!isStored) {
+      setTimeout(() => previewFinalPrice(variantId), 100);
+    }
   }
 
   function removeVariant(variantId) {
@@ -1253,14 +1265,16 @@
         // Use actual basePrice from database, fallback to regularPrice only if truly missing
         const basePrice = variant.basePrice || <%= product.regularPrice %>;
         const variantSpecificOffer = variant.variantSpecificOffer || variant.productOffer || 0;
-        addVariant(variant.size, variant.stock, basePrice.toString(), variantSpecificOffer.toString());
+        const finalPrice = variant.finalPrice || (basePrice * (1 - variantSpecificOffer / 100));
+        const isStored = variant.finalPrice !== undefined && variant.finalPrice !== null;
+        addVariant(variant.size, variant.stock, Math.round(basePrice).toString(), variantSpecificOffer.toString(), finalPrice.toFixed(2), isStored);
       });
     } else {
       // Add default variants if none exist
       const defaultSizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10'];
       const defaultStocks = [10, 15, 20, 12, 8];
       defaultSizes.forEach((size, index) => {
-        addVariant(size, defaultStocks[index].toString(), '5000', '0');
+        addVariant(size, defaultStocks[index].toString(), Math.round(5000).toString(), '0', '5000.00', false);
       });
     }
   });

@@ -85,7 +85,7 @@ exports.apiSubmitNewProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
     }
 
-    // Validate each variant
+    // Validate and calculate finalPrice for each variant
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
       if (!variant.size || typeof variant.size !== 'string') {
@@ -106,6 +106,10 @@ exports.apiSubmitNewProduct = async (req, res) => {
       if (variant.productOffer !== undefined && (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100)) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
+
+      // Calculate and set finalPrice
+      const offer = variant.variantSpecificOffer || 0;
+      variant.finalPrice = variant.basePrice * (1 - offer / 100);
     }
 
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);
@@ -355,7 +359,7 @@ exports.apiUpdateProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
     }
 
-    // Validate each variant
+    // Validate and calculate finalPrice for each variant
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
       if (!variant.size || typeof variant.size !== 'string') {
@@ -376,6 +380,10 @@ exports.apiUpdateProduct = async (req, res) => {
       if (variant.productOffer !== undefined && (typeof variant.productOffer !== 'number' || variant.productOffer < 0 || variant.productOffer > 100)) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Product offer must be a number between 0 and 100.` });
       }
+
+      // Calculate and set finalPrice
+      const offer = variant.variantSpecificOffer || 0;
+      variant.finalPrice = variant.basePrice * (1 - offer / 100);
     }
 
     const mainImageIndex = parseInt(req.body.mainImageIndex || '0', 10);

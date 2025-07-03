@@ -25,6 +25,11 @@ const variantSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  finalPrice: {
+    type: Number,
+    required: true,
+    min: 0
+  },
   // Keep old field for backward compatibility during migration
   productOffer: {
     type: Number,
@@ -33,12 +38,6 @@ const variantSchema = new mongoose.Schema({
     max: 100
   }
 }, { _id: true });
-
-// Virtual field for calculated final price
-variantSchema.virtual('finalPrice').get(function() {
-  const offer = this.variantSpecificOffer || 0;
-  return this.basePrice * (1 - offer / 100);
-});
 
 const productSchema = new mongoose.Schema({
   productName: {
@@ -106,10 +105,15 @@ const productSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-// Helper method to calculate final price for a variant
+// Helper method to get final price for a variant (now uses stored finalPrice)
 productSchema.methods.calculateVariantFinalPrice = function(variant) {
+  // Use stored finalPrice if available, otherwise calculate for backward compatibility
+  if (variant.finalPrice !== undefined) {
+    return variant.finalPrice;
+  }
+
+  // Fallback calculation for migration period
   if (!variant.basePrice) {
-    // Fallback for migration period - use old logic
     const offer = variant.productOffer || variant.variantSpecificOffer || 0;
     return this.regularPrice * (1 - offer / 100);
   }
@@ -124,7 +128,7 @@ productSchema.methods.getAverageFinalPrice = function() {
   }
 
   const totalFinalPrice = this.variants.reduce((total, variant) => {
-    return total + this.calculateVariantFinalPrice(variant);
+    return total + (variant.finalPrice || this.calculateVariantFinalPrice(variant));
   }, 0);
 
   return totalFinalPrice / this.variants.length;
@@ -136,7 +140,7 @@ productSchema.methods.getVariantFinalPrice = function(size) {
   if (!variant) {
     return this.regularPrice;
   }
-  return this.calculateVariantFinalPrice(variant);
+  return variant.finalPrice || this.calculateVariantFinalPrice(variant);
 };
 
 // Legacy methods for backward compatibility during migration
@@ -159,8 +163,16 @@ productSchema.pre('save', function (next) {
     this.slug = slugify(this.productName, { lower: true, strict: true });
   }
 
-  // Calculate total stock from all variants
+  // Calculate finalPrice for each variant
   if (this.variants && this.variants.length > 0) {
+    this.variants.forEach(variant => {
+      if (variant.basePrice !== undefined) {
+        const offer = variant.variantSpecificOffer || 0;
+        variant.finalPrice = variant.basePrice * (1 - offer / 100);
+      }
+    });
+
+    // Calculate total stock from all variants
     this.totalStock = this.variants.reduce((total, variant) => {
       return total + (variant.stock || 0);
     }, 0);

@@ -11,20 +11,36 @@
         <div class="d-flex align-items-center gap-2">
           <% if (product.variants && product.variants.length > 0) { %>
             <%
-              // Calculate sale prices using the formula: regularPrice * (1 - productOffer/100)
-              const calculatedPrices = product.variants.map(v => {
-                const offer = v.productOffer || 0;
-                return product.regularPrice * (1 - offer / 100);
-              });
-              const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+              // Use backend-calculated averageFinalPrice if available, otherwise calculate using stored finalPrice
+              let avgPrice;
+              if (typeof product.averageFinalPrice !== 'undefined') {
+                avgPrice = product.averageFinalPrice;
+              } else {
+                // Fallback: use stored finalPrice values from variants
+                const finalPrices = product.variants.map(v => v.finalPrice || (Math.round(v.basePrice || product.regularPrice) * (1 - (v.variantSpecificOffer || v.productOffer || 0) / 100)));
+                avgPrice = finalPrices.reduce((sum, price) => sum + price, 0) / finalPrices.length;
+              }
+
+              // Calculate discount percentage
+              const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
+                ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
+                : 0;
             %>
-            <p class="mb-0 fw-semibold text-danger">₹<%= avgPrice.toFixed(2) %></p>
+            <p class="mb-0 fw-semibold text-danger">₹<%= Math.round(avgPrice) %></p>
           <% } else { %>
-            <p class="mb-0 fw-semibold text-danger">₹0.00</p>
+            <p class="mb-0 fw-semibold text-danger">₹0</p>
+            <% const discountPercentage = 0; %>
           <% } %>
           <p class="mb-0 text-muted text-decoration-line-through small">₹<%= product.regularPrice %></p>
         </div>
-        <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+        <% if (typeof discountPercentage !== 'undefined' && discountPercentage > 0) { %>
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <span class="badge bg-success small"><%= discountPercentage %>% OFF</span>
+            <p class="mb-0 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+          </div>
+        <% } else { %>
+          <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+        <% } %>
       </div>
       <div class="d-flex justify-content-end gap-2">
         <button class="btn btn-sm btn-outline-secondary wishlist-btn" data-id="<%= product._id %>">

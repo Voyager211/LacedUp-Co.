@@ -106,11 +106,40 @@
               avgPrice = totalPrice / product.variants.length;
             }
           %>
-          <h4 class="text-danger mb-0" id="current-price">₹<%= avgPrice.toFixed(2) %></h4>
+          <h4 class="text-danger mb-0" id="current-price">₹<%= Math.round(avgPrice) %></h4>
           <span class="text-muted text-decoration-line-through">₹<%= product.regularPrice %></span>
-          <span class="badge bg-success" id="discount-badge">
-            <%= Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100) %>% OFF
-          </span>
+          <%
+            const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
+              ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
+              : 0;
+          %>
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <%
+              // Calculate base discount (Regular Price → Base Price) for initial display
+              // Use average base price for default state
+              const avgBasePrice = product.variants && product.variants.length > 0
+                ? Math.round(product.variants.reduce((sum, v) => sum + (v.basePrice || product.regularPrice), 0) / product.variants.length)
+                : Math.round(product.regularPrice);
+              const baseDiscountPercentage = product.regularPrice > 0 && avgBasePrice < product.regularPrice
+                ? Math.round(((product.regularPrice - avgBasePrice) / product.regularPrice) * 100)
+                : 0;
+            %>
+            <% if (baseDiscountPercentage > 0) { %>
+              <span class="badge bg-success" id="discount-badge">
+                <%= baseDiscountPercentage %>% OFF
+              </span>
+            <% } else { %>
+              <span class="badge bg-success" id="discount-badge" style="display: none;">
+                0% OFF
+              </span>
+            <% } %>
+            <!-- Plus sign connector (hidden by default) -->
+            <span id="discount-connector" style="display: none; font-weight: bold; color: #6c757d;">+</span>
+            <!-- Extra discount badge for variant-specific offers -->
+            <span class="badge bg-warning text-dark" id="extra-discount-badge" style="display: none;">
+              <i class="bi bi-tag-fill me-1"></i>Extra 0% off
+            </span>
+          </div>
         <% } else { %>
           <h4 class="text-danger mb-0">₹0.00</h4>
           <span class="text-muted">No variants available</span>
@@ -124,16 +153,16 @@
           <div class="d-flex flex-wrap gap-2" id="size-selection">
             <% product.variants.forEach((variant, index) => { %>
               <%
-                // Calculate final price using the new pricing structure
-                const basePrice = variant.basePrice || product.regularPrice;
+                // Use stored finalPrice from backend, with fallback calculation for migration
+                const finalPrice = variant.finalPrice || (variant.basePrice || product.regularPrice) * (1 - (variant.variantSpecificOffer || variant.productOffer || 0) / 100);
                 const offer = variant.variantSpecificOffer || variant.productOffer || 0;
-                const finalPrice = basePrice * (1 - offer / 100);
               %>
               <button
                 class="btn btn-outline-dark size-btn"
                 data-size="<%= variant.size %>"
                 data-stock="<%= variant.stock %>"
                 data-price="<%= finalPrice %>"
+                data-base-price="<%= Math.round(variant.basePrice || product.regularPrice) %>"
                 data-variant-index="<%= index %>"
                 data-offer="<%= offer %>"
                 <%= variant.stock === 0 ? 'disabled' : '' %>
@@ -145,7 +174,6 @@
               </button>
             <% }); %>
           </div>
-          <small class="text-muted mt-2 d-block">Select a size to see availability and exact price. Click outside to deselect.</small>
         </div>
       <% } %>
 
@@ -895,25 +923,53 @@
       const size = button.dataset.size;
       const stock = parseInt(button.dataset.stock);
       const price = parseFloat(button.dataset.price);
+      const basePrice = Math.round(parseFloat(button.dataset.basePrice));
+      const variantOffer = parseFloat(button.dataset.offer) || 0;
       const variantIndex = parseInt(button.dataset.variantIndex);
 
-      selectedVariant = { size, stock, price, variantIndex };
+      selectedVariant = { size, stock, price, basePrice, variantOffer, variantIndex };
 
       // Update price display
       if (currentPrice) {
-        currentPrice.textContent = `₹${price.toFixed(2)}`;
+        currentPrice.textContent = `₹${Math.round(price)}`;
       }
 
-      // Update discount badge
-      if (discountBadge && regularPrice > 0) {
-        const discount = Math.round(((regularPrice - price) / regularPrice) * 100);
-        discountBadge.textContent = `${discount}% OFF`;
+      // Update discount badges using base discount system
+      const extraDiscountBadge = document.getElementById('extra-discount-badge');
+      const discountConnector = document.getElementById('discount-connector');
+
+      // Calculate base discount (Regular Price → Base Price)
+      let baseDiscount = 0;
+      if (regularPrice > 0 && !isNaN(basePrice) && basePrice < regularPrice) {
+        baseDiscount = Math.round(((regularPrice - basePrice) / regularPrice) * 100);
       }
 
-      // Show and update stock display
-      if (stockBadge) {
-        stockBadge.style.display = 'inline-block';
+      // Update main discount badge (shows base discount only)
+      if (discountBadge) {
+        if (baseDiscount > 0 && !isNaN(baseDiscount)) {
+          discountBadge.textContent = `${baseDiscount}% OFF`;
+          discountBadge.style.display = 'inline-block';
+        } else {
+          discountBadge.style.display = 'none';
+        }
       }
+
+      // Update extra discount badge and connector
+      if (extraDiscountBadge && discountConnector) {
+        if (variantOffer > 0 && !isNaN(variantOffer)) {
+          extraDiscountBadge.innerHTML = `<i class="bi bi-tag-fill me-1"></i>Extra ${variantOffer}% off`;
+          extraDiscountBadge.style.display = 'inline-block';
+          // Show connector only if both badges are visible
+          if (baseDiscount > 0) {
+            discountConnector.style.display = 'inline-block';
+          }
+        } else {
+          extraDiscountBadge.style.display = 'none';
+          discountConnector.style.display = 'none';
+        }
+      }
+
+      // Update stock display based on selected variant
       updateStockDisplay(stock);
 
       // Update add to cart button
@@ -928,17 +984,26 @@
     function updateStockDisplay(stock) {
       if (!stockBadge) return;
 
+      const stockDisplay = document.getElementById('stock-display');
+
       if (stock <= 0) {
+        // Out of stock - show red warning
         stockBadge.className = 'badge bg-danger px-3 py-2';
         stockBadge.innerHTML = '<i class="bi bi-x-circle me-1"></i>Out of Stock';
+        stockDisplay.style.display = 'block';
+        stockDisplay.classList.add('show');
         notifySection?.classList.remove('d-none');
       } else if (stock < 5) {
+        // Low stock - show warning with "Only X left!"
         stockBadge.className = 'badge bg-warning px-3 py-2';
-        stockBadge.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Only ${stock} Left - Low Stock!`;
+        stockBadge.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>Only ${stock} left!`;
+        stockDisplay.style.display = 'block';
+        stockDisplay.classList.add('show');
         notifySection?.classList.add('d-none');
       } else {
-        stockBadge.className = 'badge bg-success px-3 py-2';
-        stockBadge.innerHTML = `<i class="bi bi-check-circle me-1"></i>${stock} Available`;
+        // Stock is 5 or more - hide stock display completely
+        stockDisplay.style.display = 'none';
+        stockDisplay.classList.remove('show');
         notifySection?.classList.add('d-none');
       }
     }
@@ -960,30 +1025,56 @@
     }
 
     function initializeDefaultState() {
-      // Calculate and display average price
+      // Calculate and display average price using stored finalPrice values
       const variants = Array.from(sizeButtons).map(btn => ({
-        price: parseFloat(btn.dataset.price),
+        price: parseFloat(btn.dataset.price), // This is the stored finalPrice
+        basePrice: Math.round(parseFloat(btn.dataset.basePrice) || 0),
         offer: parseFloat(btn.dataset.offer) || 0
       }));
 
       if (variants.length > 0) {
         const avgPrice = variants.reduce((sum, variant) => sum + variant.price, 0) / variants.length;
-        const avgOffer = variants.reduce((sum, variant) => sum + variant.offer, 0) / variants.length;
+        const avgBasePrice = variants.reduce((sum, variant) => sum + variant.basePrice, 0) / variants.length;
 
         // Update price display
         if (currentPrice) {
-          currentPrice.textContent = `₹${avgPrice.toFixed(2)}`;
+          currentPrice.textContent = `₹${Math.round(avgPrice)}`;
         }
 
-        // Update discount badge with average discount
+        // Update discount badges using base discount system
+        const extraDiscountBadge = document.getElementById('extra-discount-badge');
+        const discountConnector = document.getElementById('discount-connector');
+
+        // Calculate base discount (Regular Price → Average Base Price)
+        let baseDiscount = 0;
+        if (regularPrice > 0 && !isNaN(avgBasePrice) && avgBasePrice < regularPrice) {
+          baseDiscount = Math.round(((regularPrice - avgBasePrice) / regularPrice) * 100);
+        }
+
+        // Update main discount badge (shows base discount only)
         if (discountBadge) {
-          discountBadge.textContent = `${Math.round(avgOffer)}% OFF`;
+          if (baseDiscount > 0 && !isNaN(baseDiscount)) {
+            discountBadge.textContent = `${baseDiscount}% OFF`;
+            discountBadge.style.display = 'inline-block';
+          } else {
+            discountBadge.style.display = 'none';
+          }
+        }
+
+        // Hide extra discount badge and connector in default state
+        if (extraDiscountBadge) {
+          extraDiscountBadge.style.display = 'none';
+        }
+        if (discountConnector) {
+          discountConnector.style.display = 'none';
         }
       }
 
-      // Hide stock badge initially
-      if (stockBadge) {
-        stockBadge.style.display = 'none';
+      // Hide stock display completely when no variant is selected
+      const stockDisplay = document.getElementById('stock-display');
+      if (stockDisplay) {
+        stockDisplay.style.display = 'none';
+        stockDisplay.classList.remove('show');
       }
 
       // Disable add to cart button (no variant selected)
@@ -1151,6 +1242,41 @@
   font-weight: 500;
 }
 
+/* Low Stock Warning Enhancement */
+.badge.bg-warning {
+  background-color: #ff6b35 !important;
+  color: white !important;
+  font-weight: 600;
+  animation: pulse-warning 2s infinite;
+  border: 2px solid #e55a2b;
+}
+
+@keyframes pulse-warning {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Stock Display Container */
+#stock-display {
+  transition: all 0.3s ease-in-out;
+}
+
+#stock-display.show {
+  animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 
 
 /* Stock Status Styles */
@@ -1239,6 +1365,42 @@
 .size-btn small {
   font-size: 0.7em;
   line-height: 1;
+}
+
+/* Dual Discount Badge Styles */
+#extra-discount-badge {
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #ffc107;
+  transition: all 0.3s ease;
+}
+
+#extra-discount-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+#extra-discount-badge .bi-tag-fill {
+  font-size: 0.8rem;
+}
+
+/* Discount badges container */
+.d-flex.align-items-center.gap-2.flex-wrap {
+  margin-top: 0.25rem;
+}
+
+/* Main discount badge enhancement */
+#discount-badge {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* Discount connector styling */
+#discount-connector {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #6c757d;
+  user-select: none;
 }
 </style>
 
