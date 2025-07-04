@@ -113,7 +113,7 @@ exports.apiCategories = async (req, res) => {
 // Add category via fetch
 exports.apiCreateCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, categoryOffer } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Category name is required' });
@@ -138,7 +138,11 @@ exports.apiCreateCategory = async (req, res) => {
       });
     }
 
-    await Category.create({ name: trimmedName, description: description || '' });
+    await Category.create({
+      name: trimmedName,
+      description: description || '',
+      categoryOffer: Math.max(0, Math.min(100, parseFloat(categoryOffer) || 0))
+    });
     res.json({ success: true, message: 'Category created successfully' });
   } catch (err) {
     console.error('Create Error:', err);
@@ -158,7 +162,7 @@ exports.apiCreateCategory = async (req, res) => {
 // Update category via fetch
 exports.apiUpdateCategory = async (req, res) => {
   try {
-    const { name, description } = req.body;
+    const { name, description, categoryOffer } = req.body;
     const categoryId = req.params.id;
 
     if (!name) {
@@ -187,7 +191,8 @@ exports.apiUpdateCategory = async (req, res) => {
 
     await Category.findByIdAndUpdate(categoryId, {
       name: trimmedName,
-      description: description || ''
+      description: description || '',
+      categoryOffer: Math.max(0, Math.min(100, parseFloat(categoryOffer) || 0))
     });
 
     res.json({ success: true, message: 'Category updated successfully' });

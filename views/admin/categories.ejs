@@ -46,6 +46,11 @@
               <label for="description" class="form-label">Description (Optional)</label>
               <textarea class="form-control" id="description" name="description" rows="3"></textarea>
             </div>
+            <div class="mb-3">
+              <label for="categoryOffer" class="form-label">Category Offer (%)</label>
+              <input type="number" class="form-control" id="categoryOffer" name="categoryOffer" min="0" max="100" step="1" value="0">
+              <div class="form-text">Enter percentage discount for all products in this category (0-100)</div>
+            </div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -139,6 +144,11 @@ document.addEventListener('DOMContentLoaded', () => {
                   <label class="form-label">Description</label>
                   <textarea class="form-control" name="description" rows="3">${cat.description || ''}</textarea>
                 </div>
+                <div class="mb-3">
+                  <label class="form-label">Category Offer (%)</label>
+                  <input type="number" class="form-control" name="categoryOffer" min="0" max="100" step="1" value="${cat.categoryOffer || 0}">
+                  <div class="form-text">Enter percentage discount for all products in this category (0-100)</div>
+                </div>
               </div>
               <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -156,18 +166,37 @@ document.addEventListener('DOMContentLoaded', () => {
     data.categories.forEach(cat => {
       setTimeout(() => {
         const editForm = document.querySelector(`form[data-id="${cat._id}"]`);
+        // Set up form handler for category edit
+
         if (editForm) {
-          const validator = new FormValidator(editForm.id || `edit-form-${cat._id}`);
-          if (!editForm.id) editForm.id = `edit-form-${cat._id}`;
+          // Remove any existing event listeners
+          const newForm = editForm.cloneNode(true);
+          editForm.parentNode.replaceChild(newForm, editForm);
 
-          // Store validator reference for later use
-          editForm.validator = validator;
+          // Set up direct form submission handler (bypass FormValidator)
+          newForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
 
-          // Override submit function
-          validator.submitForm = async function() {
+            // Get form fields
+            const nameField = newForm.querySelector('input[name="name"]');
+            const descriptionField = newForm.querySelector('textarea[name="description"]');
+            const categoryOfferField = newForm.querySelector('input[name="categoryOffer"]');
+
+            if (!nameField || !descriptionField || !categoryOfferField) {
+              Swal.fire('Error', 'Form fields not found. Please try again.', 'error');
+              return;
+            }
+
+            // Basic validation
+            if (!nameField.value.trim()) {
+              Swal.fire('Error', 'Category name is required.', 'error');
+              return;
+            }
+
             const formData = {
-              name: editForm.name.value.trim(),
-              description: editForm.description.value.trim()
+              name: nameField.value.trim(),
+              description: descriptionField.value.trim(),
+              categoryOffer: parseFloat(categoryOfferField.value) || 0
             };
 
             try {
@@ -180,18 +209,31 @@ document.addEventListener('DOMContentLoaded', () => {
               });
 
               if (res.ok) {
+                const responseData = await res.json();
+
+                // Close modal
                 document.getElementById(`editCategoryModal${cat._id}`).querySelector('.btn-close').click();
+
+                // Refresh categories list
                 await fetchCategories(searchInput.value);
+
+                // Show success message
                 Swal.fire('Updated!', 'Category updated successfully.', 'success');
               } else {
-                const errorData = await res.json();
-                Swal.fire('Error', errorData.message || 'Update failed.', 'error');
+                try {
+                  const errorData = await res.json();
+                  Swal.fire('Error', errorData.message || 'Update failed.', 'error');
+                } catch (parseError) {
+                  Swal.fire('Error', `Update failed with status ${res.status}`, 'error');
+                }
               }
             } catch (err) {
-              console.error(err);
+              console.error('Category update error:', err);
               Swal.fire('Error', 'Could not update category.', 'error');
             }
-          };
+          });
+
+
         }
       }, 100);
     });
@@ -339,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = {
       name: document.getElementById('name').value.trim(),
       description: document.getElementById('description').value.trim(),
+      categoryOffer: parseFloat(document.getElementById('categoryOffer').value) || 0,
     };
 
     try {

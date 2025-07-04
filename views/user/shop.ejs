@@ -265,13 +265,14 @@
                     if (product.variants[0].finalPrice !== undefined) {
                       avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
                     } else {
-                      // Legacy calculation for backward compatibility
+                      // Legacy calculation for backward compatibility with category offer logic
                       const calculatedPrices = product.variants.map(v => {
-                        if (v.basePrice) {
-                          return Math.round(v.basePrice) * (1 - (v.variantSpecificOffer || 0) / 100);
-                        } else {
-                          return Math.round(product.regularPrice) * (1 - (v.productOffer || 0) / 100);
-                        }
+                        const basePrice = v.basePrice ? Math.round(v.basePrice) : Math.round(product.regularPrice);
+                        const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                        const productOffer = product.productOffer || 0;
+                        const variantOffer = v.variantSpecificOffer || 0;
+                        const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                        return basePrice * (1 - maxOffer / 100);
                       });
                       avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
                     }
@@ -291,11 +292,12 @@
                   avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
                 } else {
                   const calculatedPrices = product.variants.map(v => {
-                    if (v.basePrice) {
-                      return Math.round(v.basePrice) * (1 - (v.variantSpecificOffer || 0) / 100);
-                    } else {
-                      return Math.round(product.regularPrice) * (1 - (v.productOffer || 0) / 100);
-                    }
+                    const basePrice = v.basePrice ? Math.round(v.basePrice) : Math.round(product.regularPrice);
+                    const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                    const productOffer = product.productOffer || 0;
+                    const variantOffer = v.variantSpecificOffer || 0;
+                    const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                    return basePrice * (1 - maxOffer / 100);
                   });
                   avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
                 }
@@ -570,13 +572,14 @@
                 const avgPrice = product.variants.reduce((sum, v) => sum + v.salePrice, 0) / product.variants.length;
                 return `₹${Math.round(avgPrice)}`;
               } else {
-                // Legacy calculation for backward compatibility
+                // Legacy calculation for backward compatibility with category offer logic
                 const calculatedPrices = product.variants.map(v => {
-                  if (v.basePrice) {
-                    return v.basePrice * (1 - (v.variantSpecificOffer || 0) / 100);
-                  } else {
-                    return product.regularPrice * (1 - (v.productOffer || 0) / 100);
-                  }
+                  const basePrice = v.basePrice || product.regularPrice;
+                  const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                  const productOffer = product.productOffer || 0;
+                  const variantOffer = v.variantSpecificOffer || 0;
+                  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                  return basePrice * (1 - maxOffer / 100);
                 });
                 const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
                 return `₹${Math.round(avgPrice)}`;

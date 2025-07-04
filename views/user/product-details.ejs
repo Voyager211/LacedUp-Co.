@@ -100,8 +100,11 @@
               // Fallback calculation if averageFinalPrice is not provided
               const totalPrice = product.variants.reduce((sum, variant) => {
                 const basePrice = variant.basePrice || product.regularPrice;
-                const offer = variant.variantSpecificOffer || variant.productOffer || 0;
-                return sum + (basePrice * (1 - offer / 100));
+                const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                const productOffer = product.productOffer || 0;
+                const variantOffer = variant.variantSpecificOffer || 0;
+                const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                return sum + (basePrice * (1 - maxOffer / 100));
               }, 0);
               avgPrice = totalPrice / product.variants.length;
             }
@@ -153,9 +156,26 @@
           <div class="d-flex flex-wrap gap-2" id="size-selection">
             <% product.variants.forEach((variant, index) => { %>
               <%
+                // Determine which offer is being applied (category, product, or variant)
+                const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                const productOffer = product.productOffer || 0;
+                const variantOffer = variant.variantSpecificOffer || 0;
+                const appliedOffer = Math.max(categoryOffer, productOffer, variantOffer);
+
+                // Determine offer type based on which is highest
+                let offerType = 'none';
+                if (appliedOffer > 0) {
+                  if (categoryOffer === appliedOffer) {
+                    offerType = 'category';
+                  } else if (productOffer === appliedOffer) {
+                    offerType = 'product';
+                  } else {
+                    offerType = 'variant';
+                  }
+                }
+
                 // Use stored finalPrice from backend, with fallback calculation for migration
-                const finalPrice = variant.finalPrice || (variant.basePrice || product.regularPrice) * (1 - (variant.variantSpecificOffer || variant.productOffer || 0) / 100);
-                const offer = variant.variantSpecificOffer || variant.productOffer || 0;
+                const finalPrice = variant.finalPrice || (variant.basePrice || product.regularPrice) * (1 - (appliedOffer / 100));
               %>
               <button
                 class="btn btn-outline-dark size-btn"
@@ -164,7 +184,11 @@
                 data-price="<%= finalPrice %>"
                 data-base-price="<%= Math.round(variant.basePrice || product.regularPrice) %>"
                 data-variant-index="<%= index %>"
-                data-offer="<%= offer %>"
+                data-applied-offer="<%= appliedOffer %>"
+                data-offer-type="<%= offerType %>"
+                data-category-offer="<%= categoryOffer %>"
+                data-product-offer="<%= productOffer %>"
+                data-variant-offer="<%= variantOffer %>"
                 <%= variant.stock === 0 ? 'disabled' : '' %>
               >
                 <%= variant.size %>
@@ -924,10 +948,14 @@
       const stock = parseInt(button.dataset.stock);
       const price = parseFloat(button.dataset.price);
       const basePrice = Math.round(parseFloat(button.dataset.basePrice));
-      const variantOffer = parseFloat(button.dataset.offer) || 0;
+      const appliedOffer = parseFloat(button.dataset.appliedOffer) || 0;
+      const offerType = button.dataset.offerType;
+      const categoryOffer = parseFloat(button.dataset.categoryOffer) || 0;
+      const productOffer = parseFloat(button.dataset.productOffer) || 0;
+      const variantOffer = parseFloat(button.dataset.variantOffer) || 0;
       const variantIndex = parseInt(button.dataset.variantIndex);
 
-      selectedVariant = { size, stock, price, basePrice, variantOffer, variantIndex };
+      selectedVariant = { size, stock, price, basePrice, appliedOffer, offerType, categoryOffer, productOffer, variantOffer, variantIndex };
 
       // Update price display
       if (currentPrice) {
@@ -954,14 +982,29 @@
         }
       }
 
-      // Update extra discount badge and connector
+      // Update extra discount badge and connector based on which offer is being applied
       if (extraDiscountBadge && discountConnector) {
-        if (variantOffer > 0 && !isNaN(variantOffer)) {
-          extraDiscountBadge.innerHTML = `<i class="bi bi-tag-fill me-1"></i>Extra ${variantOffer}% off`;
+        if (appliedOffer > 0 && !isNaN(appliedOffer)) {
+          // Show the applied offer with appropriate label based on offer type
+          let offerLabel = 'Extra';
+          if (offerType === 'category') {
+            offerLabel = 'Category';
+          } else if (offerType === 'product') {
+            offerLabel = 'Product';
+          } else if (offerType === 'variant') {
+            offerLabel = 'Extra';
+          }
+
+          extraDiscountBadge.innerHTML = `<i class="bi bi-tag-fill me-1"></i>${offerLabel} ${appliedOffer}% off`;
           extraDiscountBadge.style.display = 'inline-block';
+          extraDiscountBadge.style.visibility = 'visible';
+
           // Show connector only if both badges are visible
           if (baseDiscount > 0) {
             discountConnector.style.display = 'inline-block';
+            discountConnector.style.visibility = 'visible';
+          } else {
+            discountConnector.style.display = 'none';
           }
         } else {
           extraDiscountBadge.style.display = 'none';
@@ -1029,7 +1072,11 @@
       const variants = Array.from(sizeButtons).map(btn => ({
         price: parseFloat(btn.dataset.price), // This is the stored finalPrice
         basePrice: Math.round(parseFloat(btn.dataset.basePrice) || 0),
-        offer: parseFloat(btn.dataset.offer) || 0
+        appliedOffer: parseFloat(btn.dataset.appliedOffer) || 0,
+        offerType: btn.dataset.offerType,
+        categoryOffer: parseFloat(btn.dataset.categoryOffer) || 0,
+        productOffer: parseFloat(btn.dataset.productOffer) || 0,
+        variantOffer: parseFloat(btn.dataset.variantOffer) || 0
       }));
 
       if (variants.length > 0) {

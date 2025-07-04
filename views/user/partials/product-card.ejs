@@ -16,8 +16,16 @@
               if (typeof product.averageFinalPrice !== 'undefined') {
                 avgPrice = product.averageFinalPrice;
               } else {
-                // Fallback: use stored finalPrice values from variants
-                const finalPrices = product.variants.map(v => v.finalPrice || (Math.round(v.basePrice || product.regularPrice) * (1 - (v.variantSpecificOffer || v.productOffer || 0) / 100)));
+                // Fallback: use stored finalPrice values from variants with category offer logic
+                const finalPrices = product.variants.map(v => {
+                  if (v.finalPrice) return v.finalPrice;
+                  const basePrice = Math.round(v.basePrice || product.regularPrice);
+                  const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                  const productOffer = product.productOffer || 0;
+                  const variantOffer = v.variantSpecificOffer || 0;
+                  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                  return basePrice * (1 - maxOffer / 100);
+                });
                 avgPrice = finalPrices.reduce((sum, price) => sum + price, 0) / finalPrices.length;
               }
 

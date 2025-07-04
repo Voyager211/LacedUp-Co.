@@ -577,6 +577,143 @@ body > .d-flex {
   background-color: #084298;
 }
 
+/* ========= NOTIFICATIONS BELL BUTTON ========= */
+.btn-notifications-bell {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  background-color: #fff;
+  border: 2px solid #111;
+  border-radius: 50%;
+  color: #111;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn-notifications-bell:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: #fff;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.btn-notifications-bell:active {
+  transform: scale(0.95);
+}
+
+.btn-notifications-bell:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
+}
+
+/* Ensure notifications button doesn't interfere with scrollbars */
+.admin-content {
+  padding-right: 80px;
+}
+
+/* ========= NOTIFICATIONS MODAL ========= */
+.notifications-modal-content {
+  width: 400px;
+  max-width: 90vw;
+  background-color: #fff;
+  border: 3px solid #dc3545;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+}
+
+.notifications-modal-body {
+  min-height: 300px;
+  max-height: 500px;
+  padding: 1.5rem;
+}
+
+#notificationsModal .modal-dialog {
+  margin: 1.75rem auto;
+  max-width: 400px;
+}
+
+#notificationsModal .modal-header {
+  background-color: #fdf8f3;
+  border-bottom: 2px solid #dc3545;
+  padding: 1rem 1.5rem;
+}
+
+#notificationsModal .modal-title {
+  color: #111;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 1.1rem;
+}
+
+#notificationsModal .btn-close {
+  color: #111;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+#notificationsModal .btn-close:hover {
+  color: #dc3545;
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+/* Notifications Modal Backdrop */
+#notificationsModal.modal {
+  z-index: 1055;
+}
+
+#notificationsModal .modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+}
+
+/* Responsive adjustments for notifications */
+@media (max-width: 768px) {
+  .btn-notifications-bell {
+    top: 15px;
+    right: 15px;
+    width: 45px;
+    height: 45px;
+    font-size: 1.1rem;
+  }
+
+  .notifications-modal-content {
+    width: 350px;
+  }
+
+  #notificationsModal .modal-dialog {
+    margin: 1rem auto;
+  }
+}
+
+@media (max-width: 576px) {
+  .btn-notifications-bell {
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+
+  .notifications-modal-content {
+    width: 300px;
+  }
+
+  .notifications-modal-body {
+    min-height: 250px;
+    max-height: 400px;
+    padding: 1rem;
+  }
+}
+
 /* ========= ADMIN TABLE ACTION BUTTONS ========= */
 .btn-edit {
   background-color: #0d6efd;

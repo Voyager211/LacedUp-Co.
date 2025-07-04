@@ -287,6 +287,50 @@ class FormValidator {
     return { isValid: true };
   }
 
+  // Custom validation for variant base prices
+  validateVariantBasePrice(input) {
+    const value = parseFloat(input.value) || 0;
+    const regularPriceField = this.form.querySelector('input[name="regularPrice"]');
+
+    if (!regularPriceField || !regularPriceField.value) {
+      return { isValid: true }; // Can't validate without regular price
+    }
+
+    const regularPrice = parseFloat(regularPriceField.value);
+
+    if (isNaN(regularPrice) || regularPrice <= 0) {
+      return { isValid: true }; // Can't validate with invalid regular price
+    }
+
+    if (value >= regularPrice) {
+      return {
+        isValid: false,
+        message: `Base price must be less than regular price (₹${Math.round(regularPrice)})`
+      };
+    }
+
+    return { isValid: true };
+  }
+
+  // Add custom validation for specific fields
+  addCustomValidation(fieldSelector, validationFunction) {
+    const fields = this.form.querySelectorAll(fieldSelector);
+    fields.forEach(field => {
+      field.addEventListener('blur', () => {
+        const result = validationFunction(field);
+        if (!result.isValid) {
+          this.showFieldError(field, result.message);
+        } else {
+          this.clearFieldError(field);
+        }
+      });
+
+      field.addEventListener('input', () => {
+        this.clearFieldError(field);
+      });
+    });
+  }
+
   capitalizeName(name) {
     return name.split(' ')
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
@@ -346,10 +390,43 @@ class FormValidator {
   clearAllErrors() {
     // Clear general error
     this.clearGeneralError();
-    
+
     // Clear all field errors
     const inputs = this.form.querySelectorAll('input, select, textarea');
     inputs.forEach(input => this.clearFieldError(input));
+  }
+
+  // Validate all variant base prices against regular price
+  validateAllVariantBasePrices() {
+    const regularPriceField = this.form.querySelector('input[name="regularPrice"]');
+    const basePriceFields = this.form.querySelectorAll('.variant-base-price');
+
+    if (!regularPriceField || !regularPriceField.value) {
+      return { isValid: true, errors: [] };
+    }
+
+    const regularPrice = parseFloat(regularPriceField.value);
+    if (isNaN(regularPrice) || regularPrice <= 0) {
+      return { isValid: true, errors: [] };
+    }
+
+    let isValid = true;
+    const errors = [];
+
+    basePriceFields.forEach((field, index) => {
+      const basePrice = parseFloat(field.value) || 0;
+      if (basePrice >= regularPrice) {
+        const variantNumber = index + 1;
+        const errorMessage = `Base price must be less than regular price (₹${Math.round(regularPrice)})`;
+        this.showFieldError(field, errorMessage);
+        errors.push(`Variant ${variantNumber}: ${errorMessage}`);
+        isValid = false;
+      } else {
+        this.clearFieldError(field);
+      }
+    });
+
+    return { isValid, errors };
   }
 
   submitForm() {

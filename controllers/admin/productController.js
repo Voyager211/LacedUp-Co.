@@ -85,6 +85,12 @@ exports.apiSubmitNewProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
     }
 
+    // Validate regular price first
+    const regularPrice = parseFloat(req.body.regularPrice);
+    if (isNaN(regularPrice) || regularPrice <= 0) {
+      return res.status(400).json({ success: false, message: 'Regular price must be a valid positive number.' });
+    }
+
     // Validate and calculate finalPrice for each variant
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
@@ -97,6 +103,13 @@ exports.apiSubmitNewProduct = async (req, res) => {
       // Validate basePrice (required for new pricing structure)
       if (typeof variant.basePrice !== 'number' || variant.basePrice <= 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Base price is required and must be a positive number.` });
+      }
+      // Validate that base price is less than regular price
+      if (variant.basePrice >= regularPrice) {
+        return res.status(400).json({
+          success: false,
+          message: `Variant ${i + 1} (${variant.size}): Base price (₹${Math.round(variant.basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`
+        });
       }
       // Validate variantSpecificOffer (optional, defaults to 0)
       if (variant.variantSpecificOffer !== undefined && (typeof variant.variantSpecificOffer !== 'number' || variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100)) {
@@ -359,6 +372,12 @@ exports.apiUpdateProduct = async (req, res) => {
       return res.status(400).json({ success: false, message: 'At least one product variant is required.' });
     }
 
+    // Validate regular price first
+    const regularPrice = parseFloat(req.body.regularPrice);
+    if (isNaN(regularPrice) || regularPrice <= 0) {
+      return res.status(400).json({ success: false, message: 'Regular price must be a valid positive number.' });
+    }
+
     // Validate and calculate finalPrice for each variant
     for (let i = 0; i < variants.length; i++) {
       const variant = variants[i];
@@ -371,6 +390,13 @@ exports.apiUpdateProduct = async (req, res) => {
       // Validate basePrice (required for new pricing structure)
       if (typeof variant.basePrice !== 'number' || variant.basePrice <= 0) {
         return res.status(400).json({ success: false, message: `Variant ${i + 1}: Base price is required and must be a positive number.` });
+      }
+      // Validate that base price is less than regular price
+      if (variant.basePrice >= regularPrice) {
+        return res.status(400).json({
+          success: false,
+          message: `Variant ${i + 1} (${variant.size}): Base price (₹${Math.round(variant.basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`
+        });
       }
       // Validate variantSpecificOffer (optional, defaults to 0)
       if (variant.variantSpecificOffer !== undefined && (typeof variant.variantSpecificOffer !== 'number' || variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100)) {

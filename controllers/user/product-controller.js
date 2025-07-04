@@ -425,7 +425,7 @@ exports.loadProductDetails = async (req, res) => {
   try {
     const productSlug = req.params.slug;
 
-    // Find product by slug
+    // Find product by slug and populate category with categoryOffer
     const product = await Product.findOne({ slug: productSlug })
       .populate('category');
 
@@ -549,12 +549,15 @@ exports.loadProductDetails = async (req, res) => {
       averageFinalPrice = product.getAverageFinalPrice();
     } catch (error) {
       console.error('Error calculating average final price:', error);
-      // Fallback calculation
+      // Fallback calculation with category offer logic
       if (product.variants && product.variants.length > 0) {
         const totalPrice = product.variants.reduce((sum, variant) => {
           const basePrice = variant.basePrice || product.regularPrice;
-          const offer = variant.variantSpecificOffer || variant.productOffer || 0;
-          return sum + (basePrice * (1 - offer / 100));
+          const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+          const productOffer = product.productOffer || 0;
+          const variantOffer = variant.variantSpecificOffer || 0;
+          const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+          return sum + (basePrice * (1 - maxOffer / 100));
         }, 0);
         averageFinalPrice = totalPrice / product.variants.length;
       } else {

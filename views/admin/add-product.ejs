@@ -487,37 +487,28 @@
   }
 
   .variant-number {
-    background: linear-gradient(135deg, #dc3545, #bb2d3b);
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 14px;
+    display: none;
   }
 
   .remove-variant-btn {
-    background: linear-gradient(135deg, #dc3545, #bb2d3b);
-    color: white;
+    background: transparent;
+    color: #6c757d;
     border: none;
     width: 32px;
     height: 32px;
-    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
     font-size: 16px;
-    font-weight: bold;
   }
 
-  .remove-variant-btn:hover {
-    background: linear-gradient(135deg, #bb2d3b, #a02834);
-    transform: scale(1.1) rotate(90deg);
+  .remove-variant-btn i {
+    transition: color 0.3s ease;
+  }
+
+  .remove-variant-btn:hover i {
+    color: #dc3545;
     box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
   }
 
@@ -954,13 +945,39 @@
     const finalPriceInput = variantElement.querySelector('.variant-final-price');
 
     const basePrice = Math.round(parseFloat(basePriceInput.value) || 0);
-    const offer = parseFloat(offerInput.value) || 0;
+    const variantOffer = parseFloat(offerInput.value) || 0;
+    const productOffer = parseFloat(document.querySelector('input[name="productOffer"]').value) || 0;
+    const maxOffer = Math.max(productOffer, variantOffer);
+
+    // Validate base price against regular price
+    const regularPriceField = document.querySelector('input[name="regularPrice"]');
+    const regularPrice = regularPriceField ? parseFloat(regularPriceField.value) || 0 : 0;
 
     if (basePrice > 0) {
-      const previewPrice = basePrice * (1 - offer / 100);
-      finalPriceInput.value = previewPrice.toFixed(2);
-      finalPriceInput.style.color = '#6c757d'; // Gray to indicate preview
-      finalPriceInput.title = 'Preview - Final price will be calculated on save';
+      // Check if base price exceeds regular price
+      if (regularPrice > 0 && basePrice >= regularPrice) {
+        finalPriceInput.value = 'Invalid';
+        finalPriceInput.style.color = '#dc3545'; // Red to indicate error
+        finalPriceInput.title = `Base price must be less than regular price (₹${Math.round(regularPrice)})`;
+
+        // Trigger validation if validator is available
+        if (typeof productValidator !== 'undefined') {
+          const result = productValidator.validateVariantBasePrice(basePriceInput);
+          if (!result.isValid) {
+            productValidator.showFieldError(basePriceInput, result.message);
+          }
+        }
+      } else {
+        const previewPrice = basePrice * (1 - maxOffer / 100);
+        finalPriceInput.value = previewPrice.toFixed(2);
+        finalPriceInput.style.color = '#6c757d'; // Gray to indicate preview
+        finalPriceInput.title = 'Preview - Final price will be calculated on save';
+
+        // Clear any validation errors
+        if (typeof productValidator !== 'undefined') {
+          productValidator.clearFieldError(basePriceInput);
+        }
+      }
     } else {
       finalPriceInput.value = '0.00';
       finalPriceInput.style.color = '#6c757d';
@@ -975,10 +992,11 @@
       <div class="variant-row" data-variant-id="${variantId}">
         <div class="variant-header">
           <div class="d-flex align-items-center gap-2">
-            <div class="variant-number">${variants.length + 1}</div>
-            <span class="fw-semibold">Size Variant</span>
+            <span class="fw-semibold">Variant ${variants.length + 1}</span>
           </div>
-          <button type="button" class="remove-variant-btn" onclick="removeVariant('${variantId}')">×</button>
+          <button type="button" class="remove-variant-btn" onclick="removeVariant('${variantId}')">
+            <i class="bi bi-trash3"></i>
+          </button>
         </div>
         <div class="variant-fields">
           <div>
@@ -1009,8 +1027,27 @@
     variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer, finalPrice });
     updateVariantNumbers();
 
-    // Calculate initial preview for final price
-    setTimeout(() => previewFinalPrice(variantId), 100);
+    // Add validation to the new base price field
+    setTimeout(() => {
+      const newBasePriceField = document.querySelector(`[data-variant-id="${variantId}"] .variant-base-price`);
+      if (newBasePriceField && productValidator) {
+        newBasePriceField.addEventListener('blur', () => {
+          const result = productValidator.validateVariantBasePrice(newBasePriceField);
+          if (!result.isValid) {
+            productValidator.showFieldError(newBasePriceField, result.message);
+          } else {
+            productValidator.clearFieldError(newBasePriceField);
+          }
+        });
+
+        newBasePriceField.addEventListener('input', () => {
+          productValidator.clearFieldError(newBasePriceField);
+        });
+      }
+
+      // Calculate initial preview for final price
+      previewFinalPrice(variantId);
+    }, 100);
   }
 
   function removeVariant(variantId) {
@@ -1025,9 +1062,9 @@
   function updateVariantNumbers() {
     const variantRows = document.querySelectorAll('.variant-row');
     variantRows.forEach((row, index) => {
-      const numberElement = row.querySelector('.variant-number');
-      if (numberElement) {
-        numberElement.textContent = index + 1;
+      const labelElement = row.querySelector('.variant-header .fw-semibold');
+      if (labelElement) {
+        labelElement.textContent = `Variant ${index + 1}`;
       }
     });
   }
@@ -1047,9 +1084,7 @@
           size,
           stock,
           basePrice,
-          variantSpecificOffer,
-          // Keep old field for backward compatibility during transition
-          productOffer: variantSpecificOffer
+          variantSpecificOffer
         });
       }
     });
@@ -1113,6 +1148,20 @@
   // Initialize form validation
   const productValidator = new FormValidator('add-product-form');
 
+  // Add custom validation for variant base prices
+  productValidator.addCustomValidation('.variant-base-price', (field) => {
+    return productValidator.validateVariantBasePrice(field);
+  });
+
+  // Add validation when regular price changes
+  const regularPriceField = document.querySelector('input[name="regularPrice"]');
+  if (regularPriceField) {
+    regularPriceField.addEventListener('blur', () => {
+      // Re-validate all variant base prices when regular price changes
+      productValidator.validateAllVariantBasePrices();
+    });
+  }
+
   // Override submit function with validation
   productValidator.submitForm = async function() {
     const form = document.getElementById('add-product-form');
@@ -1124,6 +1173,18 @@
         icon: 'warning',
         title: 'Images Required',
         text: `Please upload at least ${MIN_IMAGES} images for the product.`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
+
+    // Validate variant base prices
+    const basePriceValidation = productValidator.validateAllVariantBasePrices();
+    if (!basePriceValidation.isValid) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fix the base price validation errors before submitting.',
         confirmButtonColor: '#d33'
       });
       return;

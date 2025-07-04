@@ -27,15 +27,7 @@ const variantSchema = new mongoose.Schema({
   },
   finalPrice: {
     type: Number,
-    required: true,
     min: 0
-  },
-  // Keep old field for backward compatibility during migration
-  productOffer: {
-    type: Number,
-    default: 0,
-    min: 0,
-    max: 100
   }
 }, { _id: true });
 
@@ -66,7 +58,9 @@ const productSchema = new mongoose.Schema({
   },
   productOffer: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    max: 100
   },
   variants: {
     type: [variantSchema],
@@ -114,11 +108,20 @@ productSchema.methods.calculateVariantFinalPrice = function(variant) {
 
   // Fallback calculation for migration period
   if (!variant.basePrice) {
-    const offer = variant.productOffer || variant.variantSpecificOffer || 0;
-    return this.regularPrice * (1 - offer / 100);
+    // For legacy products without basePrice, use the largest of category, product, or variant offers
+    const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+    const productOffer = this.productOffer || 0;
+    const variantOffer = variant.variantSpecificOffer || 0;
+    const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+    return this.regularPrice * (1 - maxOffer / 100);
   }
-  const offer = variant.variantSpecificOffer || 0;
-  return variant.basePrice * (1 - offer / 100);
+
+  // Use the largest of category, product, or variant offers
+  const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const productOffer = this.productOffer || 0;
+  const variantOffer = variant.variantSpecificOffer || 0;
+  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+  return variant.basePrice * (1 - maxOffer / 100);
 };
 
 // Helper method to get average final price across all variants
@@ -143,6 +146,33 @@ productSchema.methods.getVariantFinalPrice = function(size) {
   return variant.finalPrice || this.calculateVariantFinalPrice(variant);
 };
 
+// Helper method to get the applied offer percentage for a variant
+productSchema.methods.getAppliedOffer = function(variant) {
+  const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const productOffer = this.productOffer || 0;
+  const variantOffer = variant.variantSpecificOffer || 0;
+  return Math.max(categoryOffer, productOffer, variantOffer);
+};
+
+// Helper method to determine which offer type is being applied
+productSchema.methods.getOfferType = function(variant) {
+  const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const productOffer = this.productOffer || 0;
+  const variantOffer = variant.variantSpecificOffer || 0;
+
+  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+
+  if (maxOffer === 0) {
+    return 'none';
+  } else if (categoryOffer === maxOffer) {
+    return 'category';
+  } else if (productOffer === maxOffer) {
+    return 'product';
+  } else {
+    return 'variant';
+  }
+};
+
 // Legacy methods for backward compatibility during migration
 productSchema.methods.calculateVariantSalePrice = function(variant) {
   return this.calculateVariantFinalPrice(variant);
@@ -157,18 +187,42 @@ productSchema.methods.getVariantSalePrice = function(size) {
 };
 
 // Auto-generate slug on productName change and calculate total stock from variants
-productSchema.pre('save', function (next) {
+productSchema.pre('save', async function (next) {
   // Generate slug if productName is modified
   if (this.isModified('productName')) {
     this.slug = slugify(this.productName, { lower: true, strict: true });
   }
 
+  // Validate that all variant base prices are less than regular price
+  if (this.variants && this.variants.length > 0 && this.regularPrice) {
+    const regularPrice = parseFloat(this.regularPrice);
+    if (regularPrice > 0) {
+      for (let i = 0; i < this.variants.length; i++) {
+        const variant = this.variants[i];
+        if (variant.basePrice && variant.basePrice >= regularPrice) {
+          const error = new Error(`Variant ${i + 1} (${variant.size}): Base price (₹${Math.round(variant.basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`);
+          error.name = 'ValidationError';
+          return next(error);
+        }
+      }
+    }
+  }
+
   // Calculate finalPrice for each variant
   if (this.variants && this.variants.length > 0) {
+    // Ensure category is populated for offer calculation
+    if (this.category && !this.category.categoryOffer && typeof this.category === 'string') {
+      await this.populate('category');
+    }
+
     this.variants.forEach(variant => {
       if (variant.basePrice !== undefined) {
-        const offer = variant.variantSpecificOffer || 0;
-        variant.finalPrice = variant.basePrice * (1 - offer / 100);
+        // Use the largest of category, product, or variant offers
+        const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+        const productOffer = this.productOffer || 0;
+        const variantOffer = variant.variantSpecificOffer || 0;
+        const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+        variant.finalPrice = variant.basePrice * (1 - maxOffer / 100);
       }
     });
 

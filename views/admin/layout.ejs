@@ -26,6 +26,26 @@
     </main>
   </div>
 
+  <!-- Notifications Modal -->
+  <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
+      <div class="modal-content notifications-modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="notificationsModalLabel">Notifications</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body notifications-modal-body">
+          <!-- Placeholder for future notifications content -->
+          <div class="text-center text-muted py-5">
+            <i class="bi bi-bell-slash fs-1 mb-3"></i>
+            <p class="mb-0">No notifications yet</p>
+            <small>New notifications will appear here</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> <!-- ✅ Added this line -->
 
@@ -43,6 +63,44 @@
           e.preventDefault();
           // Direct redirect to logout without loading screen
           window.location.href = '/admin/logout';
+        });
+      }
+
+      // Notifications modal functionality
+      const notificationsBellBtn = document.getElementById('notifications-bell-btn');
+      const notificationsModal = document.getElementById('notificationsModal');
+
+      if (notificationsBellBtn && notificationsModal) {
+        // Initialize Bootstrap modal
+        const modal = new bootstrap.Modal(notificationsModal, {
+          backdrop: true,
+          keyboard: true,
+          focus: true
+        });
+
+        // Handle bell button click
+        notificationsBellBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          modal.show();
+        });
+
+        // Handle modal events
+        notificationsModal.addEventListener('shown.bs.modal', function () {
+          // Modal is fully shown
+          console.log('Notifications modal opened');
+        });
+
+        notificationsModal.addEventListener('hidden.bs.modal', function () {
+          // Modal is fully hidden
+          console.log('Notifications modal closed');
+        });
+
+        // Keyboard accessibility - open modal with Enter or Space
+        notificationsBellBtn.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            modal.show();
+          }
         });
       }
     });
