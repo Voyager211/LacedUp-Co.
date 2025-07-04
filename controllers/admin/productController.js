@@ -51,9 +51,52 @@ exports.renderAddPage = async (req, res) => {
   });
 };
 
+// Validation helper function for pricing rules
+const validatePricingRules = (regularPrice, variants) => {
+  const errors = [];
+
+  // Validate regular price
+  const regPrice = parseFloat(regularPrice);
+  if (!regPrice || regPrice <= 0) {
+    errors.push('Regular price must be a positive number');
+  }
+
+  // Validate each variant's base price
+  if (variants && Array.isArray(variants)) {
+    variants.forEach((variant, index) => {
+      const basePrice = parseFloat(variant.basePrice);
+      const size = variant.size || `Variant ${index + 1}`;
+
+      // Check if base price is positive
+      if (!basePrice || basePrice <= 0) {
+        errors.push(`Base price for ${size} must be a positive number`);
+      }
+
+      // Check if base price is less than regular price
+      if (regPrice > 0 && basePrice >= regPrice) {
+        errors.push(`Base price for ${size} (₹${Math.round(basePrice)}) must be less than regular price (₹${Math.round(regPrice)})`);
+      }
+    });
+  }
+
+  return { isValid: errors.length === 0, errors };
+};
+
 // API: Create new product via base64 images (fetch-based)
 exports.apiSubmitNewProduct = async (req, res) => {
   try {
+    // Validate pricing rules first
+    const variants = JSON.parse(req.body.variants || '[]');
+    const pricingValidation = validatePricingRules(req.body.regularPrice, variants);
+
+    if (!pricingValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pricing validation failed',
+        errors: pricingValidation.errors
+      });
+    }
+
     let base64Images = req.body.base64Images || [];
     if (!Array.isArray(base64Images)) base64Images = [base64Images];
 
@@ -72,13 +115,7 @@ exports.apiSubmitNewProduct = async (req, res) => {
       }
     }
 
-    // Parse and validate variants
-    let variants = [];
-    try {
-      variants = JSON.parse(req.body.variants || '[]');
-    } catch (parseError) {
-      return res.status(400).json({ success: false, message: 'Invalid variants data format.' });
-    }
+    // Variants already parsed above for validation
 
     // Validate that at least one variant exists
     if (!variants || variants.length === 0) {
@@ -320,6 +357,25 @@ exports.renderEditPage = async (req, res) => {
 
 exports.apiUpdateProduct = async (req, res) => {
   try {
+    // Parse and validate variants first for pricing validation
+    let variants = [];
+    try {
+      variants = JSON.parse(req.body.variants || '[]');
+    } catch (parseError) {
+      return res.status(400).json({ success: false, message: 'Invalid variants data format.' });
+    }
+
+    // Validate pricing rules
+    const pricingValidation = validatePricingRules(req.body.regularPrice, variants);
+
+    if (!pricingValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: 'Pricing validation failed',
+        errors: pricingValidation.errors
+      });
+    }
+
     const base64Images = req.body.base64Images || [];
     const productId = req.params.id;
 
@@ -346,13 +402,7 @@ exports.apiUpdateProduct = async (req, res) => {
       }
     }
 
-    // Parse and validate variants
-    let variants = [];
-    try {
-      variants = JSON.parse(req.body.variants || '[]');
-    } catch (parseError) {
-      return res.status(400).json({ success: false, message: 'Invalid variants data format.' });
-    }
+    // Variants already parsed above for validation
 
     // Validate that at least one variant exists
     if (!variants || variants.length === 0) {

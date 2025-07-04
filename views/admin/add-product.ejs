@@ -1011,6 +1011,12 @@
 
     // Calculate initial preview for final price
     setTimeout(() => previewFinalPrice(variantId), 100);
+
+    // Add validation listener to the new base price input
+    const newBasePriceInput = document.querySelector(`[data-variant-id="${variantId}"] .variant-base-price`);
+    if (newBasePriceInput) {
+      addBasePriceValidationListener(newBasePriceInput);
+    }
   }
 
   function removeVariant(variantId) {
@@ -1110,13 +1116,128 @@
     this.appendChild(hiddenContainer);
   });
 
+  // Add real-time validation for pricing fields
+  function addPricingValidationListeners() {
+    // Regular price validation
+    const regularPriceInput = document.querySelector('input[name="regularPrice"]');
+    if (regularPriceInput) {
+      regularPriceInput.addEventListener('blur', function() {
+        validateRegularPrice();
+        validateAllBasePrices(); // Re-validate all base prices when regular price changes
+      });
+    }
+
+    // Add validation listeners to existing variant base price inputs
+    document.querySelectorAll('.variant-base-price').forEach(input => {
+      addBasePriceValidationListener(input);
+    });
+  }
+
+  function validateRegularPrice() {
+    const regularPriceInput = document.querySelector('input[name="regularPrice"]');
+    const regularPrice = parseFloat(regularPriceInput.value) || 0;
+
+    productValidator.clearFieldError(regularPriceInput);
+
+    if (regularPrice <= 0) {
+      productValidator.showFieldError(regularPriceInput, 'Regular price must be a positive number');
+      return false;
+    }
+
+    return true;
+  }
+
+  function validateAllBasePrices() {
+    document.querySelectorAll('.variant-base-price').forEach(input => {
+      validateBasePrice(input);
+    });
+  }
+
+  function validateBasePrice(basePriceInput) {
+    const regularPriceInput = document.querySelector('input[name="regularPrice"]');
+    const regularPrice = parseFloat(regularPriceInput.value) || 0;
+    const basePrice = parseFloat(basePriceInput.value) || 0;
+    const variantRow = basePriceInput.closest('.variant-row');
+    const sizeInput = variantRow.querySelector('.variant-size');
+    const size = sizeInput.value.trim();
+
+    productValidator.clearFieldError(basePriceInput);
+
+    if (basePrice <= 0) {
+      productValidator.showFieldError(basePriceInput, 'Base price must be a positive number');
+      return false;
+    }
+
+    if (regularPrice > 0 && basePrice >= regularPrice) {
+      productValidator.showFieldError(basePriceInput, `Must be less than regular price (₹${Math.round(regularPrice)})`);
+      return false;
+    }
+
+    return true;
+  }
+
+  function addBasePriceValidationListener(input) {
+    input.addEventListener('blur', function() {
+      validateBasePrice(this);
+    });
+  }
+
   // Initialize form validation
   const productValidator = new FormValidator('add-product-form');
+
+  // Add custom validation methods to the validator
+  productValidator.validatePricingRules = function() {
+    const regularPriceInput = document.querySelector('input[name="regularPrice"]');
+    const regularPrice = parseFloat(regularPriceInput.value) || 0;
+    const errors = [];
+
+    // Validate regular price
+    if (regularPrice <= 0) {
+      errors.push('Regular price must be a positive number');
+      this.showFieldError(regularPriceInput, 'Regular price must be a positive number');
+    }
+
+    // Validate each variant's base price against regular price
+    const variantRows = document.querySelectorAll('.variant-row');
+    variantRows.forEach((row, index) => {
+      const sizeInput = row.querySelector('.variant-size');
+      const basePriceInput = row.querySelector('.variant-base-price');
+      const size = sizeInput.value.trim();
+      const basePrice = parseFloat(basePriceInput.value) || 0;
+
+      // Validate base price is positive
+      if (basePrice <= 0) {
+        errors.push(`Base price for ${size || `Variant ${index + 1}`} must be a positive number`);
+        this.showFieldError(basePriceInput, 'Base price must be a positive number');
+      }
+
+      // Validate base price is less than regular price
+      if (regularPrice > 0 && basePrice >= regularPrice) {
+        const errorMsg = `Base price for ${size || `Variant ${index + 1}`} (₹${Math.round(basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`;
+        errors.push(errorMsg);
+        this.showFieldError(basePriceInput, `Must be less than regular price (₹${Math.round(regularPrice)})`);
+      }
+    });
+
+    return { isValid: errors.length === 0, errors };
+  };
 
   // Override submit function with validation
   productValidator.submitForm = async function() {
     const form = document.getElementById('add-product-form');
     const formData = new FormData(form);
+
+    // Clear previous errors
+    this.clearAllErrors();
+
+    // Validate pricing rules
+    const pricingValidation = this.validatePricingRules();
+    if (!pricingValidation.isValid) {
+      if (pricingValidation.errors.length > 1) {
+        this.showGeneralError('Please fix the pricing errors below');
+      }
+      return;
+    }
 
     // Validate minimum image requirement
     if (base64Images.length < MIN_IMAGES) {
@@ -1190,6 +1311,11 @@
     defaultSizes.forEach((size, index) => {
       addVariant(size, defaultStocks[index].toString(), '', '0', '');
     });
+
+    // Initialize pricing validation listeners
+    setTimeout(() => {
+      addPricingValidationListeners();
+    }, 200);
   });
 
 </script>

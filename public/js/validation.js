@@ -89,7 +89,6 @@ class FormValidator {
       switch (fieldName.toLowerCase()) {
         case 'name':
         case 'categoryname':
-        case 'brand':
           const nameValidation = this.validateName(value);
           if (!nameValidation.isValid) {
             errorMessage = nameValidation.message;
@@ -97,6 +96,13 @@ class FormValidator {
           } else {
             // Auto-capitalize name
             input.value = this.capitalizeName(value);
+          }
+          break;
+        case 'brand':
+          const brandValidation = this.validateBrand(value);
+          if (!brandValidation.isValid) {
+            errorMessage = brandValidation.message;
+            isValid = false;
           }
           break;
 
@@ -193,6 +199,22 @@ class FormValidator {
 
     if (!nameRegex.test(value)) {
       return { isValid: false, message: 'Name should contain only alphabetic characters and spaces' };
+    }
+
+    return { isValid: true };
+  }
+
+  validateBrand(value) {
+    // Allow alphanumeric characters, spaces, and common special characters
+    // Supports brands like "Nike", "Adidas Originals", "Under Armour", "361°", "New Balance", "Puma x BMW"
+    const brandRegex = /^[a-zA-Z0-9\s\-'°.&×x+]+$/;
+
+    if (value.length < 2) {
+      return { isValid: false, message: 'Brand name must be at least 2 characters long' };
+    }
+
+    if (!brandRegex.test(value)) {
+      return { isValid: false, message: 'Brand name contains invalid characters' };
     }
 
     return { isValid: true };
