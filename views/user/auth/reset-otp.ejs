@@ -17,9 +17,17 @@
         <button type="submit" class="btn btn-primary-custom w-100">Verify OTP</button>
       </form>
 
+      <p class="text-center text-secondary mt-3" id="timer">Code expires in: <span id="otp-countdown">01:00</span></p>
+
+      <!-- Loading indicator -->
+      <div id="otp-loading" class="text-center mt-2" style="display: none;">
+        <div class="otp-spinner"></div>
+        <p class="loading-text">Sending OTP</p>
+      </div>
+
       <div class="text-center mt-3">
-        <a href="#" id="resend-btn" class="text-decoration-none" style="color: #6c757d; cursor: not-allowed;">
-          <span id="resend-text">Resend OTP in <span id="countdown">30</span>s</span>
+        <a href="#" id="resend-btn" class="text-decoration-none" style="color: #007bff; cursor: pointer;">
+          <!-- <span id="resend-text">Resend OTP</span> -->
         </a>
       </div>
     </div>
@@ -40,42 +48,135 @@
 
   const form = document.getElementById('otp-form');
   const resendBtn = document.getElementById('resend-btn');
-  const resendText = document.getElementById('resend-text');
-  const countdownSpan = document.getElementById('countdown');
-  let resendTimer = 30;
-  let resendInterval;
+  // const resendText = document.getElementById('resend-text');
+  const otpCountdownSpan = document.getElementById('otp-countdown');
+  const otpLoading = document.getElementById('otp-loading');
+  let otpTimer = 60; // 60 seconds (1 minute) for OTP expiration
+  let otpInterval;
+  let otpExpired = false; // Track if OTP has expired
+  const email = document.getElementById('email').value.trim();
+  const timerKey = `otp_timer_${email}_reset`; // Unique key for this email and page
 
-  // Initialize resend timer
-  function startResendTimer() {
-    resendTimer = 30;
-    resendBtn.style.pointerEvents = 'none';
-    resendBtn.style.color = '#6c757d';
-    resendBtn.style.cursor = 'not-allowed';
-
-    resendInterval = setInterval(() => {
-      resendTimer--;
-      countdownSpan.textContent = resendTimer;
-
-      if (resendTimer <= 0) {
-        clearInterval(resendInterval);
-        resendBtn.style.pointerEvents = 'auto';
-        resendBtn.style.color = '#007bff';
-        resendBtn.style.cursor = 'pointer';
-        resendText.innerHTML = 'Resend OTP';
+  // Timer persistence functions
+  function initializeOTPTimer() {
+    const storedStartTime = localStorage.getItem(timerKey);
+    const currentTime = Date.now();
+    
+    if (storedStartTime) {
+      // Calculate elapsed time since timer started
+      const elapsedSeconds = Math.floor((currentTime - parseInt(storedStartTime)) / 1000);
+      const remainingTime = 60 - elapsedSeconds;
+      
+      if (remainingTime > 0) {
+        otpTimer = remainingTime;
       } else {
-        resendText.innerHTML = `Resend OTP in <span id="countdown">${resendTimer}</span>s`;
+        // Timer has already expired
+        otpTimer = 0;
+        otpExpired = true;
+        localStorage.removeItem(timerKey);
+        showOTPExpiredAlert();
+        return;
       }
-    }, 1000);
+    } else {
+      // First time loading, store start time
+      localStorage.setItem(timerKey, currentTime.toString());
+      otpTimer = 60;
+    }
+    
+    // Update display immediately to prevent flash of default time
+    updateOTPCountdownDisplay();
+  }
+
+  function resetOTPTimer() {
+    // Clear existing timer data and start fresh
+    localStorage.removeItem(timerKey);
+    localStorage.setItem(timerKey, Date.now().toString());
+    otpTimer = 60;
+    otpExpired = false;
+  }
+
+  function clearOTPTimerData() {
+    localStorage.removeItem(timerKey);
+  }
+
+  // Loading functions
+  function showOTPLoading() {
+    otpLoading.style.display = 'block';
+    setTimeout(() => {
+      otpLoading.classList.add('show');
+    }, 10);
+  }
+
+  function hideOTPLoading() {
+    otpLoading.classList.remove('show');
+    setTimeout(() => {
+      otpLoading.style.display = 'none';
+    }, 300);
+  }
+
+  function updateOTPCountdownDisplay() {
+    const minutes = Math.floor(otpTimer / 60);
+    const seconds = otpTimer % 60;
+    const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    otpCountdownSpan.textContent = formattedTime;
+  }
+
+  function updateOTPCountdown() {
+    updateOTPCountdownDisplay();
+    
+    if (otpTimer > 0) {
+      otpTimer--;
+    } else {
+      clearInterval(otpInterval);
+      otpExpired = true;
+      // OTP expired, show expiration alert
+      showOTPExpiredAlert();
+    }
+  }
+
+  function showOTPExpiredAlert() {
+    Swal.fire({
+      icon: 'warning',
+      title: 'OTP Expired!',
+      text: 'Your OTP has expired. Please request a new one to continue.',
+      confirmButtonText: 'Request New OTP',
+      confirmButtonColor: '#e03a2f',
+      allowOutsideClick: false,
+      allowEscapeKey: false
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Automatically trigger resend OTP
+        resendBtn.click();
+      }
+    });
   }
 
   // Start timer on page load
   document.addEventListener('DOMContentLoaded', function() {
-    startResendTimer();
+    initializeOTPTimer();
+    otpInterval = setInterval(updateOTPCountdown, 1000);
   });
 
   // OTP form submission
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    
+    // Check if OTP has expired
+    if (otpExpired) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'OTP Expired!',
+        text: 'Your OTP has expired. Please request a new one.',
+        confirmButtonText: 'Request New OTP',
+        confirmButtonColor: '#e03a2f'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          resendBtn.click();
+        }
+      });
+      return;
+    }
+
     const email = document.getElementById('email').value.trim();
     const otp = document.getElementById('otp').value.trim();
 
@@ -89,6 +190,10 @@
       const data = await res.json();
 
       if (res.ok && data.redirect) {
+        // Clear timer data on successful verification
+        clearOTPTimerData();
+        clearInterval(otpInterval);
+        
         Swal.fire({
           icon: 'success',
           title: 'OTP Verified',
@@ -117,15 +222,15 @@
   resendBtn.addEventListener('click', async (e) => {
     e.preventDefault();
 
-    // Check if button is disabled (using pointer events)
-    if (resendBtn.style.pointerEvents === 'none') return;
-
     const email = document.getElementById('email').value.trim();
 
     try {
-      // Show loading state
-      const originalText = resendText.innerHTML;
-      resendText.innerHTML = 'Sending...';
+      // Show loading indicator
+      showOTPLoading();
+
+      // Show loading state on button
+      // const originalText = resendText.innerHTML;
+      // resendText.innerHTML = 'Sending...';
       resendBtn.style.pointerEvents = 'none';
       resendBtn.style.color = '#6c757d';
       resendBtn.style.cursor = 'not-allowed';
@@ -138,44 +243,97 @@
 
       const data = await res.json();
 
-      if (res.ok) {
-        // Show success message
-        Swal.fire({
-          icon: 'success',
-          title: 'OTP Sent!',
-          text: 'A new OTP has been sent to your email.',
-          showConfirmButton: false,
-          timer: 1500
-        });
+      // Hide loading indicator before showing SweetAlert
+      hideOTPLoading();
 
-        // Restart the timer
-        clearInterval(resendInterval);
-        startResendTimer();
-      } else {
+      // Small delay to ensure loading disappears before SweetAlert appears
+      setTimeout(() => {
+        if (res.ok) {
+          // Show success message
+          Swal.fire({
+            icon: 'success',
+            title: 'OTP Sent!',
+            text: 'A new OTP has been sent to your email.',
+            showConfirmButton: false,
+            timer: 1500
+          });
+
+          // Restart timer and reset expiration flag
+          clearInterval(otpInterval);
+          resetOTPTimer();
+          otpInterval = setInterval(updateOTPCountdown, 1000);
+          
+          // Reset button state
+          // resendText.innerHTML = 'Resend OTP';
+          resendBtn.style.pointerEvents = 'auto';
+          resendBtn.style.color = '#007bff';
+          resendBtn.style.cursor = 'pointer';
+        } else {
+          // Show error and restore button
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: data.error || 'Could not resend OTP. Please try again.'
+          });
+
+          // resendText.innerHTML = originalText;
+          resendBtn.style.pointerEvents = 'auto';
+          resendBtn.style.color = '#007bff';
+          resendBtn.style.cursor = 'pointer';
+        }
+      }, 100);
+
+    } catch (err) {
+      // Hide loading indicator on error
+      hideOTPLoading();
+      
+      setTimeout(() => {
         // Show error and restore button
         Swal.fire({
           icon: 'error',
           title: 'Error',
-          text: data.error || 'Could not resend OTP. Please try again.'
+          text: 'Something went wrong! Please try again.'
         });
 
-        resendText.innerHTML = originalText;
+        // resendText.innerHTML = 'Resend OTP';
         resendBtn.style.pointerEvents = 'auto';
         resendBtn.style.color = '#007bff';
         resendBtn.style.cursor = 'pointer';
-      }
-    } catch (err) {
-      // Show error and restore button
-      Swal.fire({
-        icon: 'error',
-        title: 'Error',
-        text: 'Something went wrong! Please try again.'
-      });
-
-      resendText.innerHTML = 'Resend OTP';
-      resendBtn.style.pointerEvents = 'auto';
-      resendBtn.style.color = '#007bff';
-      resendBtn.style.cursor = 'pointer';
+      }, 100);
     }
   });
 </script>
+
+<style>
+/* OTP Loading Styles */
+#otp-loading {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#otp-loading.show {
+  opacity: 1;
+}
+
+.otp-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #e03a2f;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 0.5rem auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+</style>

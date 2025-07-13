@@ -31,7 +31,7 @@ exports.postSignup = async (req, res) => {
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
     // Store user data temporarily in session instead of creating user immediately
     req.session.pendingUser = {
@@ -212,7 +212,7 @@ exports.resendOtp = async (req, res) => {
       // Generate new OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-      const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+      const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
       // Update pending user data with new OTP
       req.session.pendingUser.otpHash = otpHash;
@@ -232,7 +232,7 @@ exports.resendOtp = async (req, res) => {
       // Generate new OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-      const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+      const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
       user.otpHash = otpHash;
       user.otpExpiresAt = otpExpiresAt;
@@ -280,7 +280,7 @@ exports.sendResetOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     console.log (otp);
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
+    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
@@ -378,7 +378,7 @@ exports.resendResetOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     console.log('Reset OTP resend:', otp);
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
+    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
