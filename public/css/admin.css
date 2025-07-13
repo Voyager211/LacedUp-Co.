@@ -393,21 +393,7 @@ body > .d-flex {
   flex-grow: 1;
 }
 
-.btn-close-dropdown {
-  background: none;
-  border: none;
-  color: #6c757d;
-  font-size: 16px;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-}
 
-.btn-close-dropdown:hover {
-  color: #dc3545;
-  background-color: rgba(220, 53, 69, 0.1);
-}
 
 .dropdown-body {
   padding: 1.5rem;
@@ -619,60 +605,142 @@ body > .d-flex {
   padding-right: 80px;
 }
 
-/* ========= NOTIFICATIONS MODAL ========= */
-.notifications-modal-content {
+/* ========= NOTIFICATIONS DROPDOWN ========= */
+.notifications-dropdown {
+  position: fixed;
+  top: 75px; /* Position below the bell button */
+  right: 20px;
   width: 400px;
-  max-width: 90vw;
+  max-width: calc(100vw - 40px);
+  z-index: 1060;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-20px) scale(0.8);
+  transform-origin: top right;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+
+.notifications-dropdown.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+/* Enhanced animation for dropdown content */
+.notifications-dropdown-content {
   background-color: #fff;
   border: 3px solid #dc3545;
-  border-radius: 10px;
-  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.1);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(220, 53, 69, 0.15);
+  overflow: hidden;
+  position: relative;
+  z-index: 1060;
+  transform: scale(0.9);
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.notifications-modal-body {
-  min-height: 300px;
-  max-height: 500px;
-  padding: 1.5rem;
+.notifications-dropdown.show .notifications-dropdown-content {
+  transform: scale(1);
 }
 
-#notificationsModal .modal-dialog {
-  margin: 1.75rem auto;
-  max-width: 400px;
+/* Arrow animation */
+.dropdown-arrow {
+  position: absolute;
+  top: -8px;
+  right: 25px; /* Align with bell button center */
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border: 2px solid #dc3545;
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg) scale(0);
+  transform-origin: center;
+  z-index: 1061;
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s;
 }
 
-#notificationsModal .modal-header {
+.notifications-dropdown.show .dropdown-arrow {
+  transform: rotate(45deg) scale(1);
+}
+
+/* Triangular pointer */
+.dropdown-arrow {
+  position: absolute;
+  top: -8px;
+  right: 25px; /* Align with bell button center */
+  width: 16px;
+  height: 16px;
+  background-color: #fff;
+  border: 2px solid #dc3545;
+  border-bottom: none;
+  border-right: none;
+  transform: rotate(45deg);
+  z-index: 1061;
+}
+
+
+
+/* Dropdown header */
+.dropdown-header {
   background-color: #fdf8f3;
   border-bottom: 2px solid #dc3545;
   padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
-#notificationsModal .modal-title {
+.dropdown-title {
   color: #111;
   font-weight: 600;
   text-transform: uppercase;
   font-size: 1.1rem;
+  margin: 0;
 }
 
-#notificationsModal .btn-close {
+.btn-close-dropdown {
+  background: none;
+  border: none;
   color: #111;
+  font-size: 1.2rem;
   opacity: 0.7;
   transition: all 0.3s ease;
+  cursor: pointer;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1062;
+  outline: none;
 }
 
-#notificationsModal .btn-close:hover {
+.btn-close-dropdown:hover {
   color: #dc3545;
   opacity: 1;
   transform: scale(1.1);
 }
 
-/* Notifications Modal Backdrop */
-#notificationsModal.modal {
-  z-index: 1055;
+.btn-close-dropdown:focus {
+  outline: 2px solid #dc3545;
+  outline-offset: 2px;
 }
 
-#notificationsModal .modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1050;
+.btn-close-dropdown:active {
+  transform: scale(0.95);
+}
+
+/* Dropdown body */
+.notifications-dropdown-body {
+  min-height: 300px;
+  max-height: 500px;
+  padding: 1.5rem;
+  overflow-y: auto;
 }
 
 /* Responsive adjustments for notifications */
@@ -685,12 +753,15 @@ body > .d-flex {
     font-size: 1.1rem;
   }
 
-  .notifications-modal-content {
+  .notifications-dropdown {
+    top: 65px;
+    right: 15px;
     width: 350px;
+    max-width: calc(100vw - 30px);
   }
 
-  #notificationsModal .modal-dialog {
-    margin: 1rem auto;
+  .dropdown-arrow {
+    right: 22px;
   }
 }
 
@@ -703,14 +774,29 @@ body > .d-flex {
     font-size: 1rem;
   }
 
-  .notifications-modal-content {
-    width: 300px;
+  .notifications-dropdown {
+    top: 55px;
+    right: 10px;
+    width: 320px;
+    max-width: calc(100vw - 20px);
   }
 
-  .notifications-modal-body {
+  .dropdown-arrow {
+    right: 20px;
+  }
+
+  .notifications-dropdown-body {
     min-height: 250px;
     max-height: 400px;
     padding: 1rem;
+  }
+
+  .dropdown-header {
+    padding: 0.75rem 1rem;
+  }
+
+  .dropdown-title {
+    font-size: 1rem;
   }
 }
 

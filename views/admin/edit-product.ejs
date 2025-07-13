@@ -666,7 +666,7 @@
     // Clear any previous validation errors
     clearValidationErrors();
 
-    // Process single file
+    // Process single file - ONLY OPENS CROPPER, DOES NOT SUBMIT
     const reader = new FileReader();
     reader.onload = () => {
       showCropModal(reader.result, () => {
@@ -730,7 +730,7 @@
       clearValidationErrors();
     }
 
-    // Start bulk processing
+    // Start bulk processing - ONLY OPENS CROPPERS, DOES NOT SUBMIT
     processBulkUpload(filesToProcess);
 
     // Clear the input for next use
@@ -788,16 +788,59 @@
     reader.readAsDataURL(file);
   }
 
+  function handleCropCancel() {
+    // Clean up cropper instance
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+
+    // Reset file input
+    input.value = '';
+
+    // Reset current upload slot
+    currentUploadSlot = -1;
+
+    // Handle bulk upload cancellation
+    if (isProcessingBulk) {
+      isProcessingBulk = false;
+      bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
+      bulkUploadBtn.disabled = false;
+      filesToCrop = [];
+      currentFileIndex = 0;
+      bulkInput.value = ''; // Clear bulk input as well
+    }
+
+    // Clear any validation errors that might be showing
+    clearValidationErrors();
+  }
+
+  /**
+   * Shows the image cropping modal with enhanced user workflow
+   * This function ensures that:
+   * 1. The modal opens with the image ready for cropping
+   * 2. NO AUTOMATIC SUBMISSION occurs - user must explicitly click "Crop & Add"
+   * 3. Proper cleanup happens on cancel or completion
+   * 4. Clear feedback is provided to the user
+   * 5. NO SWEETALERT OR FORM SUBMISSION until user clicks main form submit
+   */
   function showCropModal(imageSrc, onCropDone) {
+    // Remove any existing modal to prevent conflicts
     const existing = document.getElementById('cropModal');
     if (existing) existing.remove();
 
+    // Create the cropping modal with clear action buttons
     const modalHtml = `
-      <div class="modal fade" id="cropModal" tabindex="-1">
+      <div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered cropper-modal-custom">
           <div class="modal-content cropper-modal-content">
             <div class="modal-header border-0 pb-2">
-              <h5 class="modal-title mx-auto mb-0">Crop Image</h5>
+              <h5 class="modal-title mx-auto mb-0">
+                <i class="bi bi-scissors me-2"></i>Crop Image
+              </h5>
+              <small class="text-muted d-block text-center mt-1">
+                Adjust the crop area and click "Crop & Add" to save
+              </small>
             </div>
             <div class="modal-body p-2">
               <div class="cropper-image-container">
@@ -805,26 +848,39 @@
               </div>
             </div>
             <div class="modal-footer border-0 pt-2 justify-content-center">
-              <button class="btn btn-outline-dark px-4" data-bs-dismiss="modal">Cancel</button>
-              <button class="btn btn-dark px-4" id="crop-save">Crop & Add</button>
+              <button type="button" class="btn btn-outline-secondary px-4" id="crop-cancel">
+                <i class="bi bi-x-lg me-1"></i>Cancel
+              </button>
+              <button type="button" class="btn btn-success px-4" id="crop-save">
+                <i class="bi bi-check-lg me-1"></i>Crop & Add
+              </button>
             </div>
           </div>
         </div>
       </div>
     `;
 
+    // Add modal to DOM
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modalEl = document.getElementById('cropModal');
-    const cropModal = new bootstrap.Modal(modalEl);
+    const cropModal = new bootstrap.Modal(modalEl, {
+      backdrop: 'static', // Prevent closing by clicking outside
+      keyboard: false     // Prevent closing with ESC key
+    });
+    
+    // Show the modal
     cropModal.show();
 
     const imageEl = document.getElementById('crop-image');
+    
+    // Initialize cropper when image loads
     imageEl.onload = () => {
+      // Initialize the cropper with optimal settings
       cropper = new Cropper(imageEl, {
-        aspectRatio: NaN,
-        viewMode: 1,
-        dragMode: 'move',
-        autoCropArea: 0.6,
+        aspectRatio: NaN, // Allow free aspect ratio
+        viewMode: 1,      // Restrict crop box to not exceed canvas
+        dragMode: 'move', // Allow dragging the image
+        autoCropArea: 0.6, // Initial crop area size
         restore: false,
         guides: true,
         center: true,
@@ -848,53 +904,108 @@
         zoomOnTouch: true,
         zoomOnWheel: true,
         wheelZoomRatio: 0.1,
-        cropBoxResizable: true,
-        cropBoxMovable: true,
         ready: function () {
-          // Ensure the cropper utilizes the full container space
+          // Optimize initial display when cropper is ready
           this.cropper.reset();
-          // Force the cropper to center and scale the image properly
           const containerData = this.cropper.getContainerData();
           const imageData = this.cropper.getImageData();
 
-          // Calculate optimal scale to fit image in container while maintaining aspect ratio
+          // Calculate optimal scale to fit image in container
           const scaleX = containerData.width / imageData.naturalWidth;
           const scaleY = containerData.height / imageData.naturalHeight;
-          const scale = Math.min(scaleX, scaleY) * 0.8; // 0.8 to leave some padding
+          const scale = Math.min(scaleX, scaleY) * 0.8; // Leave some padding
 
-          // Center and scale the image
+          // Center and scale the image optimally
           this.cropper.zoomTo(scale);
           this.cropper.center();
         }
       });
     };
 
-    document.getElementById('crop-save').onclick = () => {
-      const cropped = cropper.getCroppedCanvas({
-        width: 800,
-        height: 800,
-        imageSmoothingEnabled: true,
-        imageSmoothingQuality: 'high'
-      }).toDataURL('image/jpeg', 0.9);
+    // Handle explicit cancel button click
+    const cancelBtn = modalEl.querySelector('#crop-cancel');
+    cancelBtn.onclick = (e) => {
+      e.preventDefault();
+      // Mark as cancelled and handle cleanup
+      modalEl.classList.add('crop-cancelled');
+      handleCropCancel();
+      cropModal.hide();
+    };
 
-      if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
-        // Replace existing image (re-cropping)
-        base64Images[currentUploadSlot] = cropped;
-      } else {
-        // Add new image
-        base64Images.push(cropped);
+    // Handle modal hidden event for cleanup
+    modalEl.addEventListener('hidden.bs.modal', (e) => {
+      // Only run cancel cleanup if not already handled and not completed
+      if (!e.target.classList.contains('crop-completed') && !e.target.classList.contains('crop-cancelled')) {
+        handleCropCancel();
       }
 
-      renderThumbnails();
-      cropModal.hide();
+      // Clean up modal and backdrop
+      modalEl.remove();
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) backdrop.remove();
+    });
 
-      modalEl.addEventListener('hidden.bs.modal', () => {
-        modalEl.remove();
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) backdrop.remove();
+    // Handle explicit "Crop & Add" button click - ONLY ACTION THAT SAVES THE IMAGE
+    // THIS DOES NOT SUBMIT THE FORM OR SHOW SWEETALERT
+    const cropSaveBtn = modalEl.querySelector('#crop-save');
+    cropSaveBtn.onclick = (e) => {
+      e.preventDefault();
+      
+      // Disable button to prevent double-clicking
+      cropSaveBtn.disabled = true;
+      cropSaveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processing...';
 
-        if (typeof onCropDone === 'function') onCropDone(); // Execute callback
-      });
+      try {
+        // Generate the cropped image
+        const croppedCanvas = cropper.getCroppedCanvas({
+          width: 800,
+          height: 800,
+          imageSmoothingEnabled: true,
+          imageSmoothingQuality: 'high'
+        });
+
+        const croppedImageData = croppedCanvas.toDataURL('image/jpeg', 0.9);
+
+        // Save the cropped image to the appropriate slot - NO FORM SUBMISSION
+        if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
+          // Replace existing image (re-cropping scenario)
+          base64Images[currentUploadSlot] = croppedImageData;
+        } else {
+          // Add new image
+          base64Images.push(croppedImageData);
+        }
+
+        // Update the thumbnail display - NO FORM SUBMISSION
+        renderThumbnails();
+
+        // Mark as completed to avoid cancel cleanup
+        modalEl.classList.add('crop-completed');
+        
+        // Hide the modal
+        cropModal.hide();
+
+        // Handle post-hide cleanup and callback
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          modalEl.remove();
+          const backdrop = document.querySelector('.modal-backdrop');
+          if (backdrop) backdrop.remove();
+
+          // Execute the completion callback if provided - NO FORM SUBMISSION
+          if (typeof onCropDone === 'function') {
+            onCropDone();
+          }
+        }, { once: true }); // Use once to prevent multiple executions
+
+      } catch (error) {
+        console.error('Error during image cropping:', error);
+        
+        // Re-enable button on error
+        cropSaveBtn.disabled = false;
+        cropSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Crop & Add';
+        
+        // Show error message
+        showValidationErrors(['Failed to process the cropped image. Please try again.']);
+      }
     };
   }
 
@@ -907,11 +1018,12 @@
       wrapper.classList.add('image-wrapper');
       if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
 
+      // FIXED: Added type="button" to all buttons to prevent form submission
       wrapper.innerHTML = `
         <img src="${img}" />
-        <button class="btn-remove" onclick="removeImage(${index})">×</button>
-        <button class="btn-crop" onclick="recropImage(${index})" title="Re-crop image"><i class="bi bi-scissors"></i></button>
-        <button class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+        <button type="button" class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button type="button" class="btn-crop" onclick="recropImage(${index})" title="Re-crop image"><i class="bi bi-scissors"></i></button>
+        <button type="button" class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
       `;
       container.appendChild(wrapper);
     });
@@ -976,16 +1088,28 @@
     renderThumbnails();
   }
 
+  /**
+   * Initiates re-cropping workflow for an existing image
+   * This function:
+   * 1. Opens the cropper modal with the existing image
+   * 2. Allows user to adjust the crop area
+   * 3. Only saves the new crop when user explicitly clicks "Crop & Add"
+   * 4. Does NOT automatically submit or show alerts
+   */
   function recropImage(index) {
     if (index < 0 || index >= base64Images.length) return;
 
     // Set the current upload slot to the index being re-cropped
     currentUploadSlot = index;
 
-    // Open crop modal with the existing image
+    // Open crop modal with the existing image for re-cropping
+    // The modal will handle all user interactions and only save on explicit confirmation
     showCropModal(base64Images[index], () => {
       // Reset upload slot after re-cropping is complete
       currentUploadSlot = -1;
+      
+      // Optional: Show a subtle success indicator (not a SweetAlert)
+      console.log('Image re-cropped successfully');
     });
   }
 
@@ -1215,6 +1339,10 @@
     input.value = '';
   }
 
+  // NOTE: NO AUTOMATIC FORM SUBMISSION EVENT LISTENER
+  // Base64 images are attached manually in the submitForm function only
+  // This prevents automatic form submission during cropping operations
+
   // Initialize form validation
   const editProductValidator = new FormValidator('edit-product-form');
 
@@ -1272,6 +1400,7 @@
       return;
     }
 
+    // ONLY HERE: Attach base64 images manually when form is actually being submitted
     base64Images.forEach((b64, i) => {
       formData.append('base64Images', b64);
     });

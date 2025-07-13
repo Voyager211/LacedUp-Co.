@@ -28,19 +28,26 @@ exports.postSignup = async (req, res) => {
       return res.status(409).json({ error: 'Email already in use.' });
     }
 
-    const user = new User({ name, email, phone, password });
-    
-     // Generate 6-digit OTP
+    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
-    user.otpHash = otpHash;
-    user.otpExpiresAt = otpExpiresAt;
-    
-    await user.save();
-    await sendOtp(user, otp);
+    const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
 
-   return res.status(200).json({ success: true, redirect: `/verify-otp?email=${encodeURIComponent(email)}` });
+    // Store user data temporarily in session instead of creating user immediately
+    req.session.pendingUser = {
+      name,
+      email,
+      phone,
+      password,
+      otpHash,
+      otpExpiresAt
+    };
+
+    // Create a temporary user object for sending email (without saving to DB)
+    const tempUser = { name, email };
+    await sendOtp(tempUser, otp);
+
+    return res.status(200).json({ success: true, redirect: `/verify-otp?email=${encodeURIComponent(email)}` });
 
   } catch (err) {
     console.error('Signup Error:', err);
@@ -55,7 +62,7 @@ exports.postSignup = async (req, res) => {
         error: 'Email service is temporarily unavailable. Please try again later.'
       });
     } else {
-      return res.status(500).json({ error: 'Failed to create account. Please try again.' });
+      return res.status(500).json({ error: 'Failed to send OTP. Please try again.' });
     }
   }
 };
@@ -103,6 +110,7 @@ exports.logout = (req, res) => {
 
 // GET: OTP verification page
 exports.getOtpPage = (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
 
   if (!email) return res.redirect('/signup');
@@ -119,33 +127,73 @@ exports.postOtpVerification = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user || !user.otpHash) {
-      return res.status(400).json({ error: 'Invalid request or OTP expired.' });
+    // Check if this is a signup OTP verification (user data in session)
+    if (req.session.pendingUser && req.session.pendingUser.email === email) {
+      const pendingUser = req.session.pendingUser;
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+      const isExpired = pendingUser.otpExpiresAt < Date.now();
+      const isValid = pendingUser.otpHash === otpHash;
+
+      if (isExpired) {
+        // Clear pending user data
+        delete req.session.pendingUser;
+        return res.status(410).json({ error: 'OTP expired. Please sign up again.' });
+      }
+
+      if (!isValid) {
+        return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
+      }
+
+      // OTP is valid, now create the user in database
+      const newUser = new User({
+        name: pendingUser.name,
+        email: pendingUser.email,
+        phone: pendingUser.phone,
+        password: pendingUser.password
+      });
+
+      await newUser.save();
+
+      // Clear pending user data from session
+      delete req.session.pendingUser;
+
+      // Log the user in
+      req.login(newUser, (err) => {
+        if (err) return res.status(500).json({ error: 'Account created but login failed.' });
+        return res.status(200).json({ success: true });
+      });
+
+    } else {
+      // This is for existing users (password reset flow)
+      const user = await User.findOne({ email });
+      if (!user || !user.otpHash) {
+        return res.status(400).json({ error: 'Invalid request or OTP expired.' });
+      }
+
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+
+      const isExpired = user.otpExpiresAt < Date.now();
+      const isValid = user.otpHash === otpHash;
+
+      if (isExpired) {
+        return res.status(410).json({ error: 'OTP expired. Please try again.' });
+      }
+
+      if (!isValid) {
+        return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
+      }
+
+      // Clear OTP fields and save
+      user.otpHash = undefined;
+      user.otpExpiresAt = undefined;
+      await user.save();
+
+      req.login(user, (err) => {
+        if (err) return res.status(500).json({ error: 'OTP verified but login failed.' });
+        return res.status(200).json({ success: true });
+      });
     }
-
-    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-
-    const isExpired = user.otpExpiresAt < Date.now();
-    const isValid = user.otpHash === otpHash;
-
-    if (isExpired) {
-      return res.status(410).json({ error: 'OTP expired. Please sign up again.' });
-    }
-
-    if (!isValid) {
-      return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
-    }
-
-    // Clear OTP fields and save
-    user.otpHash = undefined;
-    user.otpExpiresAt = undefined;
-    await user.save();
-
-    req.login(user, (err) => {
-      if (err) return res.status(500).json({ error: 'OTP verified but login failed.' });
-      return res.status(200).json({ success: true });
-    });
 
   } catch (err) {
     console.error('OTP Verify Error:', err);
@@ -157,20 +205,42 @@ exports.resendOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found.' });
+    // Check if this is a signup OTP resend (user data in session)
+    if (req.session.pendingUser && req.session.pendingUser.email === email) {
+      const pendingUser = req.session.pendingUser;
 
-    // Generate new OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 30 * 1000; // 30 seconds
+      // Generate new OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
 
-    user.otpHash = otpHash;
-    user.otpExpiresAt = otpExpiresAt;
-    await user.save();
+      // Update pending user data with new OTP
+      req.session.pendingUser.otpHash = otpHash;
+      req.session.pendingUser.otpExpiresAt = otpExpiresAt;
 
-    await sendOtp(user, otp);
-    return res.status(200).json({ success: true });
+      // Send OTP email
+      const tempUser = { name: pendingUser.name, email: pendingUser.email };
+      await sendOtp(tempUser, otp);
+
+      return res.status(200).json({ success: true });
+
+    } else {
+      // This is for existing users (password reset flow)
+      const user = await User.findOne({ email });
+      if (!user) return res.status(404).json({ error: 'User not found.' });
+
+      // Generate new OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      const otpExpiresAt = Date.now() + 2 * 60 * 1000; // 2 minutes
+
+      user.otpHash = otpHash;
+      user.otpExpiresAt = otpExpiresAt;
+      await user.save();
+
+      await sendOtp(user, otp);
+      return res.status(200).json({ success: true });
+    }
 
   } catch (err) {
     console.error('Resend OTP Error:', err);
@@ -242,6 +312,7 @@ exports.sendResetOtp = async (req, res) => {
 
 // GET: OTP input page for reset
 exports.getResetOtpPage = (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
   if (!email) return res.redirect('/forgot-password');
 
@@ -284,6 +355,7 @@ exports.verifyResetOtp = async (req, res) => {
 
 // GET: Reset password form
 exports.getResetPasswordPage = (req, res) => {
+  if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
   if (!email) return res.redirect('/forgot-password');
 
@@ -344,6 +416,14 @@ exports.resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found.' });
+
+    // Check if new password is the same as current password
+    const isSamePassword = await user.comparePassword(newPassword);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        error: 'New password cannot be the same as your current password. Please choose a different password.' 
+      });
+    }
 
     user.password = newPassword;
     user.otpHash = undefined;

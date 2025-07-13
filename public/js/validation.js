@@ -89,7 +89,6 @@ class FormValidator {
       switch (fieldName.toLowerCase()) {
         case 'name':
         case 'categoryname':
-        case 'brand':
           const nameValidation = this.validateName(value);
           if (!nameValidation.isValid) {
             errorMessage = nameValidation.message;
@@ -98,6 +97,15 @@ class FormValidator {
             // Auto-capitalize name
             input.value = this.capitalizeName(value);
           }
+          break;
+
+        case 'brand':
+          const brandValidation = this.validateBrand(value);
+          if (!brandValidation.isValid) {
+            errorMessage = brandValidation.message;
+            isValid = false;
+          }
+          // No auto-capitalization for brand names to preserve original formatting
           break;
 
         case 'productname':
@@ -210,6 +218,17 @@ class FormValidator {
       return { isValid: false, message: 'Product name should contain only letters, numbers, spaces, and common symbols (-, +, &, (), .)' };
     }
 
+    return { isValid: true };
+  }
+
+  validateBrand(value) {
+    // Allow any text content including alphanumeric characters, spaces, and special characters
+    // Only enforce minimum length requirement
+    if (value.length < 1) {
+      return { isValid: false, message: 'Brand name must be at least 1 character long' };
+    }
+
+    // No character restrictions - allow any text content
     return { isValid: true };
   }
 

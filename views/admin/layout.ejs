@@ -26,21 +26,25 @@
     </main>
   </div>
 
-  <!-- Notifications Modal -->
-  <div class="modal fade" id="notificationsModal" tabindex="-1" aria-labelledby="notificationsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable">
-      <div class="modal-content notifications-modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="notificationsModalLabel">Notifications</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body notifications-modal-body">
-          <!-- Placeholder for future notifications content -->
-          <div class="text-center text-muted py-5">
-            <i class="bi bi-bell-slash fs-1 mb-3"></i>
-            <p class="mb-0">No notifications yet</p>
-            <small>New notifications will appear here</small>
-          </div>
+  <!-- Notifications Dropdown -->
+  <div id="notificationsDropdown" class="notifications-dropdown" aria-labelledby="notifications-bell-btn" aria-hidden="true">
+    <!-- Triangular pointer -->
+    <div class="dropdown-arrow"></div>
+
+    <!-- Dropdown content -->
+    <div class="dropdown-content notifications-dropdown-content">
+      <div class="dropdown-header">
+        <h5 class="dropdown-title" id="notificationsDropdownLabel">Notifications</h5>
+        <button type="button" class="btn-close-dropdown" aria-label="Close notifications" tabindex="0">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="dropdown-body notifications-dropdown-body">
+        <!-- Placeholder for future notifications content -->
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-bell-slash fs-1 mb-3"></i>
+          <p class="mb-0">No notifications yet</p>
+          <small>New notifications will appear here</small>
         </div>
       </div>
     </div>
@@ -66,40 +70,114 @@
         });
       }
 
-      // Notifications modal functionality
+      // Notifications dropdown functionality
       const notificationsBellBtn = document.getElementById('notifications-bell-btn');
-      const notificationsModal = document.getElementById('notificationsModal');
+      const notificationsDropdown = document.getElementById('notificationsDropdown');
 
-      if (notificationsBellBtn && notificationsModal) {
-        // Initialize Bootstrap modal
-        const modal = new bootstrap.Modal(notificationsModal, {
-          backdrop: true,
-          keyboard: true,
-          focus: true
-        });
+      if (notificationsBellBtn && notificationsDropdown) {
+        // Select close button within the dropdown context
+        const closeDropdownBtn = notificationsDropdown.querySelector('.btn-close-dropdown');
+        let isDropdownOpen = false;
+
+
+
+        // Function to show dropdown
+        function showDropdown() {
+          notificationsDropdown.classList.add('show');
+          notificationsBellBtn.setAttribute('aria-expanded', 'true');
+          notificationsDropdown.setAttribute('aria-hidden', 'false');
+          isDropdownOpen = true;
+        }
+
+        // Function to hide dropdown
+        function hideDropdown() {
+          notificationsDropdown.classList.remove('show');
+          notificationsBellBtn.setAttribute('aria-expanded', 'false');
+          notificationsDropdown.setAttribute('aria-hidden', 'true');
+          isDropdownOpen = false;
+
+          // Return focus to bell button for accessibility
+          notificationsBellBtn.focus();
+        }
 
         // Handle bell button click
         notificationsBellBtn.addEventListener('click', function(e) {
           e.preventDefault();
-          modal.show();
+          e.stopPropagation();
+
+          if (isDropdownOpen) {
+            hideDropdown();
+          } else {
+            showDropdown();
+          }
         });
 
-        // Handle modal events
-        notificationsModal.addEventListener('shown.bs.modal', function () {
-          // Modal is fully shown
-          console.log('Notifications modal opened');
+        // Handle close button click - Multiple approaches for reliability
+        if (closeDropdownBtn) {
+          // Primary click handler
+          closeDropdownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          });
+
+          // Additional mousedown handler for better responsiveness
+          closeDropdownBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+
+          // Touch event for mobile devices
+          closeDropdownBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          });
+
+          // Keyboard support for close button
+          closeDropdownBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              hideDropdown();
+            }
+          });
+        }
+
+        // Event delegation approach as backup
+        notificationsDropdown.addEventListener('click', function(e) {
+          const closeBtn = e.target.closest('.btn-close-dropdown');
+          if (closeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          }
         });
 
-        notificationsModal.addEventListener('hidden.bs.modal', function () {
-          // Modal is fully hidden
-          console.log('Notifications modal closed');
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+          if (isDropdownOpen && !notificationsDropdown.contains(e.target) && !notificationsBellBtn.contains(e.target)) {
+            hideDropdown();
+          }
         });
 
-        // Keyboard accessibility - open modal with Enter or Space
+        // Keyboard accessibility
         notificationsBellBtn.addEventListener('keydown', function(e) {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
-            modal.show();
+            if (isDropdownOpen) {
+              hideDropdown();
+            } else {
+              showDropdown();
+            }
+          }
+        });
+
+        // Close dropdown with Escape key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && isDropdownOpen) {
+            hideDropdown();
+            notificationsBellBtn.focus(); // Return focus to bell button
           }
         });
       }

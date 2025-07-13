@@ -2,34 +2,35 @@ const express = require('express');
 const passport = require('passport');
 const authController = require('../../controllers/user/authController');
 const nocache = require('../../middlewares/nocache')
+const { preventBackNavigation, preventOtpBackNavigation } = require('../../middlewares/prevent-back-navigation');
 const { isGuest } = require('../../middlewares/auth'); // ✅ Fixed double slashes
 
 const router = express.Router();
 
 // === Signup ===
-router.get('/signup', isGuest, authController.getSignup);
+router.get('/signup', isGuest, preventBackNavigation, authController.getSignup);
 router.post('/signup', isGuest, authController.postSignup);
 
 // === OTP Verification ===
-router.get('/verify-otp', isGuest, authController.getOtpPage);
+router.get('/verify-otp', isGuest, preventOtpBackNavigation, authController.getOtpPage);
 router.post('/verify-otp', isGuest, authController.postOtpVerification);
 router.post('/resend-otp', isGuest, authController.resendOtp);
 
 
 
 // === Login ===
-router.get('/login', isGuest, nocache, authController.getLogin);
+router.get('/login', isGuest, preventBackNavigation, authController.getLogin);
 router.post('/login', isGuest, authController.postLogin);
 
 // === Forgot Password Flow ===
-router.get('/forgot-password', isGuest, authController.getForgotPassword);
+router.get('/forgot-password', isGuest, preventBackNavigation, authController.getForgotPassword);
 router.post('/forgot-password', isGuest, authController.sendResetOtp);
 
-router.get('/reset-otp', isGuest, authController.getResetOtpPage);
+router.get('/reset-otp', isGuest, preventOtpBackNavigation, authController.getResetOtpPage);
 router.post('/reset-otp', isGuest, authController.verifyResetOtp);
 router.post('/resend-reset-otp', isGuest, authController.resendResetOtp);
 
-router.get('/reset-password', isGuest, authController.getResetPasswordPage);
+router.get('/reset-password', isGuest, preventOtpBackNavigation, authController.getResetPasswordPage);
 router.post('/reset-password', isGuest, authController.resetPassword);
 
 
