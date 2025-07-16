@@ -43,7 +43,7 @@ exports.listProducts = async (req, res) => {
 
 // Render add product page
 exports.renderAddPage = async (req, res) => {
-  const categories = await Category.find({ isDeleted: false });
+  const categories = await Category.find({ isDeleted: false, isActive: true });
   res.render('admin/add-product', {
     title: "Add Product",
     categories,
@@ -315,9 +315,22 @@ exports.apiToggleProductStatus = async (req, res) => {
 exports.renderEditPage = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('category');
-    const categories = await Category.find({ isDeleted: false }).sort({ name: 1 });
-
+    
     if (!product) return res.status(404).send('Product not found');
+
+    // Get active categories for the dropdown
+    let categories = await Category.find({ isDeleted: false, isActive: true }).sort({ name: 1 });
+    
+    // If the product's current category is inactive, include it in the list so admin can see it
+    // but mark it as inactive for UI indication
+    if (product.category && !product.category.isActive) {
+      const currentCategory = await Category.findById(product.category._id);
+      if (currentCategory && !currentCategory.isDeleted) {
+        // Add the inactive category to the list with a flag
+        currentCategory.isCurrentInactive = true;
+        categories.unshift(currentCategory);
+      }
+    }
 
     res.render('admin/edit-product', {
       title: 'Edit Product',

@@ -27,6 +27,7 @@ const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
 const userProductRoutes = require('./routes/user/product-routes');
 const userReviewRoutes = require('./routes/user/review-routes');
+const userProfileRoutes = require('./routes/user/profile-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -91,6 +92,7 @@ app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
 app.use('/', userProductRoutes);
 app.use('/', userReviewRoutes);
+app.use('/', userProfileRoutes);
 
 
 

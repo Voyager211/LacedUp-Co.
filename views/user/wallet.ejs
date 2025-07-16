@@ -1,0 +1,434 @@
+<div class="container py-5">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+      <li class="breadcrumb-item"><a href="/profile" class="text-decoration-none">My Profile</a></li>
+      <li class="breadcrumb-item active" aria-current="page">My Wallet</li>
+    </ol>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="fw-bold mb-2">My Wallet</h1>
+      <p class="text-secondary-custom mb-0">Manage your wallet balance and transaction history</p>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Wallet Balance Card -->
+    <div class="col-12">
+      <div class="auth-card p-4 text-center">
+        <div class="row align-items-center">
+          <div class="col-md-8">
+            <div class="d-flex align-items-center justify-content-center justify-content-md-start">
+              <div class="text-success me-3">
+                <i class="bi bi-wallet2" style="font-size: 3rem;"></i>
+              </div>
+              <div class="text-start">
+                <h2 class="fw-bold mb-1">₹<%= wallet.balance.toFixed(2) %></h2>
+                <p class="text-secondary-custom mb-0">Available Balance</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-grid gap-2">
+              <button class="btn btn-primary-custom" onclick="showAddMoneyModal()">
+                <i class="bi bi-plus-circle me-2"></i>
+                Add Money
+              </button>
+              <button class="btn btn-outline-primary" onclick="showTransactionHistory()">
+                <i class="bi bi-clock-history me-2"></i>
+                View History
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wallet Stats -->
+    <div class="col-12">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="auth-card p-3 text-center h-100">
+            <div class="text-success mb-2">
+              <i class="bi bi-arrow-down-circle fs-2"></i>
+            </div>
+            <h5 class="fw-bold mb-1">₹<%= wallet.totalAdded.toFixed(2) %></h5>
+            <small class="text-secondary-custom">Total Added</small>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="auth-card p-3 text-center h-100">
+            <div class="text-danger mb-2">
+              <i class="bi bi-arrow-up-circle fs-2"></i>
+            </div>
+            <h5 class="fw-bold mb-1">₹<%= wallet.totalSpent.toFixed(2) %></h5>
+            <small class="text-secondary-custom">Total Spent</small>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="auth-card p-3 text-center h-100">
+            <div class="text-primary mb-2">
+              <i class="bi bi-receipt fs-2"></i>
+            </div>
+            <h5 class="fw-bold mb-1"><%= wallet.transactions.length %></h5>
+            <small class="text-secondary-custom">Recent Transactions</small>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="col-12">
+      <div class="auth-card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h3 class="fw-bold mb-0">
+            <i class="bi bi-clock-history me-2"></i>
+            Recent Transactions
+          </h3>
+          <% if (wallet.transactions.length > 5) { %>
+            <button class="btn btn-outline-primary btn-sm" onclick="showAllTransactions()">
+              View All
+            </button>
+          <% } %>
+        </div>
+
+        <% if (wallet.transactions.length === 0) { %>
+          <div class="text-center py-5">
+            <div class="text-muted mb-3">
+              <i class="bi bi-receipt" style="font-size: 3rem;"></i>
+            </div>
+            <h5 class="text-muted">No Transactions Yet</h5>
+            <p class="text-secondary-custom">Your transaction history will appear here</p>
+            <button class="btn btn-primary-custom" onclick="showAddMoneyModal()">
+              <i class="bi bi-plus-circle me-2"></i>
+              Add Your First Transaction
+            </button>
+          </div>
+        <% } else { %>
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% wallet.transactions.slice(0, 5).forEach(transaction => { %>
+                  <tr>
+                    <td>
+                      <small class="text-muted">
+                        <%= new Date(transaction.createdAt).toLocaleDateString('en-US', { 
+                          year: 'numeric', 
+                          month: 'short', 
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) %>
+                      </small>
+                    </td>
+                    <td>
+                      <div class="fw-semibold"><%= transaction.description || 'Wallet Transaction' %></div>
+                      <% if (transaction.orderId) { %>
+                        <small class="text-muted">Order: #<%= transaction.orderId %></small>
+                      <% } %>
+                    </td>
+                    <td>
+                      <% if (transaction.type === 'credit') { %>
+                        <span class="badge bg-success">
+                          <i class="bi bi-arrow-down me-1"></i>Credit
+                        </span>
+                      <% } else { %>
+                        <span class="badge bg-danger">
+                          <i class="bi bi-arrow-up me-1"></i>Debit
+                        </span>
+                      <% } %>
+                    </td>
+                    <td class="text-end">
+                      <span class="fw-bold <%= transaction.type === 'credit' ? 'text-success' : 'text-danger' %>">
+                        <%= transaction.type === 'credit' ? '+' : '-' %>₹<%= transaction.amount.toFixed(2) %>
+                      </span>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Money Modal -->
+<div class="modal fade" id="addMoneyModal" tabindex="-1" aria-labelledby="addMoneyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="addMoneyModalLabel">
+          <i class="bi bi-plus-circle me-2"></i>
+          Add Money to Wallet
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addMoneyForm">
+          <div class="mb-3">
+            <label for="amount" class="form-label fw-semibold">Amount to Add</label>
+            <div class="input-group">
+              <span class="input-group-text">₹</span>
+              <input type="number" 
+                     class="form-control" 
+                     id="amount" 
+                     name="amount" 
+                     min="1" 
+                     max="50000"
+                     placeholder="Enter amount"
+                     required>
+            </div>
+            <div class="form-text">Minimum: ₹1, Maximum: ₹50,000</div>
+            <div class="invalid-feedback" id="amount-error"></div>
+          </div>
+
+          <!-- Quick Amount Buttons -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Quick Select</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(500)">₹500</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(1000)">₹1,000</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(2000)">₹2,000</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(5000)">₹5,000</button>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary-custom" onclick="addMoney()" id="addMoneyBtn">
+          <i class="bi bi-credit-card me-2"></i>
+          Proceed to Payment
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Wallet specific styles */
+.wallet-balance-card {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 15px;
+}
+
+.transaction-row {
+  transition: background-color 0.3s ease;
+}
+
+.transaction-row:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Table enhancements */
+.table th {
+  border-top: none;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.table td {
+  vertical-align: middle;
+}
+
+/* Badge styling */
+.badge {
+  font-size: 0.75rem;
+  padding: 0.375rem 0.75rem;
+}
+
+/* Modal enhancements */
+.modal-content {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Quick amount buttons */
+.btn-outline-primary.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.875rem;
+  border-radius: 6px;
+}
+
+/* Form validation styles */
+.is-invalid {
+  border-color: #dc3545;
+}
+
+.invalid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #dc3545;
+}
+
+.is-invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .d-flex.gap-2.flex-wrap {
+    justify-content: center;
+  }
+  
+  .table-responsive {
+    font-size: 0.9rem;
+  }
+}
+</style>
+
+<script>
+// Form validation functions
+function showError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  const errorElement = document.getElementById(fieldId + '-error');
+  
+  if (field && errorElement) {
+    field.classList.add('is-invalid');
+    errorElement.textContent = message;
+  }
+}
+
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorElement = document.getElementById(fieldId + '-error');
+  
+  if (field && errorElement) {
+    field.classList.remove('is-invalid');
+    errorElement.textContent = '';
+  }
+}
+
+// Show add money modal
+function showAddMoneyModal() {
+  const modal = new bootstrap.Modal(document.getElementById('addMoneyModal'));
+  modal.show();
+}
+
+// Set quick amount
+function setAmount(amount) {
+  document.getElementById('amount').value = amount;
+  clearError('amount');
+}
+
+// Add money function
+async function addMoney() {
+  const amount = parseFloat(document.getElementById('amount').value);
+
+  if (!amount) {
+    showError('amount', 'Please enter an amount');
+    return;
+  }
+
+  if (amount < 1) {
+    showError('amount', 'Minimum amount is ₹1');
+    return;
+  }
+
+  if (amount > 50000) {
+    showError('amount', 'Maximum amount is ₹50,000');
+    return;
+  }
+
+  clearError('amount');
+
+  const addMoneyBtn = document.getElementById('addMoneyBtn');
+  const originalText = addMoneyBtn.innerHTML;
+  addMoneyBtn.disabled = true;
+  addMoneyBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+
+  try {
+    // Here you would integrate with a payment gateway
+    // For now, we'll show a success message
+    
+    // Simulate payment processing
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addMoneyModal'));
+    modal.hide();
+
+    // Show success message
+    Swal.fire({
+      icon: 'success',
+      title: 'Money Added!',
+      text: `₹${amount.toFixed(2)} has been added to your wallet.`,
+      confirmButtonColor: '#000'
+    }).then(() => {
+      // Reload page to show updated balance
+      window.location.reload();
+    });
+
+  } catch (error) {
+    console.error('Error adding money:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Payment Failed',
+      text: 'Failed to add money to wallet. Please try again.',
+      confirmButtonColor: '#000'
+    });
+  } finally {
+    addMoneyBtn.disabled = false;
+    addMoneyBtn.innerHTML = originalText;
+  }
+}
+
+// Show transaction history
+function showTransactionHistory() {
+  // This would typically navigate to a dedicated transactions page
+  Swal.fire({
+    icon: 'info',
+    title: 'Transaction History',
+    text: 'Detailed transaction history feature coming soon!',
+    confirmButtonColor: '#000'
+  });
+}
+
+// Show all transactions
+function showAllTransactions() {
+  // This would typically navigate to a dedicated transactions page
+  Swal.fire({
+    icon: 'info',
+    title: 'All Transactions',
+    text: 'View all transactions feature coming soon!',
+    confirmButtonColor: '#000'
+  });
+}
+
+// Amount input validation
+document.getElementById('amount').addEventListener('input', function() {
+  const amount = parseFloat(this.value);
+  
+  if (this.value && (isNaN(amount) || amount < 1)) {
+    showError('amount', 'Please enter a valid amount (minimum ₹1)');
+  } else if (amount > 50000) {
+    showError('amount', 'Maximum amount is ₹50,000');
+  } else {
+    clearError('amount');
+  }
+});
+
+// Clear form when modal is hidden
+document.getElementById('addMoneyModal').addEventListener('hidden.bs.modal', function() {
+  document.getElementById('addMoneyForm').reset();
+  clearError('amount');
+});
+</script>

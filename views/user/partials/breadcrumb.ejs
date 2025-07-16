@@ -1,10 +1,12 @@
 <% if (breadcrumbs && breadcrumbs.length) { %>
-  <nav aria-label="breadcrumb">
-    <ol class="breadcrumb small">
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
       <% breadcrumbs.forEach((item, index) => { %>
         <li class="breadcrumb-item <%= index === breadcrumbs.length - 1 ? 'active' : '' %>" <%= index === breadcrumbs.length - 1 ? 'aria-current="page"' : '' %>>
           <% if (item.href && index !== breadcrumbs.length - 1) { %>
-            <a href="<%= item.href %>"><%= item.label %></a>
+            <a href="<%= item.href %>" class="text-decoration-none text-dark">
+              <%= item.label %>
+            </a>
           <% } else { %>
             <%= item.label %>
           <% } %>
@@ -12,4 +14,38 @@
       <% }) %>
     </ol>
   </nav>
+
+  <style>
+    /* Breadcrumb Styling */
+    .breadcrumb {
+      background-color: transparent;
+      padding: 0;
+      margin-bottom: 0;
+      font-size: 0.9rem;
+    }
+
+    .breadcrumb-item {
+      color: #6c757d;
+    }
+
+    .breadcrumb-item.active {
+      color: #000;
+      font-weight: 500;
+    }
+
+    .breadcrumb-item + .breadcrumb-item::before {
+      content: "›";
+      color: #6c757d;
+      font-weight: 600;
+    }
+
+    .breadcrumb-item a {
+      color: #6c757d;
+      transition: color 0.3s ease;
+    }
+
+    .breadcrumb-item a:hover {
+      color: #000;
+    }
+  </style>
 <% } %>

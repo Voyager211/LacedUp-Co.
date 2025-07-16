@@ -1,0 +1,591 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile' }
+    ]
+  }) %>
+
+  <!-- Main Layout: Sidebar + Content -->
+  <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <div class="profile-sidebar">
+        <nav class="profile-nav">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" href="/profile">
+                <i class="bi bi-person-circle me-2"></i>
+                My Profile
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/profile/addresses">
+                <i class="bi bi-geo-alt me-2"></i>
+                Address Book
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/orders">
+                <i class="bi bi-bag-check me-2"></i>
+                My Orders
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/wishlist">
+                <i class="bi bi-heart me-2"></i>
+                My Wishlist
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/profile/wallet">
+                <i class="bi bi-wallet2 me-2"></i>
+                Wallet
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/profile/coupons">
+                <i class="bi bi-ticket-perforated me-2"></i>
+                Coupons
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/profile/referrals">
+                <i class="bi bi-people me-2"></i>
+                Referrals
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="/profile/change-password">
+                <i class="bi bi-shield-lock me-2"></i>
+                Change Password
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="profile-content">
+        <!-- Personal Information Section -->
+        <div class="content-card">
+          <h2 class="content-title">Personal Information</h2>
+          
+          <!-- Profile Image Section -->
+          <div class="profile-image-section">
+            <div class="profile-image-container">
+              <% if (user.profilePhoto) { %>
+                <img src="/uploads/profiles/<%= user.profilePhoto %>" 
+                     alt="Profile Photo" 
+                     class="profile-image"
+                     id="profileImage">
+              <% } else { %>
+                <div class="profile-avatar" id="profileAvatar">
+                  <%= user.name ? user.name.charAt(0).toUpperCase() : '👤' %>
+                </div>
+              <% } %>
+              <button type="button" class="image-upload-btn" onclick="triggerPhotoUpload()">
+                <i class="bi bi-camera"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Profile Form -->
+          <form id="profileForm" class="profile-form">
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name</label>
+              <input type="text" 
+                     id="fullName" 
+                     name="fullName" 
+                     class="form-control" 
+                     value="<%= user.name || '' %>"
+                     placeholder="Enter your full name">
+            </div>
+
+            <div class="form-group">
+              <label for="email" class="form-label">Email Address</label>
+              <div class="email-input-group">
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       class="form-control" 
+                       value="<%= user.email || '' %>"
+                       readonly>
+                <button type="button" class="btn-update-email" onclick="updateEmail()">
+                  Update Email
+                </button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input type="tel" 
+                     id="phone" 
+                     name="phone" 
+                     class="form-control" 
+                     value="<%= user.phone || '' %>"
+                     placeholder="Enter your phone number">
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+              <button type="submit" class="btn-save">
+                <i class="bi bi-check-circle me-2"></i>
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for profile photo upload -->
+<input type="file" id="profilePhotoInput" accept="image/*" style="display: none;">
+
+<style>
+/* Profile Page Styles */
+.profile-sidebar {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 0;
+  overflow: hidden;
+}
+
+.profile-nav .nav {
+  padding: 0;
+}
+
+.profile-nav .nav-item {
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.profile-nav .nav-item:last-child {
+  border-bottom: none;
+}
+
+.profile-nav .nav-link {
+  color: #6c757d;
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  border: none;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+}
+
+.profile-nav .nav-link:hover {
+  background-color: #f8f9fa;
+  color: #000;
+}
+
+.profile-nav .nav-link.active {
+  background-color: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.profile-nav .nav-link i {
+  font-size: 1.1rem;
+  width: 20px;
+}
+
+.profile-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.content-card {
+  padding: 2rem;
+}
+
+.content-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.profile-image-section {
+  margin-bottom: 2rem;
+}
+
+.profile-image-container {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #f8f9fa;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 600;
+  border: 3px solid #f8f9fa;
+}
+
+.image-upload-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #000;
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.image-upload-btn:hover {
+  background-color: #333;
+  transform: scale(1.1);
+}
+
+.image-upload-btn i {
+  font-size: 0.8rem;
+}
+
+.profile-form {
+  max-width: 500px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background-color: #fff;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-control:read-only {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+.email-input-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.email-input-group .form-control {
+  flex: 1;
+}
+
+.btn-update-email {
+  background-color: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-update-email:hover {
+  background-color: #5a6268;
+}
+
+.form-actions {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-save {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.btn-save:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.btn-save:active {
+  transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .content-card {
+    padding: 1.5rem;
+  }
+  
+  .content-title {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .profile-form {
+    max-width: 100%;
+  }
+  
+  .email-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-update-email {
+    margin-top: 0.5rem;
+  }
+  
+  .profile-nav .nav-link {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-image,
+  .profile-avatar {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .profile-avatar {
+    font-size: 1.5rem;
+  }
+  
+  .image-upload-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .image-upload-btn i {
+    font-size: 0.7rem;
+  }
+}
+</style>
+
+<script>
+// Profile photo upload functionality
+function triggerPhotoUpload() {
+  document.getElementById('profilePhotoInput').click();
+}
+
+// Handle file input change
+document.getElementById('profilePhotoInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Invalid File',
+      text: 'Please select an image file.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  // Validate file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    Swal.fire({
+      icon: 'error',
+      title: 'File Too Large',
+      text: 'Please select an image smaller than 5MB.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('profilePhoto', file);
+
+  try {
+    // Show loading
+    Swal.fire({
+      title: 'Uploading...',
+      text: 'Please wait while we upload your photo.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const response = await fetch('/profile/photo', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Update the profile photo display
+      const container = document.querySelector('.profile-image-container');
+      container.innerHTML = `
+        <img src="/uploads/profiles/${data.filename}" 
+             alt="Profile Photo" 
+             class="profile-image"
+             id="profileImage">
+        <button type="button" class="image-upload-btn" onclick="triggerPhotoUpload()">
+          <i class="bi bi-camera"></i>
+        </button>
+      `;
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Photo Updated!',
+        text: data.message,
+        confirmButtonColor: '#000'
+      });
+    } else {
+      Swal.fire({
+        icon: 'error',
+        title: 'Upload Failed',
+        text: data.message,
+        confirmButtonColor: '#000'
+      });
+    }
+  } catch (error) {
+    console.error('Error uploading photo:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Upload Error',
+      text: 'Something went wrong. Please try again.',
+      confirmButtonColor: '#000'
+    });
+  }
+
+  // Clear the input
+  e.target.value = '';
+});
+
+// Update email functionality
+function updateEmail() {
+  window.location.href = '/profile/edit';
+}
+
+// Profile form submission
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const formData = new FormData(this);
+  const data = {
+    fullname: formData.get('fullName'),
+    phone: formData.get('phone')
+  };
+
+  try {
+    // Show loading
+    Swal.fire({
+      title: 'Saving...',
+      text: 'Please wait while we update your profile.',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    const response = await fetch('/profile/edit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Profile Updated!',
+        text: result.message,
+        confirmButtonColor: '#000'
+      });
+    } else {
+      let errorMessage = result.message;
+      if (result.errors) {
+        errorMessage = Object.values(result.errors).join(', ');
+      }
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: errorMessage,
+        confirmButtonColor: '#000'
+      });
+    }
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Update Error',
+      text: 'Something went wrong. Please try again.',
+      confirmButtonColor: '#000'
+    });
+  }
+});
+</script>

@@ -25,9 +25,19 @@
           <label class="form-label">Category *</label>
           <select name="category" class="form-select" required>
             <% categories.forEach(cat => { %>
-              <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+              <% if (cat.isCurrentInactive) { %>
+                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= cat.name %> (Currently Blocked)</option>
+              <% } else { %>
+                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+              <% } %>
             <% }) %>
           </select>
+          <% if (product.category && !product.category.isActive) { %>
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              The current category "<%= product.category.name %>" is blocked. Please select an active category.
+            </div>
+          <% } %>
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Features *</label>

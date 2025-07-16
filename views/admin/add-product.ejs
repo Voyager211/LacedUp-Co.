@@ -26,14 +26,15 @@
           <label class="form-label">Category *</label>
           <select name="category" class="form-select" required>
             <option value="" disabled selected>Select Category</option>
-            <% categories.forEach(cat => { %>
+            <% categories.filter(cat => !cat.isBlocked).forEach(cat => { %>
               <option value="<%= cat._id %>"><%= cat.name %></option>
             <% }) %>
           </select>
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Features *</label>
-          <input type="text" name="features" class="form-control" required>
+          <input type="text" name="features" class="form-control" required placeholder="e.g., Breathable, Lightweight, Durable">
+          <div class="form-text">Separate features with commas. Each feature will be automatically capitalized.</div>
         </div>
       </div>
     </div>
@@ -1365,9 +1366,9 @@
   document.addEventListener('DOMContentLoaded', function() {
     renderThumbnails();
 
-    // Add default variants for UK shoe sizes
-    const defaultSizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10'];
-    const defaultStocks = [10, 15, 20, 12, 8];
+    // Add default variants for UK shoe sizes (reduced to 2 variants)
+    const defaultSizes = ['UK 7', 'UK 8'];
+    const defaultStocks = [15, 20];
     defaultSizes.forEach((size, index) => {
       addVariant(size, defaultStocks[index].toString(), '', '0', '');
     });
