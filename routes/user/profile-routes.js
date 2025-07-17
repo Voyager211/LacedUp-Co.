@@ -42,6 +42,11 @@ router.get('/profile', requireAuth, profileController.loadProfile);
 router.get('/profile/edit', requireAuth, profileController.loadEditProfile);
 router.post('/profile/edit', requireAuth, profileController.updateProfileData);
 
+// Simple email update route (for inline editing with OTP)
+router.post('/profile/email', requireAuth, profileController.updateEmail);
+router.post('/profile/verify-email-update-otp', requireAuth, profileController.verifyEmailUpdateOtp);
+router.post('/profile/resend-email-update-otp', requireAuth, profileController.resendEmailUpdateOtp);
+
 // Email change routes
 router.post('/profile/verify-current-email', requireAuth, profileController.verifyCurrentEmail);
 router.get('/profile/email-change-otp', requireAuth, profileController.loadEmailChangeOtp);

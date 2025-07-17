@@ -1,22 +1,27 @@
-<div class="container py-5">
-  <!-- Breadcrumb -->
-  <nav aria-label="breadcrumb" class="mb-4">
-    <ol class="breadcrumb">
-      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
-      <li class="breadcrumb-item"><a href="/profile" class="text-decoration-none">My Profile</a></li>
-      <li class="breadcrumb-item active" aria-current="page">My Wallet</li>
-    </ol>
-  </nav>
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile', href: '/profile' },
+      { label: 'My Wallet' }
+    ]
+  }) %>
 
-  <!-- Page Header -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <h1 class="fw-bold mb-2">My Wallet</h1>
-      <p class="text-secondary-custom mb-0">Manage your wallet balance and transaction history</p>
-    </div>
-  </div>
-
+  <!-- Main Layout: Sidebar + Content -->
   <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <%- include('partials/profile-sidebar.ejs', { user: user, active: 'wallet' }) %>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="profile-content">
+        <div class="content-card">
+          <h2 class="content-title">My Wallet</h2>
+          
+          <div class="row g-4">
     <!-- Wallet Balance Card -->
     <div class="col-12">
       <div class="auth-card p-4 text-center">
@@ -163,6 +168,10 @@
         <% } %>
       </div>
     </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -220,6 +229,27 @@
 </div>
 
 <style>
+/* Profile Content Styles */
+.profile-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.content-card {
+  padding: 2rem;
+}
+
+.content-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
 /* Wallet specific styles */
 .wallet-balance-card {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);

@@ -28,6 +28,45 @@ const validateEmailFormat = (email) => {
   return { isValid: true, trimmedValue: trimmedEmail };
 };
 
+// Enhanced name validation function
+const validateProfileName = (name) => {
+  const trimmedName = name ? name.trim() : '';
+  
+  if (!trimmedName) {
+    return { isValid: false, error: 'Full name is required' };
+  }
+  
+  if (trimmedName.length < 2) {
+    return { isValid: false, error: 'Full name must be at least 2 characters long' };
+  }
+  
+  if (trimmedName.length > 50) {
+    return { isValid: false, error: 'Full name cannot exceed 50 characters' };
+  }
+  
+  // Check for numbers
+  if (/\d/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name should not contain numbers' };
+  }
+  
+  // Check for special characters (allow only letters, spaces, hyphens, apostrophes)
+  if (!/^[a-zA-Z\s\-']+$/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name can only contain letters, spaces, hyphens, and apostrophes' };
+  }
+  
+  // Check for excessive spaces
+  if (/\s{2,}/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name cannot contain multiple consecutive spaces' };
+  }
+  
+  // Check if it starts or ends with space
+  if (trimmedName !== name.trim()) {
+    return { isValid: false, error: 'Full name cannot start or end with spaces' };
+  }
+  
+  return { isValid: true, trimmedValue: trimmedName };
+};
+
 // Phone validation function
 const validateProfilePhone = (phone) => {
   const trimmedPhone = phone ? phone.trim() : '';
@@ -36,15 +75,26 @@ const validateProfilePhone = (phone) => {
     return { isValid: true, trimmedValue: null }; // Phone is optional
   }
   
-  if (!/^[6-9]\d{9}$/.test(trimmedPhone)) {
+  // Remove any non-digit characters for validation
+  const digitsOnly = trimmedPhone.replace(/\D/g, '');
+  
+  if (digitsOnly.length !== 10) {
     return { 
       isValid: false, 
       field: 'phone',
-      error: 'Phone number must be 10 digits and start with 6, 7, 8, or 9' 
+      error: 'Phone number must be exactly 10 digits' 
     };
   }
   
-  return { isValid: true, trimmedValue: trimmedPhone };
+  if (!/^[6-9]\d{9}$/.test(digitsOnly)) {
+    return { 
+      isValid: false, 
+      field: 'phone',
+      error: 'Phone number must start with 6, 7, 8, or 9' 
+    };
+  }
+  
+  return { isValid: true, trimmedValue: digitsOnly };
 };
 
 exports.loadProfile = async (req, res) => {
@@ -172,7 +222,238 @@ exports.loadWallet = async (req, res) => {
   }
 };
 
-// Update profile data (excluding email)
+// Simple email update function (for inline editing with OTP)
+exports.updateEmail = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please login to update email'
+      });
+    }
+
+    const { email } = req.body;
+
+    // Validate email using the existing validator
+    const emailValidation = validateEmailFormat(email);
+    if (!emailValidation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: emailValidation.error
+      });
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({
+      email: emailValidation.trimmedValue,
+      _id: { $ne: userId }
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address is already registered'
+      });
+    }
+
+    // Get current user
+    const currentUser = await User.findById(userId);
+    if (!currentUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check if the new email is the same as current email
+    if (currentUser.email === emailValidation.trimmedValue) {
+      return res.status(400).json({
+        success: false,
+        message: 'This is already your current email address'
+      });
+    }
+
+    // Generate OTP for email change
+    const otp = generateOtp();
+    console.log(`Email change OTP: ${otp}`);
+
+    // Store OTP and new email in session
+    req.session.emailChangeOtp = {
+      otp,
+      currentEmail: currentUser.email,
+      newEmail: emailValidation.trimmedValue,
+      userId: userId,
+      expiresAt: Date.now() + 60 * 1000 // 1 minute
+    };
+
+    // Send OTP to current email
+    try {
+      await sendOtp({ email: currentUser.email, name: currentUser.name }, otp);
+      
+      res.json({
+        success: true,
+        requiresOtp: true,
+        message: 'OTP sent to your current email address',
+        currentEmail: currentUser.email,
+        newEmail: emailValidation.trimmedValue
+      });
+    } catch (emailError) {
+      console.error('Error sending OTP email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to send OTP. Please try again.'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error initiating email update:', error);
+
+    // Handle mongoose validation errors
+    if (error.name === 'ValidationError') {
+      const errors = {};
+      Object.keys(error.errors).forEach(key => {
+        errors[key] = error.errors[key].message;
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation failed',
+        errors: errors
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: 'Failed to initiate email update'
+    });
+  }
+};
+
+// Verify OTP and complete email update
+exports.verifyEmailUpdateOtp = async (req, res) => {
+  try {
+    const { otp } = req.body;
+    const sessionOtp = req.session.emailChangeOtp;
+
+    if (!sessionOtp) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP session found. Please start the email change process again.'
+      });
+    }
+
+    // Check if OTP expired - but don't clear session, allow resend
+    if (Date.now() > sessionOtp.expiresAt) {
+      return res.status(400).json({
+        success: false,
+        message: 'OTP expired. Please use the resend option to get a new code.'
+      });
+    }
+
+    // Verify OTP
+    if (String(otp) !== String(sessionOtp.otp)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid OTP. Please try again.'
+      });
+    }
+
+    // Update user email
+    const updatedUser = await User.findByIdAndUpdate(
+      sessionOtp.userId,
+      { email: sessionOtp.newEmail },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Update session email if it exists
+    if (req.session.email) {
+      req.session.email = sessionOtp.newEmail;
+    }
+
+    // Clear email change session only on successful verification
+    req.session.emailChangeOtp = null;
+
+    res.json({
+      success: true,
+      message: 'Email address updated successfully',
+      user: updatedUser
+    });
+
+  } catch (error) {
+    console.error('Error verifying email update OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify OTP'
+    });
+  }
+};
+
+// Resend OTP for email update
+exports.resendEmailUpdateOtp = async (req, res) => {
+  try {
+    const sessionOtp = req.session.emailChangeOtp;
+
+    if (!sessionOtp) {
+      return res.status(400).json({
+        success: false,
+        message: 'No OTP session found. Please start the email change process again.'
+      });
+    }
+
+    // Don't check for expiry here - that's the point of resending
+    // Generate new OTP
+    const newOtp = generateOtp();
+    console.log(`Resent email change OTP: ${newOtp}`);
+
+    // Update session with new OTP and reset expiry (don't check if expired)
+    req.session.emailChangeOtp = {
+      ...sessionOtp,
+      otp: newOtp,
+      expiresAt: Date.now() + 60 * 1000 // 1 minute
+    };
+
+    // Get user for sending email
+    const user = await User.findById(sessionOtp.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Send new OTP to current email
+    try {
+      await sendOtp({ email: sessionOtp.currentEmail, name: user.name }, newOtp);
+      
+      res.json({
+        success: true,
+        message: 'New OTP sent to your current email address'
+      });
+    } catch (emailError) {
+      console.error('Error resending OTP email:', emailError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to resend OTP. Please try again.'
+      });
+    }
+
+  } catch (error) {
+    console.error('Error resending email update OTP:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resend OTP'
+    });
+  }
+};
+
+// Update profile data (excluding email) with enhanced validation
 exports.updateProfileData = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -186,11 +467,10 @@ exports.updateProfileData = async (req, res) => {
     const { fullname, phone } = req.body;
     const errors = {};
 
-    // Validate fullname
-    if (!fullname || fullname.trim().length < 4) {
-      errors.fullname = 'Full name must be at least 4 characters long';
-    } else if (/\d/.test(fullname.trim())) {
-      errors.fullname = 'Full name should not contain numbers';
+    // Validate fullname using enhanced validator
+    const nameValidation = validateProfileName(fullname);
+    if (!nameValidation.isValid) {
+      errors.fullname = nameValidation.error;
     }
 
     // Validate phone using the validator
@@ -219,7 +499,7 @@ exports.updateProfileData = async (req, res) => {
 
     // Update user profile
     const updateData = {
-      name: fullname.trim()
+      name: nameValidation.trimmedValue
     };
 
     // Only update phone if provided
