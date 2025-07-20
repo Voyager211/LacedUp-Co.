@@ -415,45 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 }
 
-/* Navbar Active Link - NO RED TEXT COLOR */
-.navbar-nav .nav-link.active {
-  position: relative;
-}
-
-.navbar-nav .nav-link.active::after {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 30px;
-  height: 2px;
-  background-color: #e03a2f;
-  border-radius: 1px;
-}
-
-/* Navbar Hover Effects - NO RED TEXT COLOR */
-.navbar-nav .nav-link {
-  position: relative;
-  transition: all 0.3s ease;
-}
-
-.navbar-nav .nav-link::before {
-  content: '';
-  position: absolute;
-  bottom: -5px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 0;
-  height: 2px;
-  background-color: #e03a2f;
-  border-radius: 1px;
-  transition: width 0.3s ease;
-}
-
-.navbar-nav .nav-link:hover::before {
-  width: 30px;
-}
+/* Navbar link hover animations are handled in user.css - removed duplicates */
 
 /* Clear button styling */
 #navbar-clear-x {

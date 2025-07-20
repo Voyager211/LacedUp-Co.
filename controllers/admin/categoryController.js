@@ -60,55 +60,19 @@ exports.apiCategories = async (req, res) => {
   }
 };
 
-// exports.createCategory = async (req, res) => {
-//     try {
-//         await Category.create({
-//             name: req.body.name,
-//             description: req.body.description
-//         });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error creating category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// exports.toggleCategoryStatus = async (req, res) => {
-//     try {
-//         const category = await Category.findById(req.params.id);
-//         if (category) {
-//             category.isActive = !category.isActive;
-//             await category.save();
-//         }
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error toggling category status:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// exports.updateCategory = async (req, res) => {
-//     try {
-//         await Category.findByIdAndUpdate(req.params.id, {
-//             name: req.body.name,
-//             description: req.body.description
-//         });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error updating category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// exports.softDeleteCategory = async (req, res) => {
-//     try {
-//         await Category.findByIdAndUpdate(req.params.id, { isDeleted: true });
-//         res.redirect('/admin/categories');
-//     } catch (error) {
-//         console.error('Error soft deleting category:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
+// Get single category
+exports.apiGetCategory = async (req, res) => {
+  try {
+    const category = await Category.findById(req.params.id);
+    if (!category || category.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+    res.json({ success: true, category });
+  } catch (err) {
+    console.error('Error fetching category:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
 
 // Add category via fetch
 exports.apiCreateCategory = async (req, res) => {

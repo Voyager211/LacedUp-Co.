@@ -9,6 +9,7 @@ router.use(isAdmin);
 router.get('/', brandController.listBrands);
 
 router.get('/api', brandController.apiBrands);
+router.get('/api/:id', brandController.apiGetBrand);
 router.post('/api', brandController.apiCreateBrand);
 router.patch('/api/:id', brandController.apiUpdateBrand);
 router.patch('/api/:id/toggle', brandController.apiToggleStatus);

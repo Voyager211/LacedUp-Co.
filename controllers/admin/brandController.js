@@ -60,6 +60,20 @@ exports.apiBrands = async (req, res) => {
   }
 };
 
+// Get single brand
+exports.apiGetBrand = async (req, res) => {
+  try {
+    const brand = await Brand.findById(req.params.id);
+    if (!brand || brand.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+    res.json({ success: true, brand });
+  } catch (err) {
+    console.error('Error fetching brand:', err);
+    res.status(500).json({ success: false, message: 'Internal Server Error' });
+  }
+};
+
 // Add brand via fetch
 exports.apiCreateBrand = async (req, res) => {
   try {

@@ -14,6 +14,7 @@ router.get('/', categoryController.listCategories);
 // router.patch('/soft-delete/:id', categoryController.softDeleteCategory);
 
 router.get('/api', categoryController.apiCategories);
+router.get('/api/:id', categoryController.apiGetCategory);
 router.post('/api', categoryController.apiCreateCategory);
 router.patch('/api/:id', categoryController.apiUpdateCategory);
 router.patch('/api/:id/toggle', categoryController.apiToggleStatus);

@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
+const { generateBaseSKU, generateVariantSKU, isSkuUnique } = require('../utils/skuGenerator');
 const Schema = mongoose.Schema;
 
 // Variant sub-schema for product sizes
@@ -24,6 +25,11 @@ const variantSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 100
+  },
+  sku: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values but ensures uniqueness when present
   }
   // Removed finalPrice field - all calculations are now real-time only
 }, { _id: true });
@@ -36,6 +42,11 @@ const productSchema = new mongoose.Schema({
   slug: {
     type: String,
     unique: true
+  },
+  baseSKU: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values but ensures uniqueness when present
   },
   description: {
     type: String,
@@ -179,38 +190,93 @@ productSchema.methods.getVariantSalePrice = function(size) {
   return this.getVariantFinalPrice(size);
 };
 
-// Pre-save hook: Only handle slug generation and stock calculation
+// Pre-save hook: Handle slug generation, SKU generation, and stock calculation
 productSchema.pre('save', async function (next) {
-  // Generate slug if productName is modified
-  if (this.isModified('productName')) {
-    this.slug = slugify(this.productName, { lower: true, strict: true });
-  }
+  try {
+    // Generate slug if productName is modified
+    if (this.isModified('productName')) {
+      this.slug = slugify(this.productName, { lower: true, strict: true });
+    }
 
-  // Validate that all variant base prices are less than regular price
-  if (this.variants && this.variants.length > 0 && this.regularPrice) {
-    const regularPrice = parseFloat(this.regularPrice);
-    if (regularPrice > 0) {
-      for (let i = 0; i < this.variants.length; i++) {
-        const variant = this.variants[i];
-        if (variant.basePrice && variant.basePrice >= regularPrice) {
-          const error = new Error(`Variant ${i + 1} (${variant.size}): Base price (₹${Math.round(variant.basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`);
-          error.name = 'ValidationError';
-          return next(error);
+    // Generate SKUs if it's a new product or if SKUs are missing
+    if (this.isNew || !this.baseSKU) {
+      // Validate required fields for SKU generation
+      if (!this.brand || !this.productName) {
+        return next(new Error('Brand and product name are required for SKU generation'));
+      }
+
+      // Generate base SKU
+      let baseSKU = await generateBaseSKU(this.brand, this.productName);
+
+      // Ensure base SKU is unique
+      let counter = 1;
+      while (!await isSkuUnique(baseSKU, mongoose.model('Product'), this._id)) {
+        baseSKU = `${await generateBaseSKU(this.brand, this.productName)}-${counter}`;
+        counter++;
+        if (counter > 100) {
+          return next(new Error('Unable to generate unique base SKU after 100 attempts'));
+        }
+      }
+
+      this.baseSKU = baseSKU;
+
+      // Generate variant SKUs if variants exist
+      if (this.variants && this.variants.length > 0) {
+        for (let variant of this.variants) {
+          if (!variant.sku) {
+            let variantSKU = await generateVariantSKU(
+              this.brand,
+              this.productName,
+              variant.size
+            );
+
+            // Ensure variant SKU is unique
+            let variantCounter = 1;
+            while (!await isSkuUnique(variantSKU, mongoose.model('Product'), this._id)) {
+              const basePart = await generateBaseSKU(this.brand, this.productName);
+              const variantCode = variant.size.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+              variantSKU = `${basePart}-${variantCode}-${variantCounter}`;
+              variantCounter++;
+              if (variantCounter > 100) {
+                return next(new Error(`Unable to generate unique variant SKU for size ${variant.size}`));
+              }
+            }
+
+            variant.sku = variantSKU;
+          }
         }
       }
     }
-  }
 
-  // Calculate total stock from all variants
-  if (this.variants && this.variants.length > 0) {
-    this.totalStock = this.variants.reduce((total, variant) => {
-      return total + (variant.stock || 0);
-    }, 0);
-  } else {
-    this.totalStock = 0;
-  }
+    // Validate that all variant base prices are less than regular price
+    if (this.variants && this.variants.length > 0 && this.regularPrice) {
+      const regularPrice = parseFloat(this.regularPrice);
+      if (regularPrice > 0) {
+        for (let i = 0; i < this.variants.length; i++) {
+          const variant = this.variants[i];
+          if (variant.basePrice && variant.basePrice >= regularPrice) {
+            const error = new Error(`Variant ${i + 1} (${variant.size}): Base price (₹${Math.round(variant.basePrice)}) must be less than regular price (₹${Math.round(regularPrice)})`);
+            error.name = 'ValidationError';
+            return next(error);
+          }
+        }
+      }
+    }
 
-  next();
+    // Calculate total stock from all variants
+    if (this.variants && this.variants.length > 0) {
+      this.totalStock = this.variants.reduce((total, variant) => {
+        return total + (variant.stock || 0);
+      }, 0);
+    } else {
+      this.totalStock = 0;
+    }
+
+    next();
+  } catch (error) {
+    console.error('SKU Generation Error:', error);
+    next(error);
+  }
 });
 
 module.exports = mongoose.model('Product', productSchema);

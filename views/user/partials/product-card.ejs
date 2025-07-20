@@ -8,7 +8,8 @@
         <h6 class="fw-bold mb-1"><%= product.productName %></h6>
         <p class="text-muted mb-1"><%= product.brand.name %></p>
         <div class="d-flex align-items-center gap-2">
-          <% if (product.variants && product.variants.length > 0) { %<%
+          <% if (product.variants && product.variants.length > 0) { %>
+            <%
               // Use backend-calculated averageFinalPrice (now always real-time calculated)
               let avgPrice;
               if (typeof product.averageFinalPrice !== 'undefined') {

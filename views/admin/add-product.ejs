@@ -59,6 +59,22 @@
       </div>
     </div>
 
+        <!-- Active Offers -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-tags me-2"></i>Active Offers</h5>
+      <div id="active-offers-container">
+        <div class="alert alert-info small" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          Active offers will be displayed here based on your selected brand and category. These offers will be automatically applied to the product's final pricing.
+        </div>
+        <div id="offers-display" class="d-flex flex-wrap gap-2">
+          <!-- Offers will be dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+
+
     <!-- Product Variants -->
     <div class="border rounded p-4 mb-4 bg-light-subtle">
       <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
@@ -1366,6 +1382,154 @@
       });
     }
   };
+  // ========= ACTIVE OFFERS FUNCTIONALITY =========
+  
+  // Function to fetch and display active offers
+  async function updateActiveOffers() {
+    const brandSelect = document.querySelector('select[name="brand"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    const productOfferInput = document.querySelector('input[name="productOffer"]');
+    const offersDisplay = document.getElementById('offers-display');
+    
+    if (!brandSelect || !categorySelect || !offersDisplay) return;
+    
+    const brandId = brandSelect.value;
+    const categoryId = categorySelect.value;
+    const productOffer = parseFloat(productOfferInput?.value) || 0;
+    
+    // Clear current offers display
+    offersDisplay.innerHTML = '';
+    
+    if (!brandId && !categoryId && productOffer === 0) {
+      offersDisplay.innerHTML = '<span class="text-muted small">No offers available</span>';
+      return;
+    }
+    
+    try {
+      // Fetch brand and category data to get offers
+      const promises = [];
+      
+      if (brandId) {
+        promises.push(fetch(`/admin/brands/api/${brandId}`).then(res => res.json()));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+      
+      if (categoryId) {
+        promises.push(fetch(`/admin/categories/api/${categoryId}`).then(res => res.json()));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+      
+      const [brandData, categoryData] = await Promise.all(promises);
+      
+      const offers = [];
+      
+      // Add brand offer if exists
+      if (brandData?.brand?.brandOffer && brandData.brand.brandOffer > 0) {
+        offers.push({
+          type: 'brand',
+          name: brandData.brand.name,
+          value: brandData.brand.brandOffer,
+          label: `${brandData.brand.brandOffer}% off on all ${brandData.brand.name} products`,
+          badgeClass: 'bg-primary'
+        });
+      }
+      
+      // Add category offer if exists
+      if (categoryData?.category?.categoryOffer && categoryData.category.categoryOffer > 0) {
+        offers.push({
+          type: 'category',
+          name: categoryData.category.name,
+          value: categoryData.category.categoryOffer,
+          label: `${categoryData.category.categoryOffer}% off on all ${categoryData.category.name}`,
+          badgeClass: 'bg-info'
+        });
+      }
+      
+      // Add product offer if exists
+      if (productOffer > 0) {
+        offers.push({
+          type: 'product',
+          name: 'This Product',
+          value: productOffer,
+          label: `${productOffer}% off on this product`,
+          badgeClass: 'bg-success'
+        });
+      }
+      
+      // Display offers
+      if (offers.length === 0) {
+        offersDisplay.innerHTML = '<span class="text-muted small">No active offers</span>';
+      } else {
+        const offersHtml = offers.map(offer => `
+          <span class="badge ${offer.badgeClass} text-white px-3 py-2 me-2 mb-2" style="font-size: 0.9rem;">
+            <i class="bi bi-tag-fill me-1"></i>
+            ${offer.label}
+          </span>
+        `).join('');
+        
+        offersDisplay.innerHTML = offersHtml;
+        
+        // Show highest offer info
+        const maxOffer = Math.max(...offers.map(o => o.value));
+        const maxOfferType = offers.find(o => o.value === maxOffer);
+        
+        if (offers.length > 1) {
+          offersDisplay.innerHTML += `
+            <div class="w-100 mt-2">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Highest offer (${maxOffer}% from ${maxOfferType.type}) will be applied to final pricing
+              </small>
+            </div>
+          `;
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      offersDisplay.innerHTML = '<span class="text-danger small">Error loading offers</span>';
+    }
+  }
+  
+  // Add event listeners for brand and category changes
+  document.addEventListener('DOMContentLoaded', function() {
+    const brandSelect = document.querySelector('select[name="brand"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    const productOfferInput = document.querySelector('input[name="productOffer"]');
+    
+    if (brandSelect) {
+      brandSelect.addEventListener('change', updateActiveOffers);
+    }
+    
+    if (categorySelect) {
+      categorySelect.addEventListener('change', updateActiveOffers);
+    }
+    
+    if (productOfferInput) {
+      productOfferInput.addEventListener('input', debounce(updateActiveOffers, 500));
+      productOfferInput.addEventListener('change', updateActiveOffers);
+    }
+    
+    // Initial load
+    updateActiveOffers();
+  });
+  
+  // Debounce function to limit API calls
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+
 
   // Initialize the interface with placeholders on page load
   document.addEventListener('DOMContentLoaded', function() {
