@@ -193,41 +193,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // Render suggestions in dropdown
+  // Render suggestions in dropdown - SIMPLIFIED VERSION (only product names)
   function renderNavbarSuggestions(suggestions) {
     suggestionsList.innerHTML = suggestions.map((product, index) => `
       <div class="suggestion-item" data-index="${index}" data-name="${product.productName}">
-        <img src="${product.mainImage || '/images/placeholder.jpg'}" alt="${product.productName}" class="suggestion-image" onerror="this.src='/images/placeholder.jpg'">
-        <div class="suggestion-content">
-          <div class="suggestion-name">${product.productName}</div>
-          <div class="suggestion-details">
-            <span class="suggestion-brand">${product.brand || 'No Brand'}</span>
-            <span>•</span>
-            <span class="suggestion-category">${product.category?.name || 'No Category'}</span>
-          </div>
-        </div>
-        <div class="suggestion-price">
-          ${product.averageFinalPrice ? `₹${product.averageFinalPrice.toFixed(2)}` : (product.averageSalePrice ? `₹${product.averageSalePrice.toFixed(2)}` : (product.variants && product.variants.length > 0 ? (() => {
-            // Use computed finalPrice from variants if available, otherwise calculate it
-            if (product.variants[0].finalPrice !== undefined) {
-              const avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
-              return `₹${avgPrice.toFixed(2)}`;
-            } else if (product.variants[0].salePrice !== undefined) {
-              const avgPrice = product.variants.reduce((sum, v) => sum + v.salePrice, 0) / product.variants.length;
-              return `₹${avgPrice.toFixed(2)}`;
-            } else {
-              // Legacy calculation for backward compatibility
-              const calculatedPrices = product.variants.map(v => {
-                if (v.basePrice) {
-                  return v.basePrice * (1 - (v.variantSpecificOffer || 0) / 100);
-                } else {
-                  return product.regularPrice * (1 - (v.productOffer || 0) / 100);
-                }
-              });
-              const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
-              return `₹${avgPrice.toFixed(2)}`;
-            }
-          })() : `₹${product.regularPrice?.toFixed(2) || '0.00'}`))}
+        <div class="suggestion-name">${product.productName}</div>
       </div>
     `).join('');
 
@@ -330,3 +300,174 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 </script>
+
+<style>
+/* Navbar Search Suggestions Dropdown - SIMPLIFIED STYLES */
+.navbar-search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  display: none;
+  width: 100%;
+}
+
+.navbar-search-suggestions-dropdown.show {
+  display: block;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:hover,
+.navbar-search-suggestions-dropdown .suggestion-item.highlighted {
+  background-color: rgba(224, 58, 47, 0.05);
+  border-left: 3px solid #e03a2f;
+  padding-left: 13px;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-name {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading,
+.navbar-search-suggestions-dropdown .suggestions-empty {
+  padding: 16px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading .spinner-border {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Navbar Icon Buttons */
+.navbar-icon-btn {
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+}
+
+.navbar-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+  min-width: 200px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.profile-dropdown .dropdown-item {
+  padding: 10px 16px;
+  transition: all 0.3s ease;
+}
+
+.profile-dropdown .dropdown-item:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+  color: #e03a2f;
+}
+
+/* Navbar Search Container */
+.navbar-search-container {
+  min-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .navbar-search-container {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-search-container {
+    min-width: 200px;
+  }
+}
+
+/* Navbar Active Link - NO RED TEXT COLOR */
+.navbar-nav .nav-link.active {
+  position: relative;
+}
+
+.navbar-nav .nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 2px;
+  background-color: #e03a2f;
+  border-radius: 1px;
+}
+
+/* Navbar Hover Effects - NO RED TEXT COLOR */
+.navbar-nav .nav-link {
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link::before {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 2px;
+  background-color: #e03a2f;
+  border-radius: 1px;
+  transition: width 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover::before {
+  width: 30px;
+}
+
+/* Clear button styling */
+#navbar-clear-x {
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+#navbar-clear-x:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+</style>

@@ -57,6 +57,9 @@ router.post('/profile/change-email', requireAuth, profileController.changeEmail)
 router.get('/profile/change-password', requireAuth, profileController.loadChangePassword);
 router.post('/profile/change-password', requireAuth, profileController.updatePassword);
 
+// Address routes
+router.get('/profile/addresses', requireAuth, profileController.loadAddresses);
+
 // Wallet routes
 router.get('/profile/wallet', requireAuth, profileController.loadWallet);
 

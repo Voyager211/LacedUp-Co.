@@ -1,5 +1,6 @@
 const Product = require('../../models/Product');
 const Category = require('../../models/Category');
+const Brand = require('../../models/Brand');
 const { processImages } = require('../../utils/imageProcessor');
 const { getPagination } = require('../../utils/pagination');
 const { validateBase64Image, validateMultipleImageFiles } = require('../../utils/imageValidation');
@@ -18,17 +19,19 @@ exports.listProducts = async (req, res) => {
     const totalProductCount = await Product.countDocuments({ isDeleted: false });
 
     const { data: products, totalPages } = await getPagination(
-      Product.find(query).populate('category').sort({ createdAt: -1 }),
+      Product.find(query).populate('category').populate('brand').sort({ createdAt: -1 }),
       Product,
       query,
       page,
       limit
     );
     const categories = await Category.find({ isDeleted: false }).sort({ name: 1 });
+    const brands = await Brand.find({ isDeleted: false }).sort({ name: 1 });
 
     res.render('admin/products', {
       products,
       categories,
+      brands,
       currentPage: page,
       totalPages,
       searchQuery: q,
@@ -44,9 +47,11 @@ exports.listProducts = async (req, res) => {
 // Render add product page
 exports.renderAddPage = async (req, res) => {
   const categories = await Category.find({ isDeleted: false, isActive: true });
+  const brands = await Brand.find({ isDeleted: false, isActive: true }).sort({ name: 1 });
   res.render('admin/add-product', {
     title: "Add Product",
     categories,
+    brands,
     message: req.flash('error')
   });
 };
@@ -194,8 +199,14 @@ exports.apiProducts = async (req, res) => {
 
     // Brand filter
     if (req.query.brand) {
-      query.brand = { $regex: req.query.brand, $options: 'i' };
-    }
+      // Handle multiple brand IDs (comma-separated)
+        if (req.query.brand.includes(',')) {
+          const brandIds = req.query.brand.split(',').filter(id => id.trim());
+          query.brand = { $in: brandIds };
+        } else {
+          query.brand = req.query.brand;
+        }
+      }
 
     // Price range filters (check variants for price range)
     if (req.query.minPrice || req.query.maxPrice) {
@@ -264,7 +275,7 @@ exports.apiProducts = async (req, res) => {
     const totalProductCount = await Product.countDocuments({ isDeleted: false });
 
     const { data: products, totalPages } = await getPagination(
-      Product.find(query).populate('category').sort(sortQuery),
+      Product.find(query).populate('category').populate('brand').sort(sortQuery),
       Product,
       query,
       page,
@@ -314,7 +325,7 @@ exports.apiToggleProductStatus = async (req, res) => {
 // Render edit product page
 exports.renderEditPage = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id).populate('category');
+    const product = await Product.findById(req.params.id).populate('category').populate('brand');
     
     if (!product) return res.status(404).send('Product not found');
 
@@ -332,10 +343,25 @@ exports.renderEditPage = async (req, res) => {
       }
     }
 
+    // Get active brands for the dropdown
+    let brands = await Brand.find({ isDeleted: false, isActive: true }).sort({ name: 1 });
+    
+    // If the product's current brand is inactive, include it in the list so admin can see it
+    // but mark it as inactive for UI indication
+    if (product.brand && !product.brand.isActive) {
+      const currentBrand = await Brand.findById(product.brand._id);
+      if (currentBrand && !currentBrand.isDeleted) {
+        // Add the inactive brand to the list with a flag
+        currentBrand.isCurrentInactive = true;
+        brands.unshift(currentBrand);
+      }
+    }
+
     res.render('admin/edit-product', {
       title: 'Edit Product',
       product,
       categories,
+      brands,
       message: req.flash('error')
     });
   } catch (err) {

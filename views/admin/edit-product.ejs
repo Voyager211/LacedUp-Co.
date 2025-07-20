@@ -19,7 +19,23 @@
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Brand *</label>
-          <input type="text" name="brand" class="form-control" value="<%= product.brand %>" required>
+          <select name="brand" class="form-select" required>
+            <% brands.forEach(brand => { %>
+              <% if (brand.isCurrentInactive) { %>
+                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= brand.name %> (Currently Blocked)</option>
+              <% } else { %>
+                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %>><%= brand.name %></option>
+              <% } %>
+            <% }) %>
+          </select>
+          <% 
+            if (product.brand && !product.brand.isActive) { 
+          %>
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              The current brand "<%= product.brand.name %>" is blocked. Please select an active brand.
+            </div>
+          <% } %>
         </div>
         <div class="col-md-6 mb-3">
           <label class="form-label">Category *</label>

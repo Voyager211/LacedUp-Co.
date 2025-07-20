@@ -24,11 +24,8 @@ const variantSchema = new mongoose.Schema({
     default: 0,
     min: 0,
     max: 100
-  },
-  finalPrice: {
-    type: Number,
-    min: 0
   }
+  // Removed finalPrice field - all calculations are now real-time only
 }, { _id: true });
 
 const productSchema = new mongoose.Schema({
@@ -44,7 +41,9 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  brand: { type: String,
+  brand: {
+    type: Schema.Types.ObjectId,
+    ref: "Brand",
     required: true
   },
   category: {
@@ -98,74 +97,68 @@ const productSchema = new mongoose.Schema({
   isDeleted: { type: Boolean, default: false }
 }, { timestamps: true });
 
-
-// Helper method to get final price for a variant (now uses stored finalPrice)
+// REAL-TIME PRICE CALCULATION: Always calculate based on current offers
 productSchema.methods.calculateVariantFinalPrice = function(variant) {
-  // Use stored finalPrice if available, otherwise calculate for backward compatibility
-  if (variant.finalPrice !== undefined) {
-    return variant.finalPrice;
-  }
-
-  // Fallback calculation for migration period
-  if (!variant.basePrice) {
-    // For legacy products without basePrice, use the largest of category, product, or variant offers
-    const categoryOffer = (this.category && this.category.categoryOffer) || 0;
-    const productOffer = this.productOffer || 0;
-    const variantOffer = variant.variantSpecificOffer || 0;
-    const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
-    return this.regularPrice * (1 - maxOffer / 100);
-  }
-
-  // Use the largest of category, product, or variant offers
   const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const brandOffer = (this.brand && this.brand.brandOffer) || 0;
   const productOffer = this.productOffer || 0;
   const variantOffer = variant.variantSpecificOffer || 0;
-  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+  const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
+  
+  // Fallback for legacy products without basePrice
+  if (!variant.basePrice) {
+    return this.regularPrice * (1 - maxOffer / 100);
+  }
+  
   return variant.basePrice * (1 - maxOffer / 100);
 };
 
-// Helper method to get average final price across all variants
+// REAL-TIME CALCULATION: Get average final price across all variants
 productSchema.methods.getAverageFinalPrice = function() {
   if (!this.variants || this.variants.length === 0) {
     return this.regularPrice;
   }
 
   const totalFinalPrice = this.variants.reduce((total, variant) => {
-    return total + (variant.finalPrice || this.calculateVariantFinalPrice(variant));
+    return total + this.calculateVariantFinalPrice(variant);
   }, 0);
 
   return totalFinalPrice / this.variants.length;
 };
 
-// Helper method to get final price for a specific variant by size
+// REAL-TIME CALCULATION: Get final price for a specific variant by size
 productSchema.methods.getVariantFinalPrice = function(size) {
   const variant = this.variants.find(v => v.size === size);
   if (!variant) {
     return this.regularPrice;
   }
-  return variant.finalPrice || this.calculateVariantFinalPrice(variant);
+  return this.calculateVariantFinalPrice(variant);
 };
 
 // Helper method to get the applied offer percentage for a variant
 productSchema.methods.getAppliedOffer = function(variant) {
   const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const brandOffer = (this.brand && this.brand.brandOffer) || 0;
   const productOffer = this.productOffer || 0;
   const variantOffer = variant.variantSpecificOffer || 0;
-  return Math.max(categoryOffer, productOffer, variantOffer);
+  return Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
 };
 
 // Helper method to determine which offer type is being applied
 productSchema.methods.getOfferType = function(variant) {
   const categoryOffer = (this.category && this.category.categoryOffer) || 0;
+  const brandOffer = (this.brand && this.brand.brandOffer) || 0;
   const productOffer = this.productOffer || 0;
   const variantOffer = variant.variantSpecificOffer || 0;
 
-  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+  const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
 
   if (maxOffer === 0) {
     return 'none';
   } else if (categoryOffer === maxOffer) {
     return 'category';
+  } else if (brandOffer === maxOffer) {
+    return 'brand';
   } else if (productOffer === maxOffer) {
     return 'product';
   } else {
@@ -173,7 +166,7 @@ productSchema.methods.getOfferType = function(variant) {
   }
 };
 
-// Legacy methods for backward compatibility during migration
+// Legacy methods for backward compatibility
 productSchema.methods.calculateVariantSalePrice = function(variant) {
   return this.calculateVariantFinalPrice(variant);
 };
@@ -186,7 +179,7 @@ productSchema.methods.getVariantSalePrice = function(size) {
   return this.getVariantFinalPrice(size);
 };
 
-// Auto-generate slug on productName change and calculate total stock from variants
+// Pre-save hook: Only handle slug generation and stock calculation
 productSchema.pre('save', async function (next) {
   // Generate slug if productName is modified
   if (this.isModified('productName')) {
@@ -208,25 +201,8 @@ productSchema.pre('save', async function (next) {
     }
   }
 
-  // Calculate finalPrice for each variant
+  // Calculate total stock from all variants
   if (this.variants && this.variants.length > 0) {
-    // Ensure category is populated for offer calculation
-    if (this.category && !this.category.categoryOffer && typeof this.category === 'string') {
-      await this.populate('category');
-    }
-
-    this.variants.forEach(variant => {
-      if (variant.basePrice !== undefined) {
-        // Use the largest of category, product, or variant offers
-        const categoryOffer = (this.category && this.category.categoryOffer) || 0;
-        const productOffer = this.productOffer || 0;
-        const variantOffer = variant.variantSpecificOffer || 0;
-        const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
-        variant.finalPrice = variant.basePrice * (1 - maxOffer / 100);
-      }
-    });
-
-    // Calculate total stock from all variants
     this.totalStock = this.variants.reduce((total, variant) => {
       return total + (variant.stock || 0);
     }, 0);

@@ -76,7 +76,7 @@
           <tr>
             <td><%= index + 1 + ((currentPage - 1) * 10) %></td>
             <td><%= product.productName %></td>
-            <td><%= product.brand || '—' %></td>
+            <td><%= product.brand?.name || '—' %></td>
             <td><%= product.category?.name || '—' %></td>
             <td>
               <img src="<%= product.mainImage %>" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" />
@@ -137,10 +137,27 @@
           </div>
 
           <!-- Brand Filter -->
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Brand</label>
-            <input type="text" id="filter-brand" class="form-control" placeholder="Enter brand name">
-          </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Brand</label>
+              <div class="admin-brand-filter-dropdown">
+                <button type="button" class="form-select admin-brand-dropdown-btn" id="admin-brand-dropdown-btn">
+                  <span class="selected-text">All Brands</span>
+                  <i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="admin-brand-dropdown-menu" id="admin-brand-dropdown-menu">
+                  <div class="admin-brand-option">
+                    <input type="checkbox" id="admin-brand-all" class="admin-brand-checkbox" value="" checked>
+                    <label for="admin-brand-all">All Brands</label>
+                  </div>
+                  <% brands.forEach((brand, index) => { %>
+                  <div class="admin-brand-option">
+                    <input type="checkbox" id="admin-brand-<%= index %>" class="admin-brand-checkbox" value="<%= brand._id %>">
+                    <label for="admin-brand-<%= index %>"><%= brand.name %></label>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+            </div>
 
           <!-- Price Range -->
           <div class="col-md-6 mb-3">
@@ -491,7 +508,7 @@
     // Apply filters functionality
     applyFiltersBtn.addEventListener('click', function() {
       currentFilters.category = document.getElementById('filter-category').value;
-      currentFilters.brand = document.getElementById('filter-brand').value;
+      currentFilters.brand = window.getSelectedAdminBrands ? window.getSelectedAdminBrands() : '';
       currentFilters.minPrice = document.getElementById('filter-min-price').value;
       currentFilters.maxPrice = document.getElementById('filter-max-price').value;
       currentFilters.status = document.getElementById('filter-status').value;
@@ -505,7 +522,16 @@
     resetFiltersBtn.addEventListener('click', function() {
       // Clear all filter inputs
       document.getElementById('filter-category').value = '';
-      document.getElementById('filter-brand').value = '';
+      // Reset brand filter checkboxes
+      const adminBrandCheckboxes = document.querySelectorAll('.admin-brand-checkbox');
+      adminBrandCheckboxes.forEach(cb => {
+        if (cb.value === '') {
+          cb.checked = true; // Check 'All Brands'
+        } else {
+          cb.checked = false; // Uncheck individual brands
+        }
+      });
+      if (window.updateAdminBrandDropdownText) window.updateAdminBrandDropdownText();
       document.getElementById('filter-min-price').value = '';
       document.getElementById('filter-max-price').value = '';
       document.getElementById('filter-status').value = '';
@@ -577,7 +603,7 @@
         <tr>
           <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
           <td>${product.productName}</td>
-          <td>${product.brand || '—'}</td>
+          <td>${product.brand?.name || '—'}</td>
           <td>${product.category?.name || '—'}</td>
           <td><img src="${product.mainImage}" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" /></td>
           <td>₹${product.regularPrice || 0}</td>
@@ -862,3 +888,170 @@
 }
 </style>
 
+
+<script>
+// Admin Brand Filter Dropdown JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  // Admin Brand filter dropdown functionality
+  const adminBrandDropdownBtn = document.getElementById('admin-brand-dropdown-btn');
+  const adminBrandDropdownMenu = document.getElementById('admin-brand-dropdown-menu');
+  const adminBrandCheckboxes = document.querySelectorAll('.admin-brand-checkbox');
+  const adminBrandAllCheckbox = document.getElementById('admin-brand-all');
+
+  // Toggle admin brand dropdown
+  if (adminBrandDropdownBtn) {
+    adminBrandDropdownBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      adminBrandDropdownMenu.classList.toggle('show');
+    });
+  }
+
+  // Close admin brand dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (adminBrandDropdownBtn && adminBrandDropdownMenu && 
+        !adminBrandDropdownBtn.contains(e.target) && !adminBrandDropdownMenu.contains(e.target)) {
+      adminBrandDropdownMenu.classList.remove('show');
+    }
+  });
+
+  // Handle admin brand checkbox changes
+  adminBrandCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (this.value === '') {
+        // 'All Brands' checkbox clicked
+        if (this.checked) {
+          // Uncheck all other brand checkboxes
+          adminBrandCheckboxes.forEach(cb => {
+            if (cb.value !== '') {
+              cb.checked = false;
+            }
+          });
+        }
+      } else {
+        // Individual brand checkbox clicked
+        if (this.checked) {
+          // Uncheck 'All Brands'
+          adminBrandAllCheckbox.checked = false;
+        } else {
+          // If no individual brands are selected, check 'All Brands'
+          const anyBrandSelected = Array.from(adminBrandCheckboxes).some(cb => cb.value !== '' && cb.checked);
+          if (!anyBrandSelected) {
+            adminBrandAllCheckbox.checked = true;
+          }
+        }
+      }
+
+      // Update dropdown button text
+      updateAdminBrandDropdownText();
+    });
+  });
+
+  // Function to update admin brand dropdown button text
+  window.updateAdminBrandDropdownText = function() {
+    const selectedBrands = Array.from(adminBrandCheckboxes)
+      .filter(cb => cb.value !== '' && cb.checked)
+      .map(cb => cb.nextElementSibling.textContent);
+
+    const selectedText = adminBrandDropdownBtn.querySelector('.selected-text');
+    
+    if (selectedBrands.length === 0 || adminBrandAllCheckbox.checked) {
+      selectedText.textContent = 'All Brands';
+    } else if (selectedBrands.length === 1) {
+      selectedText.textContent = selectedBrands[0];
+    } else {
+      selectedText.textContent = \\ Brands Selected\;
+    }
+  }
+
+  // Function to get selected admin brand IDs
+  window.getSelectedAdminBrands = function() {
+    if (adminBrandAllCheckbox.checked) {
+      return '';
+    }
+    return Array.from(adminBrandCheckboxes)
+      .filter(cb => cb.value !== '' && cb.checked)
+      .map(cb => cb.value)
+      .join(',');
+  };
+});
+</script>
+
+<style>
+/* Admin Brand Filter Dropdown */
+.admin-brand-filter-dropdown {
+  position: relative;
+}
+
+.admin-brand-dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.admin-brand-dropdown-btn:hover {
+  border-color: #e03a2f;
+}
+
+.admin-brand-dropdown-btn:focus {
+  outline: none;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.admin-brand-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.admin-brand-dropdown-menu.show {
+  display: block;
+}
+
+.admin-brand-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-brand-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.admin-brand-option:last-child {
+  border-bottom: none;
+}
+
+.admin-brand-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.admin-brand-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+}
+</style>

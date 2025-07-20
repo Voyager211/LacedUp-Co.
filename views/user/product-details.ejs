@@ -72,7 +72,7 @@
     <!-- RIGHT: Product Info -->
     <div class="col-md-6">
       <h2 class="fw-bold"><%= product.productName %></h2>
-      <p class="text-muted mb-1"><%= product.brand %></p>
+      <p class="text-muted mb-1"><%= product.brand.name %></p>
 
       <!-- Rating -->
       <div class="d-flex align-items-center mb-3">
@@ -101,9 +101,10 @@
               const totalPrice = product.variants.reduce((sum, variant) => {
                 const basePrice = variant.basePrice || product.regularPrice;
                 const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                const brandOffer = (product.brand && product.brand.brandOffer) || 0;
                 const productOffer = product.productOffer || 0;
                 const variantOffer = variant.variantSpecificOffer || 0;
-                const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
                 return sum + (basePrice * (1 - maxOffer / 100));
               }, 0);
               avgPrice = totalPrice / product.variants.length;
@@ -158,24 +159,26 @@
               <%
                 // Determine which offer is being applied (category, product, or variant)
                 const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                const brandOffer = (product.brand && product.brand.brandOffer) || 0;
                 const productOffer = product.productOffer || 0;
                 const variantOffer = variant.variantSpecificOffer || 0;
-                const appliedOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                const appliedOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
 
                 // Determine offer type based on which is highest
                 let offerType = 'none';
                 if (appliedOffer > 0) {
                   if (categoryOffer === appliedOffer) {
-                    offerType = 'category';
-                  } else if (productOffer === appliedOffer) {
-                    offerType = 'product';
-                  } else {
-                    offerType = 'variant';
-                  }
+                      offerType = 'category';
+                    } else if (brandOffer === appliedOffer) {
+                      offerType = 'brand';
+                    } else if (productOffer === appliedOffer) {
+                      offerType = 'product';
+                    } else {
+                      offerType = 'variant';
+                    }
                 }
 
-                // Use stored finalPrice from backend, with fallback calculation for migration
-                const finalPrice = variant.finalPrice || (variant.basePrice || product.regularPrice) * (1 - (appliedOffer / 100));
+                                const finalPrice = (variant.basePrice || product.regularPrice) * (1 - (appliedOffer / 100));
               %>
               <button
                 class="btn btn-outline-dark size-btn"
@@ -187,6 +190,7 @@
                 data-applied-offer="<%= appliedOffer %>"
                 data-offer-type="<%= offerType %>"
                 data-category-offer="<%= categoryOffer %>"
+                data-brand-offer="<%= brandOffer %>"
                 data-product-offer="<%= productOffer %>"
                 data-variant-offer="<%= variantOffer %>"
                 <%= variant.stock === 0 ? 'disabled' : '' %>
@@ -966,11 +970,12 @@
       const appliedOffer = parseFloat(button.dataset.appliedOffer) || 0;
       const offerType = button.dataset.offerType;
       const categoryOffer = parseFloat(button.dataset.categoryOffer) || 0;
+      const brandOffer = parseFloat(button.dataset.brandOffer) || 0;
       const productOffer = parseFloat(button.dataset.productOffer) || 0;
       const variantOffer = parseFloat(button.dataset.variantOffer) || 0;
       const variantIndex = parseInt(button.dataset.variantIndex);
 
-      selectedVariant = { size, stock, price, basePrice, appliedOffer, offerType, categoryOffer, productOffer, variantOffer, variantIndex };
+      selectedVariant = { size, stock, price, basePrice, appliedOffer, offerType, categoryOffer, brandOffer, productOffer, variantOffer, variantIndex };
 
       // Update price display
       if (currentPrice) {
@@ -1000,17 +1005,23 @@
       // Update extra discount badge and connector based on which offer is being applied
       if (extraDiscountBadge && discountConnector) {
         if (appliedOffer > 0 && !isNaN(appliedOffer)) {
-          // Show the applied offer with appropriate label based on offer type
-          let offerLabel = 'Extra';
-          if (offerType === 'category') {
-            offerLabel = 'Category';
-          } else if (offerType === 'product') {
-            offerLabel = 'Product';
-          } else if (offerType === 'variant') {
-            offerLabel = 'Extra';
-          }
+          // Show the applied offer with descriptive messages based on offer type
+            let offerMessage = '';
+            if (offerType === 'variant') {
+              offerMessage = `Extra ${appliedOffer}% off on this size!`;
+            } else if (offerType === 'product') {
+              offerMessage = `Extra ${appliedOffer}% off on this sneaker!`;
+            } else if (offerType === 'category') {
+              // Get category name from the product data
+              const categoryName = '<%= product.category.name %>';
+              offerMessage = `Extra ${appliedOffer}% off on all ${categoryName}!`;
+            } else if (offerType === 'brand') {
+              // Get brand name from the product data
+              const brandName = '<%= product.brand.name %>';
+              offerMessage = `Extra ${appliedOffer}% off on all ${brandName} sneakers!`;
+            }
 
-          extraDiscountBadge.innerHTML = `<i class="bi bi-tag-fill me-1"></i>${offerLabel} ${appliedOffer}% off`;
+            extraDiscountBadge.innerHTML = `<i class="bi bi-tag-fill me-1"></i>${offerMessage}`;
           extraDiscountBadge.style.display = 'inline-block';
           extraDiscountBadge.style.visibility = 'visible';
 
@@ -1083,13 +1094,12 @@
     }
 
     function initializeDefaultState() {
-      // Calculate and display average price using stored finalPrice values
-      const variants = Array.from(sizeButtons).map(btn => ({
-        price: parseFloat(btn.dataset.price), // This is the stored finalPrice
-        basePrice: Math.round(parseFloat(btn.dataset.basePrice) || 0),
+            const variants = Array.from(sizeButtons).map(btn => ({
+        price: parseFloat(btn.dataset.price),         basePrice: Math.round(parseFloat(btn.dataset.basePrice) || 0),
         appliedOffer: parseFloat(btn.dataset.appliedOffer) || 0,
         offerType: btn.dataset.offerType,
         categoryOffer: parseFloat(btn.dataset.categoryOffer) || 0,
+        brandOffer: parseFloat(btn.dataset.brandOffer) || 0,
         productOffer: parseFloat(btn.dataset.productOffer) || 0,
         variantOffer: parseFloat(btn.dataset.variantOffer) || 0
       }));

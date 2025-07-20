@@ -32,6 +32,29 @@
                 </select>
             </div>
 
+            <!-- Brand Filter -->
+            <div class="mb-4">
+                <label class="form-label">Brand</label>
+                <div class="brand-filter-dropdown">
+                    <button type="button" class="form-select brand-dropdown-btn" id="brand-dropdown-btn">
+                        <span class="selected-text">All Brands</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </button>
+                    <div class="brand-dropdown-menu" id="brand-dropdown-menu">
+                        <div class="brand-option">
+                            <input type="checkbox" id="brand-all" class="brand-checkbox" value="" checked>
+                            <label for="brand-all">All Brands</label>
+                        </div>
+                        <% brands.forEach((brand, index) => { %>
+                        <div class="brand-option">
+                            <input type="checkbox" id="brand-<%= index %>" class="brand-checkbox" value="<%= brand._id %>">
+                            <label for="brand-<%= index %>"><%= brand.name %></label>
+                        </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+
             <!-- Size Filter -->
             <div class="mb-4">
                 <label class="form-label">Size</label>
@@ -67,10 +90,6 @@
             </div>
         </form>
     </aside>
-
-
-
-
 
     <!-- Main Section -->
     <section id="main-section" class="col-12">
@@ -251,7 +270,7 @@
           <div class="card-body d-flex flex-column justify-content-between">
             <div>
               <h6 class="fw-bold mb-1">${product.productName}</h6>
-              <p class="text-muted mb-1">${product.brand}</p>
+              <p class="text-muted mb-1">${product.brand?.name || product.brand || 'No Brand'}</p>
               <div class="d-flex align-items-center gap-2">
                 ${product.variants && product.variants.length > 0 ? (() => {
                   let avgPrice;
@@ -331,8 +350,6 @@
       </div>
     `).join('');
   }
-
-
 
   function fetchCallback(page = 1) {
     const params = new URLSearchParams();
@@ -435,8 +452,6 @@
       // Show the view filters button
       viewFiltersBtn.style.display = 'inline-block';
     }
-
-
 
     // Event listeners for filter toggle
     viewFiltersBtn.addEventListener('click', showFilters);
@@ -547,44 +562,13 @@
       }
     }
 
-    // Render suggestions in dropdown
+    // Render suggestions in dropdown - SIMPLIFIED VERSION (only product names)
     function renderSuggestions(suggestions) {
       console.log('🎨 Rendering suggestions:', suggestions);
 
       suggestionsList.innerHTML = suggestions.map((product, index) => `
         <div class="suggestion-item" data-index="${index}" data-name="${product.productName}">
-          <img src="${product.mainImage || '/images/placeholder.jpg'}" alt="${product.productName}" class="suggestion-image" onerror="this.src='/images/placeholder.jpg'">
-          <div class="suggestion-content">
-            <div class="suggestion-name">${product.productName}</div>
-            <div class="suggestion-details">
-              <span class="suggestion-brand">${product.brand || 'No Brand'}</span>
-              <span>•</span>
-              <span class="suggestion-category">${product.category?.name || 'No Category'}</span>
-            </div>
-          </div>
-          <div class="suggestion-price">
-            ${product.averageFinalPrice ? `₹${Math.round(product.averageFinalPrice)}` : (product.averageSalePrice ? `₹${Math.round(product.averageSalePrice)}` : (product.variants && product.variants.length > 0 ? (() => {
-              // Use computed finalPrice from variants if available, otherwise calculate it
-              if (product.variants[0].finalPrice !== undefined) {
-                const avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
-                return `₹${Math.round(avgPrice)}`;
-              } else if (product.variants[0].salePrice !== undefined) {
-                const avgPrice = product.variants.reduce((sum, v) => sum + v.salePrice, 0) / product.variants.length;
-                return `₹${Math.round(avgPrice)}`;
-              } else {
-                // Legacy calculation for backward compatibility with category offer logic
-                const calculatedPrices = product.variants.map(v => {
-                  const basePrice = v.basePrice || product.regularPrice;
-                  const categoryOffer = (product.category && product.category.categoryOffer) || 0;
-                  const productOffer = product.productOffer || 0;
-                  const variantOffer = v.variantSpecificOffer || 0;
-                  const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
-                  return basePrice * (1 - maxOffer / 100);
-                });
-                const avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
-                return `₹${Math.round(avgPrice)}`;
-              }
-            })() : `₹${Math.round(product.regularPrice) || '0'}`))}
+          <div class="suggestion-name">${product.productName}</div>
         </div>
       `).join('');
 
@@ -680,6 +664,85 @@
       performSort(); // Immediate sort on selection change
     });
 
+    // 🎯 Brand filter dropdown functionality
+    const brandDropdownBtn = document.getElementById('brand-dropdown-btn');
+    const brandDropdownMenu = document.getElementById('brand-dropdown-menu');
+    const brandCheckboxes = document.querySelectorAll('.brand-checkbox');
+    const brandAllCheckbox = document.getElementById('brand-all');
+
+    // Toggle brand dropdown
+    brandDropdownBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      brandDropdownMenu.classList.toggle('show');
+    });
+
+    // Close brand dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!brandDropdownBtn.contains(e.target) && !brandDropdownMenu.contains(e.target)) {
+        brandDropdownMenu.classList.remove('show');
+      }
+    });
+
+    // Handle brand checkbox changes
+    brandCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (this.value === '') {
+          // "All Brands" checkbox clicked
+          if (this.checked) {
+            // Uncheck all other brand checkboxes
+            brandCheckboxes.forEach(cb => {
+              if (cb.value !== '') {
+                cb.checked = false;
+              }
+            });
+          }
+        } else {
+          // Individual brand checkbox clicked
+          if (this.checked) {
+            // Uncheck "All Brands"
+            brandAllCheckbox.checked = false;
+          } else {
+            // If no individual brands are selected, check "All Brands"
+            const anyBrandSelected = Array.from(brandCheckboxes).some(cb => cb.value !== '' && cb.checked);
+            if (!anyBrandSelected) {
+              brandAllCheckbox.checked = true;
+            }
+          }
+        }
+
+        // Update dropdown button text
+        updateBrandDropdownText();
+      });
+    });
+
+    // Function to update brand dropdown button text
+    function updateBrandDropdownText() {
+      const selectedBrands = Array.from(brandCheckboxes)
+        .filter(cb => cb.value !== '' && cb.checked)
+        .map(cb => cb.nextElementSibling.textContent);
+
+      const selectedText = brandDropdownBtn.querySelector('.selected-text');
+      
+      if (selectedBrands.length === 0 || brandAllCheckbox.checked) {
+        selectedText.textContent = 'All Brands';
+      } else if (selectedBrands.length === 1) {
+        selectedText.textContent = selectedBrands[0];
+      } else {
+        selectedText.textContent = `${selectedBrands.length} Brands Selected`;
+      }
+    }
+
+    // Function to get selected brand IDs
+    function getSelectedBrands() {
+      if (brandAllCheckbox.checked) {
+        return '';
+      }
+      return Array.from(brandCheckboxes)
+        .filter(cb => cb.value !== '' && cb.checked)
+        .map(cb => cb.value)
+        .join(',');
+    }
+
     // 🎯 Size filter selection
     const sizeOptions = document.querySelectorAll('.size-option');
     sizeOptions.forEach(option => {
@@ -699,6 +762,16 @@
 
       // Clear size selections
       sizeOptions.forEach(option => option.classList.remove('selected'));
+
+      // Reset brand filter
+      brandCheckboxes.forEach(cb => {
+        if (cb.value === '') {
+          cb.checked = true; // Check "All Brands"
+        } else {
+          cb.checked = false; // Uncheck individual brands
+        }
+      });
+      updateBrandDropdownText();
 
       // Hide clear button
       topClearBtn.style.display = 'none';
@@ -725,6 +798,7 @@
       currentFilters.q = topSearchInput.value.trim();
       currentFilters.sort = topSortSelect.value;
       currentFilters.category = document.getElementById('category-select').value;
+      currentFilters.brand = getSelectedBrands();
       currentFilters.minPrice = document.getElementById('min-price').value.trim();
       currentFilters.maxPrice = document.getElementById('max-price').value.trim();
 
@@ -951,10 +1025,6 @@ document.addEventListener('DOMContentLoaded', () => {
   box-shadow: 0 4px 15px rgba(224, 58, 47, 0.1);
 }
 
-
-
-
-
 /* Smooth transitions for all interactive elements */
 .btn, .form-control, .form-select {
   transition: all 0.3s ease;
@@ -1076,7 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
   background-color: rgba(224, 58, 47, 0.1);
 }
 
-/* Search Suggestions Dropdown */
+/* Search Suggestions Dropdown - SIMPLIFIED STYLES */
 .search-suggestions-dropdown {
   position: absolute;
   top: 100%;
@@ -1088,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
   border-radius: 0 0 8px 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   z-index: 300 !important;
-  max-height: 400px;
+  max-height: 300px;
   overflow-y: auto;
   display: none;
   width: 100%;
@@ -1099,8 +1169,6 @@ document.addEventListener('DOMContentLoaded', () => {
 }
 
 .suggestion-item {
-  display: flex;
-  align-items: center;
   padding: 12px 16px;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
@@ -1125,50 +1193,12 @@ document.addEventListener('DOMContentLoaded', () => {
   padding-left: 13px;
 }
 
-.suggestion-image {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: 6px;
-  margin-right: 12px;
-  border: 1px solid #e9ecef;
-}
-
-.suggestion-content {
-  flex: 1;
-  min-width: 0;
-}
-
 .suggestion-name {
   font-weight: 600;
   color: #333;
-  margin-bottom: 2px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.suggestion-details {
-  font-size: 12px;
-  color: #666;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.suggestion-brand {
-  color: #888;
-}
-
-.suggestion-category {
-  color: #666;
-}
-
-.suggestion-price {
-  font-weight: 600;
-  color: #e03a2f;
-  margin-left: auto;
-  white-space: nowrap;
 }
 
 .suggestions-loading,
@@ -1295,3 +1325,83 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
+
+<style>
+/* Brand Filter Dropdown */
+.brand-filter-dropdown {
+  position: relative;
+}
+
+.brand-dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.brand-dropdown-btn:hover {
+  border-color: #e03a2f;
+}
+
+.brand-dropdown-btn:focus {
+  outline: none;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.brand-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.brand-dropdown-menu.show {
+  display: block;
+}
+
+.brand-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.brand-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.brand-option:last-child {
+  border-bottom: none;
+}
+
+.brand-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.brand-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+}
+</style>

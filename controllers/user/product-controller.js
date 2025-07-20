@@ -1,6 +1,7 @@
 const Product = require('../../models/Product');
-const Review = require('../../models/Review'); // You’ll need to create this
+const Review = require('../../models/Review'); // You'll need to create this
 const Category = require('../../models/Category');
+const Brand = require('../../models/Brand');
 const { getPagination } = require('../../utils/pagination');
 
 exports.getProducts = async (req, res) => {
@@ -52,7 +53,16 @@ exports.getProducts = async (req, res) => {
       }
     }
 
-    if (brand) filter.brand = { $regex: brand, $options: 'i' };
+    if (brand) {
+      // Handle multiple brand IDs (comma-separated)
+      if (brand.includes(',')) {
+        const brandIds = brand.split(',').filter(id => id.trim());
+        filter.brand = { $in: brandIds };
+      } else {
+        filter.brand = brand;
+      }
+    }
+    
     if (search) {
       // First, find categories that match the search term (only active ones)
       const matchingCategories = await Category.find({
@@ -63,9 +73,18 @@ exports.getProducts = async (req, res) => {
 
       const categoryIds = matchingCategories.map(cat => cat._id);
 
+      // Find brands that match the search term (only active ones)
+      const matchingBrands = await Brand.find({
+        name: { $regex: search, $options: 'i' },
+        isDeleted: false,
+        isActive: true
+      }).select('_id');
+
+      const brandIds = matchingBrands.map(brand => brand._id);
+
       filter.$or = [
         { productName: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } },
+        ...(brandIds.length > 0 ? [{ brand: { $in: brandIds } }] : []),
         ...(categoryIds.length > 0 ? [{ category: { $in: categoryIds } }] : [])
       ];
 
@@ -106,11 +125,20 @@ exports.getProducts = async (req, res) => {
     const sortQuery = sortMap[sort] || sortMap['newest'];
 
     const allProducts = await Product.find(filter)
-      .populate({ path: 'category', match: { isActive: true }, select: 'name' })
+      .populate({ 
+        path: 'category', 
+        match: { isActive: true }, 
+        select: 'name categoryOffer'
+      })
+      .populate({
+        path: 'brand',
+        match: { isActive: true, isDeleted: false },
+        select: 'name brandOffer'
+      })
       .sort(sortQuery);
 
-    // Filter out products with inactive categories
-    let filteredProducts = allProducts.filter(p => p.category !== null);
+    // Filter out products with inactive categories or brands
+    let filteredProducts = allProducts.filter(p => p.category !== null && p.brand !== null);
 
     // Apply price range filter using computed sale prices
     if (minPrice > 0 || maxPrice < 1e9) {
@@ -146,7 +174,7 @@ exports.getProducts = async (req, res) => {
           // Ensure finalPrice exists for each variant (fallback for migration period)
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            finalPrice: variant.finalPrice || product.calculateVariantFinalPrice(variant)
+            finalPrice: product.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access
@@ -190,12 +218,17 @@ exports.loadShopPage = async (req, res) => {
     const activeCategoryIds = categories.map(cat => cat._id);
 
     // Only get brands from products that belong to active categories
-    const brands = await Product.distinct('brand', {
+    const brandIds = await Product.distinct('brand', {
       isDeleted: false,
       isListed: true,
       category: { $in: activeCategoryIds }
     });
-
+    const brands = await Brand.find({
+      _id: { $in: brandIds },
+      isDeleted: false,
+      isActive: true
+    }).sort({ name: 1 });
+    
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
 
@@ -215,9 +248,18 @@ exports.loadShopPage = async (req, res) => {
 
     // Apply search filter
     if (search) {
+      // Find brands that match the search term (only active ones)
+      const matchingBrands = await Brand.find({
+        name: { $regex: search, $options: 'i' },
+        isDeleted: false,
+        isActive: true
+      }).select('_id');
+
+      const brandIds = matchingBrands.map(brand => brand._id);
+
       filter.$or = [
         { productName: { $regex: search, $options: 'i' } },
-        { brand: { $regex: search, $options: 'i' } }
+        ...(brandIds.length > 0 ? [{ brand: { $in: brandIds } }] : [])
       ];
     }
 
@@ -245,9 +287,19 @@ exports.loadShopPage = async (req, res) => {
     const sortQuery = sortMap[sortBy] || sortMap['newest'];
 
     // Get all products first, then apply price filtering
-    const allProducts = await Product.find(filter).populate('category').sort(sortQuery);
-
-    // Apply price range filter using computed sale prices
+    const allProducts = await Product.find(filter)
+      .populate({ 
+        path: 'category', 
+        match: { isActive: true }, 
+        select: 'name categoryOffer' 
+      })
+      .populate({ 
+        path: 'brand', 
+        match: { isActive: true, isDeleted: false }, 
+        select: 'name brandOffer'
+      })
+      .sort(sortQuery);
+      
     let filteredProducts = allProducts;
     if (minPriceNum > 0 || maxPriceNum < 1e9) {
       filteredProducts = allProducts.filter(product => {
@@ -359,6 +411,15 @@ exports.getSearchSuggestions = async (req, res) => {
     }).select('_id').lean();
     const activeCategoryIds = activeCategories.map(cat => cat._id);
 
+    // Find brands that match the search term (only active ones)
+    const matchingBrands = await Brand.find({
+      name: { $regex: query, $options: 'i' },
+      isDeleted: false,
+      isActive: true
+    }).select('_id');
+
+    const brandIds = matchingBrands.map(brand => brand._id);
+
     // Filter to only include products from active categories
     const filter = {
       isDeleted: false,
@@ -366,7 +427,7 @@ exports.getSearchSuggestions = async (req, res) => {
       category: { $in: activeCategoryIds },
       $or: [
         { productName: { $regex: query, $options: 'i' } },
-        { brand: { $regex: query, $options: 'i' } }
+        ...(brandIds.length > 0 ? [{ brand: { $in: brandIds } }] : [])
       ]
     };
 
@@ -375,16 +436,21 @@ exports.getSearchSuggestions = async (req, res) => {
       .populate({
         path: 'category',
         match: { isActive: true, isDeleted: false },
-        select: 'name'
+        select: 'name categoryOffer'
+      })
+      .populate({
+        path: 'brand',
+        match: { isActive: true, isDeleted: false },
+        select: 'name brandOffer'
       })
       .select('productName brand mainImage category slug regularPrice variants')
       .sort({ createdAt: -1 })
       .limit(8)
       .lean();
 
-    // Only include products that have a category and add computed final prices
+    // Only include products that have a category and brand, and add computed final prices
     const filteredSuggestions = suggestions
-      .filter(p => p.category && p.category.name)
+      .filter(p => p.category && p.category.name && p.brand && p.brand.name)
       .map(productData => {
         // Create a temporary Product instance to use model methods
         const tempProduct = new Product(productData);
@@ -393,7 +459,7 @@ exports.getSearchSuggestions = async (req, res) => {
         if (productData.variants && productData.variants.length > 0) {
           productData.variants = productData.variants.map(variant => ({
             ...variant,
-            finalPrice: variant.finalPrice || tempProduct.calculateVariantFinalPrice(variant)
+            finalPrice: tempProduct.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access
@@ -425,9 +491,10 @@ exports.loadProductDetails = async (req, res) => {
   try {
     const productSlug = req.params.slug;
 
-    // Find product by slug and populate category with categoryOffer
+    // Find product by slug and populate category with categoryOffer and brand with brandOffer
     const product = await Product.findOne({ slug: productSlug })
-      .populate('category');
+      .populate('category')
+      .populate('brand');
 
     // Check if product exists and is not deleted
     if (!product || product.isDeleted) {
@@ -459,6 +526,16 @@ exports.loadProductDetails = async (req, res) => {
       });
     }
 
+    // Check if product's brand exists and is active
+    if (!product.brand || product.brand.isDeleted || !product.brand.isActive) {
+      return res.status(404).render('errors/404', {
+        title: 'Product Not Available',
+        message: 'This product is no longer available as its brand has been disabled.',
+        layout: 'user/layouts/user-layout',
+        active: 'shop'
+      });
+    }
+
     const reviews = await Review.find({
       product: product._id,
       isHidden: false
@@ -479,13 +556,18 @@ exports.loadProductDetails = async (req, res) => {
         .populate({
           path: 'category',
           match: { isActive: true },
-          select: 'name'
+          select: 'name categoryOffer'
+        })
+        .populate({
+          path: 'brand',
+          match: { isActive: true, isDeleted: false },
+          select: 'name brandOffer'
         })
         .sort({ createdAt: -1 })
         .limit(4);
 
       // Filter out products whose categories became null (inactive categories)
-      relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null);
+      relatedProductsRaw = relatedProductsRaw.filter(prod => prod.category !== null && prod.brand !== null);
     }
 
     // Add rating stats and computed sale prices to related products
@@ -504,7 +586,7 @@ exports.loadProductDetails = async (req, res) => {
         if (productObj.variants && productObj.variants.length > 0) {
           productObj.variants = productObj.variants.map(variant => ({
             ...variant,
-            finalPrice: variant.finalPrice || relatedProduct.calculateVariantFinalPrice(variant)
+            finalPrice: relatedProduct.calculateVariantFinalPrice(variant)
           }));
 
           // Add average final price for easy access
@@ -549,14 +631,15 @@ exports.loadProductDetails = async (req, res) => {
       averageFinalPrice = product.getAverageFinalPrice();
     } catch (error) {
       console.error('Error calculating average final price:', error);
-      // Fallback calculation with category offer logic
+      // Fallback calculation with category and brand offer logic
       if (product.variants && product.variants.length > 0) {
         const totalPrice = product.variants.reduce((sum, variant) => {
           const basePrice = variant.basePrice || product.regularPrice;
           const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+          const brandOffer = (product.brand && product.brand.brandOffer) || 0;
           const productOffer = product.productOffer || 0;
           const variantOffer = variant.variantSpecificOffer || 0;
-          const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+          const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
           return sum + (basePrice * (1 - maxOffer / 100));
         }, 0);
         averageFinalPrice = totalPrice / product.variants.length;
@@ -589,5 +672,3 @@ exports.loadProductDetails = async (req, res) => {
     });
   }
 };
-
-

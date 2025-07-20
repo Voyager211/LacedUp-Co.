@@ -21,6 +21,7 @@ const checkUserBlocked = require('./middlewares/checkUserBlocked');
 const adminAuthRoutes = require('./routes/admin/auth');
 const adminUserRoutes = require('./routes/admin/user');
 const adminCategoryRoutes = require('./routes/admin/category');
+const adminBrandRoutes = require('./routes/admin/brand');
 const adminProductRoutes = require('./routes/admin/product');
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
@@ -28,6 +29,7 @@ const userHomeRoutes = require('./routes/user/home');
 const userProductRoutes = require('./routes/user/product-routes');
 const userReviewRoutes = require('./routes/user/review-routes');
 const userProfileRoutes = require('./routes/user/profile-routes');
+const userAddressRoutes = require('./routes/user/address-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -85,6 +87,9 @@ app.use(addUserContext);
 // Check if user is blocked on every request (after passport session)
 app.use(checkUserBlocked);
 
+// Make Geoapify API key available to all templates
+app.locals.geoapifyApiKey = process.env.GEOAPIFY_API_KEY;
+
 // ROUTES
 // ✅ User Routes First
 app.use('/', landingRoutes);
@@ -93,6 +98,7 @@ app.use('/', userHomeRoutes);
 app.use('/', userProductRoutes);
 app.use('/', userReviewRoutes);
 app.use('/', userProfileRoutes);
+app.use('/', userAddressRoutes);
 
 
 
@@ -100,6 +106,7 @@ app.use('/', userProfileRoutes);
 app.use('/admin', adminAuthRoutes);
 app.use('/admin/users', adminUserRoutes);
 app.use('/admin/categories', adminCategoryRoutes);
+app.use('/admin/brands', adminBrandRoutes);
 app.use('/admin/products', adminProductRoutes);
 
 // Start server

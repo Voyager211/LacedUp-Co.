@@ -174,6 +174,32 @@ exports.loadChangePassword = async (req, res) => {
   }
 };
 
+// Note: loadAddresses moved to addressController.js
+// This function is kept for backward compatibility but should use the address controller
+exports.loadAddresses = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    if (!userId) {
+      return res.redirect('/login');
+    }
+
+    const user = await User.findById(userId).select('name email profilePhoto');
+    if (!user) {
+      return res.redirect('/login');
+    }
+
+    res.render('user/address-book', {
+      user,
+      title: 'Address Book - LacedUp',
+      layout: 'user/layouts/user-layout',
+      active: 'addresses'
+    });
+  } catch (error) {
+    console.error('Error loading addresses page:', error);
+    res.status(500).render('error', { message: 'Error loading addresses page' });
+  }
+};
+
 exports.loadWallet = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);

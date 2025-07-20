@@ -89,13 +89,25 @@ class FormValidator {
       switch (fieldName.toLowerCase()) {
         case 'name':
         case 'categoryname':
-          const nameValidation = this.validateName(value);
-          if (!nameValidation.isValid) {
-            errorMessage = nameValidation.message;
-            isValid = false;
+          // Check if this is a brand form by looking at form ID or context
+          if (this.form.id === 'add-brand-form' || this.form.classList.contains('edit-brand-form')) {
+            // Use brand validation for brand forms
+            const brandValidation = this.validateBrand(value);
+            if (!brandValidation.isValid) {
+              errorMessage = brandValidation.message;
+              isValid = false;
+            }
+            // No auto-capitalization for brand names to preserve original formatting
           } else {
-            // Auto-capitalize name
-            input.value = this.capitalizeName(value);
+            // Use regular name validation for other forms
+            const nameValidation = this.validateName(value);
+            if (!nameValidation.isValid) {
+              errorMessage = nameValidation.message;
+              isValid = false;
+            } else {
+              // Auto-capitalize name
+              input.value = this.capitalizeName(value);
+            }
           }
           break;
 
@@ -207,17 +219,12 @@ class FormValidator {
   }
 
   validateProductName(value) {
-    // Alphanumeric characters, spaces, and common product symbols, minimum 2 characters
-    const productNameRegex = /^[a-zA-Z0-9\s\-\+\&\(\)\.]+$/;
-
+    // Allow any characters for product names - no character restrictions
     if (value.length < 2) {
       return { isValid: false, message: 'Product name must be at least 2 characters long' };
     }
 
-    if (!productNameRegex.test(value)) {
-      return { isValid: false, message: 'Product name should contain only letters, numbers, spaces, and common symbols (-, +, &, (), .)' };
-    }
-
+    // No character validation - allow any text content including special symbols
     return { isValid: true };
   }
 
