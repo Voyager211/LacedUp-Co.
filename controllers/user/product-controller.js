@@ -300,9 +300,12 @@ exports.loadShopPage = async (req, res) => {
       })
       .sort(sortQuery);
       
-    let filteredProducts = allProducts;
+    // Filter out products with inactive categories or brands
+    let filteredProducts = allProducts.filter(p => p.category !== null && p.brand !== null);
+    
+    // Apply price range filter using computed sale prices
     if (minPriceNum > 0 || maxPriceNum < 1e9) {
-      filteredProducts = allProducts.filter(product => {
+      filteredProducts = filteredProducts.filter(product => {
         if (!product.variants || product.variants.length === 0) {
           return product.regularPrice >= minPriceNum && product.regularPrice <= maxPriceNum;
         }

@@ -731,6 +731,33 @@
           return;
         <% } %>
 
+        // Get selected variant from active size button
+        const activeSizeBtn = document.querySelector('.size-btn.active');
+        if (!activeSizeBtn) {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Size Required',
+            text: 'Please select a size before adding to cart.',
+            confirmButtonColor: '#e03a2f'
+          });
+          return;
+        }
+
+        // Build variant object from active button data
+        const selectedVariant = {
+          size: activeSizeBtn.dataset.size,
+          stock: parseInt(activeSizeBtn.dataset.stock),
+          price: parseFloat(activeSizeBtn.dataset.price),
+          basePrice: Math.round(parseFloat(activeSizeBtn.dataset.basePrice)),
+          appliedOffer: parseFloat(activeSizeBtn.dataset.appliedOffer) || 0,
+          offerType: activeSizeBtn.dataset.offerType,
+          categoryOffer: parseFloat(activeSizeBtn.dataset.categoryOffer) || 0,
+          brandOffer: parseFloat(activeSizeBtn.dataset.brandOffer) || 0,
+          productOffer: parseFloat(activeSizeBtn.dataset.productOffer) || 0,
+          variantOffer: parseFloat(activeSizeBtn.dataset.variantOffer) || 0,
+          variantIndex: parseInt(activeSizeBtn.dataset.variantIndex)
+        };
+
         // Add to cart logic for authenticated users
         addToCart(productId, selectedVariant);
 
@@ -1466,6 +1493,37 @@
       return;
     }
 
+    // Check if product is listed (prevent adding unlisted products)
+    const isProductListed = <%= product.isListed ? 'true' : 'false' %>;
+    if (!isProductListed) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Product Unavailable',
+        text: 'This product is currently not available for purchase.',
+        confirmButtonColor: '#e03a2f'
+      });
+      return;
+    }
+
+    // Get the variantId from the selected variant using the variant index
+    const productVariants = window.productVariants || [];
+    let variantId = null;
+    
+    if (variant.variantIndex !== undefined && productVariants[variant.variantIndex]) {
+      variantId = productVariants[variant.variantIndex]._id;
+    }
+
+    if (!variantId) {
+      console.error('Could not find variant ID for:', variant);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Unable to identify the selected variant. Please try again.',
+        confirmButtonColor: '#e03a2f'
+      });
+      return;
+    }
+
     try {
       const response = await fetch('/cart/add', {
         method: 'POST',
@@ -1474,9 +1532,8 @@
         },
         body: JSON.stringify({
           productId: productId,
-          quantity: 1,
-          size: variant.size,
-          variantIndex: variant.variantIndex
+          variantId: variantId,
+          quantity: 1
         })
       });
 
@@ -1497,7 +1554,25 @@
         updateCartCount(result.cartCount);
       } else {
         // Handle different error types
-        if (result.code === 'OUT_OF_STOCK') {
+        if (response.status === 401 || result.code === 'AUTHENTICATION_REQUIRED') {
+          // User is not authenticated, redirect to login
+          Swal.fire({
+            icon: 'info',
+            title: 'Login Required',
+            text: 'Please login to add items to your cart.',
+            confirmButtonColor: '#e03a2f',
+            confirmButtonText: 'Go to Login'
+          }).then((result) => {
+            if (result.isConfirmed) {
+              // Show fade-out transition and redirect to login
+              document.body.style.transition = 'opacity 0.4s ease';
+              document.body.style.opacity = '0';
+              setTimeout(() => {
+                window.location.href = '/login';
+              }, 400);
+            }
+          });
+        } else if (result.code === 'OUT_OF_STOCK') {
           Swal.fire({
             icon: 'error',
             title: 'Out of Stock',
@@ -1515,6 +1590,13 @@
           Swal.fire({
             icon: 'warning',
             title: 'Quantity Limit',
+            text: result.message,
+            confirmButtonColor: '#e03a2f'
+          });
+        } else if (result.code === 'PRODUCT_UNAVAILABLE') {
+          Swal.fire({
+            icon: 'error',
+            title: 'Product Unavailable',
             text: result.message,
             confirmButtonColor: '#e03a2f'
           });
@@ -2300,5 +2382,138 @@
   window.productVariants = <%- JSON.stringify(product.variants) %>;
 </script>
 
-<!-- SKU-based cart fix -->
-<script src="/js/product-details-debug.js"></script>
+<!-- SKU-based cart fix --<script src="/js/product-details-debug.js"></script>
+
+<!-- Custom Toastr Styles -->
+<style>
+  /* Custom Toastr styling */
+  .toast-success {
+    background-color: #28a745 !important;
+  }
+  
+  .toast-error {
+    background-color: #dc3545 !important;
+  }
+  
+  .toast-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+  }
+  
+  .toast-info {
+    background-color: #17a2b8 !important;
+  }
+  
+  .toast-title {
+    font-weight: bold !important;
+    font-size: 16px !important;
+  }
+  
+  .toast-message {
+    font-size: 14px !important;
+  }
+  
+  #toast-container > div {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 8px !important;
+  }
+</style>
+
+<!-- Override SweetAlert with Toastr for cart notifications -->
+<script>
+  // Override the original addToCart function to use Toastr
+  document.addEventListener('DOMContentLoaded', function() {
+    // Wait for the original addToCart function to be defined
+    setTimeout(() => {
+      if (typeof window.addToCart === 'function') {
+        const originalAddToCart = window.addToCart;
+        
+        window.addToCart = async function(productId, variant) {
+          if (!variant) {
+            showToast.warning('Please select a size before adding to cart.', 'Size Required');
+            return;
+          }
+
+          // Check if product is listed (prevent adding unlisted products)
+          const isProductListed = <%= product.isListed ? 'true' : 'false' %>;
+          if (!isProductListed) {
+            showToast.error('This product is currently not available for purchase.', 'Product Unavailable');
+            return;
+          }
+
+          // Get the variantId from the selected variant using the variant index
+          const productVariants = window.productVariants || [];
+          let variantId = null;
+          
+          if (variant.variantIndex !== undefined && productVariants[variant.variantIndex]) {
+            variantId = productVariants[variant.variantIndex]._id;
+          }
+
+          if (!variantId) {
+            console.error('Could not find variant ID for:', variant);
+            showToast.error('Unable to identify the selected variant. Please try again.', 'Error');
+            return;
+          }
+
+          try {
+            const response = await fetch('/cart/add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                productId: productId,
+                variantId: variantId,
+                quantity: 1
+              })
+            });
+
+            const result = await response.json();
+
+            if (response.ok && result.success) {
+              // Show success toast with cart icon
+              showToast.success(result.message || 'Product added to cart successfully!', '🛒 Added to Cart!');
+
+              // Update cart count in navbar if it exists
+              updateCartCount(result.cartCount);
+            } else {
+              // Handle different error types
+              if (response.status === 401 || result.code === 'AUTHENTICATION_REQUIRED') {
+                // User is not authenticated, redirect to login
+                Swal.fire({
+                  icon: 'info',
+                  title: 'Login Required',
+                  text: 'Please login to add items to your cart.',
+                  confirmButtonColor: '#e03a2f',
+                  confirmButtonText: 'Go to Login'
+                }).then((result) => {
+                  if (result.isConfirmed) {
+                    // Show fade-out transition and redirect to login
+                    document.body.style.transition = 'opacity 0.4s ease';
+                    document.body.style.opacity = '0';
+                    setTimeout(() => {
+                      window.location.href = '/login';
+                    }, 400);
+                  }
+                });
+              } else if (result.code === 'OUT_OF_STOCK') {
+                showToast.error(result.message, 'Out of Stock');
+              } else if (result.code === 'INSUFFICIENT_STOCK') {
+                showToast.warning(result.message, 'Insufficient Stock');
+              } else if (result.code === 'CART_QUANTITY_LIMIT') {
+                showToast.warning(result.message, 'Quantity Limit');
+              } else if (result.code === 'PRODUCT_UNAVAILABLE') {
+                showToast.error(result.message, 'Product Unavailable');
+              } else {
+                throw new Error(result.message || 'Failed to add product to cart');
+              }
+            }
+          } catch (error) {
+            console.error('Add to cart error:', error);
+            showToast.error(error.message || 'Failed to add product to cart. Please try again.', 'Error');
+          }
+        };
+      }
+    }, 100);
+  });
+</script>

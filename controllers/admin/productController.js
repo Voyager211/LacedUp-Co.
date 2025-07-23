@@ -472,7 +472,6 @@ exports.apiUpdateProduct = async (req, res) => {
 
     // Get old images for cleanup
     const oldImages = [product.mainImage, ...product.subImages];
-    console.log('🔍 Old images before update:', oldImages);
 
     // Update product fields
     product.productName = req.body.productName;
@@ -494,9 +493,7 @@ exports.apiUpdateProduct = async (req, res) => {
     const imagesToDelete = getImagesToDelete(oldImages, newImages);
 
     if (imagesToDelete.length > 0) {
-      console.log('🧹 Cleaning up orphaned images:', imagesToDelete);
       const cleanupResult = await deleteFiles(imagesToDelete);
-      console.log('✅ Cleanup completed:', cleanupResult);
     }
 
     res.status(200).json({ success: true, message: 'Product Edited Successfully!' });

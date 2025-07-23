@@ -1,13 +1,15 @@
 <% var title = "Shop Sneakers"; %>
 
 <div class="container-fluid">
-      <!-- Breadcrumbs -->
-  <%- include('partials/breadcrumb', {
-    breadcrumbs: [
-      { label: 'Home', href: '/' },
-      { label: 'Sneakers' }
-    ]
-  }) %>
+  <!-- Breadcrumbs -->
+  <div class="breadcrumb-container">
+    <%- include('partials/breadcrumb', {
+      breadcrumbs: [
+        { label: 'Home', href: '/' },
+        { label: 'Sneakers' }
+      ]
+    }) %>
+  </div>
 
   <div class="row">
     <!-- Sidebar Filters -->
@@ -1327,6 +1329,14 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Breadcrumb Container - Fix for navbar overlap */
+.breadcrumb-container {
+  margin-top: 20px; /* Add space from the fixed navbar */
+  padding-top: 10px; /* Additional padding for better spacing */
+  position: relative;
+  z-index: 1; /* Ensure it's below the navbar */
+}
+
 /* Brand Filter Dropdown */
 .brand-filter-dropdown {
   position: relative;
