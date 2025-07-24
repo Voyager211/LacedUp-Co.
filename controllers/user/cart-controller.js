@@ -300,7 +300,7 @@ exports.loadCart = async (req, res) => {
         if (item.variantId) {
           const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
           if (!variant) {
-            console.log(`Variant ${item.variantId} not found for product ${item.productId._id}`);
+            // console.log(`Variant ${item.variantId} not found for product ${item.productId._id}`);
             itemsToRemove.push(i);
             continue;
           }
@@ -379,7 +379,7 @@ exports.loadCart = async (req, res) => {
             }
           }
           await cart.save();
-          console.log('Cart prices updated successfully');
+          // console.log('Cart prices updated successfully');
         } catch (updateError) {
           console.error('Error updating cart prices:', updateError);
         }

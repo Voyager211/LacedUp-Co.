@@ -481,7 +481,31 @@ exports.apiUpdateProduct = async (req, res) => {
     product.regularPrice = req.body.regularPrice;
     product.productOffer = req.body.productOffer || 0; // Keep for backward compatibility
     product.features = req.body.features;
-    product.variants = variants;
+    
+    // IMPORTANT: Preserve existing variant IDs to avoid breaking cart references
+    // Instead of replacing the entire variants array, update existing variants and add new ones
+    const updatedVariants = [];
+    
+    for (const newVariant of variants) {
+      // Try to find existing variant by size (since size should be unique per product)
+      const existingVariant = product.variants.find(v => v.size === newVariant.size);
+      
+      if (existingVariant) {
+        // Update existing variant while preserving its _id
+        existingVariant.stock = newVariant.stock;
+        existingVariant.basePrice = newVariant.basePrice;
+        existingVariant.variantSpecificOffer = newVariant.variantSpecificOffer || 0;
+        // Keep existing SKU and _id
+        updatedVariants.push(existingVariant);
+      } else {
+        // Add new variant (will get new _id)
+        updatedVariants.push(newVariant);
+      }
+    }
+    
+    // Remove variants that are no longer in the update (sizes that were removed)
+    product.variants = updatedVariants;
+    
     product.mainImage = mainImage;
     product.subImages = subImages;
 

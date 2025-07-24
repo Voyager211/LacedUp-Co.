@@ -54,12 +54,12 @@
               Size: <strong><%= item.size %></strong>
             </span>
           <% } %>
-          <% if (item.sku) { %>
+          <!-- <% if (item.sku) { %>
             <span class="spec-item">
               <i class="bi bi-tag me-1"></i>
               SKU: <%= item.sku %>
             </span>
-          <% } %>
+          <% } %> -->
         </div>
 
         <!-- Price Display -->
@@ -97,7 +97,6 @@
           <label class="quantity-label">Quantity</label>
           <div class="quantity-controls">
             <button class="qty-btn qty-decrease" 
-                    onclick="updateQuantity('<%= item.productId._id %>', '<%= item.variantId %>', <%= item.quantity - 1 %>)"
                     <%= (item.quantity <= 1 || isOutOfStock) ? 'disabled' : '' %>>
               <i class="bi bi-dash"></i>
             </button>
@@ -105,7 +104,6 @@
                    value="<%= item.quantity %>" 
                    min="1" max="5" readonly>
             <button class="qty-btn qty-increase" 
-                    onclick="updateQuantity('<%= item.productId._id %>', '<%= item.variantId %>', <%= item.quantity + 1 %>)"
                     <%= (item.quantity >= 5 || item.quantity >= variantStock || isOutOfStock) ? 'disabled' : '' %>
                     <% if (item.quantity >= 5) { %>
                       title="Maximum 5 items allowed"
@@ -142,7 +140,6 @@
             <i class="bi bi-heart me-1"></i>Save Later
           </button>
           <button class="btn btn-outline-danger btn-sm remove-btn" 
-                  onclick="removeFromCart('<%= item.productId._id %>', '<%= item.variantId %>')"
                   title="Remove item">
             <i class="bi bi-trash me-1"></i>Remove
           </button>
