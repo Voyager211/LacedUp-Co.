@@ -13,6 +13,9 @@ router.get('/api/shop', productController.getProducts);
 // API route for search suggestions dropdown
 router.get('/api/search-suggestions', productController.getSearchSuggestions);
 
+// API route for available sizes
+router.get('/api/available-sizes', productController.getAvailableSizes);
+
 // Product-details page
 router.get('/product/:slug', ensureVisible, productController.loadProductDetails);
 

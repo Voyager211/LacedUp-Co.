@@ -812,3 +812,28 @@ exports.checkAuth = async (req, res) => {
     res.json({ authenticated: false, user: null });
   }
 };
+
+// Load checkout page
+exports.loadCheckout = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    
+    // Get user data
+    const user = await User.findById(userId).select('fullname email profilePhoto');
+    if (!user) {
+      return res.redirect('/login');
+    }
+
+    // For now, just render the checkout page with basic data
+    // Later we'll add cart validation, address fetching, etc.
+    res.render('user/checkout', {
+      user,
+      title: 'Checkout',
+      layout: 'user/layouts/user-layout',
+      active: 'checkout'
+    });
+  } catch (error) {
+    console.error('Error loading checkout:', error);
+    res.status(500).render('error', { message: 'Error loading checkout page' });
+  }
+};

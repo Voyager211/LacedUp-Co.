@@ -61,14 +61,15 @@
             <div class="mb-4">
                 <label class="form-label">Size</label>
                 <div class="size-filter">
-                    <div class="size-option" data-size="5">UK 5</div>
-                    <div class="size-option" data-size="6">UK 6</div>
-                    <div class="size-option" data-size="7">UK 7</div>
-                    <div class="size-option" data-size="8">UK 8</div>
-                    <div class="size-option" data-size="9">UK 9</div>
-                    <div class="size-option" data-size="10">UK 10</div>
-                    <div class="size-option" data-size="11">UK 11</div>
-                    <div class="size-option" data-size="12">UK 12</div>
+                    <% if (availableSizes && availableSizes.length > 0) { %>
+                        <% availableSizes.forEach(size => { %>
+                            <div class="size-option" data-size="<%= size %>">
+                                <%= size.toString().toLowerCase().includes('uk') ? size : 'UK ' + size %>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="text-muted small">No sizes available</div>
+                    <% } %>
                 </div>
             </div>
 
@@ -78,6 +79,21 @@
                 <div class="d-flex gap-2">
                     <input type="number" id="min-price" class="form-control" placeholder="Min">
                     <input type="number" id="max-price" class="form-control" placeholder="Max">
+                </div>
+            </div>
+
+            <!-- Stock Status Filter -->
+            <div class="mb-4">
+                <label class="form-label">Stock Status</label>
+                <div class="stock-filter">
+                    <div class="stock-option">
+                        <input type="checkbox" id="stock-in-stock" class="stock-checkbox" value="inStock">
+                        <label for="stock-in-stock">In Stock</label>
+                    </div>
+                    <div class="stock-option">
+                        <input type="checkbox" id="stock-out-of-stock" class="stock-checkbox" value="outOfStock">
+                        <label for="stock-out-of-stock">Out of Stock</label>
+                    </div>
                 </div>
             </div>
 
@@ -252,7 +268,8 @@
     brand: '',
     minPrice: '',
     maxPrice: '',
-    sizes: []
+    sizes: [],
+    stockStatus: []
   };
 
   // Helper function to render products
@@ -265,10 +282,14 @@
 
     productGrid.innerHTML = products.map(product => `
       <div class="col-6 col-md-4 col-lg-3 mb-4">
-        <div class="card h-100 border-0 shadow-sm product-card bg-white">
-          <a href="/product/${product.slug || product._id}" class="text-decoration-none text-dark">
+        <div class="card h-100 border-0 shadow-sm product-card bg-white" style="${product.totalStock === 0 ? 'position: relative; overflow: hidden;' : ''}">
+          <a href="/product/${product.slug || product._id}" class="text-decoration-none text-dark" style="${product.totalStock === 0 ? 'position: relative; z-index: 5;' : ''}">
             <img src="${product.mainImage}" class="card-img-top img-fluid" alt="${product.productName}" style="object-fit: cover; height: 200px;">
           </a>
+          ${product.totalStock === 0 ? `
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
+            <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
+          ` : ''}
           <div class="card-body d-flex flex-column justify-content-between">
             <div>
               <h6 class="fw-bold mb-1">${product.productName}</h6>
@@ -362,6 +383,7 @@
     if (currentFilters.category) params.append('category', currentFilters.category);
     if (currentFilters.brand) params.append('brand', currentFilters.brand);
     currentFilters.sizes.forEach(size => params.append('size', size));
+    currentFilters.stockStatus.forEach(status => params.append('stockStatus', status));
     params.append('page', page);
 
     fetch(`/api/shop?${params.toString()}`)
@@ -753,6 +775,16 @@
       });
     });
 
+    // 🎯 Stock filter selection
+    const stockCheckboxes = document.querySelectorAll('.stock-checkbox');
+
+    // Function to get selected stock status
+    function getSelectedStockStatus() {
+      return Array.from(stockCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+    }
+
     // 🔄 Reset all filters
     document.getElementById('reset-filters').addEventListener('click', function() {
       // Clear all form inputs
@@ -764,6 +796,9 @@
 
       // Clear size selections
       sizeOptions.forEach(option => option.classList.remove('selected'));
+
+      // Clear stock status selections
+      stockCheckboxes.forEach(cb => cb.checked = false);
 
       // Reset brand filter
       brandCheckboxes.forEach(cb => {
@@ -786,7 +821,8 @@
         brand: '',
         minPrice: '',
         maxPrice: '',
-        sizes: []
+        sizes: [],
+        stockStatus: []
       };
 
       fetchCallback(1);
@@ -812,6 +848,9 @@
         }
       });
       currentFilters.sizes = selectedSizes;
+
+      // Get selected stock status
+      currentFilters.stockStatus = getSelectedStockStatus();
 
       // 🚀 Trigger product fetch
       fetchCallback(1);
@@ -1413,5 +1452,46 @@ document.addEventListener('DOMContentLoaded', function() {
   margin: 0;
   font-weight: 500;
   color: #333;
+}
+
+/* Stock Filter Options */
+.stock-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stock-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.stock-option:hover {
+  border-color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.stock-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.stock-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.stock-option input[type="checkbox"]:checked + label {
+  color: #e03a2f;
+  font-weight: 600;
 }
 </style>
