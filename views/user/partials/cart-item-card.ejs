@@ -21,7 +21,7 @@
     <div class="col-md-3 col-4">
       <div class="product-image-container">
         <a href="/product/<%= item.productId.slug || item.productId._id %>" class="product-link">
-          <img src="/uploads/products/<%= item.productId.mainImage %>" 
+          <img src="<%= item.productId.mainImage %>" 
                alt="<%= item.productId.productName %>"
                class="product-image"
                onerror="this.src='https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png'">

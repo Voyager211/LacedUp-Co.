@@ -14,15 +14,9 @@
 <div class="container pb-4">
   <% if (cartItems && cartItems.length > 0) { %>
     <%
-      // Calculate cart statistics
-      const outOfStockItems = cartItems.filter(item => {
-        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        return !variant || variant.stock === 0;
-      });
-      const availableItems = cartItems.filter(item => {
-        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        return variant && variant.stock > 0;
-      });
+      // Calculate cart statistics using the separated arrays
+      const outOfStockItems = outOfStockCartItems || [];
+      const availableItems = availableCartItems || [];
       
       let subtotal = 0;
       let totalDiscount = 0;
@@ -32,63 +26,37 @@
       let outOfStockQuantity = 0;
       let amountAfterDiscount = 0;
 
-      cartItems.forEach(item => {
-        totalItemCount += item.quantity;
-        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        const variantStock = variant ? variant.stock : 0;
+      // Calculate totals for available items only
+      availableItems.forEach(item => {
+        const regularPrice = item.productId.regularPrice;
+        const salePrice = item.price;
+        const quantity = item.quantity;
+        
+        subtotal += regularPrice * quantity;
+        amountAfterDiscount += item.totalPrice;
+        availableItemsCount++;
+        availableQuantity += quantity;
 
-        if (variantStock > 0) {
-          const regularPrice = item.productId.regularPrice;
-          const salePrice = item.price;
-          const quantity = item.quantity;
-          
-          subtotal += regularPrice * quantity;
-          amountAfterDiscount += item.totalPrice;
-          availableItemsCount++;
-          availableQuantity += quantity;
-
-          const itemDiscount = (regularPrice - salePrice) * quantity;
-          totalDiscount += itemDiscount;
-        } else {
-          outOfStockQuantity += item.quantity;
-        }
+        const itemDiscount = (regularPrice - salePrice) * quantity;
+        totalDiscount += itemDiscount;
       });
+
+      // Calculate totals for out of stock items (for display purposes)
+      outOfStockItems.forEach(item => {
+        outOfStockQuantity += item.quantity;
+      });
+
+      // Total item count includes both available and out of stock
+      totalItemCount = availableQuantity + outOfStockQuantity;
 
       const shipping = amountAfterDiscount > 500 ? 0 : 50;
       const total = amountAfterDiscount + shipping;
-      const outOfStockItemsCount = cartItems.length - availableItemsCount;
+      const outOfStockItemsCount = outOfStockItems.length;
     %>
 
-    <!-- Cart Header with Free Shipping Progress -->
-    <div class="cart-header">
-      <div class="row align-items-center">
-        <div class="col-md-8">
-          <h1 class="cart-title">Cart (<%= totalItemCount %>)</h1>
-        </div>
-        <div class="col-md-4">
-          <!-- Free Shipping Progress -->
-          <% if (amountAfterDiscount < 500) { %>
-            <div class="free-shipping-progress">
-              <div class="progress-container">
-                <div class="progress">
-                  <div class="progress-bar" style="width: <%= (amountAfterDiscount / 500) * 100 %>%"></div>
-                </div>
-              </div>
-              <p class="shipping-text">
-                <i class="bi bi-truck me-1"></i>
-                Add ₹<%= 500 - amountAfterDiscount %> more for FREE shipping
-              </p>
-            </div>
-          <% } else { %>
-            <div class="free-shipping-achieved">
-              <span class="shipping-badge">
-                <i class="bi bi-truck me-1"></i>
-                FREE Shipping Unlocked!
-              </span>
-            </div>
-          <% } %>
-        </div>
-      </div>
+    <!-- Cart Header - Styled like top controls bar -->
+    <div class="cart-header-bar">
+      <h1 class="cart-title">Cart (<%= totalItemCount %>)</h1>
     </div>
 
     <!-- Out-of-Stock Alert -->
@@ -209,7 +177,7 @@
             </div>
 
             <!-- Action Buttons -->
-            <div class="checkout-actions">
+            <div class="checkout-actions text-center">
               <% if (availableItemsCount > 0) { %>
                 <button class="btn btn-primary btn-lg checkout-btn" onclick="proceedToCheckout()">
                   <i class="bi bi-credit-card me-2"></i>
@@ -223,13 +191,13 @@
               <% } %>
 
               <!-- Secondary Actions -->
-              <div class="secondary-actions">
+              <div class="secondary-actions text-center">
                 <% if (outOfStockItemsCount > 0) { %>
                   <button class="btn btn-outline-danger btn-sm w-100 mb-2" onclick="removeAllOutOfStockItems()">
                     <i class="bi bi-trash me-1"></i>Remove Unavailable Items
                   </button>
                 <% } %>
-                <button class="btn btn-outline-secondary btn-sm w-100" onclick="clearCart()">
+                <button class="btn btn-clear-cart btn-sm" onclick="clearCart()">
                   <i class="bi bi-trash me-1"></i>Clear Cart
                 </button>
               </div>
@@ -800,77 +768,37 @@ console.log('Cart.js: Script initialization complete');
 </script>
 
 <style>
-/* ========= MODERN LACEDUP CART - DESIGN SYSTEM COMPLIANT ========= */
+/* ========= CLEAN CART DESIGN ========= */
 
 /* === GLOBAL STYLES === */
 .container {
   max-width: 1200px;
 }
 
-/* === CART HEADER === */
-.cart-header {
-  background: white;
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  border-top: 4px solid #e03a2f;
+/* === CART HEADER BAR (styled like top controls bar) === */
+.cart-header-bar {
+  background-color: white;
+  border-radius: 12px;
+  border-top: 4px solid #E03A2F;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 100;
+}
+
+.cart-header-bar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .cart-title {
-  font-size: 1.75rem;
+  font-size: 2rem;
   font-weight: 700;
   color: #000;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
   letter-spacing: -0.5px;
-}
-
-.cart-subtitle {
-  font-size: 0.95rem;
-  color: #6c757d;
-  font-weight: 500;
-  margin: 0;
-}
-
-/* === FREE SHIPPING PROGRESS === */
-.free-shipping-progress {
-  background: white;
-  padding: 1rem;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-}
-
-.progress-container {
-  margin-bottom: 0.5rem;
-}
-
-.progress {
-  height: 8px;
-  border-radius: 4px;
-  background-color: #e9ecef;
-  overflow: hidden;
-}
-
-.progress-bar {
-  background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
-  border-radius: 4px;
-  transition: width 0.3s ease;
-}
-
-.shipping-text {
-  font-size: 0.9rem;
-  color: #6c757d;
-  margin: 0;
-  font-weight: 500;
-}
-
-.free-shipping-achieved .shipping-badge {
-  background: #28a745;
-  color: white;
-  padding: 0.75rem 1.5rem;
-  border-radius: 25px;
-  font-weight: 600;
-  font-size: 0.9rem;
 }
 
 /* === ALERT BANNER === */
@@ -920,21 +848,6 @@ console.log('Cart.js: Script initialization complete');
 }
 
 /* === SECTION HEADERS === */
-.section-header {
-  border-bottom: 2px solid #f8f9fa;
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #000;
-  margin: 0;
-  display: flex;
-  align-items: center;
-}
-
 .section-subtitle {
   font-size: 1rem;
   font-weight: 600;
@@ -1274,15 +1187,21 @@ console.log('Cart.js: Script initialization complete');
   transform: translateY(-1px);
 }
 
-/* === ORDER SUMMARY CARD === */
+/* === ORDER SUMMARY CARD (styled like filter sidebar) === */
 .order-summary-card {
   background: white;
   border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  border: 1px solid #f1f3f4;
+  border: 3px solid #E03A2F;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
   position: sticky;
   top: 100px;
   overflow: hidden;
+}
+
+.order-summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.15);
 }
 
 .summary-header {
@@ -1403,10 +1322,11 @@ console.log('Cart.js: Script initialization complete');
   border-color: #000;
   color: white;
   font-weight: 700;
-  padding: 1rem 2rem;
+  padding: 0.75rem 1.5rem;
   border-radius: 8px;
-  font-size: 1.1rem;
-  width: 100%;
+  font-size: 1rem;
+  width: auto;
+  min-width: 200px;
   transition: all 0.3s ease;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -1420,12 +1340,6 @@ console.log('Cart.js: Script initialization complete');
   box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
 }
 
-.checkout-count {
-  font-size: 0.9rem;
-  opacity: 0.9;
-  font-weight: 500;
-}
-
 .secondary-actions .btn {
   font-weight: 600;
   border-radius: 6px;
@@ -1436,36 +1350,30 @@ console.log('Cart.js: Script initialization complete');
   transform: translateY(-1px);
 }
 
-/* === SECURITY BADGES === */
-.security-section {
-  background: #f8f9fa;
-  border-radius: 8px;
-  padding: 1rem;
-  border: 1px solid #e9ecef;
-}
-
-.security-badges {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.security-badge {
-  text-align: center;
-  flex: 1;
-}
-
-.security-badge i {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
-  display: block;
-}
-
-.security-badge span {
-  font-size: 0.75rem;
+/* === CLEAR CART BUTTON (styled exactly like view filters button) === */
+.btn-clear-cart {
+  background: white;
+  border: 3px solid #E03A2F;
+  color: #E03A2F;
   font-weight: 600;
-  color: #495057;
-  display: block;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 !important;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.btn-clear-cart:hover {
+  background: #E03A2F;
+  border-color: #E03A2F;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(224, 58, 47, 0.3);
+}
+
+.btn-clear-cart:active {
+  transform: translateY(0);
 }
 
 /* === EMPTY CART STATE === */
@@ -1538,7 +1446,7 @@ console.log('Cart.js: Script initialization complete');
   transform: translateY(-2px);
 }
 
-/* === BUTTON SYSTEM - LACEDUP STANDARD === */
+/* === BUTTON SYSTEM === */
 .btn-primary {
   background: #000;
   border-color: #000;
@@ -1629,11 +1537,7 @@ console.log('Cart.js: Script initialization complete');
 
 @media (max-width: 768px) {
   .cart-title {
-    font-size: 2rem;
-  }
-  
-  .cart-header {
-    padding: 1.5rem;
+    font-size: 1.75rem;
   }
   
   .cart-item-card {
@@ -1647,23 +1551,6 @@ console.log('Cart.js: Script initialization complete');
   .item-actions {
     margin-top: 1rem;
   }
-  
-  .security-badges {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .security-badge {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-align: left;
-  }
-  
-  .security-badge i {
-    font-size: 1.2rem;
-    margin-bottom: 0;
-  }
 
   .alert-content {
     flex-direction: column;
@@ -1676,12 +1563,8 @@ console.log('Cart.js: Script initialization complete');
 }
 
 @media (max-width: 576px) {
-  .cart-header {
-    padding: 1rem;
-  }
-  
   .cart-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
   
   .empty-cart-content {
@@ -1721,22 +1604,6 @@ console.log('Cart.js: Script initialization complete');
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-/* === PRINT STYLES === */
-@media print {
-  .cart-item-card {
-    box-shadow: none;
-    border: 1px solid #000;
-  }
-  
-  .btn {
-    display: none;
-  }
-  
-  .security-section {
-    display: none;
   }
 }
 </style>

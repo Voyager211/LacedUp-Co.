@@ -244,7 +244,7 @@ exports.getCartCount = async (req, res) => {
   }
 };
 
-// Load cart page (SKU-based)
+// Load cart page (SKU-based) - UPDATED VERSION
 exports.loadCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
@@ -271,23 +271,29 @@ exports.loadCart = async (req, res) => {
         ]
       });
 
-    // Filter out items with unavailable products and validate variants
-    let cartItems = [];
+    let availableCartItems = [];
+    let outOfStockCartItems = [];
+    let itemsToRemove = [];
     let priceUpdatesNeeded = false;
     
     if (cart && cart.items) {
-      cartItems = cart.items.filter(item => {
+      // Process each cart item and categorize them
+      for (let i = 0; i < cart.items.length; i++) {
+        const item = cart.items[i];
+        
         // Check if product exists and is available
         if (!item.productId || 
             !item.productId.isListed ||
             item.productId.isDeleted) {
-          return false;
+          itemsToRemove.push(i);
+          continue;
         }
 
         // Enhanced category check
         if (item.productId.category && 
             (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
-          return false;
+          itemsToRemove.push(i);
+          continue;
         }
 
         // Check if variant exists in the product (for SKU-based items)
@@ -295,45 +301,65 @@ exports.loadCart = async (req, res) => {
           const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
           if (!variant) {
             console.log(`Variant ${item.variantId} not found for product ${item.productId._id}`);
-            return false;
+            itemsToRemove.push(i);
+            continue;
           }
-        }
 
-        return true;
-      });
-
-      // Update prices and add calculated data for the view
-      cartItems = cartItems.map(item => {
-        const itemObj = item.toObject();
-        
-        // Find the specific variant for price calculation (for SKU-based items)
-        if (item.variantId) {
-          const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-          if (variant) {
-            // Calculate the current price for this variant
-            const currentPrice = calculateVariantFinalPrice(item.productId, variant);
-            
-            // Check if price needs updating
-            if (Math.abs(item.price - currentPrice) > 0.01) {
-              priceUpdatesNeeded = true;
-              // Update the price in the cart item object for display
-              itemObj.price = currentPrice;
-              itemObj.totalPrice = currentPrice * item.quantity;
-            }
+          const itemObj = item.toObject();
+          
+          // Calculate the current price for this variant
+          const currentPrice = calculateVariantFinalPrice(item.productId, variant);
+          
+          // Check if price needs updating
+          if (Math.abs(item.price - currentPrice) > 0.01) {
+            priceUpdatesNeeded = true;
+            // Update the price in the cart item object for display
+            itemObj.price = currentPrice;
+            itemObj.totalPrice = currentPrice * item.quantity;
           }
+          
+          // Add sale price to the product object for compatibility
+          try {
+            itemObj.productId.salePrice = typeof item.productId.getAverageFinalPrice === 'function' 
+              ? item.productId.getAverageFinalPrice() 
+              : item.productId.regularPrice;
+          } catch (error) {
+            itemObj.productId.salePrice = item.productId.regularPrice;
+          }
+
+          // Categorize based on stock availability
+          if (variant.stock === 0) {
+            // Out of stock - add to separate array
+            outOfStockCartItems.push(itemObj);
+          } else {
+            // Available - add to main cart items
+            availableCartItems.push(itemObj);
+          }
+        } else {
+          // Handle items without variants (legacy support)
+          const itemObj = item.toObject();
+          
+          // Add sale price to the product object for compatibility
+          try {
+            itemObj.productId.salePrice = typeof item.productId.getAverageFinalPrice === 'function' 
+              ? item.productId.getAverageFinalPrice() 
+              : item.productId.regularPrice;
+          } catch (error) {
+            itemObj.productId.salePrice = item.productId.regularPrice;
+          }
+          
+          availableCartItems.push(itemObj);
         }
-        
-        // Add sale price to the product object for compatibility
-        try {
-          itemObj.productId.salePrice = typeof item.productId.getAverageFinalPrice === 'function' 
-            ? item.productId.getAverageFinalPrice() 
-            : item.productId.regularPrice;
-        } catch (error) {
-          itemObj.productId.salePrice = item.productId.regularPrice;
+      }
+
+      // Remove items that are completely unavailable (product/category deleted)
+      if (itemsToRemove.length > 0) {
+        // Remove items in reverse order to maintain indices
+        for (let i = itemsToRemove.length - 1; i >= 0; i--) {
+          cart.items.splice(itemsToRemove[i], 1);
         }
-        
-        return itemObj;
-      });
+        priceUpdatesNeeded = true;
+      }
 
       // If prices need updating, save the cart with updated prices
       if (priceUpdatesNeeded) {
@@ -360,9 +386,14 @@ exports.loadCart = async (req, res) => {
       }
     }
 
+    // Combine all cart items for display (available items first, then out of stock)
+    const allCartItems = [...availableCartItems, ...outOfStockCartItems];
+
     res.render('user/cart', {
       user,
-      cartItems: cartItems || [],
+      cartItems: allCartItems,
+      availableCartItems,
+      outOfStockCartItems,
       title: 'My Cart',
       layout: 'user/layouts/user-layout',
       active: 'cart'
@@ -376,9 +407,6 @@ exports.loadCart = async (req, res) => {
 // Remove item from cart (SKU-based)
 exports.removeFromCart = async (req, res) => {
   try {
-    console.log('=== REMOVE FROM CART START ===');
-    console.log('Request body:', req.body);
-    
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
 
@@ -425,7 +453,6 @@ exports.removeFromCart = async (req, res) => {
     // Get updated cart count
     const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
 
-    console.log('Item removed successfully');
     res.json({
       success: true,
       message: 'Product removed from cart successfully',
@@ -444,9 +471,6 @@ exports.removeFromCart = async (req, res) => {
 // Update cart item quantity (SKU-based)
 exports.updateCartQuantity = async (req, res) => {
   try {
-    console.log('=== UPDATE CART QUANTITY START ===');
-    console.log('Request body:', req.body);
-    
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId, quantity } = req.body;
 
@@ -551,7 +575,6 @@ exports.updateCartQuantity = async (req, res) => {
     // Get updated cart count
     const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
 
-    console.log('Quantity updated successfully');
     res.json({
       success: true,
       message: 'Cart updated successfully',
@@ -571,8 +594,6 @@ exports.updateCartQuantity = async (req, res) => {
 // Clear entire cart
 exports.clearCart = async (req, res) => {
   try {
-    console.log('=== CLEAR CART START ===');
-    
     const userId = req.user ? req.user._id : req.session.userId;
 
     // Find and clear user's cart
@@ -587,7 +608,6 @@ exports.clearCart = async (req, res) => {
     cart.items = [];
     await cart.save();
 
-    console.log('Cart cleared successfully');
     res.json({
       success: true,
       message: 'Cart cleared successfully',
@@ -606,8 +626,6 @@ exports.clearCart = async (req, res) => {
 // Remove all out-of-stock items from cart (SKU-based)
 exports.removeOutOfStockItems = async (req, res) => {
   try {
-    console.log('=== REMOVE OUT OF STOCK ITEMS START ===');
-    
     const userId = req.user ? req.user._id : req.session.userId;
 
     // Find user's cart with populated product data
@@ -672,7 +690,6 @@ exports.removeOutOfStockItems = async (req, res) => {
     // Get updated cart count
     const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
 
-    console.log(`Removed ${removedItemCount} out-of-stock items`);
     res.json({
       success: true,
       message: `Successfully removed ${removedItemCount} out-of-stock item${removedItemCount > 1 ? 's' : ''} from cart`,
