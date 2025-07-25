@@ -824,10 +824,86 @@ exports.loadCheckout = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // For now, just render the checkout page with basic data
-    // Later we'll add cart validation, address fetching, etc.
+    // Get user's addresses
+    const Address = require('../../models/Address');
+    const userAddresses = await Address.findOne({ userId });
+    const addresses = userAddresses ? userAddresses.address : [];
+
+    // Get user's cart with populated product data
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: [
+          {
+            path: 'category',
+            select: 'name isListed isDeleted categoryOffer'
+          },
+          {
+            path: 'brand',
+            select: 'name brandOffer'
+          }
+        ]
+      });
+
+    let cartItems = [];
+    let subtotal = 0;
+    let totalItemCount = 0;
+    let totalDiscount = 0;
+
+    if (cart && cart.items) {
+      // Filter out unavailable items and calculate totals
+      cartItems = cart.items.filter(item => {
+        // Check if product exists and is available
+        if (!item.productId || 
+            !item.productId.isListed ||
+            item.productId.isDeleted) {
+          return false;
+        }
+
+        // Check category availability
+        if (item.productId.category && 
+            (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
+          return false;
+        }
+
+        // Check variant stock
+        if (item.variantId) {
+          const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+          if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      // Calculate totals
+      cartItems.forEach(item => {
+        subtotal += item.totalPrice || (item.price * item.quantity);
+        totalItemCount += item.quantity;
+      });
+    }
+
+    // Calculate shipping (free shipping for orders above ₹500)
+    const shipping = subtotal >= 500 ? 0 : 50;
+    
+    // Calculate total
+    const total = subtotal + shipping - totalDiscount;
+
+    // If cart is empty or no valid items, redirect to cart
+    if (cartItems.length === 0) {
+      return res.redirect('/cart');
+    }
+
     res.render('user/checkout', {
       user,
+      addresses,
+      cartItems,
+      subtotal: Math.round(subtotal),
+      totalItemCount,
+      totalDiscount,
+      shipping,
+      total: Math.round(total),
       title: 'Checkout',
       layout: 'user/layouts/user-layout',
       active: 'checkout'
@@ -835,5 +911,361 @@ exports.loadCheckout = async (req, res) => {
   } catch (error) {
     console.error('Error loading checkout:', error);
     res.status(500).render('error', { message: 'Error loading checkout page' });
+  }
+};
+
+// Validate cart stock for checkout
+exports.validateCheckoutStock = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    // Find user's cart with populated product data
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: [
+          {
+            path: 'category',
+            select: 'name isListed isDeleted categoryOffer'
+          },
+          {
+            path: 'brand',
+            select: 'name brandOffer'
+          }
+        ]
+      });
+
+    if (!cart || cart.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cart is empty',
+        code: 'EMPTY_CART'
+      });
+    }
+
+    const validationResults = {
+      validItems: [],
+      invalidItems: [],
+      outOfStockItems: [],
+      unavailableItems: []
+    };
+
+    let hasIssues = false;
+
+    for (const item of cart.items) {
+      const itemData = {
+        productId: item.productId._id,
+        variantId: item.variantId,
+        productName: item.productId.productName,
+        size: item.size,
+        sku: item.sku,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice
+      };
+
+      // Check if product exists and is available
+      if (!item.productId || !item.productId.isListed || item.productId.isDeleted) {
+        validationResults.unavailableItems.push({
+          ...itemData,
+          reason: 'Product is no longer available'
+        });
+        hasIssues = true;
+        continue;
+      }
+
+      // Check category availability
+      if (item.productId.category && 
+          (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
+        validationResults.unavailableItems.push({
+          ...itemData,
+          reason: 'Product category is no longer available'
+        });
+        hasIssues = true;
+        continue;
+      }
+
+      // Check variant-specific stock
+      if (item.variantId) {
+        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+        
+        if (!variant) {
+          validationResults.invalidItems.push({
+            ...itemData,
+            reason: 'Product variant not found'
+          });
+          hasIssues = true;
+          continue;
+        }
+
+        if (variant.stock === 0) {
+          validationResults.outOfStockItems.push({
+            ...itemData,
+            reason: `Size ${item.size} is out of stock`,
+            availableStock: 0
+          });
+          hasIssues = true;
+          continue;
+        }
+
+        if (variant.stock < item.quantity) {
+          validationResults.outOfStockItems.push({
+            ...itemData,
+            reason: `Only ${variant.stock} items available for size ${item.size}`,
+            availableStock: variant.stock,
+            requestedQuantity: item.quantity
+          });
+          hasIssues = true;
+          continue;
+        }
+
+        // Item is valid
+        validationResults.validItems.push({
+          ...itemData,
+          availableStock: variant.stock
+        });
+      } else {
+        // Handle items without variants (legacy support)
+        validationResults.validItems.push(itemData);
+      }
+    }
+
+    if (hasIssues) {
+      return res.status(400).json({
+        success: false,
+        message: 'Some items in your cart are no longer available or have insufficient stock',
+        code: 'CHECKOUT_VALIDATION_FAILED',
+        validationResults
+      });
+    }
+
+    // All items are valid for checkout
+    res.json({
+      success: true,
+      message: 'All cart items are available for checkout',
+      validationResults,
+      totalValidItems: validationResults.validItems.length
+    });
+
+  } catch (error) {
+    console.error('Error validating checkout stock:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to validate cart for checkout'
+    });
+  }
+};
+
+// Validate cart stock (general validation)
+exports.validateCartStock = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    // Find user's cart with populated product data
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: {
+          path: 'category',
+          select: 'name isListed isDeleted categoryOffer'
+        }
+      });
+
+    if (!cart || cart.items.length === 0) {
+      return res.json({
+        success: true,
+        allValid: true,
+        availableItems: [],
+        outOfStockItems: [],
+        invalidItems: [],
+        totalItems: 0,
+        availableCount: 0,
+        outOfStockCount: 0
+      });
+    }
+
+    const availableItems = [];
+    const outOfStockItems = [];
+    const invalidItems = [];
+    let errorMessages = [];
+
+    cart.items.forEach(item => {
+      const itemData = {
+        productId: item.productId._id,
+        variantId: item.variantId,
+        productName: item.productId.productName,
+        size: item.size,
+        sku: item.sku,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice
+      };
+
+      // Check availability (variant-specific)
+      let isAvailable = true;
+      let reason = '';
+
+      if (!item.productId ||
+          !item.productId.isListed ||
+          item.productId.isDeleted) {
+        isAvailable = false;
+        reason = 'Product unavailable';
+        errorMessages.push(`${item.productId.productName} is no longer available`);
+      } else if (item.productId.category && 
+                 (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
+        isAvailable = false;
+        reason = 'Category unavailable';
+        errorMessages.push(`${item.productId.productName} category is no longer available`);
+      } else if (item.variantId) {
+        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (!variant) {
+          isAvailable = false;
+          reason = 'Variant not found';
+          errorMessages.push(`${item.productId.productName} (Size: ${item.size}) variant not found`);
+        } else if (variant.stock === 0) {
+          isAvailable = false;
+          reason = `Size ${item.size} - Out of stock`;
+          errorMessages.push(`${item.productId.productName} (Size: ${item.size}) is out of stock`);
+        } else if (variant.stock < item.quantity) {
+          isAvailable = false;
+          reason = `Size ${item.size} - Only ${variant.stock} available`;
+          itemData.availableStock = variant.stock;
+          errorMessages.push(`${item.productId.productName} (Size: ${item.size}) - Only ${variant.stock} available, but you have ${item.quantity} in cart`);
+        } else {
+          itemData.stock = variant.stock;
+          itemData.availableStock = variant.stock;
+        }
+      }
+
+      if (isAvailable) {
+        availableItems.push(itemData);
+      } else {
+        const invalidItem = {
+          ...itemData,
+          reason
+        };
+        
+        if (reason.includes('Out of stock')) {
+          outOfStockItems.push(invalidItem);
+        } else {
+          invalidItems.push(invalidItem);
+        }
+      }
+    });
+
+    const allValid = invalidItems.length === 0 && outOfStockItems.length === 0;
+    const errorMessage = errorMessages.length > 0 ? errorMessages.join('\n') : '';
+
+    res.json({
+      success: true,
+      allValid,
+      errorMessage,
+      availableItems,
+      outOfStockItems,
+      invalidItems,
+      totalItems: cart.items.length,
+      availableCount: availableItems.length,
+      outOfStockCount: outOfStockItems.length,
+      invalidCount: invalidItems.length
+    });
+
+  } catch (error) {
+    console.error('Error validating cart stock:', error);
+    res.status(500).json({
+      success: false,
+      allValid: false,
+      errorMessage: 'Failed to validate cart stock',
+      message: 'Failed to validate cart stock'
+    });
+  }
+};
+
+// Reset cart item quantity to available stock
+exports.resetCartItemQuantity = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const { productId, variantId } = req.body;
+
+    if (!productId || !variantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID and variant ID are required'
+      });
+    }
+
+    // Get product with category and brand for price calculation
+    const product = await Product.findById(productId).populate(['category', 'brand']);
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found'
+      });
+    }
+
+    // Find the specific variant
+    const variant = product.variants.find(v => v._id.toString() === variantId);
+    if (!variant) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product variant not found'
+      });
+    }
+
+    // Find user's cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart not found'
+      });
+    }
+
+    // Find the specific item in cart
+    const itemIndex = cart.items.findIndex(
+      item => item.productId.toString() === productId && item.variantId.toString() === variantId
+    );
+
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product variant not found in cart'
+      });
+    }
+
+    if (variant.stock === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot reset quantity - item is out of stock',
+        code: 'OUT_OF_STOCK'
+      });
+    }
+
+    // Reset quantity to available stock (max 5)
+    const newQuantity = Math.min(variant.stock, 5);
+    const finalPrice = calculateVariantFinalPrice(product, variant);
+    
+    cart.items[itemIndex].quantity = newQuantity;
+    cart.items[itemIndex].price = finalPrice;
+    cart.items[itemIndex].totalPrice = calculateItemTotal(finalPrice, newQuantity);
+
+    await cart.save();
+
+    // Get updated cart count
+    const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
+
+    res.json({
+      success: true,
+      message: `Quantity reset to ${newQuantity} (available stock)`,
+      newQuantity,
+      cartCount,
+      itemTotal: cart.items[itemIndex].totalPrice
+    });
+
+  } catch (error) {
+    console.error('Error resetting cart item quantity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset item quantity'
+    });
   }
 };

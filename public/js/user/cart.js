@@ -263,8 +263,141 @@ async function clearCart() {
   }
 }
 
-// Proceed to checkout
-function proceedToCheckout() {
+// Validate cart stock before operations
+async function validateCartStock() {
+  try {
+    console.log('Validating cart stock...');
+    const response = await fetch('/cart/validate-stock', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response ok:', response.ok);
+    
+    const result = await response.json();
+    console.log('Full validation response:', result);
+    console.log('Response success:', result.success);
+    console.log('Response allValid:', result.allValid);
+    console.log('Response errorMessage:', result.errorMessage);
+    console.log('Response invalidItems:', result.invalidItems);
+    
+    return result;
+  } catch (error) {
+    console.error('Error validating cart stock:', error);
+    return { success: false, allValid: false, errorMessage: 'Failed to validate cart stock' };
+  }
+}
+
+// Reset cart item quantity to 1
+async function resetCartItemQuantity(productId, variantId) {
+  try {
+    console.log('Resetting cart item quantity to 1:', { productId, variantId });
+    
+    const response = await fetch('/cart/reset-quantity', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ productId, variantId })
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update the UI
+      const cartItem = document.querySelector(`[data-product-id="${productId}"][data-variant-id="${variantId}"]`);
+      if (cartItem) {
+        const qtyInput = cartItem.querySelector('.qty-input');
+        const itemTotal = cartItem.querySelector('.item-total');
+        
+        qtyInput.value = 1;
+        itemTotal.textContent = `₹${Math.round(result.itemTotal)}`;
+        
+        updateButtonStates(productId, variantId);
+        updateCartCounter(result.cartCount);
+      }
+      
+      safeToast('success', 'Item quantity reset to 1');
+      return true;
+    } else {
+      safeToast('error', result.message || 'Failed to reset quantity');
+      return false;
+    }
+  } catch (error) {
+    console.error('Error resetting cart item quantity:', error);
+    safeToast('error', 'Failed to reset quantity. Please try again');
+    return false;
+  }
+}
+
+// Show stock validation error with SweetAlert
+function showStockValidationError(validation) {
+  console.log('Showing stock validation error:', validation);
+  
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'error',
+      title: 'Stock Validation Failed',
+      html: validation.errorMessage.replace(/\n/g, '<br>'),
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Fix Cart Issues',
+      showCancelButton: true,
+      cancelButtonText: 'Continue Shopping',
+      cancelButtonColor: '#6c757d',
+      width: '600px'
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        // Reset quantities for items that exceed stock
+        if (validation.invalidItems && validation.invalidItems.length > 0) {
+          let resetPromises = [];
+          
+          for (const item of validation.invalidItems) {
+            if (item.availableStock !== undefined && item.quantity > item.availableStock) {
+              // Find the cart item and reset its quantity
+              const cartItems = document.querySelectorAll('.cart-item-card');
+              for (const cartItem of cartItems) {
+                const productName = cartItem.querySelector('.product-name')?.textContent?.trim();
+                const size = cartItem.querySelector('.spec-item')?.textContent?.includes('Size:') ? 
+                  cartItem.querySelector('.spec-item')?.textContent?.split('Size:')[1]?.trim() : '';
+                
+                if (productName === item.productName && size === item.size) {
+                  const productId = cartItem.dataset.productId;
+                  const variantId = cartItem.dataset.variantId;
+                  
+                  if (productId && variantId) {
+                    resetPromises.push(resetCartItemQuantity(productId, variantId));
+                  }
+                  break;
+                }
+              }
+            }
+          }
+          
+          if (resetPromises.length > 0) {
+            await Promise.all(resetPromises);
+            setTimeout(() => {
+              window.location.reload();
+            }, 1000);
+          }
+        } else {
+          // Just reload the page to show updated cart
+          window.location.reload();
+        }
+      } else if (result.dismiss === Swal.DismissReason.cancel) {
+        window.location.href = '/shop';
+      }
+    });
+  } else {
+    alert(validation.errorMessage);
+    window.location.reload();
+  }
+}
+
+// Proceed to checkout with validation
+async function proceedToCheckout() {
   console.log('proceedToCheckout called');
 
   const availableItems = document.querySelectorAll('.cart-item-card:not(.item-out-of-stock)');
@@ -320,7 +453,80 @@ function proceedToCheckout() {
     return;
   }
 
-  window.location.href = '/checkout';
+  // Show loading indicator
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      title: 'Validating Cart...',
+      text: 'Checking stock availability for your items',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+  }
+
+  try {
+    // Validate cart stock before proceeding
+    const validation = await validateCartStock();
+    
+    if (typeof Swal !== 'undefined') {
+      Swal.close();
+    }
+
+    if (!validation.success || !validation.allValid) {
+      // Show validation error
+      showStockValidationError(validation);
+      return;
+    }
+
+    // If validation passes, proceed to checkout
+    window.location.href = '/cart/checkout';
+
+  } catch (error) {
+    console.error('Error during checkout validation:', error);
+    
+    if (typeof Swal !== 'undefined') {
+      Swal.close();
+      Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Unable to validate cart items. Please try again.',
+        confirmButtonColor: '#dc3545'
+      });
+    } else {
+      safeToast('error', 'Unable to validate cart items. Please try again.');
+    }
+  }
+}
+
+// Validate cart on page load/refresh
+async function validateCartOnLoad() {
+  // Only validate if we're on the cart page and have items
+  if (!window.location.pathname.includes('/cart') || window.location.pathname.includes('/checkout')) {
+    return;
+  }
+
+  const cartItems = document.querySelectorAll('.cart-item-card');
+  if (cartItems.length === 0) {
+    return;
+  }
+
+  console.log('Validating cart on page load...');
+
+  try {
+    const validation = await validateCartStock();
+    
+    if (!validation.success || !validation.allValid) {
+      // Show validation error after a short delay to ensure page is fully loaded
+      setTimeout(() => {
+        showStockValidationError(validation);
+      }, 1000);
+    }
+  } catch (error) {
+    console.error('Error validating cart on load:', error);
+  }
 }
 
 // Remove all out-of-stock items
@@ -545,6 +751,11 @@ function initializeCartPage() {
   });
 
   console.log('Cart.js: Cart page initialization complete');
+  
+  // Validate cart on page load after initialization
+  setTimeout(() => {
+    validateCartOnLoad();
+  }, 500);
 }
 
 // Initialize when DOM is ready
@@ -555,11 +766,33 @@ if (document.readyState === 'loading') {
   initializeCartPage();
 }
 
+// Test function for debugging validation
+window.testValidation = async function() {
+  console.log('=== TESTING VALIDATION ===');
+  try {
+    const validation = await validateCartStock();
+    console.log('Test validation result:', validation);
+    
+    if (!validation.success || !validation.allValid) {
+      console.log('Validation failed - should show error');
+      showStockValidationError(validation);
+    } else {
+      console.log('Validation passed - no errors');
+      alert('Validation passed - no stock issues found');
+    }
+    
+    return validation;
+  } catch (error) {
+    console.error('Test validation error:', error);
+  }
+};
+
 // Make functions globally available for fallback
 window.updateQuantity = updateQuantity;
 window.removeFromCart = removeFromCart;
 window.clearCart = clearCart;
 window.proceedToCheckout = proceedToCheckout;
 window.removeAllOutOfStockItems = removeAllOutOfStockItems;
+window.validateCartStock = validateCartStock;
 
 console.log('Cart.js: External script initialization complete');

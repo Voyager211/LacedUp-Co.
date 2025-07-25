@@ -47,7 +47,14 @@ router.post('/remove-out-of-stock', requireAuthAPI, cartController.removeOutOfSt
 // Routes that can be accessed without authentication or with JSON response
 router.get('/count', cartController.getCartCount);
 
+// Validation routes
+router.get('/validate-stock', requireAuthAPI, cartController.validateCartStock);
+router.post('/reset-quantity', requireAuthAPI, cartController.resetCartItemQuantity);
+
 // Checkout route
 router.get('/checkout', requireAuth, cartController.loadCheckout);
+
+// Checkout validation route
+router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
 
 module.exports = router;
