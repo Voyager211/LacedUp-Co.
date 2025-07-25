@@ -950,7 +950,9 @@ exports.validateCheckoutStock = async (req, res) => {
       unavailableItems: []
     };
 
-    let hasIssues = false;
+    // Only consider items that would actually be included in checkout
+    // Out-of-stock items are excluded from checkout (like on cart page)
+    let checkoutEligibleItems = [];
 
     for (const item of cart.items) {
       const itemData = {
@@ -970,8 +972,7 @@ exports.validateCheckoutStock = async (req, res) => {
           ...itemData,
           reason: 'Product is no longer available'
         });
-        hasIssues = true;
-        continue;
+        continue; // Skip this item - it won't be in checkout
       }
 
       // Check category availability
@@ -981,8 +982,7 @@ exports.validateCheckoutStock = async (req, res) => {
           ...itemData,
           reason: 'Product category is no longer available'
         });
-        hasIssues = true;
-        continue;
+        continue; // Skip this item - it won't be in checkout
       }
 
       // Check variant-specific stock
@@ -994,8 +994,7 @@ exports.validateCheckoutStock = async (req, res) => {
             ...itemData,
             reason: 'Product variant not found'
           });
-          hasIssues = true;
-          continue;
+          continue; // Skip this item - it won't be in checkout
         }
 
         if (variant.stock === 0) {
@@ -1004,8 +1003,7 @@ exports.validateCheckoutStock = async (req, res) => {
             reason: `Size ${item.size} is out of stock`,
             availableStock: 0
           });
-          hasIssues = true;
-          continue;
+          continue; // Skip this item - it won't be in checkout (excluded like on cart page)
         }
 
         if (variant.stock < item.quantity) {
@@ -1015,36 +1013,40 @@ exports.validateCheckoutStock = async (req, res) => {
             availableStock: variant.stock,
             requestedQuantity: item.quantity
           });
-          hasIssues = true;
-          continue;
+          continue; // Skip this item - it won't be in checkout
         }
 
-        // Item is valid
+        // Item is valid and will be included in checkout
         validationResults.validItems.push({
           ...itemData,
           availableStock: variant.stock
         });
+        checkoutEligibleItems.push(item);
       } else {
         // Handle items without variants (legacy support)
         validationResults.validItems.push(itemData);
+        checkoutEligibleItems.push(item);
       }
     }
 
-    if (hasIssues) {
+    // Check if there are any items eligible for checkout
+    if (checkoutEligibleItems.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Some items in your cart are no longer available or have insufficient stock',
-        code: 'CHECKOUT_VALIDATION_FAILED',
+        message: 'No items in your cart are available for checkout. Please add available items to your cart.',
+        code: 'NO_CHECKOUT_ITEMS',
         validationResults
       });
     }
 
-    // All items are valid for checkout
+    // If there are checkout-eligible items, validation passes
+    // Out-of-stock items are simply excluded from checkout (not an error)
     res.json({
       success: true,
       message: 'All cart items are available for checkout',
       validationResults,
-      totalValidItems: validationResults.validItems.length
+      totalValidItems: validationResults.validItems.length,
+      checkoutEligibleItems: checkoutEligibleItems.length
     });
 
   } catch (error) {

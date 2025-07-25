@@ -455,17 +455,38 @@ function proceedToPayment() {
     // First validate stock before placing order
     validateCheckoutStock()
     .then(validation => {
-        // Check if validation failed - for checkout validation, we check if there are any invalid items
-        if (!validation.success || (validation.validationResults && 
-            (validation.validationResults.invalidItems.length > 0 || 
-             validation.validationResults.outOfStockItems.length > 0 || 
-             validation.validationResults.unavailableItems.length > 0))) {
+        console.log('Validation result in proceedToPayment:', validation);
+        
+        // Check if validation failed - only fail if there are NO checkout eligible items
+        if (!validation.success) {
             // Restore button state
             button.innerHTML = originalText;
             button.disabled = false;
             
             // Show validation error
             showCheckoutValidationError(validation);
+            return;
+        }
+        
+        // Check if there are any items eligible for checkout
+        if (validation.checkoutEligibleItems === 0 || 
+            (validation.validationResults && validation.validationResults.validItems.length === 0)) {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            // Create a proper error message for no checkout items
+            const errorMessage = validation.validationResults && 
+                (validation.validationResults.outOfStockItems.length > 0 || 
+                 validation.validationResults.unavailableItems.length > 0) ?
+                'All items in your cart are now out of stock or unavailable. Please return to your cart to add available items.' :
+                'No items available for checkout. Please add items to your cart.';
+            
+            showCheckoutValidationError({
+                success: false,
+                errorMessage: errorMessage,
+                validationResults: validation.validationResults
+            });
             return;
         }
         
@@ -494,21 +515,24 @@ function proceedToPayment() {
         console.log('Order placement response status:', response.status);
         console.log('Order placement response ok:', response.ok);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        return response.json();
+        // Always try to parse JSON response, even for error status codes
+        return response.json().then(data => {
+            return { data, status: response.status, ok: response.ok };
+        });
     })
-    .then(data => {
-        if (!data) return; // Validation failed, already handled
+    .then(result => {
+        if (!result) return; // Validation failed, already handled
         
-        if (data.success) {
+        const { data, status, ok } = result;
+        console.log('Order placement response data:', data);
+        
+        if (ok && data.success) {
             // Redirect to order success page
             window.location.href = data.redirectUrl;
         } else {
-            // Check if it's a stock validation error from backend
+            // Handle error responses (including 400 status codes)
             if (data.code === 'STOCK_VALIDATION_FAILED') {
+                console.log('Stock validation failed, showing error dialog');
                 showCheckoutValidationError({
                     success: false,
                     allValid: false,

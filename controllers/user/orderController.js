@@ -106,12 +106,19 @@ exports.placeOrder = async (req, res) => {
     let subtotal = 0;
     let totalDiscount = 0;
     let totalItemCount = 0;
+    let stockIssues = [];
 
     for (const item of cart.items) {
       // Check if product exists and is available
       if (!item.productId ||
           !item.productId.isListed ||
           item.productId.isDeleted) {
+        stockIssues.push({
+          productName: item.productId ? item.productId.productName : 'Unknown Product',
+          size: item.size,
+          quantity: item.quantity,
+          error: 'Product is no longer available'
+        });
         continue;
       }
 
@@ -119,13 +126,47 @@ exports.placeOrder = async (req, res) => {
       if ((item.productId.category &&
           (item.productId.category.isListed === false || item.productId.category.isDeleted === true || item.productId.category.isActive === false)) ||
           (item.productId.brand && (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true))) {
+        stockIssues.push({
+          productName: item.productId.productName,
+          size: item.size,
+          quantity: item.quantity,
+          error: 'Product category or brand is no longer available'
+        });
         continue;
       }
 
       // Check variant availability
       if (item.variantId) {
         const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
+        if (!variant) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            error: 'Product variant not found'
+          });
+          continue;
+        }
+
+        if (variant.stock === 0) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            availableStock: 0,
+            error: `Size ${item.size} is out of stock`
+          });
+          continue;
+        }
+
+        if (variant.stock < item.quantity) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            availableStock: variant.stock,
+            error: `Only ${variant.stock} items available for size ${item.size}`
+          });
           continue;
         }
 
@@ -157,10 +198,31 @@ exports.placeOrder = async (req, res) => {
       }
     }
 
+    // If there are any stock issues, return error instead of placing partial order
+    if (stockIssues.length > 0) {
+      let errorMessage = 'Some items in your cart have stock issues and cannot be ordered:\n\n';
+      stockIssues.forEach((item, index) => {
+        errorMessage += `${index + 1}. ${item.productName}`;
+        if (item.size) {
+          errorMessage += ` (Size: ${item.size})`;
+        }
+        errorMessage += `\n   ${item.error}\n\n`;
+      });
+      errorMessage += 'Please return to your cart to fix these issues before placing your order.';
+
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+        code: 'STOCK_VALIDATION_FAILED',
+        invalidItems: stockIssues
+      });
+    }
+
     if (validItems.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'No valid items found in cart'
+        message: 'No valid items found in cart',
+        code: 'NO_VALID_ITEMS'
       });
     }
 

@@ -518,11 +518,19 @@ async function validateCartOnLoad() {
   try {
     const validation = await validateCartStock();
     
-    if (!validation.success || !validation.allValid) {
-      // Show validation error after a short delay to ensure page is fully loaded
-      setTimeout(() => {
-        showStockValidationError(validation);
-      }, 1000);
+    // Only show validation errors for items that are completely unavailable (deleted products/categories)
+    // Out-of-stock items are already properly displayed on the cart page, so don't show errors for them
+    if (!validation.success || (validation.invalidItems && validation.invalidItems.length > 0)) {
+      // Only show error if there are invalid items (not just out-of-stock items)
+      const hasInvalidItems = validation.invalidItems && validation.invalidItems.some(item => 
+        !item.reason.includes('Out of stock') && !item.reason.includes('available')
+      );
+      
+      if (hasInvalidItems) {
+        setTimeout(() => {
+          showStockValidationError(validation);
+        }, 1000);
+      }
     }
   } catch (error) {
     console.error('Error validating cart on load:', error);
