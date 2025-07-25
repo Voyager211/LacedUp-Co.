@@ -96,8 +96,8 @@ exports.addToCart = async (req, res) => {
       });
     }
 
-    // Enhanced category availability validation - FIXED: using isActive instead of isListed
-    if (product.category && (product.category.isActive === false || product.category.isDeleted === true)) {
+    // Enhanced category availability validation
+    if (product.category && (product.category.isListed === false || product.category.isDeleted === true)) {
       return res.status(403).json({
         success: false,
         message: 'This product category is no longer available',
@@ -264,14 +264,14 @@ exports.loadCart = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Get user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
           {
             path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
+            select: 'name isListed isDeleted categoryOffer'
           },
           {
             path: 'brand',
@@ -328,10 +328,10 @@ exports.loadCart = async (req, res) => {
             itemObj.productId.salePrice = item.productId.regularPrice;
           }
 
-          // Check product, category, and brand availability - FIXED: using isActive instead of isListed
+          // Check product, category, and brand availability
           const isProductUnavailable = !item.productId.isListed || item.productId.isDeleted;
           const isCategoryUnavailable = item.productId.category && 
-            (item.productId.category.isActive === false || item.productId.category.isDeleted === true);
+            (item.productId.category.isListed === false || item.productId.category.isDeleted === true);
           const isBrandUnavailable = item.productId.brand && 
             (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true);
 
@@ -367,23 +367,15 @@ exports.loadCart = async (req, res) => {
             itemObj.productId.salePrice = item.productId.regularPrice;
           }
 
-          // Check product, category, and brand availability - FIXED: using isActive instead of isListed
+          // Check product and category availability
           const isProductUnavailable = !item.productId.isListed || item.productId.isDeleted;
           const isCategoryUnavailable = item.productId.category && 
-            (item.productId.category.isActive === false || item.productId.category.isDeleted === true);
-          const isBrandUnavailable = item.productId.brand && 
-            (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true);
+            (item.productId.category.isListed === false || item.productId.category.isDeleted === true);
 
-          if (isProductUnavailable || isCategoryUnavailable || isBrandUnavailable) {
-            // Product, category, or brand is blocked/unlisted - show as unavailable
+          if (isProductUnavailable || isCategoryUnavailable) {
+            // Product or category is blocked/unlisted - show as unavailable
             itemObj.isUnavailable = true;
-            if (isProductUnavailable) {
-              itemObj.unavailableReason = 'Product unavailable';
-            } else if (isCategoryUnavailable) {
-              itemObj.unavailableReason = 'Category unavailable';
-            } else if (isBrandUnavailable) {
-              itemObj.unavailableReason = 'Brand unavailable';
-            }
+            itemObj.unavailableReason = isProductUnavailable ? 'Product unavailable' : 'Category unavailable';
             unavailableCartItems.push(itemObj);
           } else {
             availableCartItems.push(itemObj);
@@ -555,9 +547,9 @@ exports.updateCartQuantity = async (req, res) => {
       });
     }
 
-    // Check product, category, and brand availability - FIXED: using isActive instead of isListed
+    // Check product, category, and brand availability
     if (!product.isListed || product.isDeleted ||
-        (product.category && (product.category.isActive === false || product.category.isDeleted === true)) ||
+        (product.category && (product.category.isListed === false || product.category.isDeleted === true)) ||
         (product.brand && (product.brand.isActive === false || product.brand.isDeleted === true))) {
       return res.status(403).json({
         success: false,
@@ -685,20 +677,14 @@ exports.removeOutOfStockItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Find user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Find user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
-        populate: [
-          {
-            path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
-          },
-          {
-            path: 'brand',
-            select: 'name brandOffer isActive isDeleted'
-          }
-        ]
+        populate: {
+          path: 'category',
+          select: 'name isListed isDeleted categoryOffer'
+        }
       });
 
     if (!cart) {
@@ -718,9 +704,9 @@ exports.removeOutOfStockItems = async (req, res) => {
         return false; // Remove this item
       }
 
-      // Enhanced category check - FIXED: using isActive instead of isListed
+      // Enhanced category check
       if (item.productId.category && 
-          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
+          (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
         return false; // Remove this item
       }
 
@@ -780,20 +766,14 @@ exports.validateCartItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Find user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Find user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
-        populate: [
-          {
-            path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
-          },
-          {
-            path: 'brand',
-            select: 'name brandOffer isActive isDeleted'
-          }
-        ]
+        populate: {
+          path: 'category',
+          select: 'name isListed isDeleted categoryOffer'
+        }
       });
 
     if (!cart) {
@@ -820,7 +800,7 @@ exports.validateCartItems = async (req, res) => {
         totalPrice: item.totalPrice
       };
 
-      // Check availability (variant-specific) - FIXED: using isActive instead of isListed
+      // Check availability (variant-specific)
       let isAvailable = true;
       let reason = '';
 
@@ -830,7 +810,7 @@ exports.validateCartItems = async (req, res) => {
         isAvailable = false;
         reason = 'Product unavailable';
       } else if (item.productId.category && 
-                 (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
+                 (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
         isAvailable = false;
         reason = 'Category unavailable';
       } else if (item.productId.brand && 
@@ -908,14 +888,14 @@ exports.loadCheckout = async (req, res) => {
     const userAddresses = await Address.findOne({ userId });
     const addresses = userAddresses ? userAddresses.address : [];
 
-    // Get user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Get user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
           {
             path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
+            select: 'name isListed isDeleted categoryOffer'
           },
           {
             path: 'brand',
@@ -930,7 +910,7 @@ exports.loadCheckout = async (req, res) => {
     let totalDiscount = 0;
 
     if (cart && cart.items) {
-      // Filter out unavailable items and calculate totals - FIXED: using isActive instead of isListed
+      // Filter out unavailable items and calculate totals
       cartItems = cart.items.filter(item => {
         // Check if product exists and is available
         if (!item.productId || 
@@ -941,7 +921,7 @@ exports.loadCheckout = async (req, res) => {
 
         // Check category availability
         if (item.productId.category && 
-            (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
+            (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
           return false;
         }
 
@@ -1004,14 +984,14 @@ exports.validateCheckoutStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Find user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Find user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
           {
             path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
+            select: 'name isListed isDeleted categoryOffer'
           },
           {
             path: 'brand',
@@ -1060,9 +1040,9 @@ exports.validateCheckoutStock = async (req, res) => {
         continue; // Skip this item - it won't be in checkout
       }
 
-      // Check category availability - FIXED: using isActive instead of isListed
+      // Check category availability
       if (item.productId.category && 
-          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
+          (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
         validationResults.unavailableItems.push({
           ...itemData,
           reason: 'Product category is no longer available'
@@ -1158,20 +1138,14 @@ exports.validateCartStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Find user's cart with populated product data - FIXED: using isActive instead of isListed
+    // Find user's cart with populated product data
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
-        populate: [
-          {
-            path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
-          },
-          {
-            path: 'brand',
-            select: 'name brandOffer isActive isDeleted'
-          }
-        ]
+        populate: {
+          path: 'category',
+          select: 'name isListed isDeleted categoryOffer'
+        }
       });
 
     if (!cart || cart.items.length === 0) {
@@ -1204,7 +1178,7 @@ exports.validateCartStock = async (req, res) => {
         totalPrice: item.totalPrice
       };
 
-      // Check availability (variant-specific) - FIXED: using isActive instead of isListed
+      // Check availability (variant-specific)
       let isAvailable = true;
       let reason = '';
 
@@ -1215,7 +1189,7 @@ exports.validateCartStock = async (req, res) => {
         reason = 'Product unavailable';
         errorMessages.push(`${item.productId.productName} is no longer available`);
       } else if (item.productId.category && 
-                 (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
+                 (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
         isAvailable = false;
         reason = 'Category unavailable';
         errorMessages.push(`${item.productId.productName} category is no longer available`);

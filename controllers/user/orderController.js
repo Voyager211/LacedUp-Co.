@@ -61,14 +61,14 @@ exports.placeOrder = async (req, res) => {
       });
     }
 
-    // Get user's cart with populated product data
+    // Get user's cart with populated product data - FIXED: using isActive instead of isListed
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
           {
             path: 'category',
-            select: 'name isListed isDeleted isActive categoryOffer'
+            select: 'name isActive isDeleted categoryOffer'
           },
           {
             path: 'brand',
@@ -122,9 +122,9 @@ exports.placeOrder = async (req, res) => {
         continue;
       }
 
-      // Check category and brand availability
+      // Check category and brand availability - FIXED: using isActive instead of isListed
       if ((item.productId.category &&
-          (item.productId.category.isListed === false || item.productId.category.isDeleted === true || item.productId.category.isActive === false)) ||
+          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) ||
           (item.productId.brand && (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true))) {
         stockIssues.push({
           productName: item.productId.productName,
@@ -442,13 +442,13 @@ exports.placeOrderWithValidation = async (req, res) => {
     const userId = req.user ? req.user._id : req.session.userId;
     const { deliveryAddressId, paymentMethod } = req.body;
 
-    // First, validate cart stock
+    // First, validate cart stock - FIXED: using isActive instead of isListed
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [{
           path: 'category',
-          select: 'name isListed isDeleted isActive categoryOffer'
+          select: 'name isActive isDeleted categoryOffer'
         }, {
           path: 'brand',
           select: 'name isActive isDeleted brandOffer'
@@ -476,9 +476,9 @@ exports.placeOrderWithValidation = async (req, res) => {
         continue;
       }
 
-      // Check category and brand availability
+      // Check category and brand availability - FIXED: using isActive instead of isListed
       if ((item.productId.category &&
-          (item.productId.category.isListed === false || item.productId.category.isDeleted === true || item.productId.category.isActive === false)) ||
+          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) ||
           (item.productId.brand && (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true))) {
         stockIssues.push({
           productName: item.productId.productName,

@@ -3,18 +3,20 @@
   const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
   const variantStock = variant ? variant.stock : 0;
   const isOutOfStock = variantStock === 0;
+  const isUnavailable = item.isUnavailable || false;
   const isLowStock = variantStock > 0 && variantStock <= 5;
-  const stockClass = isOutOfStock ? 'out-of-stock' : (isLowStock ? 'low-stock' : 'in-stock');
+  const stockClass = isUnavailable ? 'unavailable' : (isOutOfStock ? 'out-of-stock' : (isLowStock ? 'low-stock' : 'in-stock'));
 %>
 
-<div class="cart-item-card <%= isOutOfStock ? 'item-out-of-stock' : '' %>" 
+<div class="cart-item-card <%= isOutOfStock ? 'item-out-of-stock' : '' %> <%= isUnavailable ? 'item-unavailable' : '' %>" 
      data-product-id="<%= item.productId._id %>"
      data-variant-id="<%= item.variantId %>"
      data-regular-price="<%= item.productId.regularPrice %>"
      data-sale-price="<%= item.productId.salePrice %>"
      data-product-offer="<%= item.productId.productOffer || 0 %>"
      data-variant-stock="<%= variantStock %>"
-     data-is-out-of-stock="<%= isOutOfStock %>">
+     data-is-out-of-stock="<%= isOutOfStock %>"
+     data-is-unavailable="<%= isUnavailable %>">
   
   <div class="row g-3 align-items-center">
     <!-- Product Image -->
@@ -25,7 +27,11 @@
                alt="<%= item.productId.productName %>"
                class="product-image"
                onerror="this.src='https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png'">
-          <% if (isOutOfStock) { %>
+          <% if (isUnavailable) { %>
+            <div class="stock-overlay">
+              <span class="stock-badge unavailable-badge">Unavailable</span>
+            </div>
+          <% } else if (isOutOfStock) { %>
             <div class="stock-overlay">
               <span class="stock-badge">Out of Stock</span>
             </div>
@@ -38,7 +44,7 @@
     <div class="col-md-5 col-8">
       <div class="product-details">
         <div class="product-brand">
-          <%= item.productId.brand.name %>
+          <%= item.productId.brand ? item.productId.brand.name : 'Brand' %>
         </div>
         <h6 class="product-name">
           <a href="/product/<%= item.productId.slug || item.productId._id %>" class="product-link">
@@ -75,7 +81,10 @@
 
         <!-- Stock Status -->
         <div class="stock-status <%= stockClass %>">
-          <% if (isOutOfStock) { %>
+          <% if (isUnavailable) { %>
+            <i class="bi bi-ban text-secondary me-1"></i>
+            <span class="text-secondary">Unavailable</span>
+          <% } else if (isOutOfStock) { %>
             <i class="bi bi-x-circle text-danger me-1"></i>
             <span class="text-danger">Out of Stock</span>
           <% } else if (isLowStock) { %>
@@ -97,15 +106,17 @@
           <label class="quantity-label">Quantity</label>
           <div class="quantity-controls">
             <button class="qty-btn qty-decrease" 
-                    <%= (item.quantity <= 1 || isOutOfStock) ? 'disabled' : '' %>>
+                    <%= (item.quantity <= 1 || isOutOfStock || isUnavailable) ? 'disabled' : '' %>>
               <i class="bi bi-dash"></i>
             </button>
             <input type="number" class="qty-input" 
                    value="<%= item.quantity %>" 
                    min="1" max="5" readonly>
             <button class="qty-btn qty-increase" 
-                    <%= (item.quantity >= 5 || item.quantity >= variantStock || isOutOfStock) ? 'disabled' : '' %>
-                    <% if (item.quantity >= 5) { %>
+                    <%= (item.quantity >= 5 || item.quantity >= variantStock || isOutOfStock || isUnavailable) ? 'disabled' : '' %>
+                    <% if (isUnavailable) { %>
+                      title="This item is unavailable"
+                    <% } else if (item.quantity >= 5) { %>
                       title="Maximum 5 items allowed"
                     <% } else if (item.quantity >= variantStock) { %>
                       title="Not enough stock available"

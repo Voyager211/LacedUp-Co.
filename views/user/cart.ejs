@@ -16,6 +16,7 @@
     <%
       // Calculate cart statistics using the separated arrays
       const outOfStockItems = outOfStockCartItems || [];
+      const unavailableItems = unavailableCartItems || [];
       const availableItems = availableCartItems || [];
       
       let subtotal = 0;
@@ -24,6 +25,7 @@
       let availableItemsCount = 0;
       let availableQuantity = 0;
       let outOfStockQuantity = 0;
+      let unavailableQuantity = 0;
       let amountAfterDiscount = 0;
 
       // Calculate totals for available items only
@@ -46,12 +48,19 @@
         outOfStockQuantity += item.quantity;
       });
 
-      // Total item count includes both available and out of stock
-      totalItemCount = availableQuantity + outOfStockQuantity;
+      // Calculate totals for unavailable items (for display purposes)
+      unavailableItems.forEach(item => {
+        unavailableQuantity += item.quantity;
+      });
+
+      // Total item count includes available, out of stock, and unavailable
+      totalItemCount = availableQuantity + outOfStockQuantity + unavailableQuantity;
 
       const shipping = amountAfterDiscount > 500 ? 0 : 50;
       const total = amountAfterDiscount + shipping;
       const outOfStockItemsCount = outOfStockItems.length;
+      const unavailableItemsCount = unavailableItems.length;
+      const totalUnavailableItems = outOfStockItemsCount + unavailableItemsCount;
     %>
 
     <!-- Cart Header - Styled like top controls bar -->
@@ -59,19 +68,27 @@
       <h1 class="cart-title">Cart (<%= totalItemCount %>)</h1>
     </div>
 
-    <!-- Out-of-Stock Alert -->
-    <% if (outOfStockItems.length > 0) { %>
-      <div class="alert-container" id="outOfStockBanner">
+    <!-- Unavailable Items Alert -->
+    <% if (totalUnavailableItems > 0) { %>
+      <div class="alert-container" id="unavailableBanner">
         <div class="alert-content">
           <div class="alert-info">
             <i class="bi bi-exclamation-triangle-fill"></i>
             <div class="alert-text">
-              <h6><%= outOfStockItems.length %> item<%= outOfStockItems.length > 1 ? 's' : '' %> unavailable</h6>
-              <p>These items are out of stock and won't be included in checkout</p>
+              <h6><%= totalUnavailableItems %> item<%= totalUnavailableItems > 1 ? 's' : '' %> unavailable</h6>
+              <p>
+                <% if (outOfStockItemsCount > 0 && unavailableItemsCount > 0) { %>
+                  <%= outOfStockItemsCount %> out of stock, <%= unavailableItemsCount %> unavailable - won't be included in checkout
+                <% } else if (outOfStockItemsCount > 0) { %>
+                  These items are out of stock and won't be included in checkout
+                <% } else { %>
+                  These items are unavailable and won't be included in checkout
+                <% } %>
+              </p>
             </div>
           </div>
           <div class="alert-actions">
-            <button class="btn btn-danger btn-sm remove-all-out-of-stock-btn">
+            <button class="btn btn-danger btn-sm remove-all-unavailable-btn">
               <i class="bi bi-trash me-1"></i>Remove All
             </button>
             <a href="/shop" class="btn btn-primary btn-sm">
@@ -117,7 +134,7 @@
           <!-- Summary Content -->
           <div class="summary-content">
             <!-- Availability Breakdown -->
-            <% if (outOfStockItemsCount > 0) { %>
+            <% if (totalUnavailableItems > 0) { %>
               <div class="availability-section">
                 <h6 class="section-subtitle">Cart Status</h6>
                 <div class="availability-item">
@@ -128,14 +145,26 @@
                     <%= availableItemsCount %> items (<%= availableQuantity %> qty)
                   </span>
                 </div>
-                <div class="availability-item">
-                  <span class="availability-label">
-                    <i class="bi bi-x-circle text-danger me-1"></i>Out of Stock
-                  </span>
-                  <span class="availability-count">
-                    <%= outOfStockItemsCount %> items (<%= outOfStockQuantity %> qty)
-                  </span>
-                </div>
+                <% if (outOfStockItemsCount > 0) { %>
+                  <div class="availability-item">
+                    <span class="availability-label">
+                      <i class="bi bi-x-circle text-danger me-1"></i>Out of Stock
+                    </span>
+                    <span class="availability-count">
+                      <%= outOfStockItemsCount %> items (<%= outOfStockQuantity %> qty)
+                    </span>
+                  </div>
+                <% } %>
+                <% if (unavailableItemsCount > 0) { %>
+                  <div class="availability-item">
+                    <span class="availability-label">
+                      <i class="bi bi-ban text-secondary me-1"></i>Unavailable
+                    </span>
+                    <span class="availability-count">
+                      <%= unavailableItemsCount %> items (<%= unavailableQuantity %> qty)
+                    </span>
+                  </div>
+                <% } %>
               </div>
             <% } %>
 
@@ -565,13 +594,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Handle remove all out of stock items
-  const removeAllOutOfStockBtn = document.querySelector('.remove-all-out-of-stock-btn');
-  if (removeAllOutOfStockBtn) {
-    removeAllOutOfStockBtn.addEventListener('click', function() {
+  // Handle remove all unavailable items (both out-of-stock and blocked/unlisted)
+  const removeAllUnavailableBtn = document.querySelector('.remove-all-unavailable-btn');
+  if (removeAllUnavailableBtn) {
+    removeAllUnavailableBtn.addEventListener('click', function() {
       Swal.fire({
         title: 'Remove Unavailable Items?',
-        text: 'This will remove all out-of-stock items from your cart.',
+        text: 'This will remove all out-of-stock and unavailable items from your cart.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#dc3545',
@@ -584,7 +613,7 @@ document.addEventListener('DOMContentLoaded', function() {
           this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Removing...';
           this.disabled = true;
           
-          // Make API call to remove out of stock items
+          // Make API call to remove out of stock items (this endpoint handles both out-of-stock and unavailable)
           fetch('/cart/remove-out-of-stock', {
             method: 'POST',
             headers: {
@@ -607,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           })
           .catch(error => {
-            console.error('Error removing out of stock items:', error);
+            console.error('Error removing unavailable items:', error);
             Swal.fire({
               icon: 'error',
               title: 'Error',
@@ -756,6 +785,21 @@ document.addEventListener('DOMContentLoaded', function() {
   background: #dc3545;
 }
 
+.cart-item-card.item-unavailable {
+  border-color: #6c757d;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.cart-item-card.item-unavailable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: #6c757d;
+}
+
 /* === PRODUCT IMAGE === */
 .product-image-container {
   position: relative;
@@ -796,6 +840,10 @@ document.addEventListener('DOMContentLoaded', function() {
   border-radius: 15px;
   font-weight: 600;
   font-size: 0.75rem;
+}
+
+.stock-badge.unavailable-badge {
+  color: #6c757d;
 }
 
 /* === PRODUCT DETAILS === */
