@@ -31,6 +31,7 @@ const userReviewRoutes = require('./routes/user/review-routes');
 const userProfileRoutes = require('./routes/user/profile-routes');
 const userAddressRoutes = require('./routes/user/address-routes');
 const userCartRoutes = require('./routes/user/cart-routes');
+const userOrderRoutes = require('./routes/user/order-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -101,6 +102,7 @@ app.use('/', userReviewRoutes);
 app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
 app.use('/cart', userCartRoutes);
+app.use('/', userOrderRoutes);
 
 
 

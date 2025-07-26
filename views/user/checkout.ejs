@@ -1,0 +1,996 @@
+<% var title = "Checkout" %>
+
+<!-- Breadcrumbs - Positioned correctly below navbar -->
+<div class="container my-4">
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Cart', href: '/cart' },
+      { label: 'Checkout' }
+    ]
+  }) %>
+</div>
+
+<!-- Main Checkout Container -->
+<div class="container pb-4">
+    <!-- Checkout Header - Styled like cart header bar -->
+    <div class="checkout-header-bar">
+        <h1 class="checkout-title">
+            <i class="bi bi-credit-card me-2"></i>Checkout
+        </h1>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-checkout-content">
+        <!-- Left Side - Address and Payment (Vertical Stack) -->
+        <div class="checkout-left">
+            <!-- Delivery Address Section -->
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-geo-alt"></i>
+                    Delivery Address
+                    <button class="btn-add-new-address" onclick="showAddAddressModal()">
+                        <i class="bi bi-plus-circle"></i> Add New Address
+                    </button>
+                </div>
+
+                <!-- Address Cards -->
+                <% if (addresses && addresses.length > 0) { %>
+                    <% addresses.forEach((address, index) => { %>
+                        <div class="address-card <%= index === 0 ? 'selected' : '' %>">
+                            <label class="d-flex align-items-start">
+                                <input type="radio" name="deliveryAddress" value="<%= address._id %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
+                                <div class="address-info flex-grow-1">
+                                    <h6><%= address.name %></h6>
+                                    <p><%= address.addressType %></p>
+                                    <p><%= address.landMark %></p>
+                                    <p><%= address.city %>, <%= address.state %></p>
+                                    <p>PIN: <%= address.pincode %></p>
+                                    <p><i class="bi bi-telephone"></i> <%= address.phone %></p>
+                                    <% if (address.altPhone) { %>
+                                        <p><i class="bi bi-telephone"></i> <%= address.altPhone %> (Alt)</p>
+                                    <% } %>
+                                </div>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="editAddress('<%= address._id %>')">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAddress('<%= address._id %>')">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </label>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div class="text-center py-4">
+                        <p class="text-muted">No addresses found. Please add a delivery address to continue.</p>
+                        <button class="btn btn-primary" onclick="showAddAddressModal()">
+                            <i class="bi bi-plus-circle"></i> Add Your First Address
+                        </button>
+                    </div>
+                <% } %>
+            </div>
+
+            <!-- Payment Method Section -->
+            <div class="section-card">
+                <div class="section-title">
+                    <i class="bi bi-credit-card"></i>
+                    Payment Method
+                </div>
+
+                <!-- Cash on Delivery -->
+                <div class="payment-option selected">
+                    <label class="d-flex align-items-center">
+                        <input type="radio" name="paymentMethod" value="cod" checked onclick="selectPayment(this)">
+                        <div class="payment-icon">
+                            <i class="bi bi-cash-coin"></i>
+                        </div>
+                        <div class="payment-info">
+                            <h6>Cash on Delivery</h6>
+                            <p>Pay when your order is delivered</p>
+                        </div>
+                    </label>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle"></i> You can pay in cash when your order arrives at your doorstep.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Credit/Debit Card -->
+                <div class="payment-option">
+                    <label class="d-flex align-items-center">
+                        <input type="radio" name="paymentMethod" value="card" onclick="selectPayment(this)">
+                        <div class="payment-icon">
+                            <i class="bi bi-credit-card"></i>
+                        </div>
+                        <div class="payment-info">
+                            <h6>Credit/Debit Card</h6>
+                            <p>Visa, MasterCard, American Express</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- UPI Payment -->
+                <div class="payment-option">
+                    <label class="d-flex align-items-center">
+                        <input type="radio" name="paymentMethod" value="upi" onclick="selectPayment(this)">
+                        <div class="payment-icon">
+                            <i class="bi bi-phone"></i>
+                        </div>
+                        <div class="payment-info">
+                            <h6>UPI Payment</h6>
+                            <p>Pay using Google Pay, PhonePe, Paytm</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Net Banking -->
+                <div class="payment-option">
+                    <label class="d-flex align-items-center">
+                        <input type="radio" name="paymentMethod" value="netbanking" onclick="selectPayment(this)">
+                        <div class="payment-icon">
+                            <i class="bi bi-bank"></i>
+                        </div>
+                        <div class="payment-info">
+                            <h6>Net Banking</h6>
+                            <p>Pay directly from your bank account</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Continue Button -->
+                <button class="btn-continue" onclick="proceedToPayment()">
+                    <i class="bi bi-check-circle"></i> PLACE ORDER
+                </button>
+            </div>
+            <!-- Back to Cart -->
+            <a href="/cart" class="btn-back">
+                <i class="bi bi-arrow-left"></i> Back to Cart
+            </a>
+        </div>
+
+        <!-- Right Side - Order Summary (styled exactly like cart page) -->
+        <div class="checkout-right">
+            <div class="order-summary">
+                <!-- Summary Header -->
+                <div class="summary-header">
+                    <h5 class="summary-title">
+                        <i class="bi bi-receipt me-2"></i>Order Summary
+                    </h5>
+                </div>
+
+                <!-- Summary Content -->
+                <div class="summary-content">
+                    <div class="section-subtitle">ITEMS IN CART (<%= totalItemCount || 0 %>)</div>
+
+                    <!-- Order Items -->
+                    <% if (cartItems && cartItems.length > 0) { %>
+                        <% cartItems.forEach(item => { %>
+                            <div class="order-item">
+                                <% 
+                                    // Multiple fallback options for product image
+                                    let imageSrc = '/images/placeholder.svg';
+                                    let productName = 'Product Name';
+                                    
+                                    // Try to get image from productId (main fallback)
+                                    if (item.productId && item.productId.mainImage) {
+                                        // Check if mainImage already contains the full path
+                                        imageSrc = item.productId.mainImage.startsWith('/') ? 
+                                                   item.productId.mainImage : 
+                                                   '/uploads/products/' + item.productId.mainImage;
+                                        productName = item.productId.productName || 'Product Name';
+                                    }
+                                    // Try to get image from product (additional fallback)
+                                    else if (item.product && item.product.mainImage) {
+                                        imageSrc = item.product.mainImage.startsWith('/') ? 
+                                                   item.product.mainImage : 
+                                                   '/uploads/products/' + item.product.mainImage;
+                                        productName = item.product.productName || 'Product Name';
+                                    }
+                                    // Try to get image from subImages if mainImage is not available
+                                    else if (item.productId && item.productId.subImages && item.productId.subImages.length > 0) {
+                                        const subImage = item.productId.subImages[0];
+                                        imageSrc = subImage.startsWith('/') ? 
+                                                   subImage : 
+                                                   '/uploads/products/' + subImage;
+                                        productName = item.productId.productName || 'Product Name';
+                                    }
+                                    else if (item.product && item.product.subImages && item.product.subImages.length > 0) {
+                                        const subImage = item.product.subImages[0];
+                                        imageSrc = subImage.startsWith('/') ? 
+                                                   subImage : 
+                                                   '/uploads/products/' + subImage;
+                                        productName = item.product.productName || 'Product Name';
+                                    }
+                                %>
+                                <img src="<%= imageSrc %>" 
+                                     alt="<%= productName %>"
+                                     class="item-image" 
+                                     onerror="this.onerror=null; this.src='/images/placeholder.svg';"
+                                     loading="lazy">
+                                <div class="item-details">
+                                    <h6><%= item.productId.productName %></h6>
+                                    <p>Size: <%= item.size %> | Qty: <%= item.quantity %></p>
+                                </div>
+                                <div class="item-price">₹<%= Math.round(item.totalPrice) %></div>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="order-item">
+                            <img src="/images/placeholder.svg" alt="Product" class="item-image">
+                            <div class="item-details">
+                                <h6>No items in cart</h6>
+                                <p>Please add items to continue</p>
+                            </div>
+                            <div class="item-price">₹0</div>
+                        </div>
+                    <% } %>
+
+                    <!-- Price Breakdown -->
+                    <div class="price-breakdown">
+                        <div class="summary-row">
+                            <span class="price-label">Subtotal (<%= totalItemCount || 0 %> items)</span>
+                            <span class="price-value">₹<%= subtotal || 0 %></span>
+                        </div>
+                        <% if (totalDiscount && totalDiscount > 0) { %>
+                            <div class="summary-row discount-row">
+                                <span class="price-label">
+                                    <i class="bi bi-tag me-1"></i>Discount
+                                </span>
+                                <span class="price-value text-success">-₹<%= totalDiscount %></span>
+                            </div>
+                        <% } %>
+                        <div class="summary-row">
+                            <span class="price-label">
+                                <i class="bi bi-truck me-1"></i>Shipping
+                            </span>
+                            <span class="price-value">
+                                <% if (shipping && shipping > 0) { %>
+                                    ₹<%= shipping %>
+                                <% } else { %>
+                                    <span class="text-success fw-bold">FREE</span>
+                                <% } %>
+                            </span>
+                        </div>
+
+                        <div class="price-divider"></div>
+
+                        <div class="summary-row total">
+                            <span class="price-label">Total</span>
+                            <span class="price-value">₹<%= total || 0 %></span>
+                        </div>
+                    </div>
+
+                    <!-- Place Order Button -->
+                    <button class="btn-continue" onclick="proceedToPayment()">
+                        <i class="bi bi-check-circle"></i> PLACE ORDER
+                    </button>
+
+                    <!-- Back to Cart -->
+                    <div class="text-center mt-3">
+                        <a href="/cart" class="text-muted text-decoration-none">
+                            <i class="bi bi-arrow-left"></i> Back to Cart
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SweetAlert2 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<script>
+// ========= CHECKOUT VALIDATION FUNCTIONALITY =========
+console.log('Checkout page loaded - initializing validation functionality');
+
+// Validate checkout stock before operations
+async function validateCheckoutStock() {
+  try {
+    console.log('Validating checkout stock...');
+    const response = await fetch('/cart/validate-checkout-stock', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+
+    console.log('Checkout validation response status:', response.status);
+    
+    const result = await response.json();
+    console.log('Checkout validation response:', result);
+    
+    return result;
+  } catch (error) {
+    console.error('Error validating checkout stock:', error);
+    return { success: false, allValid: false, errorMessage: 'Failed to validate cart items. Please try again.' };
+  }
+}
+
+// Show checkout validation error with SweetAlert
+function showCheckoutValidationError(validation) {
+  console.log('Showing checkout validation error:', validation);
+  
+  const errorMessage = validation.errorMessage || validation.message || 'Some items in your cart are no longer available';
+  
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'error',
+      title: 'Cannot Place Order',
+      html: errorMessage.replace(/\n/g, '<br>'),
+      confirmButtonColor: '#dc3545',
+      confirmButtonText: 'Return to Cart',
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      width: '600px'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = '/cart';
+      }
+    });
+  } else {
+    alert(errorMessage);
+    window.location.href = '/cart';
+  }
+}
+
+// Validate checkout on page load/refresh
+async function validateCheckoutOnLoad() {
+  console.log('Validating checkout on page load...');
+
+  try {
+    const validation = await validateCheckoutStock();
+    
+    // Check if validation failed - for checkout validation, we check if there are any invalid items
+    if (!validation.success || (validation.validationResults && 
+        (validation.validationResults.invalidItems.length > 0 || 
+         validation.validationResults.outOfStockItems.length > 0 || 
+         validation.validationResults.unavailableItems.length > 0))) {
+      // Show validation error after a short delay to ensure page is fully loaded
+      setTimeout(() => {
+        showCheckoutValidationError(validation);
+      }, 1000);
+    } else {
+      console.log('Checkout validation passed - all items are available');
+    }
+  } catch (error) {
+    console.error('Error validating checkout on load:', error);
+  }
+}
+
+// Test function for debugging validation
+window.testCheckoutValidation = async function() {
+  console.log('=== TESTING CHECKOUT VALIDATION ===');
+  try {
+    const validation = await validateCheckoutStock();
+    console.log('Test checkout validation result:', validation);
+    
+    if (!validation.success || !validation.allValid) {
+      console.log('Checkout validation failed - should show error');
+      showCheckoutValidationError(validation);
+    } else {
+      console.log('Checkout validation passed - no errors');
+      alert('Checkout validation passed - no stock issues found');
+    }
+    
+    return validation;
+  } catch (error) {
+    console.error('Test checkout validation error:', error);
+  }
+};
+
+function selectAddress(radio) {
+    // Remove selected class from all address cards
+    document.querySelectorAll('.address-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    // Add selected class to the parent of the clicked radio
+    radio.closest('.address-card').classList.add('selected');
+}
+
+function selectPayment(radio) {
+    // Remove selected class from all payment options
+    document.querySelectorAll('.payment-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    // Add selected class to the parent of the clicked radio
+    radio.closest('.payment-option').classList.add('selected');
+    
+    // Update button text based on payment method
+    const continueButtons = document.querySelectorAll('.btn-continue');
+    continueButtons.forEach(button => {
+        if (radio.value === 'cod') {
+            button.innerHTML = '<i class="bi bi-check-circle"></i> PLACE ORDER';
+        } else {
+            button.innerHTML = '<i class="bi bi-arrow-right"></i> CONTINUE TO PAYMENT';
+        }
+    });
+}
+
+function showAddAddressModal() {
+    // Redirect to add address page
+    window.location.href = '/address/add?redirect=checkout';
+}
+
+function editAddress(addressId) {
+    // Implement edit address functionality
+    alert('Edit address functionality for ' + addressId);
+}
+
+function deleteAddress(addressId) {
+    // Implement delete address functionality
+    if (confirm('Are you sure you want to delete this address?')) {
+        alert('Delete address functionality for ' + addressId);
+    }
+}
+
+function proceedToPayment() {
+    // Get selected address and payment method
+    const selectedAddress = document.querySelector('input[name="deliveryAddress"]:checked');
+    const selectedPayment = document.querySelector('input[name="paymentMethod"]:checked');
+    
+    if (!selectedAddress || !selectedPayment) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Missing Information',
+                text: 'Please select both delivery address and payment method',
+                confirmButtonColor: '#dc3545'
+            });
+        } else {
+            alert('Please select both delivery address and payment method');
+        }
+        return;
+    }
+    
+    // Show loading state
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Validating...';
+    button.disabled = true;
+    
+    // First validate stock before placing order
+    validateCheckoutStock()
+    .then(validation => {
+        console.log('Validation result in proceedToPayment:', validation);
+        
+        // Check if validation failed - only fail if there are NO checkout eligible items
+        if (!validation.success) {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            // Show validation error
+            showCheckoutValidationError(validation);
+            return;
+        }
+        
+        // Check if there are any items eligible for checkout
+        if (validation.checkoutEligibleItems === 0 || 
+            (validation.validationResults && validation.validationResults.validItems.length === 0)) {
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+            
+            // Create a proper error message for no checkout items
+            const errorMessage = validation.validationResults && 
+                (validation.validationResults.outOfStockItems.length > 0 || 
+                 validation.validationResults.unavailableItems.length > 0) ?
+                'All items in your cart are now out of stock or unavailable. Please return to your cart to add available items.' :
+                'No items available for checkout. Please add items to your cart.';
+            
+            showCheckoutValidationError({
+                success: false,
+                errorMessage: errorMessage,
+                validationResults: validation.validationResults
+            });
+            return;
+        }
+        
+        // If validation passes, proceed with order placement
+        button.innerHTML = '<i class="bi bi-hourglass-split"></i> Processing...';
+        
+        // Prepare order data
+        const orderData = {
+            deliveryAddressId: selectedAddress.value,
+            paymentMethod: selectedPayment.value
+        };
+        
+        // Send order placement request
+        console.log('Sending order placement request with data:', orderData);
+        return fetch('/place-order', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(orderData)
+        });
+    })
+    .then(response => {
+        if (!response) return; // Validation failed, already handled
+        
+        console.log('Order placement response status:', response.status);
+        console.log('Order placement response ok:', response.ok);
+        
+        // Always try to parse JSON response, even for error status codes
+        return response.json().then(data => {
+            return { data, status: response.status, ok: response.ok };
+        });
+    })
+    .then(result => {
+        if (!result) return; // Validation failed, already handled
+        
+        const { data, status, ok } = result;
+        console.log('Order placement response data:', data);
+        
+        if (ok && data.success) {
+            // Redirect to order success page
+            window.location.href = data.redirectUrl;
+        } else {
+            // Handle error responses (including 400 status codes)
+            if (data.code === 'STOCK_VALIDATION_FAILED') {
+                console.log('Stock validation failed, showing error dialog');
+                showCheckoutValidationError({
+                    success: false,
+                    allValid: false,
+                    errorMessage: data.message,
+                    invalidItems: data.invalidItems || []
+                });
+            } else {
+                // Show generic error message
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Order Failed',
+                        text: data.message || 'Failed to place order. Please try again.',
+                        confirmButtonColor: '#dc3545'
+                    });
+                } else {
+                    alert(data.message || 'Failed to place order. Please try again.');
+                }
+            }
+            
+            // Restore button state
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+    })
+    .catch(error => {
+        console.error('Error placing order:', error);
+        
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'An error occurred while placing your order. Please try again.',
+                confirmButtonColor: '#dc3545'
+            });
+        } else {
+            alert('An error occurred while placing your order. Please try again.');
+        }
+        
+        // Restore button state
+        button.innerHTML = originalText;
+        button.disabled = false;
+    });
+}
+
+function placeOrder() {
+    // This function is kept for compatibility but now calls proceedToPayment
+    proceedToPayment();
+}
+
+// Initialize validation on page load
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Checkout page DOM loaded - setting up validation');
+  
+  // Validate checkout on page load after a short delay
+  setTimeout(() => {
+    validateCheckoutOnLoad();
+  }, 500);
+  
+  console.log('Checkout validation initialization complete');
+});
+</script>
+
+<style>
+/* ========= CHECKOUT PAGE DESIGN ========= */
+
+/* === GLOBAL STYLES === */
+.container {
+    max-width: 1200px;
+}
+
+/* === CHECKOUT HEADER BAR (styled like cart header bar) === */
+.checkout-header-bar {
+    background-color: white;
+    border-radius: 12px;
+    border-top: 4px solid #E03A2F;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 100;
+}
+
+.checkout-header-bar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.checkout-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #000;
+    margin-bottom: 0;
+    letter-spacing: -0.5px;
+}
+
+.step-indicator {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 40px;
+}
+.step {
+    display: flex;
+    align-items: center;
+    padding: 10px 20px;
+    border-radius: 25px;
+    margin: 0 10px;
+    font-weight: 500;
+}
+.step.active {
+    background-color: #000;
+    color: white;
+}
+.step.inactive {
+    background-color: #e9ecef;
+    color: #6c757d;
+}
+.step-number {
+    background-color: currentColor;
+    color: white;
+    border-radius: 50%;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-size: 12px;
+}
+.step.active .step-number {
+    background-color: white;
+    color: black;
+}
+.main-checkout-content {
+    display: flex;
+    gap: 30px;
+    align-items: flex-start;
+}
+.checkout-left {
+    flex: 2;
+}
+.checkout-right {
+    flex: 1;
+}
+.section-card {
+    background: white;
+    border-radius: 10px;
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+.section-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+}
+.section-title i {
+    margin-right: 10px;
+}
+.address-card {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.address-card:hover {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+.address-card.selected {
+    border-color: #000;
+    background-color: #f8f9fa;
+}
+.address-card input[type="radio"] {
+    margin-right: 10px;
+    accent-color: #dc3545;
+}
+.address-info h6 {
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+.address-info p {
+    margin: 2px 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+.btn-add-address {
+    border: 2px dashed #007bff;
+    color: #007bff;
+    background: transparent;
+    padding: 15px;
+    width: 100%;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+.btn-add-address:hover {
+    background-color: #007bff;
+    color: white;
+}
+
+/* Add New Address Button */
+.btn-add-new-address {
+    background-color: #000;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    margin-left: auto;
+}
+.btn-add-new-address:hover {
+    background-color: #dc3545;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.payment-option {
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+.payment-option:hover {
+    border-color: #dc3545;
+    background-color: #fff5f5;
+}
+.payment-option.selected {
+    border-color: #000;
+    background-color: #f8f9fa;
+}
+.payment-option input[type="radio"] {
+    margin-right: 15px;
+    accent-color: #dc3545;
+}
+.payment-icon {
+    font-size: 24px;
+    margin-right: 15px;
+}
+.payment-info h6 {
+    margin-bottom: 5px;
+    font-weight: 600;
+}
+.payment-info p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 14px;
+}
+
+/* === ORDER SUMMARY CARD (styled exactly like cart page) === */
+.order-summary {
+    background: white;
+    border-radius: 12px;
+    border: 3px solid #E03A2F;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    position: sticky;
+    top: 20px;
+    overflow: hidden;
+}
+
+.order-summary:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.15);
+}
+
+.summary-header {
+    background: linear-gradient(135deg, #000 0%, #333 100%);
+    color: white;
+    padding: 1.5rem;
+}
+
+.summary-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+}
+
+.summary-content {
+    padding: 1.5rem;
+}
+
+.section-subtitle {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+.order-item:last-child {
+    border-bottom: none;
+}
+.item-image {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 15px;
+}
+.item-details h6 {
+    margin-bottom: 5px;
+    font-size: 14px;
+    font-weight: 600;
+}
+.item-details p {
+    margin: 0;
+    font-size: 12px;
+    color: #6c757d;
+}
+.item-price {
+    margin-left: auto;
+    font-weight: 600;
+}
+
+/* === PRICE BREAKDOWN (styled exactly like cart page) === */
+.price-breakdown {
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 1.25rem;
+    background: #fafafa;
+    margin-bottom: 1.5rem;
+}
+
+.summary-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.summary-row:last-child {
+    margin-bottom: 0;
+}
+
+.price-label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.95rem;
+}
+
+.price-value {
+    font-weight: 600;
+    color: #000;
+    font-size: 0.95rem;
+}
+
+.discount-row .price-value {
+    color: #28a745;
+    font-weight: 700;
+}
+
+.price-divider {
+    height: 2px;
+    background: #e9ecef;
+    margin: 1rem 0;
+    border-radius: 1px;
+}
+
+.summary-row.total {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid #000;
+    margin-top: 1rem;
+}
+
+.summary-row.total .price-label,
+.summary-row.total .price-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #000;
+}
+
+.btn-continue {
+    background-color: #000;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    max-width: 300px;
+    width: auto;
+    border-radius: 8px;
+    font-weight: 600;
+    margin: 20px auto 0;
+    display: block;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.btn-continue:hover {
+    background-color: #dc3545;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+.btn-back {
+    background-color: #000;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-block;
+    margin-bottom: 20px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+.btn-back:hover {
+    background-color: #dc3545;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .main-checkout-content {
+        flex-direction: column;
+    }
+    .checkout-left, .checkout-right {
+        flex: 1;
+    }
+    .step-indicator {
+        flex-wrap: wrap;
+    }
+    .step {
+        margin: 5px;
+        padding: 8px 15px;
+    }
+    .order-summary {
+        position: static;
+        margin-top: 2rem;
+    }
+    .checkout-title {
+        font-size: 1.75rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .checkout-title {
+        font-size: 1.5rem;
+    }
+}
+</style>

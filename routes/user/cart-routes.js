@@ -7,34 +7,54 @@ const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
   }
+  
+  // For AJAX requests, return JSON response instead of redirect
+  if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+    return res.status(401).json({
+      success: false,
+      message: 'You must be logged in to access this feature',
+      code: 'AUTHENTICATION_REQUIRED'
+    });
+  }
+  
+  // For regular requests, redirect to login
   return res.redirect('/login');
 };
 
-// Apply user authentication middleware to all cart routes
-router.use(requireAuth);
+// Custom authentication middleware for API routes (always returns JSON)
+const requireAuthAPI = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  
+  return res.status(401).json({
+    success: false,
+    message: 'You must be logged in to access this feature',
+    code: 'AUTHENTICATION_REQUIRED'
+  });
+};
 
-// Cart page route
-router.get('/', cartController.loadCart);
+// Cart page route (regular page, can redirect)
+router.get('/', requireAuth, cartController.loadCart);
 
-// Add to cart
-router.post('/add', cartController.addToCart);
+// API routes (always return JSON)
+router.post('/add', requireAuthAPI, cartController.addToCart);
+router.post('/update', requireAuthAPI, cartController.updateCartQuantity);
+router.post('/remove', requireAuthAPI, cartController.removeFromCart);
+router.post('/clear', requireAuthAPI, cartController.clearCart);
+router.post('/remove-out-of-stock', requireAuthAPI, cartController.removeOutOfStockItems);
 
-// Get cart count (for navbar)
+// Routes that can be accessed without authentication or with JSON response
 router.get('/count', cartController.getCartCount);
 
-// Update cart item quantity
-router.post('/update', cartController.updateCartQuantity);
+// Validation routes
+router.get('/validate-stock', requireAuthAPI, cartController.validateCartStock);
+router.post('/reset-quantity', requireAuthAPI, cartController.resetCartItemQuantity);
 
-// Remove item from cart
-router.post('/remove', cartController.removeFromCart);
+// Checkout route
+router.get('/checkout', requireAuth, cartController.loadCheckout);
 
-// Clear entire cart
-router.post('/clear', cartController.clearCart);
-
-// Remove out-of-stock items
-router.post('/remove-out-of-stock', cartController.removeOutOfStockItems);
-
-// Validate cart items
-router.get('/validate', cartController.validateCartItems);
+// Checkout validation route
+router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
 
 module.exports = router;

@@ -248,6 +248,37 @@ exports.loadWallet = async (req, res) => {
   }
 };
 
+exports.loadOrders = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    if (!userId) {
+      return res.redirect('/login');
+    }
+
+    const user = await User.findById(userId).select('name email profilePhoto');
+    if (!user) {
+      return res.redirect('/login');
+    }
+
+    // Get orders for the user
+    const orders = await Order.find({ user: userId })
+      .populate('items.product')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.render('user/orders', {
+      user,
+      title: 'My Orders - LacedUp',
+      layout: 'user/layouts/user-layout',
+      active: 'orders',
+      orders: orders || []
+    });
+  } catch (error) {
+    console.error('Error loading orders page:', error);
+    res.status(500).render('error', { message: 'Error loading orders page' });
+  }
+};
+
 // Simple email update function (for inline editing with OTP)
 exports.updateEmail = async (req, res) => {
   try {

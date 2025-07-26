@@ -198,7 +198,7 @@ productSchema.pre('save', async function (next) {
       this.slug = slugify(this.productName, { lower: true, strict: true });
     }
 
-    // Generate SKUs if it's a new product or if SKUs are missing
+    // Generate base SKU if it's a new product or if base SKU is missing
     if (this.isNew || !this.baseSKU) {
       // Validate required fields for SKU generation
       if (!this.brand || !this.productName) {
@@ -219,31 +219,37 @@ productSchema.pre('save', async function (next) {
       }
 
       this.baseSKU = baseSKU;
+    }
 
-      // Generate variant SKUs if variants exist
-      if (this.variants && this.variants.length > 0) {
-        for (let variant of this.variants) {
-          if (!variant.sku) {
-            let variantSKU = await generateVariantSKU(
-              this.brand,
-              this.productName,
-              variant.size
-            );
+    // Generate variant SKUs for any variants that don't have them (new product or modified variants)
+    if (this.variants && this.variants.length > 0) {
+      // Validate required fields for SKU generation
+      if (!this.brand || !this.productName) {
+        return next(new Error('Brand and product name are required for SKU generation'));
+      }
 
-            // Ensure variant SKU is unique
-            let variantCounter = 1;
-            while (!await isSkuUnique(variantSKU, mongoose.model('Product'), this._id)) {
-              const basePart = await generateBaseSKU(this.brand, this.productName);
-              const variantCode = variant.size.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-              variantSKU = `${basePart}-${variantCode}-${variantCounter}`;
-              variantCounter++;
-              if (variantCounter > 100) {
-                return next(new Error(`Unable to generate unique variant SKU for size ${variant.size}`));
-              }
+      for (let variant of this.variants) {
+        // Check if variant SKU is missing, empty, or null
+        if (!variant.sku || variant.sku.trim() === '') {
+          let variantSKU = await generateVariantSKU(
+            this.brand,
+            this.productName,
+            variant.size
+          );
+
+          // Ensure variant SKU is unique
+          let variantCounter = 1;
+          while (!await isSkuUnique(variantSKU, mongoose.model('Product'), this._id)) {
+            const basePart = await generateBaseSKU(this.brand, this.productName);
+            const variantCode = variant.size.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+            variantSKU = `${basePart}-${variantCode}-${variantCounter}`;
+            variantCounter++;
+            if (variantCounter > 100) {
+              return next(new Error(`Unable to generate unique variant SKU for size ${variant.size}`));
             }
-
-            variant.sku = variantSKU;
           }
+
+          variant.sku = variantSKU;
         }
       }
     }

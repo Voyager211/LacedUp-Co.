@@ -1,0 +1,161 @@
+<%
+  // Calculate variant and stock information
+  const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+  const variantStock = variant ? variant.stock : 0;
+  const isOutOfStock = variantStock === 0;
+  const isUnavailable = item.isUnavailable || false;
+  const isLowStock = variantStock > 0 && variantStock <= 5;
+  const stockClass = isUnavailable ? 'unavailable' : (isOutOfStock ? 'out-of-stock' : (isLowStock ? 'low-stock' : 'in-stock'));
+%>
+
+<div class="cart-item-card <%= isOutOfStock ? 'item-out-of-stock' : '' %> <%= isUnavailable ? 'item-unavailable' : '' %>" 
+     data-product-id="<%= item.productId._id %>"
+     data-variant-id="<%= item.variantId %>"
+     data-regular-price="<%= item.productId.regularPrice %>"
+     data-sale-price="<%= item.productId.salePrice %>"
+     data-product-offer="<%= item.productId.productOffer || 0 %>"
+     data-variant-stock="<%= variantStock %>"
+     data-is-out-of-stock="<%= isOutOfStock %>"
+     data-is-unavailable="<%= isUnavailable %>">
+  
+  <div class="row g-3 align-items-center">
+    <!-- Product Image -->
+    <div class="col-md-3 col-4">
+      <div class="product-image-container">
+        <a href="/product/<%= item.productId.slug || item.productId._id %>" class="product-link">
+          <img src="<%= item.productId.mainImage %>" 
+               alt="<%= item.productId.productName %>"
+               class="product-image"
+               onerror="this.src='https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png'">
+          <% if (isUnavailable) { %>
+            <div class="stock-overlay">
+              <span class="stock-badge unavailable-badge">Unavailable</span>
+            </div>
+          <% } else if (isOutOfStock) { %>
+            <div class="stock-overlay">
+              <span class="stock-badge">Out of Stock</span>
+            </div>
+          <% } %>
+        </a>
+      </div>
+    </div>
+
+    <!-- Product Details -->
+    <div class="col-md-5 col-8">
+      <div class="product-details">
+        <div class="product-brand">
+          <%= item.productId.brand ? item.productId.brand.name : 'Brand' %>
+        </div>
+        <h6 class="product-name">
+          <a href="/product/<%= item.productId.slug || item.productId._id %>" class="product-link">
+            <%= item.productId.productName %>
+          </a>
+        </h6>
+        
+        <!-- Product Specifications -->
+        <div class="product-specs">
+          <% if (item.size) { %>
+            <span class="spec-item">
+              <i class="bi bi-rulers me-1"></i>
+              Size: <strong><%= item.size %></strong>
+            </span>
+          <% } %>
+          <!-- <% if (item.sku) { %>
+            <span class="spec-item">
+              <i class="bi bi-tag me-1"></i>
+              SKU: <%= item.sku %>
+            </span>
+          <% } %> -->
+        </div>
+
+        <!-- Price Display -->
+        <div class="price-section">
+          <div class="current-price">₹<%= Math.round(item.price) %></div>
+          <% if (item.productId.regularPrice > item.price) { %>
+            <div class="original-price">₹<%= item.productId.regularPrice %></div>
+            <div class="discount-badge">
+              <%= Math.round(((item.productId.regularPrice - item.price) / item.productId.regularPrice) * 100) %>% OFF
+            </div>
+          <% } %>
+        </div>
+
+        <!-- Stock Status -->
+        <div class="stock-status <%= stockClass %>">
+          <% if (isUnavailable) { %>
+            <i class="bi bi-ban text-secondary me-1"></i>
+            <span class="text-secondary">Unavailable</span>
+          <% } else if (isOutOfStock) { %>
+            <i class="bi bi-x-circle text-danger me-1"></i>
+            <span class="text-danger">Out of Stock</span>
+          <% } else if (isLowStock) { %>
+            <i class="bi bi-exclamation-triangle text-warning me-1"></i>
+            <span class="text-warning">Only <%= variantStock %> left!</span>
+          <% } else { %>
+            <i class="bi bi-check-circle text-success me-1"></i>
+            <span class="text-success">In Stock</span>
+          <% } %>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quantity & Actions -->
+    <div class="col-md-4 col-12">
+      <div class="item-actions">
+        <!-- Quantity Controls -->
+        <div class="quantity-section">
+          <label class="quantity-label">Quantity</label>
+          <div class="quantity-controls">
+            <button class="qty-btn qty-decrease" 
+                    <%= (item.quantity <= 1 || isOutOfStock || isUnavailable) ? 'disabled' : '' %>>
+              <i class="bi bi-dash"></i>
+            </button>
+            <input type="number" class="qty-input" 
+                   value="<%= item.quantity %>" 
+                   min="1" max="5" readonly>
+            <button class="qty-btn qty-increase" 
+                    <%= (item.quantity >= 5 || item.quantity >= variantStock || isOutOfStock || isUnavailable) ? 'disabled' : '' %>
+                    <% if (isUnavailable) { %>
+                      title="This item is unavailable"
+                    <% } else if (item.quantity >= 5) { %>
+                      title="Maximum 5 items allowed"
+                    <% } else if (item.quantity >= variantStock) { %>
+                      title="Not enough stock available"
+                    <% } else if (isOutOfStock) { %>
+                      title="This item is out of stock"
+                    <% } %>>
+              <i class="bi bi-plus"></i>
+            </button>
+          </div>
+          
+          <!-- Quantity Warning -->
+          <% if (item.quantity >= 5) { %>
+            <div class="quantity-warning">
+              <small>
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Maximum limit reached
+              </small>
+            </div>
+          <% } %>
+        </div>
+
+        <!-- Item Total -->
+        <div class="item-total-section">
+          <div class="item-total">₹<%= Math.round(item.totalPrice) %></div>
+          <div class="item-total-label">Total</div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="item-buttons">
+          <button class="btn btn-outline-secondary btn-sm save-later-btn" 
+                  title="Save for later">
+            <i class="bi bi-heart me-1"></i>Save Later
+          </button>
+          <button class="btn btn-outline-danger btn-sm remove-btn" 
+                  title="Remove item">
+            <i class="bi bi-trash me-1"></i>Remove
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

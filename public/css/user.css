@@ -741,3 +741,48 @@ a:hover {
   color: var(--color-accent-red);
   transform: scale(1.02);
 }
+
+/* ========= OUT OF STOCK OVERLAY ========= */
+.product-card.out-of-stock {
+  position: relative;
+}
+
+.out-of-stock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(128, 128, 128, 0.7);
+  z-index: 20;
+  border-radius: inherit;
+  pointer-events: none; /* Allow clicks to pass through to the product link */
+}
+
+.sold-out-ribbon {
+  position: absolute;
+  top: 15px;
+  left: -30px;
+  background-color: #dc3545;
+  color: white;
+  padding: 8px 40px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+  z-index: 25;
+}
+
+/* Ensure out of stock products are still clickable */
+.product-card.out-of-stock a {
+  position: relative;
+  z-index: 30;
+}
+
+/* Slightly reduce hover effect for out of stock products */
+.product-card.out-of-stock:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}

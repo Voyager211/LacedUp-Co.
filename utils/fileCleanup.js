@@ -16,7 +16,6 @@ const deleteFile = async (filePath) => {
     
     // Delete the file
     await fs.unlink(absolutePath);
-    console.log(`🗑️ Deleted file: ${filePath}`);
     return true;
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -66,11 +65,7 @@ const getImagesToDelete = (oldImages, newImages) => {
   // Find old images that are not in the new images array
   const imagesToDelete = oldImages.filter(oldImg => !newImageUrls.includes(oldImg));
   
-  console.log('🔍 Image cleanup analysis:');
-  console.log('  Old images:', oldImages);
-  console.log('  New image URLs:', newImageUrls);
-  console.log('  Images to delete:', imagesToDelete);
-  
+    
   return imagesToDelete;
 };
 

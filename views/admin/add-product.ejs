@@ -1274,18 +1274,8 @@
     addVariant();
   });
 
-  // Attach base64 to form submit (from backup version for compatibility)
-  document.querySelector('form').addEventListener('submit', function (e) {
-    const hiddenContainer = document.createElement('div');
-    base64Images.forEach((b64, i) => {
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = 'base64Images[]';
-      input.value = b64;
-      hiddenContainer.appendChild(input);
-    });
-    this.appendChild(hiddenContainer);
-  });
+  // Note: base64Images are attached in the submitForm function, not here
+  // This prevents duplicate image submissions
 
   // Initialize form validation
   const productValidator = new FormValidator('add-product-form');

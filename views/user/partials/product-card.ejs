@@ -1,12 +1,17 @@
 <div class="col-6 col-md-4 col-lg-3 mb-4">
-  <div class="card h-100 border-0 shadow-sm product-card bg-white">
-    <a href="/product/<%= product.slug %>" class="text-decoration-none text-dark">
+  <div class="card h-100 border-0 shadow-sm product-card bg-white" style="<%= product.totalStock === 0 ? 'position: relative; overflow: hidden;' : '' %>">
+    <a href="/product/<%= product.slug %>" class="text-decoration-none text-dark" style="<%= product.totalStock === 0 ? 'position: relative; z-index: 5;' : '' %>">
       <img src="<%= product.mainImage %>" class="card-img-top img-fluid" alt="<%= product.productName %>" style="object-fit: cover; height: 200px;">
     </a>
+    <!-- Out of Stock Overlay - positioned after image to ensure it covers everything -->
+    <% if (product.totalStock === 0) { %>
+      <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
+      <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
+    <% } %>
     <div class="card-body d-flex flex-column justify-content-between">
       <div>
         <h6 class="fw-bold mb-1"><%= product.productName %></h6>
-        <p class="text-muted mb-1"><%= product.brand.name %></p>
+        <p class="text-muted mb-1"><%= product.brand ? product.brand.name : 'Unknown Brand' %></p>
         <div class="d-flex align-items-center gap-2">
           <% if (product.variants && product.variants.length > 0) { %>
             <%
@@ -19,7 +24,7 @@
                 const finalPrices = product.variants.map(v => {
                   const basePrice = v.basePrice || product.regularPrice;
                   const categoryOffer = (product.category && product.category.categoryOffer) || 0;
-                  const brandOffer = (product.brand && product.brand.brandOffer) || 0;
+                  const brandOffer = (product.brand && product.brand && product.brand.brandOffer) || 0;
                   const productOffer = product.productOffer || 0;
                   const variantOffer = v.variantSpecificOffer || 0;
                   const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);

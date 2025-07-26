@@ -18,6 +18,7 @@ exports.getProducts = async (req, res) => {
     const minPrice = parseFloat(req.query.minPrice || req.query.min) || 0;
     const maxPrice = parseFloat(req.query.maxPrice || req.query.max) || 1e9;
     const sizes = req.query.size ? (Array.isArray(req.query.size) ? req.query.size : [req.query.size]) : [];
+    const stockStatus = req.query.stockStatus ? (Array.isArray(req.query.stockStatus) ? req.query.stockStatus : [req.query.stockStatus]) : [];
 
     // Get active category IDs to filter products
     const activeCategories = await Category.find({
@@ -101,9 +102,14 @@ exports.getProducts = async (req, res) => {
     // Price range filter will be applied after fetching products since we need to calculate sale prices
     // Note: We'll filter by computed sale prices after the database query
 
-    // Size filter (check variants for available sizes)
+    // Size filter (check variants for available sizes with stock > 0)
     if (sizes.length > 0) {
-      filter['variants.size'] = { $in: sizes };
+      filter['variants'] = {
+        $elemMatch: {
+          size: { $in: sizes },
+          stock: { $gt: 0 }
+        }
+      };
     }
 
     const sortMap = {
@@ -154,6 +160,30 @@ exports.getProducts = async (req, res) => {
         });
       });
     }
+
+    // Apply stock status filter
+    if (stockStatus.length > 0) {
+      filteredProducts = filteredProducts.filter(product => {
+        const isInStock = product.totalStock > 0;
+        const isOutOfStock = product.totalStock === 0;
+        
+        return stockStatus.some(status => {
+          if (status === 'inStock') return isInStock;
+          if (status === 'outOfStock') return isOutOfStock;
+          return false;
+        });
+      });
+    }
+
+    // Sort products: in-stock products first, then out-of-stock products
+    filteredProducts.sort((a, b) => {
+      // If both have same stock status, maintain original sort order
+      if ((a.totalStock > 0) === (b.totalStock > 0)) {
+        return 0; // Keep original order
+      }
+      // In-stock products (totalStock > 0) come first
+      return (b.totalStock > 0) - (a.totalStock > 0);
+    });
 
     const totalProducts = filteredProducts.length;
     const products = filteredProducts.slice(skip, skip + limit);
@@ -228,6 +258,61 @@ exports.loadShopPage = async (req, res) => {
       isDeleted: false,
       isActive: true
     }).sort({ name: 1 });
+
+    // Get available sizes with stock > 0 from active products
+    const availableSizes = await Product.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          isListed: true,
+          category: { $in: activeCategoryIds }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      {
+        $lookup: {
+          from: 'brands',
+          localField: 'brand',
+          foreignField: '_id',
+          as: 'brandInfo'
+        }
+      },
+      {
+        $match: {
+          'categoryInfo.isActive': true,
+          'categoryInfo.isDeleted': false,
+          'brandInfo.isActive': true,
+          'brandInfo.isDeleted': false
+        }
+      },
+      {
+        $unwind: '$variants'
+      },
+      {
+        $match: {
+          'variants.stock': { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: '$variants.size',
+          totalStock: { $sum: '$variants.stock' }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Convert to a simple array of size strings for easier use in frontend
+    const availableSizeList = availableSizes.map(item => item._id);
     
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
@@ -300,9 +385,12 @@ exports.loadShopPage = async (req, res) => {
       })
       .sort(sortQuery);
       
-    let filteredProducts = allProducts;
+    // Filter out products with inactive categories or brands
+    let filteredProducts = allProducts.filter(p => p.category !== null && p.brand !== null);
+    
+    // Apply price range filter using computed sale prices
     if (minPriceNum > 0 || maxPriceNum < 1e9) {
-      filteredProducts = allProducts.filter(product => {
+      filteredProducts = filteredProducts.filter(product => {
         if (!product.variants || product.variants.length === 0) {
           return product.regularPrice >= minPriceNum && product.regularPrice <= maxPriceNum;
         }
@@ -314,6 +402,16 @@ exports.loadShopPage = async (req, res) => {
         });
       });
     }
+
+    // Sort products: in-stock products first, then out-of-stock products
+    filteredProducts.sort((a, b) => {
+      // If both have same stock status, maintain original sort order
+      if ((a.totalStock > 0) === (b.totalStock > 0)) {
+        return 0; // Keep original order
+      }
+      // In-stock products (totalStock > 0) come first
+      return (b.totalStock > 0) - (a.totalStock > 0);
+    });
 
     const totalProductCount = filteredProducts.length;
     const totalPages = Math.ceil(totalProductCount / limit);
@@ -350,6 +448,7 @@ exports.loadShopPage = async (req, res) => {
         active: 'shop',
         categories,
         brands,
+        availableSizes: availableSizeList,
         products: paginatedProducts,
         currentPage: page,
         totalPages,
@@ -374,6 +473,7 @@ exports.loadShopPage = async (req, res) => {
       active: 'shop',
       categories,
       brands,
+      availableSizes: availableSizeList,
       products: paginatedProducts,
       currentPage: page,
       totalPages,
@@ -670,5 +770,81 @@ exports.loadProductDetails = async (req, res) => {
       layout: 'user/layouts/user-layout',
       active: 'shop'
     });
+  }
+};
+
+// API: Get available sizes with stock
+exports.getAvailableSizes = async (req, res) => {
+  try {
+    // Get active category IDs to filter products
+    const activeCategories = await Category.find({
+      isDeleted: false,
+      isActive: true
+    }).select('_id').lean();
+    const activeCategoryIds = activeCategories.map(cat => cat._id);
+
+    // Get available sizes with stock > 0 from active products
+    const availableSizes = await Product.aggregate([
+      {
+        $match: {
+          isDeleted: false,
+          isListed: true,
+          category: { $in: activeCategoryIds }
+        }
+      },
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'category',
+          foreignField: '_id',
+          as: 'categoryInfo'
+        }
+      },
+      {
+        $lookup: {
+          from: 'brands',
+          localField: 'brand',
+          foreignField: '_id',
+          as: 'brandInfo'
+        }
+      },
+      {
+        $match: {
+          'categoryInfo.isActive': true,
+          'categoryInfo.isDeleted': false,
+          'brandInfo.isActive': true,
+          'brandInfo.isDeleted': false
+        }
+      },
+      {
+        $unwind: '$variants'
+      },
+      {
+        $match: {
+          'variants.stock': { $gt: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: '$variants.size',
+          totalStock: { $sum: '$variants.stock' }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      }
+    ]);
+
+    // Convert to a simple array of size strings for easier use in frontend
+    const availableSizeList = availableSizes.map(item => item._id);
+
+    res.json({
+      success: true,
+      sizes: availableSizeList
+    });
+
+  } catch (err) {
+    console.error('Error in getAvailableSizes:', err);
+    res.status(500).json({ success: false, message: 'Something went wrong' });
   }
 };

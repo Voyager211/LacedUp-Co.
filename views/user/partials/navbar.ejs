@@ -86,8 +86,9 @@
           </a>
 
           <!-- Cart Button -->
-          <a href="/cart" class="navbar-icon-btn me-3" title="Cart">
+          <a href="/cart" class="navbar-icon-btn me-3 position-relative" title="Cart">
             <i class="bi bi-cart"></i>
+            <span id="cartCount" class="cart-count-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
           </a>
 
           <!-- Profile Dropdown -->
@@ -298,6 +299,57 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   }
+
+  // Cart count functionality
+  const cartCountBadge = document.getElementById('cartCount');
+  
+  // Function to update cart count in navbar
+  function updateNavbarCartCount(count) {
+    if (cartCountBadge) {
+      if (count > 0) {
+        cartCountBadge.textContent = count;
+        cartCountBadge.style.display = 'flex';
+        cartCountBadge.classList.add('updated');
+        setTimeout(() => {
+          cartCountBadge.classList.remove('updated');
+        }, 400);
+      } else {
+        cartCountBadge.style.display = 'none';
+      }
+    }
+  }
+
+  // Function to fetch cart count from server
+  async function fetchCartCount() {
+    try {
+      const response = await fetch('/cart/count');
+      if (response.ok) {
+        const data = await response.json();
+        updateNavbarCartCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+    }
+  }
+
+  // Fetch cart count on page load (only if user is logged in)
+  <% if (user) { %>
+    fetchCartCount();
+    
+    // Set up periodic cart count refresh every 30 seconds
+    setInterval(fetchCartCount, 30000);
+    
+    // Also refresh cart count when page becomes visible again
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        fetchCartCount();
+      }
+    });
+  <% } %>
+
+  // Make updateNavbarCartCount globally available for other scripts
+  window.updateNavbarCartCount = updateNavbarCartCount;
+  window.fetchCartCount = fetchCartCount;
 });
 </script>
 
@@ -431,5 +483,56 @@ document.addEventListener('DOMContentLoaded', function() {
 #navbar-clear-x:hover {
   color: #e03a2f;
   background-color: rgba(224, 58, 47, 0.1);
+}
+
+/* Cart Count Badge */
+.cart-count-badge {
+  font-size: 0.5rem;
+  font-weight: 700;
+  min-width: 16px;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  text-align: center;
+  padding: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: -4px;
+  right: -4px;
+  transform: translate(50%, -50%);
+  animation: cartBadgeAppear 0.3s ease-out;
+}
+
+@keyframes cartBadgeAppear {
+  0% {
+    transform: translate(50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(50%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.cart-count-badge.updated {
+  animation: cartBadgeUpdate 0.4s ease-out;
+}
+
+@keyframes cartBadgeUpdate {
+  0% {
+    transform: translate(50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(50%, -50%) scale(1.3);
+    background-color: #28a745 !important;
+  }
+  100% {
+    transform: translate(50%, -50%) scale(1);
+  }
 }
 </style>

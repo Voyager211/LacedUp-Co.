@@ -1444,7 +1444,7 @@
 
     // ONLY HERE: Attach base64 images manually when form is actually being submitted
     base64Images.forEach((b64, i) => {
-      formData.append('base64Images', b64);
+      formData.append('base64Images[]', b64);
     });
 
     // Attach variants data
