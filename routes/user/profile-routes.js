@@ -63,6 +63,9 @@ router.get('/profile/addresses', requireAuth, profileController.loadAddresses);
 // Wallet routes
 router.get('/profile/wallet', requireAuth, profileController.loadWallet);
 
+// Orders routes
+router.get('/orders', requireAuth, profileController.loadOrders);
+
 // Profile photo routes
 router.post('/profile/photo', requireAuth, upload.single('profilePhoto'), profileController.uploadProfilePhoto);
 router.delete('/profile/photo', requireAuth, profileController.deleteProfilePhoto);
