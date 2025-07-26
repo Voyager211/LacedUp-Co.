@@ -193,8 +193,8 @@
 
         <!-- Action Buttons -->
         <div class="action-buttons text-center">
-            <a href="/orders" class="btn btn-primary">
-                <i class="bi bi-list-ul"></i> View All Orders
+            <a href="/order-details/<%= orderData.orderId || orderData._id %>" class="btn btn-success">
+                <i class="bi bi-eye"></i> View Order
             </a>
             <a href="/shop" class="btn btn-outline-primary">
                 <i class="bi bi-arrow-left"></i> Continue Shopping
@@ -529,6 +529,18 @@
 .action-buttons .btn-outline-primary {
     border: 2px solid #000;
     color: #000;
+}
+
+.action-buttons .btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-success:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
 }
 
 .action-buttons .btn-outline-primary:hover {

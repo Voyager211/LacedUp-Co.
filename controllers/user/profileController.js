@@ -260,22 +260,77 @@ exports.loadOrders = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get orders for the user
+    // Get orders for the user with populated product data and address
     const orders = await Order.find({ user: userId })
-      .populate('items.product')
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage subImages'
+      })
+      .populate({
+        path: 'deliveryAddress.addressId',
+        select: 'address'
+      })
       .sort({ createdAt: -1 })
       .lean();
+
+    // Flatten the orders to show individual items instead of grouped orders
+    const orderItems = [];
+    
+    orders.forEach(order => {
+      // Get the actual delivery address from the populated address document
+      let actualDeliveryAddress = null;
+      if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
+        const addressIndex = order.deliveryAddress.addressIndex;
+        actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
+      }
+
+      order.items.forEach(item => {
+        orderItems.push({
+          // Order information
+          orderId: order.orderId,
+          orderDate: order.createdAt,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          deliveryAddress: actualDeliveryAddress || {
+            name: 'Address not found',
+            city: 'N/A',
+            state: 'N/A'
+          },
+          
+          // Item information
+          itemId: item._id,
+          productId: item.productId,
+          productName: item.productId ? item.productId.productName : 'Product',
+          productImage: item.productId ? item.productId.mainImage : null,
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          status: item.status || order.status, // Use item status if available, otherwise order status
+          statusHistory: item.statusHistory || [],
+          cancellationReason: item.cancellationReason,
+          returnReason: item.returnReason,
+          cancellationDate: item.cancellationDate,
+          returnRequestDate: item.returnRequestDate
+        });
+      });
+    });
 
     res.render('user/orders', {
       user,
       title: 'My Orders - LacedUp',
       layout: 'user/layouts/user-layout',
       active: 'orders',
-      orders: orders || []
+      orderItems: orderItems || [],
+      orders: [] // Keep empty for backward compatibility
     });
   } catch (error) {
     console.error('Error loading orders page:', error);
-    res.status(500).render('error', { message: 'Error loading orders page' });
+    res.status(500).render('errors/server-error', { 
+      message: 'Error loading orders page',
+      error: error.message 
+    });
   }
 };
 

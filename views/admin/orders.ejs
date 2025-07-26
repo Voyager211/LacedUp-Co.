@@ -1,6 +1,1082 @@
-<% var title = "Orders"; %>
+<% var title = "Order Management"; %>
 
-<div class="container py-4">
-  <h2 class="mb-4">Order Management</h2>
-  <p>This is the orders page.</p>
+<div class="container-fluid py-4">
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="fw-bold text-black mb-1">Order Management</h2>
+          <p class="text-black mb-0">Manage and track all customer orders (showing individual items)</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark" onclick="refreshOrders()">
+            <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-bag-check text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Today's Orders</h6>
+              <h3 class="fw-bold text-black mb-0"><%= todayOrders || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-graph-up text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Total Orders</h6>
+              <h3 class="fw-bold text-black mb-0"><%= totalOrders || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-box text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Total Items</h6>
+              <h3 class="fw-bold text-black mb-0"><%= totalItems || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-clock text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Pending Items</h6>
+              <h3 class="fw-bold text-black mb-0">
+                <%= orderStats.find(stat => stat._id === 'Pending')?.count || 0 %>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <form id="filterForm" class="row g-3">
+            <div class="col-md-3">
+              <label class="form-label text-black">Search Orders</label>
+              <input type="text" class="form-control" name="search" placeholder="Order ID, Customer name, Phone..." 
+                     value="<%= filters.search || '' %>">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-black">Item Status</label>
+              <select class="form-select" name="status">
+                <option value="">All Status</option>
+                <option value="Pending" <%= filters.status === 'Pending' ? 'selected' : '' %>>Pending</option>
+                <option value="Processing" <%= filters.status === 'Processing' ? 'selected' : '' %>>Processing</option>
+                <option value="Shipped" <%= filters.status === 'Shipped' ? 'selected' : '' %>>Shipped</option>
+                <option value="Delivered" <%= filters.status === 'Delivered' ? 'selected' : '' %>>Delivered</option>
+                <option value="Cancelled" <%= filters.status === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+                <option value="Returned" <%= filters.status === 'Returned' ? 'selected' : '' %>>Returned</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-black">Payment Method</label>
+              <select class="form-select" name="paymentMethod">
+                <option value="">All Methods</option>
+                <option value="cod" <%= filters.paymentMethod === 'cod' ? 'selected' : '' %>>Cash on Delivery</option>
+                <option value="razorpay" <%= filters.paymentMethod === 'razorpay' ? 'selected' : '' %>>Razorpay</option>
+                <option value="wallet" <%= filters.paymentMethod === 'wallet' ? 'selected' : '' %>>Wallet</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-black">Payment Status</label>
+              <select class="form-select" name="paymentStatus">
+                <option value="">All Status</option>
+                <option value="Pending" <%= filters.paymentStatus === 'Pending' ? 'selected' : '' %>>Pending</option>
+                <option value="Completed" <%= filters.paymentStatus === 'Completed' ? 'selected' : '' %>>Completed</option>
+                <option value="Failed" <%= filters.paymentStatus === 'Failed' ? 'selected' : '' %>>Failed</option>
+                <option value="Refunded" <%= filters.paymentStatus === 'Refunded' ? 'selected' : '' %>>Refunded</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <label class="form-label text-black">Sort By</label>
+              <select class="form-select" name="sortBy">
+                <option value="createdAt" <%= filters.sortBy === 'createdAt' ? 'selected' : '' %>>Order Date</option>
+                <option value="totalAmount" <%= filters.sortBy === 'totalAmount' ? 'selected' : '' %>>Amount</option>
+                <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
+              </select>
+            </div>
+            <div class="col-md-1">
+              <label class="form-label text-black">Order</label>
+              <select class="form-select" name="sortOrder">
+                <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
+                <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
+              </select>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Items Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-wrapper">
+            <table class="table table-hover mb-0 orders-table">
+              <thead>
+                <tr>
+                  <th class="border-0 text-black">Order ID</th>
+                  <th class="border-0 text-black">Product</th>
+                  <th class="border-0 text-black">Customer</th>
+                  <th class="border-0 text-black">Date</th>
+                  <th class="border-0 text-black">Size/Qty</th>
+                  <th class="border-0 text-black">Amount</th>
+                  <th class="border-0 text-black">Payment</th>
+                  <th class="border-0 text-black">Status</th>
+                  <th class="border-0 text-center text-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (orderItems && orderItems.length > 0) { %>
+                  <% orderItems.forEach(item => { %>
+                    <tr class="order-row">
+                      <td>
+                        <div class="order-id">
+                          <span class="fw-bold text-black">#<%= item.orderId %></span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="product-info d-flex align-items-center">
+                          <% if (item.productImage) { %>
+                            <img src="<%= item.productImage %>" 
+                                 alt="<%= item.productName %>" 
+                                 class="product-thumb me-3">
+                          <% } else { %>
+                            <div class="product-thumb-placeholder me-3">
+                              <i class="bi bi-image"></i>
+                            </div>
+                          <% } %>
+                          <div class="product-details">
+                            <div class="product-name text-black"><%= item.productName %></div>
+                            <small class="text-muted">SKU: <%= item.sku %></small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="customer-info">
+                          <div class="customer-name text-black"><%= item.user?.name || 'N/A' %></div>
+                          <div class="customer-email text-black"><%= item.user?.email || 'N/A' %></div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="date-info">
+                          <div class="order-date text-black">
+                            <%= new Date(item.orderDate).toLocaleDateString('en-IN', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) %>
+                          </div>
+                          <div class="order-time text-black">
+                            <%= new Date(item.orderDate).toLocaleTimeString('en-IN', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            }) %>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="size-qty-info">
+                          <div class="size text-black">Size: <%= item.size %></div>
+                          <div class="quantity text-black">Qty: <%= item.quantity %></div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="amount-info">
+                          <div class="item-amount text-black">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+                          <div class="payment-method text-black"><%= item.paymentMethod.toUpperCase() %></div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="payment-status">
+                          <span class="status-badge payment-<%= item.paymentStatus.toLowerCase() %>">
+                            <%= item.paymentStatus %>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="item-status">
+                          <span class="status-badge item-<%= item.status.toLowerCase() %>">
+                            <%= item.status %>
+                          </span>
+                        </div>
+                      </td>
+                      <td class="text-center">
+                        <div class="actions-dropdown">
+                          <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                                    data-bs-toggle="dropdown" aria-expanded="false">
+                              <i class="bi bi-three-dots-vertical text-black"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                              <li>
+                                <a class="dropdown-item text-black" href="/admin/orders/details/<%= item.orderId %>">
+                                  <i class="bi bi-eye me-2 text-black"></i>View Order Details
+                                </a>
+                              </li>
+                              <li>
+                                <button class="dropdown-item text-black" onclick="updateItemStatus('<%= item.orderId %>', '<%= item.itemId %>', '<%= item.status %>')">
+                                  <i class="bi bi-pencil me-2 text-black"></i>Update Item Status
+                                </button>
+                              </li>
+                              <% if (['Pending', 'Processing'].includes(item.status)) { %>
+                                <li>
+                                  <button class="dropdown-item text-black" onclick="cancelItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                                    <i class="bi bi-x-circle me-2 text-black"></i>Cancel Item
+                                  </button>
+                                </li>
+                              <% } %>
+                              <% if (item.status === 'Delivered') { %>
+                                <li>
+                                  <button class="dropdown-item text-black" onclick="returnItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                                    <i class="bi bi-arrow-return-left me-2 text-black"></i>Return Item
+                                  </button>
+                                </li>
+                              <% } %>
+                            </ul>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="9" class="text-center py-5">
+                      <div class="empty-state">
+                        <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
+                        <h5 class="text-black">No order items found</h5>
+                        <p class="text-black">No order items match your current filters.</p>
+                      </div>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <div class="row mt-4">
+      <div class="col-12">
+        <nav aria-label="Orders pagination">
+          <ul class="pagination justify-content-center">
+            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+              <a class="page-link text-black" href="?page=<%= currentPage - 1 %>&<%= new URLSearchParams(filters).toString() %>">
+                <i class="bi bi-chevron-left text-black"></i>
+              </a>
+            </li>
+            
+            <% for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
+              <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+                <a class="page-link <%= i === currentPage ? 'text-white' : 'text-black' %>" href="?page=<%= i %>&<%= new URLSearchParams(filters).toString() %>">
+                  <%= i %>
+                </a>
+              </li>
+            <% } %>
+            
+            <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+              <a class="page-link text-black" href="?page=<%= currentPage + 1 %>&<%= new URLSearchParams(filters).toString() %>">
+                <i class="bi bi-chevron-right text-black"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  <% } %>
 </div>
+
+<!-- Update Item Status Modal -->
+<div class="modal fade" id="updateItemStatusModal" tabindex="-1" aria-labelledby="updateItemStatusModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-black" id="updateItemStatusModalLabel">Update Item Status</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="updateItemStatusForm">
+          <input type="hidden" id="itemOrderId" name="orderId">
+          <input type="hidden" id="itemId" name="itemId">
+          <div class="mb-3">
+            <label for="itemStatus" class="form-label text-black">Item Status</label>
+            <select class="form-select" id="itemStatus" name="status" required>
+              <option value="Pending">Pending</option>
+              <option value="Processing">Processing</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Delivered">Delivered</option>
+              <option value="Cancelled">Cancelled</option>
+              <option value="Returned">Returned</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="itemStatusNotes" class="form-label text-black">Notes (Optional)</label>
+            <textarea class="form-control" id="itemStatusNotes" name="notes" rows="3" 
+                      placeholder="Add any notes about this status update..."></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-dark" onclick="submitItemStatusUpdate()">Update Status</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Item Modal -->
+<div class="modal fade" id="cancelItemModal" tabindex="-1" aria-labelledby="cancelItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-black" id="cancelItemModalLabel">Cancel Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="cancelItemForm">
+          <input type="hidden" id="cancelOrderId" name="orderId">
+          <input type="hidden" id="cancelItemId" name="itemId">
+          <div class="mb-3">
+            <label for="cancelReason" class="form-label text-black">Cancellation Reason</label>
+            <textarea class="form-control" id="cancelReason" name="reason" rows="3" 
+                      placeholder="Enter reason for cancellation..." required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="submitItemCancellation()">Cancel Item</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Return Item Modal -->
+<div class="modal fade" id="returnItemModal" tabindex="-1" aria-labelledby="returnItemModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-black" id="returnItemModalLabel">Return Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="returnItemForm">
+          <input type="hidden" id="returnOrderId" name="orderId">
+          <input type="hidden" id="returnItemId" name="itemId">
+          <div class="mb-3">
+            <label for="returnReason" class="form-label text-black">Return Reason</label>
+            <textarea class="form-control" id="returnReason" name="reason" rows="3" 
+                      placeholder="Enter reason for return..." required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-warning" onclick="submitItemReturn()">Process Return</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* General Styles */
+.card {
+  border-radius: 12px;
+}
+
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Spacious Table Design */
+.orders-table {
+  font-size: 0.95rem;
+}
+
+.orders-table th {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1.25rem 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.orders-table td {
+  padding: 1.5rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.order-row {
+  transition: all 0.2s ease;
+}
+
+.order-row:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Order ID Styling */
+.order-id {
+  font-size: 0.85rem;
+  font-weight: 600;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.order-id span {
+  display: block;
+  word-wrap: break-word;
+  word-break: break-all;
+  color: #000000 !important;
+}
+
+/* Product Info Styling */
+.product-info {
+  min-width: 200px;
+}
+
+.product-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-thumb-placeholder {
+  width: 50px;
+  height: 50px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+/* Customer Info Styling */
+.customer-info {
+  min-width: 150px;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.customer-email {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* Date Info Styling */
+.date-info {
+  min-width: 100px;
+}
+
+.order-date {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.order-time {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* Size/Qty Info Styling */
+.size-qty-info {
+  min-width: 80px;
+}
+
+.size, .quantity {
+  color: #000000 !important;
+  font-size: 0.85rem;
+  margin-bottom: 2px;
+}
+
+/* Amount Info Styling */
+.amount-info {
+  min-width: 100px;
+}
+
+.item-amount {
+  font-weight: 700;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.payment-method {
+  color: #000000 !important;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Status Badge Styling */
+.status-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 70px;
+  text-align: center;
+}
+
+/* Payment Status Colors */
+.payment-completed {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.payment-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.payment-failed {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.payment-refunded {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
+}
+
+/* Item Status Colors */
+.item-delivered {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.item-shipped {
+  background-color: #cce7ff;
+  color: #004085;
+  border: 1px solid #b3d7ff;
+}
+
+.item-processing {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.item-pending {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.item-cancelled {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
+}
+
+.item-returned {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
+}
+
+/* Action Button Styling */
+.action-btn {
+  border: 1px solid #000000 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0.75rem;
+  width: 45px;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px !important;
+  transition: all 0.2s ease;
+  color: #000000 !important;
+}
+
+.action-btn:hover {
+  background-color: #f8f9fa !important;
+  color: #000000 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+}
+
+.action-btn:focus {
+  box-shadow: none !important;
+  background-color: #f8f9fa !important;
+  color: #000000 !important;
+}
+
+.action-btn::after {
+  display: none;
+}
+
+/* Dropdown Menu Styling */
+.dropdown-menu {
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border: 0;
+  padding: 0.75rem 0;
+  min-width: 220px;
+  z-index: 9999 !important;
+  position: absolute !important;
+  background-color: #ffffff !important;
+}
+
+.actions-dropdown {
+  position: relative;
+  z-index: 1000;
+}
+
+.actions-dropdown .dropdown.show {
+  z-index: 9999 !important;
+}
+
+.dropdown.show .dropdown-menu {
+  z-index: 9999 !important;
+}
+
+.dropdown-item {
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  color: #000000 !important;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f9fa;
+  color: #000000 !important;
+  transform: translateX(4px);
+}
+
+.dropdown-item i {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #000000 !important;
+}
+
+/* Table wrapper */
+.table-wrapper {
+  overflow: visible;
+  width: 100%;
+}
+
+/* Fix for dropdown z-index issues */
+.table-wrapper .order-row {
+  position: relative;
+  z-index: 1;
+}
+
+.table-wrapper .order-row.dropdown-open {
+  z-index: 10000 !important;
+}
+
+.actions-dropdown.show {
+  z-index: 10001 !important;
+}
+
+/* Empty State */
+.empty-state {
+  padding: 3rem 2rem;
+}
+
+/* Pagination */
+.pagination .page-link {
+  border-radius: 8px;
+  margin: 0 3px;
+  border: 1px solid #dee2e6;
+  padding: 0.75rem 1rem;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+/* Text color overrides */
+.text-black {
+  color: #000000 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  
+  .orders-table th,
+  .orders-table td {
+    padding: 1rem 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .orders-table th,
+  .orders-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .product-info {
+    min-width: 150px;
+  }
+  
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .dropdown-menu {
+    min-width: 180px;
+  }
+  
+  .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+</style>
+
+<script>
+// Auto-submit filter form on change
+document.addEventListener('DOMContentLoaded', function() {
+  const filterForm = document.getElementById('filterForm');
+  const formElements = filterForm.querySelectorAll('input, select');
+  
+  formElements.forEach(element => {
+    element.addEventListener('change', function() {
+      filterForm.submit();
+    });
+  });
+  
+  // Search input with debounce
+  const searchInput = filterForm.querySelector('input[name="search"]');
+  let searchTimeout;
+  
+  searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      filterForm.submit();
+    }, 500);
+  });
+
+  // Handle dropdown z-index issues
+  const dropdownButtons = document.querySelectorAll('.action-btn');
+  
+  dropdownButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove dropdown-open class from all rows
+      document.querySelectorAll('.order-row').forEach(row => {
+        row.classList.remove('dropdown-open');
+      });
+      
+      // Add dropdown-open class to current row
+      const currentRow = this.closest('.order-row');
+      if (currentRow) {
+        currentRow.classList.add('dropdown-open');
+      }
+    });
+  });
+
+  // Remove dropdown-open class when dropdown is hidden
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.actions-dropdown')) {
+      document.querySelectorAll('.order-row').forEach(row => {
+        row.classList.remove('dropdown-open');
+      });
+    }
+  });
+
+  // Bootstrap dropdown events
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
+
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
+});
+
+// Update item status
+function updateItemStatus(orderId, itemId, currentStatus) {
+  document.getElementById('itemOrderId').value = orderId;
+  document.getElementById('itemId').value = itemId;
+  document.getElementById('itemStatus').value = currentStatus;
+  document.getElementById('itemStatusNotes').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('updateItemStatusModal'));
+  modal.show();
+}
+
+function submitItemStatusUpdate() {
+  const form = document.getElementById('updateItemStatusForm');
+  const formData = new FormData(form);
+  const orderId = formData.get('orderId');
+  const itemId = formData.get('itemId');
+  
+  fetch(`/admin/orders/item-status/${orderId}/${itemId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      status: formData.get('status'),
+      notes: formData.get('notes')
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('success', data.message);
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('error', 'Error updating item status');
+  });
+  
+  bootstrap.Modal.getInstance(document.getElementById('updateItemStatusModal')).hide();
+}
+
+// Cancel item
+function cancelItem(orderId, itemId) {
+  document.getElementById('cancelOrderId').value = orderId;
+  document.getElementById('cancelItemId').value = itemId;
+  document.getElementById('cancelReason').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('cancelItemModal'));
+  modal.show();
+}
+
+function submitItemCancellation() {
+  const form = document.getElementById('cancelItemForm');
+  const formData = new FormData(form);
+  const orderId = formData.get('orderId');
+  const itemId = formData.get('itemId');
+  
+  fetch(`/admin/orders/cancel-item/${orderId}/${itemId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      reason: formData.get('reason')
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('success', data.message);
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('error', 'Error cancelling item');
+  });
+  
+  bootstrap.Modal.getInstance(document.getElementById('cancelItemModal')).hide();
+}
+
+// Return item
+function returnItem(orderId, itemId) {
+  document.getElementById('returnOrderId').value = orderId;
+  document.getElementById('returnItemId').value = itemId;
+  document.getElementById('returnReason').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('returnItemModal'));
+  modal.show();
+}
+
+function submitItemReturn() {
+  const form = document.getElementById('returnItemForm');
+  const formData = new FormData(form);
+  const orderId = formData.get('orderId');
+  const itemId = formData.get('itemId');
+  
+  fetch(`/admin/orders/return-item/${orderId}/${itemId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      reason: formData.get('reason')
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('success', data.message);
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('error', 'Error processing item return');
+  });
+  
+  bootstrap.Modal.getInstance(document.getElementById('returnItemModal')).hide();
+}
+
+// Refresh orders
+function refreshOrders() {
+  location.reload();
+}
+
+// Toast notification function
+function showToast(type, message) {
+  // Create toast element
+  const toastHtml = `
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          ${message}
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  `;
+  
+  // Add to toast container
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    document.body.appendChild(toastContainer);
+  }
+  
+  toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+  
+  // Show toast
+  const toastElement = toastContainer.lastElementChild;
+  const toast = new bootstrap.Toast(toastElement);
+  toast.show();
+  
+  // Remove toast element after it's hidden
+  toastElement.addEventListener('hidden.bs.toast', () => {
+    toastElement.remove();
+  });
+}
+</script>

@@ -23,6 +23,8 @@ const adminUserRoutes = require('./routes/admin/user');
 const adminCategoryRoutes = require('./routes/admin/category');
 const adminBrandRoutes = require('./routes/admin/brand');
 const adminProductRoutes = require('./routes/admin/product');
+const adminOrderRoutes = require('./routes/admin/order');
+const adminReturnRoutes = require('./routes/admin/returns');
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
@@ -32,6 +34,7 @@ const userProfileRoutes = require('./routes/user/profile-routes');
 const userAddressRoutes = require('./routes/user/address-routes');
 const userCartRoutes = require('./routes/user/cart-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
+const userWalletRoutes = require('./routes/user/wallet-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -103,6 +106,7 @@ app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
 app.use('/cart', userCartRoutes);
 app.use('/', userOrderRoutes);
+app.use('/', userWalletRoutes);
 
 
 
@@ -112,6 +116,8 @@ app.use('/admin/users', adminUserRoutes);
 app.use('/admin/categories', adminCategoryRoutes);
 app.use('/admin/brands', adminBrandRoutes);
 app.use('/admin/products', adminProductRoutes);
+app.use('/admin/orders', adminOrderRoutes);
+app.use('/admin/returns', adminReturnRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3000;

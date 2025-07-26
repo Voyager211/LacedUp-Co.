@@ -31,4 +31,22 @@ router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSucc
 // Get all orders for user
 router.get('/orders', requireAuth, orderController.getUserOrders);
 
+// Get order details
+router.get('/order-details/:orderId', requireAuth, orderController.getOrderDetails);
+
+// Download invoice
+router.get('/download-invoice/:orderId', requireAuth, orderController.downloadInvoice);
+
+// Cancel entire order
+router.post('/cancel-order/:orderId', requireAuth, orderController.cancelOrder);
+
+// Cancel individual item
+router.post('/cancel-item/:orderId/:itemId', requireAuth, orderController.cancelItem);
+
+// Return entire order
+router.post('/return-order/:orderId', requireAuth, orderController.returnOrder);
+
+// Return individual item
+router.post('/return-item/:orderId/:itemId', requireAuth, orderController.returnItem);
+
 module.exports = router;
