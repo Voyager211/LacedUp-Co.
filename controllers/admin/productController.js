@@ -6,6 +6,7 @@ const { getPagination } = require('../../utils/pagination');
 const { validateBase64Image, validateMultipleImageFiles } = require('../../utils/imageValidation');
 const { getImagesToDelete, deleteFiles } = require('../../utils/fileCleanup');
 const sharp = require('sharp');
+const mongoose = require('mongoose');
 
 // List all products (page render)
 exports.listProducts = async (req, res) => {
@@ -194,19 +195,40 @@ exports.apiProducts = async (req, res) => {
 
     // Category filter
     if (req.query.category) {
-      query.category = req.query.category;
+      try {
+        query.category = new mongoose.Types.ObjectId(req.query.category);
+      } catch (error) {
+        console.error(`Invalid category ID: ${req.query.category}`);
+      }
     }
 
     // Brand filter
     if (req.query.brand) {
       // Handle multiple brand IDs (comma-separated)
-        if (req.query.brand.includes(',')) {
-          const brandIds = req.query.brand.split(',').filter(id => id.trim());
-          query.brand = { $in: brandIds };
-        } else {
-          query.brand = req.query.brand;
+      if (req.query.brand.includes(',')) {
+        const brandIds = req.query.brand.split(',').filter(id => id.trim());
+        // Convert string IDs to ObjectIds for proper MongoDB querying
+        const objectIds = brandIds.map(id => {
+          try {
+            return new mongoose.Types.ObjectId(id);
+          } catch (error) {
+            console.error(`Invalid brand ID: ${id}`);
+            return null;
+          }
+        }).filter(id => id !== null);
+        
+        if (objectIds.length > 0) {
+          query.brand = { $in: objectIds };
+        }
+      } else {
+        // Convert single brand ID to ObjectId
+        try {
+          query.brand = new mongoose.Types.ObjectId(req.query.brand);
+        } catch (error) {
+          console.error(`Invalid brand ID: ${req.query.brand}`);
         }
       }
+    }
 
     // Price range filters (check variants for price range)
     if (req.query.minPrice || req.query.maxPrice) {

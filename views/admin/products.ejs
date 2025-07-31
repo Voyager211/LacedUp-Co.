@@ -959,7 +959,7 @@ document.addEventListener('DOMContentLoaded', function() {
     } else if (selectedBrands.length === 1) {
       selectedText.textContent = selectedBrands[0];
     } else {
-      selectedText.textContent = \\ Brands Selected\;
+      selectedText.textContent = `${selectedBrands.length} Brands Selected`;
     }
   }
 
@@ -977,6 +977,91 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <style>
+/* Filter Dropdown Modal Styles */
+.dropdown-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dropdown-modal.show {
+  opacity: 1;
+}
+
+.dropdown-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-body {
+  padding: 1.5rem;
+}
+
+.dropdown-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+
+.btn-close-dropdown {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0.25rem;
+}
+
+.btn-close-dropdown:hover {
+  color: #e03a2f;
+}
+
+.btn-apply-filters {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-apply-filters:hover {
+  background-color: #c8342a;
+  border-color: #c8342a;
+  transform: translateY(-1px);
+}
+
 /* Admin Brand Filter Dropdown */
 .admin-brand-filter-dropdown {
   position: relative;
@@ -1016,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', function() {
   border-top: none;
   border-radius: 0 0 8px 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 100;
+  z-index: 1000;
   max-height: 200px;
   overflow-y: auto;
   display: none;
@@ -1053,5 +1138,38 @@ document.addEventListener('DOMContentLoaded', function() {
   margin: 0;
   font-weight: 500;
   color: #333;
+}
+
+/* Sort Options Styles */
+.sort-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.sort-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+  border-color: rgba(224, 58, 47, 0.2);
+}
+
+.sort-option.active {
+  background-color: #e03a2f;
+  color: white;
+  border-color: #e03a2f;
+}
+
+.sort-option.active:hover {
+  background-color: #c8342a;
+  border-color: #c8342a;
 }
 </style>

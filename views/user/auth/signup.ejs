@@ -35,7 +35,13 @@
           <label for="confirmPassword" class="form-label">Confirm Password *</label>
           <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="Confirm Password" required>
         </div>
-        <button type="submit" class="btn btn-primary-custom w-100">Sign Up</button>
+        <button type="submit" class="btn btn-primary-custom w-100" id="signup-btn">
+          <span class="btn-text">Sign Up</span>
+          <span class="btn-loader d-none">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Sending OTP...
+          </span>
+        </button>
       </form>
 
       <div class="text-center my-3 text-secondary">or</div>
@@ -48,8 +54,6 @@
         <span>Sign up with Google</span>
       </button>
 
-
-
       <p class="mt-4 text-center text-secondary">Already have an account? <a href="/login">Log In</a></p>
     </div>
   </div>
@@ -60,11 +64,27 @@
 
 <script>
   document.addEventListener('DOMContentLoaded', function() {
+    const signupBtn = document.getElementById('signup-btn');
+    const btnText = signupBtn.querySelector('.btn-text');
+    const btnLoader = signupBtn.querySelector('.btn-loader');
+
+    // Function to show/hide loader
+    function toggleLoader(show) {
+      if (show) {
+        btnText.classList.add('d-none');
+        btnLoader.classList.remove('d-none');
+        signupBtn.disabled = true;
+      } else {
+        btnText.classList.remove('d-none');
+        btnLoader.classList.add('d-none');
+        signupBtn.disabled = false;
+      }
+    }
+
     // Google OAuth button handler
     const googleBtn = document.getElementById('google-signup-btn');
     if (googleBtn) {
       googleBtn.addEventListener('click', function() {
-        // Redirect to Google OAuth
         window.location.href = '/google';
       });
     }
@@ -72,7 +92,7 @@
     // Initialize form validation
     const validator = new FormValidator('signup-form');
 
-    // Override the form submission to handle validation
+    // Override the form submission to handle validation and loader
     validator.submitForm = async function() {
       const payload = {
         name: document.getElementById('name').value.trim(),
@@ -81,6 +101,9 @@
         password: document.getElementById('password').value.trim(),
         confirmPassword: document.getElementById('confirmPassword').value.trim(),
       };
+
+      // Show loader
+      toggleLoader(true);
 
       try {
         const res = await fetch('/signup', {
@@ -94,13 +117,15 @@
         if (res.ok && data.redirect) {
           Swal.fire({
             icon: 'success',
-            title: 'Account created!',
+            title: 'OTP Sent!',
+            text: 'Please check your email for the verification code.',
             showConfirmButton: false,
-            timer: 1500
+            timer: 2000
           }).then(() => {
             window.location.href = data.redirect;
           });
         } else {
+          toggleLoader(false);
           Swal.fire({
             icon: 'error',
             title: 'Signup Failed',
@@ -108,6 +133,7 @@
           });
         }
       } catch (err) {
+        toggleLoader(false);
         Swal.fire({
           icon: 'error',
           title: 'Oops!',

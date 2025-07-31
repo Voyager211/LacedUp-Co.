@@ -11,11 +11,10 @@ const validateProductAvailability = (product) => {
     return { isValid: false, reason: 'Product is no longer available' };
   }
 
-  // Check category availability
+  // Check category availability - Updated to use isActive instead of isListed for categories
   if (product.category && 
-      (product.category.isListed === false || 
-       product.category.isDeleted === true || 
-       product.category.isActive === false)) {
+      (product.category.isActive === false || 
+       product.category.isDeleted === true)) {
     return { isValid: false, reason: 'Product category is no longer available' };
   }
 
@@ -99,6 +98,7 @@ const validateCartItem = (item) => {
 
 /**
  * Standard populate query for cart items with comprehensive data
+ * Updated to use isActive for categories instead of isListed
  */
 const getCartPopulateQuery = () => {
   return {
@@ -106,7 +106,7 @@ const getCartPopulateQuery = () => {
     populate: [
       {
         path: 'category',
-        select: 'name isListed isDeleted isActive categoryOffer'
+        select: 'name isActive isDeleted categoryOffer'
       },
       {
         path: 'brand',

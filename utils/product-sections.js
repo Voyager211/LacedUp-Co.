@@ -3,7 +3,8 @@ const Product = require('../models/Product');
 async function getHomepageProducts() {
   const newArrivals = await Product.find({
     isDeleted: false,
-    isListed: true
+    isListed: true,
+    totalStock: { $gt: 0 } // Exclude out-of-stock products
   })
     .populate({
       path: 'category',
@@ -14,7 +15,8 @@ async function getHomepageProducts() {
 
   const bestSellers = await Product.find({
     isDeleted: false,
-    isListed: true
+    isListed: true,
+    totalStock: { $gt: 0 } // Exclude out-of-stock products
   })
     .populate({
       path: 'category',

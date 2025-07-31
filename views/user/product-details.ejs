@@ -1552,7 +1552,9 @@
         });
 
         // Update cart count in navbar if it exists
-        updateCartCount(result.cartCount);
+        if (window.updateNavbarCartCount) {
+          window.updateNavbarCartCount(result.cartCount);
+        }
       } else {
         // Handle different error types
         if (response.status === 401 || result.code === 'AUTHENTICATION_REQUIRED') {
@@ -1616,16 +1618,7 @@
     }
   }
 
-  // Update cart count in navbar
-  function updateCartCount(count) {
-    const cartCountElements = document.querySelectorAll('.cart-count, #cart-count');
-    cartCountElements.forEach(element => {
-      if (element) {
-        element.textContent = count || 0;
-      }
-    });
-  }
-</script>
+  </script>
 
 <style>
 /* Image Gallery Styles */
@@ -2476,7 +2469,10 @@
               showToast.success(result.message || 'Product added to cart successfully!', '🛒 Added to Cart!');
 
               // Update cart count in navbar if it exists
-              updateCartCount(result.cartCount);
+              // Update cart count in navbar if it exists
+              if (window.updateNavbarCartCount) {
+                window.updateNavbarCartCount(result.cartCount);
+              }
             } else {
               // Handle different error types
               if (response.status === 401 || result.code === 'AUTHENTICATION_REQUIRED') {

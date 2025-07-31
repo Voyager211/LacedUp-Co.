@@ -74,7 +74,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // Update cart count in navbar if it exists
-        updateCartCount(result.cartCount);
+        if (window.updateNavbarCartCount) {
+          window.updateNavbarCartCount(result.cartCount);
+        }
       } else {
         // Handle different error types
         if (result.code === 'OUT_OF_STOCK') {
@@ -113,13 +115,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   };
 
-  // Update cart count in navbar
-  window.updateCartCount = function(count) {
-    const cartCountElements = document.querySelectorAll('.cart-count, #cart-count');
-    cartCountElements.forEach(element => {
-      if (element) {
-        element.textContent = count || 0;
-      }
-    });
-  };
-});
+  });

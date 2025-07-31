@@ -40,15 +40,25 @@
 
           <div class="d-grid gap-2 mb-4">
             <button type="submit" class="btn btn-primary-custom btn-lg" id="verifyBtn">
-              <i class="bi bi-check-circle me-2"></i>
-              Verify OTP
+              <span class="btn-text">
+                <i class="bi bi-check-circle me-2"></i>
+                Verify OTP
+              </span>
+              <span class="btn-loader d-none">
+                <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                Verifying...
+              </span>
             </button>
           </div>
 
           <div class="text-center">
             <p class="text-secondary-custom mb-2">Didn't receive the code?</p>
             <button type="button" class="btn btn-link p-0" id="resendBtn" onclick="resendOtp()">
-              Resend OTP
+              <span class="resend-text">Resend OTP</span>
+              <span class="resend-loader d-none">
+                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Sending...
+              </span>
             </button>
           </div>
         </form>
@@ -90,8 +100,14 @@
       <div class="modal-footer border-0">
         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
         <button type="button" class="btn btn-primary-custom" onclick="changeEmail()" id="changeEmailBtn">
-          <i class="bi bi-check-lg me-2"></i>
-          Update Email
+          <span class="change-btn-text">
+            <i class="bi bi-check-lg me-2"></i>
+            Update Email
+          </span>
+          <span class="change-btn-loader d-none">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Updating...
+          </span>
         </button>
       </div>
     </div>
@@ -155,6 +171,57 @@
 <script>
 let timerInterval;
 let timeLeft = 45; // 45 seconds
+
+// Function to show/hide verify button loader
+function toggleVerifyLoader(show) {
+  const verifyBtn = document.getElementById('verifyBtn');
+  const btnText = verifyBtn.querySelector('.btn-text');
+  const btnLoader = verifyBtn.querySelector('.btn-loader');
+  
+  if (show) {
+    btnText.classList.add('d-none');
+    btnLoader.classList.remove('d-none');
+    verifyBtn.disabled = true;
+  } else {
+    btnText.classList.remove('d-none');
+    btnLoader.classList.add('d-none');
+    verifyBtn.disabled = false;
+  }
+}
+
+// Function to show/hide resend button loader
+function toggleResendLoader(show) {
+  const resendBtn = document.getElementById('resendBtn');
+  const resendText = resendBtn.querySelector('.resend-text');
+  const resendLoader = resendBtn.querySelector('.resend-loader');
+  
+  if (show) {
+    resendText.classList.add('d-none');
+    resendLoader.classList.remove('d-none');
+    resendBtn.disabled = true;
+  } else {
+    resendText.classList.remove('d-none');
+    resendLoader.classList.add('d-none');
+    resendBtn.disabled = false;
+  }
+}
+
+// Function to show/hide change email button loader
+function toggleChangeEmailLoader(show) {
+  const changeBtn = document.getElementById('changeEmailBtn');
+  const btnText = changeBtn.querySelector('.change-btn-text');
+  const btnLoader = changeBtn.querySelector('.change-btn-loader');
+  
+  if (show) {
+    btnText.classList.add('d-none');
+    btnLoader.classList.remove('d-none');
+    changeBtn.disabled = true;
+  } else {
+    btnText.classList.remove('d-none');
+    btnLoader.classList.add('d-none');
+    changeBtn.disabled = false;
+  }
+}
 
 // Start countdown timer
 function startTimer() {
@@ -233,10 +300,8 @@ document.getElementById('otpForm').addEventListener('submit', async function(e) 
 
   clearError('otp');
 
-  const verifyBtn = document.getElementById('verifyBtn');
-  const originalText = verifyBtn.innerHTML;
-  verifyBtn.disabled = true;
-  verifyBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Verifying...';
+  // Show loader
+  toggleVerifyLoader(true);
 
   try {
     const response = await fetch('/profile/verify-email-otp', {
@@ -257,23 +322,20 @@ document.getElementById('otpForm').addEventListener('submit', async function(e) 
       const modal = new bootstrap.Modal(document.getElementById('newEmailModal'));
       modal.show();
     } else {
+      toggleVerifyLoader(false);
       showError('otp', data.message || 'Invalid OTP');
     }
   } catch (error) {
+    toggleVerifyLoader(false);
     console.error('Error:', error);
     showError('otp', 'An error occurred while verifying OTP');
-  } finally {
-    verifyBtn.disabled = false;
-    verifyBtn.innerHTML = originalText;
   }
 });
 
 // Resend OTP function
 async function resendOtp() {
-  const resendBtn = document.getElementById('resendBtn');
-  const originalText = resendBtn.textContent;
-  resendBtn.disabled = true;
-  resendBtn.textContent = 'Sending...';
+  // Show loader
+  toggleResendLoader(true);
 
   try {
     // Reset timer
@@ -304,8 +366,7 @@ async function resendOtp() {
       confirmButtonColor: '#000'
     });
   } finally {
-    resendBtn.disabled = false;
-    resendBtn.textContent = originalText;
+    toggleResendLoader(false);
   }
 }
 
@@ -326,10 +387,8 @@ async function changeEmail() {
 
   clearError('newEmail');
 
-  const changeEmailBtn = document.getElementById('changeEmailBtn');
-  const originalText = changeEmailBtn.innerHTML;
-  changeEmailBtn.disabled = true;
-  changeEmailBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Updating...';
+  // Show loader
+  toggleChangeEmailLoader(true);
 
   try {
     const response = await fetch('/profile/change-email', {
@@ -357,14 +416,13 @@ async function changeEmail() {
         window.location.href = '/profile';
       });
     } else {
+      toggleChangeEmailLoader(false);
       showError('newEmail', data.message || 'Failed to update email');
     }
   } catch (error) {
+    toggleChangeEmailLoader(false);
     console.error('Error:', error);
     showError('newEmail', 'An error occurred while updating email');
-  } finally {
-    changeEmailBtn.disabled = false;
-    changeEmailBtn.innerHTML = originalText;
   }
 }
 

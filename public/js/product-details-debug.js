@@ -78,8 +78,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (response.ok && result.success) {
         alert('Added to cart successfully!');
         // Update cart count if function exists
-        if (window.updateCartCount) {
-          window.updateCartCount(result.cartCount);
+        if (window.updateNavbarCartCount) {
+          window.updateNavbarCartCount(result.cartCount);
         }
       } else {
         console.error('Add to cart failed:', result);
