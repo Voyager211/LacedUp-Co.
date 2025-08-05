@@ -1,6 +1,7 @@
 const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
+const Wishlist = require('../../models/Wishlist');
 
 // Helper function to calculate final price with offers
 const calculateFinalPrice = async (product) => {
@@ -211,6 +212,24 @@ exports.addToCart = async (req, res) => {
         success: false,
         message: 'Failed to save cart'
       });
+    }
+
+    // Remove from wishlist if present
+    try {
+      const wishlist = await Wishlist.findOne({ userId });
+      if (wishlist) {
+        const originalLength = wishlist.products.length;
+        wishlist.products = wishlist.products.filter(item => 
+          item.productId.toString() !== productId
+        );
+
+        // Only save if items were actually removed
+        if (wishlist.products.length !== originalLength) {
+          await wishlist.save();
+        }
+      }
+    } catch (wishlistError) {
+      console.error('Error removing from wishlist: ', wishlistError);
     }
 
     // Get updated cart count

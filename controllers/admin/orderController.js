@@ -627,6 +627,176 @@ exports.getOrderStatistics = async (req, res) => {
   }
 };
 
+// API endpoint for filtered orders (for dynamic updates)
+exports.getFilteredOrders = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    
+    // Get filter parameters
+    const status = req.query.status || '';
+    const paymentMethod = req.query.paymentMethod || '';
+    const paymentStatus = req.query.paymentStatus || '';
+    const search = req.query.search || '';
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder || 'desc';
+
+    // Build filter query
+    let filterQuery = {};
+    
+    if (paymentMethod) {
+      filterQuery.paymentMethod = paymentMethod;
+    }
+    
+    if (paymentStatus) {
+      filterQuery.paymentStatus = paymentStatus;
+    }
+
+    // Search functionality
+    if (search) {
+      filterQuery.$or = [
+        { orderId: { $regex: search, $options: 'i' } },
+        { 'deliveryAddress.name': { $regex: search, $options: 'i' } },
+        { 'deliveryAddress.phone': { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
+
+    // Get all orders first (without pagination to flatten items)
+    const allOrders = await Order.find(filterQuery)
+      .populate({
+        path: 'user',
+        select: 'name email'
+      })
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage'
+      })
+      .populate({
+        path: 'deliveryAddress.addressId',
+        select: 'address'
+      })
+      .sort(sortObj)
+      .lean();
+
+    // Flatten orders to individual items
+    const orderItems = [];
+    
+    allOrders.forEach(order => {
+      // Get the actual delivery address from the populated address document
+      let actualDeliveryAddress = null;
+      if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
+        const addressIndex = order.deliveryAddress.addressIndex;
+        actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
+      }
+
+      order.items.forEach(item => {
+        orderItems.push({
+          // Order information
+          orderId: order.orderId,
+          orderDate: order.createdAt,
+          paymentMethod: order.paymentMethod,
+          paymentStatus: order.paymentStatus,
+          orderStatus: order.status,
+          totalAmount: order.totalAmount,
+          user: order.user,
+          deliveryAddress: actualDeliveryAddress || {
+            name: 'Address not found',
+            city: 'N/A',
+            state: 'N/A',
+            phone: 'N/A'
+          },
+          
+          // Item information
+          itemId: item._id,
+          productId: item.productId,
+          productName: item.productId ? item.productId.productName : 'Product',
+          productImage: item.productId ? item.productId.mainImage : null,
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          status: item.status || order.status,
+          statusHistory: item.statusHistory || [],
+          cancellationReason: item.cancellationReason,
+          returnReason: item.returnReason,
+          cancellationDate: item.cancellationDate,
+          returnRequestDate: item.returnRequestDate
+        });
+      });
+    });
+
+    // Apply status filter to individual items if specified
+    let filteredOrderItems = orderItems;
+    if (status) {
+      filteredOrderItems = orderItems.filter(item => item.status === status);
+    }
+
+    // Apply pagination to the flattened items
+    const totalItems = filteredOrderItems.length;
+    const totalPages = Math.ceil(totalItems / limit);
+    const skip = (page - 1) * limit;
+    const paginatedItems = filteredOrderItems.slice(skip, skip + limit);
+
+    // Get order statistics (based on individual items)
+    const itemStats = {};
+    orderItems.forEach(item => {
+      if (itemStats[item.status]) {
+        itemStats[item.status]++;
+      } else {
+        itemStats[item.status] = 1;
+      }
+    });
+
+    const orderStats = Object.keys(itemStats).map(status => ({
+      _id: status,
+      count: itemStats[status]
+    }));
+
+    // Get recent orders count (unique orders, not items)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayOrders = await Order.countDocuments({
+      createdAt: { $gte: today }
+    });
+
+    // Get total unique orders count
+    const totalOrders = allOrders.length;
+
+    res.json({
+      success: true,
+      data: {
+        orderItems: paginatedItems,
+        currentPage: page,
+        totalPages,
+        totalOrders,
+        totalItems,
+        orderStats,
+        todayOrders,
+        filters: {
+          status,
+          paymentMethod,
+          paymentStatus,
+          search,
+          sortBy,
+          sortOrder
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching filtered orders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error loading orders'
+    });
+  }
+};
+
 // Export orders data (CSV)
 exports.exportOrders = async (req, res) => {
   try {

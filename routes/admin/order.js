@@ -9,6 +9,9 @@ router.use(isAdmin);
 // Get all orders
 router.get('/', orderController.getAllOrders);
 
+// API endpoint for filtered orders (for dynamic updates)
+router.get('/api/filtered', orderController.getFilteredOrders);
+
 // Get order details
 router.get('/details/:orderId', orderController.getOrderDetails);
 

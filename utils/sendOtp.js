@@ -18,7 +18,6 @@ const initializeTemplate = async () => {
     if (fs.existsSync(templatePath)) {
       const templateContent = fs.readFileSync(templatePath, 'utf8');
       compiledTemplate = ejs.compile(templateContent);
-      console.log('✅ OTP email template pre-compiled successfully');
     } else {
       console.warn('⚠️ OTP email template not found, using fallback HTML');
     }

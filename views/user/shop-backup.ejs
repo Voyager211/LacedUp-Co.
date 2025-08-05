@@ -398,105 +398,17 @@
 
           // Show/hide no results message
           document.getElementById('no-results').classList.toggle('d-none', data.products.length > 0);
-          
-          // Update or hide pagination on totalPages
-          updatePagination(data.pagination);
 
           // Push state to browser history
           history.pushState(null, '', `/shop?${params.toString()}`);
+
+          // Note: Pagination is now handled by the custom implementation
+          // The page will reload with new pagination state
         }
       })
       .catch(err => {
         console.error('Error fetching products:', err);
       });
-  }
-
-  // New function to handle pagination display
-  // ✅ ADD: New function to handle pagination display
-function updatePagination(pagination) {
-  const paginationWrapper = document.querySelector('.pagination-wrapper');
-  
-  if (!paginationWrapper) return;
-  
-  // Hide pagination if totalPages <= 1
-  if (!pagination || pagination.totalPages <= 1) {
-    paginationWrapper.style.display = 'none';
-    return;
-  }
-  
-  // Show pagination if totalPages > 1
-  paginationWrapper.style.display = 'flex';
-  
-  // Generate new pagination HTML
-  const currentPage = pagination.currentPage;
-  const totalPages = pagination.totalPages;
-  const hasPrevPage = pagination.hasPrevPage;
-  const hasNextPage = pagination.hasNextPage;
-  
-  // Generate page numbers (show up to 5 pages around current page)
-  const pageNumbers = [];
-  const maxPagesToShow = 5;
-  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
-  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
-  
-  if (endPage - startPage + 1 < maxPagesToShow) {
-    startPage = Math.max(1, endPage - maxPagesToShow + 1);
-  }
-  
-  for (let i = startPage; i <= endPage; i++) {
-    pageNumbers.push(i);
-  }
-  
-  // Build pagination HTML
-  let paginationHTML = '<div class="pagination">';
-  
-  // Previous button
-  if (hasPrevPage) {
-    paginationHTML += `
-      <button class="page-btn pagination-btn" data-page="${currentPage - 1}">
-        <i class="bi bi-chevron-left"></i>
-      </button>
-    `;
-  } else {
-    paginationHTML += `
-      <button class="page-btn" disabled>
-        <i class="bi bi-chevron-left"></i>
-      </button>
-    `;
-  }
-  
-  // Page numbers
-  pageNumbers.forEach(pageNum => {
-    if (pageNum === currentPage) {
-      paginationHTML += `<button class="page-btn active">${pageNum}</button>`;
-    } else {
-      paginationHTML += `
-        <button class="page-btn pagination-btn" data-page="${pageNum}">
-          ${pageNum}
-        </button>
-      `;
-    }
-  });
-  
-  // Next button
-  if (hasNextPage) {
-    paginationHTML += `
-      <button class="page-btn pagination-btn" data-page="${currentPage + 1}">
-        <i class="bi bi-chevron-right"></i>
-      </button>
-    `;
-  } else {
-    paginationHTML += `
-      <button class="page-btn" disabled>
-        <i class="bi bi-chevron-right"></i>
-      </button>
-    `;
-    }
-  
-    paginationHTML += '</div>';
-  
-    // Replace pagination content
-    paginationWrapper.innerHTML = paginationHTML;
   }
 
   // 🌐 Restore filters on browser back/forward buttons
@@ -951,24 +863,60 @@ function updatePagination(pagination) {
   });
 </script>
 
-<!-- Updated Pagination JavaScript -->
+<!-- Custom Pagination JavaScript -->
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-  // Use event delegation for dynamically created pagination buttons
-  document.addEventListener('click', function(e) {
-    if (e.target.closest('.pagination-btn')) {
-      e.preventDefault();
-      const btn = e.target.closest('.pagination-btn');
-      const page = parseInt(btn.dataset.page);
-      
-      if (page && page > 0) {
-        fetchCallback(page);
+  const paginationContainer = document.querySelector('.pagination-wrapper');
+  const productGrid = document.getElementById('product-grid');
+
+  if (paginationContainer) {
+    paginationContainer.addEventListener('click', async (e) => {
+      if (e.target.closest('.pagination-btn')) {
+        const btn = e.target.closest('.pagination-btn');
+
+        const page = btn.dataset.page || 1;
+        const category = btn.dataset.category || '';
+        const search = btn.dataset.search || '';
+        const sort = btn.dataset.sort || '';
+        const minPrice = btn.dataset.min || '';
+        const maxPrice = btn.dataset.max || '';
+
+        try {
+          const url = `/shop?page=${page}&category=${category}&search=${search}&sort=${sort}&minPrice=${minPrice}&maxPrice=${maxPrice}`;
+
+          const res = await fetch(url, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          if (!res.ok) throw new Error('Failed to fetch products');
+
+          const html = await res.text();
+
+          // Replace the product grid and pagination content
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+
+          const newGrid = temp.querySelector('#product-grid');
+          const newPagination = temp.querySelector('.pagination-wrapper');
+
+          if (newGrid && productGrid) {
+            productGrid.innerHTML = newGrid.innerHTML;
+          }
+
+          if (newPagination && paginationContainer) {
+            paginationContainer.innerHTML = newPagination.innerHTML;
+          }
+
+        } catch (err) {
+          console.error('Pagination fetch error:', err);
+        }
       }
-    }
-  });
+    });
+  }
 });
 </script>
-
 
 <style>
 /* Custom Pagination Styles */
@@ -1386,34 +1334,15 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     }
 
-    // Wishlist button handling
+    // Wishlist button handling - authentication check only
     if (e.target.closest('.wishlist-btn')) {
-      e.preventDefault();
-      const button = e.target.closest('.wishlist-btn');
-      const productId = button.dataset.id;
-
       <% if (!user) { %>
+        e.preventDefault();
         // User not authenticated - redirect to login
         redirectToLogin();
         return;
       <% } %>
-
-      // User authenticated - handle wishlist functionality
-      console.log('Adding to wishlist:', productId);
-
-      // Toggle heart icon and color
-      const icon = button.querySelector('i');
-      if (icon.classList.contains('bi-heart')) {
-        icon.classList.remove('bi-heart');
-        icon.classList.add('bi-heart-fill');
-        button.classList.remove('btn-outline-secondary');
-        button.classList.add('btn-danger');
-      } else {
-        icon.classList.remove('bi-heart-fill');
-        icon.classList.add('bi-heart');
-        button.classList.remove('btn-danger');
-        button.classList.add('btn-outline-secondary');
-      }
+      // If user is authenticated, let the wishlist.js handle the functionality
     }
   });
 });
@@ -1546,4 +1475,76 @@ document.addEventListener('DOMContentLoaded', function() {
   color: #e03a2f;
   font-weight: 600;
 }
-</style>
+</style> 
+ < ! - -   A d d   T o a s t r   M e s s a g e s   f o r   W i s h l i s t   O p e r a t i o n s   - - >  
+ < s c r i p t >  
+ / /   O v e r r i d e   t h e   h a n d l e W i s h l i s t T o g g l e   f u n c t i o n   t o   a d d   t o a s t r   m e s s a g e s  
+ d o c u m e n t . a d d E v e n t L i s t e n e r ( ' D O M C o n t e n t L o a d e d ' ,   f u n c t i o n ( )   {  
+     / /   W a i t   a   b i t   f o r   t h e   o r i g i n a l   f u n c t i o n   t o   b e   d e f i n e d  
+     s e t T i m e o u t ( f u n c t i o n ( )   {  
+         i f   ( t y p e o f   h a n d l e W i s h l i s t T o g g l e   = = =   ' f u n c t i o n ' )   {  
+             c o n s t   o r i g i n a l H a n d l e W i s h l i s t T o g g l e   =   h a n d l e W i s h l i s t T o g g l e ;  
+              
+             w i n d o w . h a n d l e W i s h l i s t T o g g l e   =   a s y n c   f u n c t i o n ( p r o d u c t I d ,   b u t t o n ,   i c o n ,   i s I n W i s h l i s t )   {  
+                 t r y   {  
+                     i f   ( i s I n W i s h l i s t )   {  
+                         / /   R e m o v e   f r o m   w i s h l i s t  
+                         c o n s t   r e s p o n s e   =   a w a i t   f e t c h ( ` / w i s h l i s t / r e m o v e / $ { p r o d u c t I d } ` ,   {  
+                             m e t h o d :   ' D E L E T E ' ,  
+                             h e a d e r s :   {  
+                                 ' C o n t e n t - T y p e ' :   ' a p p l i c a t i o n / j s o n '  
+                             }  
+                         } ) ;  
+  
+                         c o n s t   d a t a   =   a w a i t   r e s p o n s e . j s o n ( ) ;  
+                         i f   ( d a t a . s u c c e s s )   {  
+                             i c o n . c l a s s L i s t . r e m o v e ( ' b i - h e a r t - f i l l ' ) ;  
+                             i c o n . c l a s s L i s t . a d d ( ' b i - h e a r t ' ) ;  
+                             b u t t o n . c l a s s L i s t . r e m o v e ( ' b t n - d a n g e r ' ) ;  
+                             b u t t o n . c l a s s L i s t . a d d ( ' b t n - o u t l i n e - s e c o n d a r y ' ) ;  
+                             b u t t o n . t i t l e   =   ' A d d   t o   W i s h l i s t ' ;  
+                              
+                             / /   S h o w   s u c c e s s   m e s s a g e   w i t h   t o a s t r  
+                             i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                                 t o a s t r . s u c c e s s ( ' P r o d u c t   r e m o v e d   f r o m   y o u r   w i s h l i s t ' ,   ' R e m o v e d   f r o m   W i s h l i s t ' ) ;  
+                             }  
+                         }  
+                     }   e l s e   {  
+                         / /   A d d   t o   w i s h l i s t  
+                         c o n s t   r e s p o n s e   =   a w a i t   f e t c h ( ' / w i s h l i s t / a d d ' ,   {  
+                             m e t h o d :   ' P O S T ' ,  
+                             h e a d e r s :   {  
+                                 ' C o n t e n t - T y p e ' :   ' a p p l i c a t i o n / j s o n '  
+                             } ,  
+                             b o d y :   J S O N . s t r i n g i f y ( {   p r o d u c t I d   } )  
+                         } ) ;  
+  
+                         c o n s t   d a t a   =   a w a i t   r e s p o n s e . j s o n ( ) ;  
+                         i f   ( d a t a . s u c c e s s )   {  
+                             i c o n . c l a s s L i s t . r e m o v e ( ' b i - h e a r t ' ) ;  
+                             i c o n . c l a s s L i s t . a d d ( ' b i - h e a r t - f i l l ' ) ;  
+                             b u t t o n . c l a s s L i s t . r e m o v e ( ' b t n - o u t l i n e - s e c o n d a r y ' ) ;  
+                             b u t t o n . c l a s s L i s t . a d d ( ' b t n - d a n g e r ' ) ;  
+                             b u t t o n . t i t l e   =   ' R e m o v e   f r o m   W i s h l i s t ' ;  
+                              
+                             / /   S h o w   s u c c e s s   m e s s a g e   w i t h   t o a s t r  
+                             i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                                 t o a s t r . s u c c e s s ( ' P r o d u c t   a d d e d   t o   y o u r   w i s h l i s t ' ,   ' A d d e d   t o   W i s h l i s t ' ) ;  
+                             }  
+                         }   e l s e   {  
+                             t h r o w   n e w   E r r o r ( d a t a . m e s s a g e   | |   ' F a i l e d   t o   a d d   t o   w i s h l i s t ' ) ;  
+                         }  
+                     }  
+                 }   c a t c h   ( e r r o r )   {  
+                     c o n s o l e . e r r o r ( ' W i s h l i s t   e r r o r : ' ,   e r r o r ) ;  
+                     / /   S h o w   e r r o r   m e s s a g e   w i t h   t o a s t r  
+                     i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                         t o a s t r . e r r o r ( e r r o r . m e s s a g e   | |   ' F a i l e d   t o   u p d a t e   w i s h l i s t .   P l e a s e   t r y   a g a i n . ' ,   ' E r r o r ' ) ;  
+                     }  
+                 }  
+             } ;  
+         }  
+     } ,   1 0 0 ) ;  
+ } ) ;  
+ < / s c r i p t >  
+ 

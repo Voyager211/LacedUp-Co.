@@ -40,7 +40,6 @@ if (transporter) {
   transporter.verify()
     .then(() => {
       isTransporterVerified = true;
-      console.log('✅ Email transporter pre-verified successfully');
     })
     .catch((err) => {
       console.warn('⚠️ Email transporter pre-verification failed:', err.message);
@@ -77,12 +76,10 @@ module.exports = async function sendEmail(to, subject, html) {
 
     // Skip verification if already pre-verified for faster sending
     if (!isTransporterVerified) {
-      console.log('🔍 Verifying email configuration...');
       await transporter.verify();
       isTransporterVerified = true;
     }
 
-    console.log('📧 Sending email...');
     await transporter.sendMail({
       from: `"LacedUp Co." <${process.env.EMAIL_USER}>`,
       to,
@@ -90,7 +87,6 @@ module.exports = async function sendEmail(to, subject, html) {
       html
     });
 
-    console.log(`✅ Email sent successfully to ${to}`);
   } catch (err) {
     console.error(`❌ Email sending failed to ${to}:`, err);
     

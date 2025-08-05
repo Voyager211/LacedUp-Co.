@@ -839,14 +839,18 @@
 </style>
 
 <script>
-// Auto-submit filter form on change
+// Global variables for pagination and filtering
+let currentPage = <%= currentPage %>;
+let isLoading = false;
+
+// Auto-submit filter form on change with fetch
 document.addEventListener('DOMContentLoaded', function() {
   const filterForm = document.getElementById('filterForm');
   const formElements = filterForm.querySelectorAll('input, select');
   
   formElements.forEach(element => {
     element.addEventListener('change', function() {
-      filterForm.submit();
+      applyFilters(1); // Reset to page 1 when filters change
     });
   });
   
@@ -857,7 +861,7 @@ document.addEventListener('DOMContentLoaded', function() {
   searchInput.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      filterForm.submit();
+      applyFilters(1); // Reset to page 1 when search changes
     }, 500);
   });
 
@@ -905,6 +909,322 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 });
+
+// Function to apply filters using fetch
+async function applyFilters(page = 1) {
+  if (isLoading) return;
+  
+  isLoading = true;
+  showLoadingState();
+  
+  try {
+    const filterForm = document.getElementById('filterForm');
+    const formData = new FormData(filterForm);
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', page);
+    
+    for (const [key, value] of formData.entries()) {
+      if (value.trim() !== '') {
+        params.append(key, value);
+      }
+    }
+    
+    const response = await fetch(`/admin/orders/api/filtered?${params.toString()}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      updateOrdersTable(result.data);
+      updateStatistics(result.data);
+      updatePagination(result.data);
+      currentPage = result.data.currentPage;
+    } else {
+      showToast('error', result.message || 'Error loading orders');
+    }
+  } catch (error) {
+    console.error('Error applying filters:', error);
+    showToast('error', 'Error loading orders');
+  } finally {
+    isLoading = false;
+    hideLoadingState();
+  }
+}
+
+// Function to show loading state
+function showLoadingState() {
+  const tableBody = document.querySelector('.orders-table tbody');
+  tableBody.innerHTML = `
+    <tr>
+      <td colspan="9" class="text-center py-5">
+        <div class="loading-state">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading orders...</p>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+// Function to hide loading state
+function hideLoadingState() {
+  // Loading state will be replaced by actual content
+}
+
+// Function to update orders table
+function updateOrdersTable(data) {
+  const tableBody = document.querySelector('.orders-table tbody');
+  
+  if (data.orderItems && data.orderItems.length > 0) {
+    let tableHTML = '';
+    
+    data.orderItems.forEach(item => {
+      tableHTML += generateOrderRowHTML(item);
+    });
+    
+    tableBody.innerHTML = tableHTML;
+    
+    // Re-attach event listeners for new dropdown buttons
+    attachDropdownEventListeners();
+  } else {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="9" class="text-center py-5">
+          <div class="empty-state">
+            <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
+            <h5 class="text-black">No order items found</h5>
+            <p class="text-black">No order items match your current filters.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Function to generate order row HTML
+function generateOrderRowHTML(item) {
+  const orderDate = new Date(item.orderDate);
+  const formattedDate = orderDate.toLocaleDateString('en-IN', { 
+    day: 'numeric', 
+    month: 'short', 
+    year: 'numeric' 
+  });
+  const formattedTime = orderDate.toLocaleTimeString('en-IN', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  });
+  
+  const productImageHTML = item.productImage 
+    ? `<img src="${item.productImage}" alt="${item.productName}" class="product-thumb me-3">`
+    : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
+  
+  const cancelButtonHTML = ['Pending', 'Processing'].includes(item.status) 
+    ? `<li><button class="dropdown-item text-black" onclick="cancelItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-x-circle me-2 text-black"></i>Cancel Item</button></li>`
+    : '';
+  
+  const returnButtonHTML = item.status === 'Delivered' 
+    ? `<li><button class="dropdown-item text-black" onclick="returnItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-arrow-return-left me-2 text-black"></i>Return Item</button></li>`
+    : '';
+  
+  return `
+    <tr class="order-row">
+      <td>
+        <div class="order-id">
+          <span class="fw-bold text-black">#${item.orderId}</span>
+        </div>
+      </td>
+      <td>
+        <div class="product-info d-flex align-items-center">
+          ${productImageHTML}
+          <div class="product-details">
+            <div class="product-name text-black">${item.productName}</div>
+            <small class="text-muted">SKU: ${item.sku}</small>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="customer-info">
+          <div class="customer-name text-black">${item.user?.name || 'N/A'}</div>
+          <div class="customer-email text-black">${item.user?.email || 'N/A'}</div>
+        </div>
+      </td>
+      <td>
+        <div class="date-info">
+          <div class="order-date text-black">${formattedDate}</div>
+          <div class="order-time text-black">${formattedTime}</div>
+        </div>
+      </td>
+      <td>
+        <div class="size-qty-info">
+          <div class="size text-black">Size: ${item.size}</div>
+          <div class="quantity text-black">Qty: ${item.quantity}</div>
+        </div>
+      </td>
+      <td>
+        <div class="amount-info">
+          <div class="item-amount text-black">₹${item.totalPrice.toLocaleString('en-IN')}</div>
+          <div class="payment-method text-black">${item.paymentMethod.toUpperCase()}</div>
+        </div>
+      </td>
+      <td>
+        <div class="payment-status">
+          <span class="status-badge payment-${item.paymentStatus.toLowerCase()}">
+            ${item.paymentStatus}
+          </span>
+        </div>
+      </td>
+      <td>
+        <div class="item-status">
+          <span class="status-badge item-${item.status.toLowerCase()}">
+            ${item.status}
+          </span>
+        </div>
+      </td>
+      <td class="text-center">
+        <div class="actions-dropdown">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                    data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-three-dots-vertical text-black"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item text-black" href="/admin/orders/details/${item.orderId}">
+                  <i class="bi bi-eye me-2 text-black"></i>View Order Details
+                </a>
+              </li>
+              <li>
+                <button class="dropdown-item text-black" onclick="updateItemStatus('${item.orderId}', '${item.itemId}', '${item.status}')">
+                  <i class="bi bi-pencil me-2 text-black"></i>Update Item Status
+                </button>
+              </li>
+              ${cancelButtonHTML}
+              ${returnButtonHTML}
+            </ul>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+// Function to update statistics
+function updateStatistics(data) {
+  // Update today's orders
+  const todayOrdersElement = document.querySelector('.card-body h3');
+  if (todayOrdersElement) {
+    todayOrdersElement.textContent = data.todayOrders || 0;
+  }
+  
+  // Update total orders
+  const totalOrdersElements = document.querySelectorAll('.card-body h3');
+  if (totalOrdersElements[1]) {
+    totalOrdersElements[1].textContent = data.totalOrders || 0;
+  }
+  
+  // Update total items
+  if (totalOrdersElements[2]) {
+    totalOrdersElements[2].textContent = data.totalItems || 0;
+  }
+  
+  // Update pending items
+  if (totalOrdersElements[3]) {
+    const pendingStat = data.orderStats.find(stat => stat._id === 'Pending');
+    totalOrdersElements[3].textContent = pendingStat?.count || 0;
+  }
+}
+
+// Function to update pagination
+function updatePagination(data) {
+  const paginationContainer = document.querySelector('.pagination');
+  if (!paginationContainer || data.totalPages <= 1) {
+    const paginationNav = document.querySelector('nav[aria-label="Orders pagination"]');
+    if (paginationNav) {
+      paginationNav.style.display = 'none';
+    }
+    return;
+  }
+  
+  const paginationNav = document.querySelector('nav[aria-label="Orders pagination"]');
+  if (paginationNav) {
+    paginationNav.style.display = 'block';
+  }
+  
+  let paginationHTML = '';
+  
+  // Previous button
+  paginationHTML += `
+    <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link text-black" href="#" onclick="applyFilters(${data.currentPage - 1}); return false;">
+        <i class="bi bi-chevron-left text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  // Page numbers
+  const startPage = Math.max(1, data.currentPage - 2);
+  const endPage = Math.min(data.totalPages, data.currentPage + 2);
+  
+  for (let i = startPage; i <= endPage; i++) {
+    paginationHTML += `
+      <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+        <a class="page-link ${i === data.currentPage ? 'text-white' : 'text-black'}" href="#" onclick="applyFilters(${i}); return false;">
+          ${i}
+        </a>
+      </li>
+    `;
+  }
+  
+  // Next button
+  paginationHTML += `
+    <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
+      <a class="page-link text-black" href="#" onclick="applyFilters(${data.currentPage + 1}); return false;">
+        <i class="bi bi-chevron-right text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  paginationContainer.innerHTML = paginationHTML;
+}
+
+// Function to re-attach dropdown event listeners
+function attachDropdownEventListeners() {
+  const dropdownButtons = document.querySelectorAll('.action-btn');
+  
+  dropdownButtons.forEach(button => {
+    button.addEventListener('click', function() {
+      // Remove dropdown-open class from all rows
+      document.querySelectorAll('.order-row').forEach(row => {
+        row.classList.remove('dropdown-open');
+      });
+      
+      // Add dropdown-open class to current row
+      const currentRow = this.closest('.order-row');
+      if (currentRow) {
+        currentRow.classList.add('dropdown-open');
+      }
+    });
+  });
+
+  // Bootstrap dropdown events
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
+
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
+}
 
 // Update item status
 function updateItemStatus(orderId, itemId, currentStatus) {
@@ -1042,7 +1362,7 @@ function submitItemReturn() {
 
 // Refresh orders
 function refreshOrders() {
-  location.reload();
+  applyFilters(currentPage);
 }
 
 // Toast notification function

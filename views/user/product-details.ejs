@@ -247,8 +247,10 @@
         <button class="btn btn-dark flex-fill add-to-cart-btn" data-product-id="<%= product._id %>" id="add-to-cart-btn" disabled>
           <i class="bi bi-cart-plus me-2"></i>Add to Cart
         </button>
-        <button class="btn btn-outline-danger add-to-wishlist-btn" data-product-id="<%= product._id %>" title="Add to Wishlist">
-          <i class="bi bi-heart"></i>
+        <button class="btn <%= isInWishlist ? 'btn-danger' : 'btn-outline-danger' %> add-to-wishlist-btn" 
+                data-product-id="<%= product._id %>" 
+                title="<%= isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' %>">
+          <i class="bi <%= isInWishlist ? 'bi-heart-fill' : 'bi-heart' %>"></i>
         </button>
       </div>
 
@@ -374,7 +376,7 @@
     <h5 class="fw-bold mb-4">You might also like</h5>
     <div class="row">
       <% relatedProducts.forEach(rp => { %>
-        <%- include('partials/product-card', { product: rp }) %>
+        <%- include('partials/product-card', { product: rp, userWishlistProductIds: typeof userWishlistProductIds !== 'undefined' ? userWishlistProductIds : [] }) %>
       <% }) %>
     </div>
   </div>
@@ -779,7 +781,7 @@
     // Add to Wishlist functionality
     const addToWishlistBtn = document.querySelector('.add-to-wishlist-btn');
     if (addToWishlistBtn) {
-      addToWishlistBtn.addEventListener('click', function() {
+      addToWishlistBtn.addEventListener('click', async function() {
         const productId = this.dataset.productId;
 
         // Check if user is authenticated
@@ -794,21 +796,64 @@
         <% } %>
 
         // Add to wishlist logic for authenticated users
-        // TODO: Implement actual wishlist functionality
-        console.log('Adding product to wishlist:', productId);
-
-        // Toggle heart icon and color
         const icon = this.querySelector('i');
-        if (icon.classList.contains('bi-heart')) {
-          icon.classList.remove('bi-heart');
-          icon.classList.add('bi-heart-fill');
-          this.classList.remove('btn-outline-danger');
-          this.classList.add('btn-danger');
-        } else {
-          icon.classList.remove('bi-heart-fill');
-          icon.classList.add('bi-heart');
-          this.classList.remove('btn-danger');
-          this.classList.add('btn-outline-danger');
+        const isInWishlist = icon.classList.contains('bi-heart-fill');
+
+        try {
+          if (isInWishlist) {
+            // Remove from wishlist
+            const response = await fetch(`/wishlist/remove/${productId}`, {
+              method: 'DELETE',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+
+            const data = await response.json();
+            if (data.success) {
+              icon.classList.remove('bi-heart-fill');
+              icon.classList.add('bi-heart');
+              this.classList.remove('btn-danger');
+              this.classList.add('btn-outline-danger');
+              this.title = 'Add to Wishlist';
+              
+              // Show success message
+               if (typeof toastr !== 'undefined') {
+                 toastr.success('Product removed from your wishlist', 'Removed from Wishlist');
+               }
+            }
+          } else {
+            // Add to wishlist
+            const response = await fetch('/wishlist/add', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ productId })
+            });
+
+            const data = await response.json();
+            if (data.success) {
+              icon.classList.remove('bi-heart');
+              icon.classList.add('bi-heart-fill');
+              this.classList.remove('btn-outline-danger');
+              this.classList.add('btn-danger');
+              this.title = 'Remove from Wishlist';
+              
+              // Show success message
+               if (typeof toastr !== 'undefined') {
+                 toastr.success('Product added to your wishlist', 'Added to Wishlist');
+               }
+            } else {
+              throw new Error(data.message || 'Failed to add to wishlist');
+            }
+          }
+        } catch (error) {
+          console.error('Wishlist error:', error);
+          console.error('Wishlist error:', error);
+          if (typeof toastr !== 'undefined') {
+            toastr.error(error.message || 'Failed to update wishlist. Please try again.', 'Error');
+          }
         }
       });
     }
@@ -2514,3 +2559,26 @@
     }, 100);
   });
 </script>
+
+ 
+ < ! - -   O v e r r i d e   S w e e t A l e r t   f o r   W i s h l i s t   O p e r a t i o n s   - - > 
+ 
+ < s c r i p t > 
+ 
+ d o c u m e n t . a d d E v e n t L i s t e n e r ( ' D O M C o n t e n t L o a d e d ' ,   f u n c t i o n ( )   { 
+ 
+     / /   S t o r e   o r i g i n a l   S w a l . f i r e 
+ 
+     c o n s t   o r i g i n a l S w a l   =   w i n d o w . S w a l   ?   w i n d o w . S w a l . f i r e   :   n u l l ; 
+ 
+     
+ 
+     / /   O v e r r i d e   S w a l . f i r e   f o r   w i s h l i s t   o p e r a t i o n s 
+ 
+     i f   ( o r i g i n a l S w a l   & &   t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   { 
+ 
+         w i n d o w . S w a l . f i r e   =   f u n c t i o n ( o p t i o n s )   { 
+ 
+             / /   C h e c k   i f   t h i s   i s   a   w i s h l i s t - r e l a t e d   m e s s a g e 
+ 
+             i f   ( o p t i o n s . t i t l e   = = =   ' A d d e d   t o   W i s h l i s t ' )   { 

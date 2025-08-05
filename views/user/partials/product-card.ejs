@@ -3,7 +3,7 @@
     <a href="/product/<%= product.slug %>" class="text-decoration-none text-dark" style="<%= product.totalStock === 0 ? 'position: relative; z-index: 5;' : '' %>">
       <img src="<%= product.mainImage %>" class="card-img-top img-fluid" alt="<%= product.productName %>" style="object-fit: cover; height: 200px;">
     </a>
-    <!-- Out of Stock Overlay - positioned after image to ensure it covers everything -->
+    <!-- Out of Stock Overlay -->
     <% if (product.totalStock === 0) { %>
       <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
       <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
@@ -15,12 +15,10 @@
         <div class="d-flex align-items-center gap-2">
           <% if (product.variants && product.variants.length > 0) { %>
             <%
-              // Use backend-calculated averageFinalPrice (now always real-time calculated)
               let avgPrice;
               if (typeof product.averageFinalPrice !== 'undefined') {
                 avgPrice = product.averageFinalPrice;
               } else {
-                // Fallback: calculate real-time price using current offers
                 const finalPrices = product.variants.map(v => {
                   const basePrice = v.basePrice || product.regularPrice;
                   const categoryOffer = (product.category && product.category.categoryOffer) || 0;
@@ -32,8 +30,6 @@
                 });
                 avgPrice = finalPrices.reduce((sum, price) => sum + price, 0) / finalPrices.length;
               }
-
-              // Calculate discount percentage
               const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
                 ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
                 : 0;
@@ -53,18 +49,63 @@
         <% } else { %>
           <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
         <% } %>
+
+        <!-- ✅ NEW: Size Dropdown - Only show on wishlist page -->
+        <% if (typeof isWishlistPage !== 'undefined' && isWishlistPage) { %>
+          <% if (product.variants && product.variants.length > 0) { %>
+            <div class="mt-2">
+              <label class="form-label small text-muted mb-1">Size:</label>
+              <select class="form-select form-select-sm size-dropdown" 
+                      data-product-id="<%= product._id %>"
+                      title="Select Size">
+                <option value="">Select Size</option>
+                <% 
+                // Filter variants with stock > 0 and sort by size
+                const availableVariants = product.variants
+                  .filter(variant => variant.stock > 0)
+                  .sort((a, b) => {
+                    const aNum = parseInt(a.size);
+                    const bNum = parseInt(b.size);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                      return aNum - bNum;
+                    }
+                    return a.size.localeCompare(b.size);
+                  });
+                %>
+                <% availableVariants.forEach(variant => { %>
+                  <option value="<%= variant._id %>" 
+                          data-stock="<%= variant.stock %>"
+                          data-size="<%= variant.size %>">
+                    <%= variant.size.toString().toLowerCase().includes('uk') ? variant.size : 'UK ' + variant.size %>
+                    <% if (variant.stock <= 5) { %> (Only <%= variant.stock %> left)<% } %>
+                  </option>
+                <% }) %>
+                <% if (availableVariants.length === 0) { %>
+                  <option value="" disabled>Out of Stock</option>
+                <% } %>
+              </select>
+            </div>
+          <% } %>
+        <% } %>
       </div>
+      
       <div class="d-flex justify-content-end gap-2">
-        <button class="btn btn-sm btn-outline-secondary wishlist-btn" 
+        <%
+          const isInWishlist = typeof userWishlistProductIds !== 'undefined' && 
+                              userWishlistProductIds.includes(product._id.toString());
+        %>
+        <button class="btn btn-sm <%= isInWishlist ? 'btn-danger' : 'btn-outline-secondary' %> wishlist-btn" 
                 data-id="<%= product._id %>" 
-                title="Add to Wishlist">
-          <i class="bi bi-heart"></i>
+                data-in-wishlist="<%= isInWishlist %>"
+                title="<%= isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' %>">
+          <i class="bi <%= isInWishlist ? 'bi-heart-fill' : 'bi-heart' %>"></i>
         </button>
         <button class="btn btn-sm btn-dark cart-btn" 
                 data-id="<%= product._id %>" 
                 data-slug="<%= product.slug %>"
+                data-requires-size="true"
                 title="Add to Cart">
-          <i class="bi bi-cart-plus"></i>
+          <i class="bi bi-cart-plus"></i> <span class="cart-btn-text">Add to Cart</span>
         </button>
       </div>
     </div>

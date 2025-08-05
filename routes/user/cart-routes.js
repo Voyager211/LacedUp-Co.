@@ -44,6 +44,9 @@ router.post('/remove', requireAuthAPI, cartController.removeFromCart);
 router.post('/clear', requireAuthAPI, cartController.clearCart);
 router.post('/remove-out-of-stock', requireAuthAPI, cartController.removeOutOfStockItems);
 
+// API route specifically for wishlist-to-cart functionality  
+router.post('/add', requireAuthAPI, cartController.addToCart);
+
 // Routes that can be accessed without authentication or with JSON response
 router.get('/count', cartController.getCartCount);
 
@@ -56,5 +59,7 @@ router.get('/checkout', requireAuth, cartController.loadCheckout);
 
 // Checkout validation route
 router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
+
+
 
 module.exports = router;

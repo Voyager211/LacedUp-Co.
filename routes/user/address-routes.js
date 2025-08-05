@@ -21,13 +21,11 @@ const requireAuth = (req, res, next) => {
 
 // Page routes
 router.get('/addresses', requireAuth, addressController.loadAddresses);
-router.get('/address/add', requireAuth, addressController.loadAddAddress);
-router.get('/address/edit/:addressId', requireAuth, addressController.loadEditAddress);
 
 // API routes
 router.get('/api/addresses', requireAuth, addressController.getAddresses);
-router.post('/api/address', requireAuth, addressController.addAddress);
 router.get('/api/address/:addressId', requireAuth, addressController.getAddress);
+router.post('/api/address', requireAuth, addressController.addAddress);
 router.put('/api/address/:addressId', requireAuth, addressController.updateAddress);
 router.delete('/api/address/:addressId', requireAuth, addressController.deleteAddress);
 router.patch('/api/address/:addressId/default', requireAuth, addressController.setDefaultAddress);

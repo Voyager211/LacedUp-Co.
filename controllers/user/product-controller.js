@@ -2,6 +2,7 @@ const Product = require('../../models/Product');
 const Review = require('../../models/Review'); // You'll need to create this
 const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
+const Wishlist = require('../../models/Wishlist');
 const { getPagination } = require('../../utils/pagination');
 
 exports.getProducts = async (req, res) => {
@@ -259,6 +260,15 @@ exports.loadShopPage = async (req, res) => {
       isActive: true
     }).sort({ name: 1 });
 
+    // Get user's wishlist if authenticated
+    let userWishlistProductIds = [];
+    if (req.user) {
+      const userWishlist = await Wishlist.findOne({ userId: req.user._id }).lean();
+      if (userWishlist && userWishlist.products) {
+        userWishlistProductIds = userWishlist.products.map(item => item.productId.toString());
+      }
+    }
+
     // Get available sizes with stock > 0 from active products
     const availableSizes = await Product.aggregate([
       {
@@ -462,7 +472,8 @@ exports.loadShopPage = async (req, res) => {
         sortBy,
         minPrice,
         maxPrice,
-        totalProductCount
+        totalProductCount,
+        userWishlistProductIds
       });
     }
 
@@ -487,7 +498,8 @@ exports.loadShopPage = async (req, res) => {
       sortBy,
       minPrice,
       maxPrice,
-      totalProductCount
+      totalProductCount,
+      userWishlistProductIds
     });
   } catch (err) {
     console.error('❌ Error loading shop page:', err);
@@ -748,6 +760,17 @@ exports.loadProductDetails = async (req, res) => {
       }
     }
 
+    // Check if product is in user's wishlist and get wishlist product IDs for related products
+    let isInWishlist = false;
+    let userWishlistProductIds = [];
+    if (req.user) {
+      const userWishlist = await Wishlist.findOne({ userId: req.user._id }).lean();
+      if (userWishlist && userWishlist.products) {
+        userWishlistProductIds = userWishlist.products.map(item => item.productId.toString());
+        isInWishlist = userWishlistProductIds.includes(product._id.toString());
+      }
+    }
+
     res.render('user/product-details', {
       title: product.productName,
       layout: 'user/layouts/user-layout',
@@ -759,7 +782,9 @@ exports.loadProductDetails = async (req, res) => {
       totalReviews,
       ratingCounts,
       ratingBreakdown,
-      averageFinalPrice
+      averageFinalPrice,
+      isInWishlist,
+      userWishlistProductIds
     });
 
   } catch (err) {

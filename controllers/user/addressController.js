@@ -1,104 +1,274 @@
 const Address = require('../../models/Address');
 const User = require('../../models/User');
 
-// Backend address validation using Geoapify
-const validateAddressWithGeoapify = async (addressData) => {
-  const API_KEY = process.env.GEOAPIFY_API_KEY;
-  const fullAddress = `${addressData.landMark}, ${addressData.city}, ${addressData.state}, ${addressData.pincode}`;
-  
+// Add new address
+exports.addAddress = async (req, res) => {
   try {
-    const fetch = (await import('node-fetch')).default;
-    const response = await fetch(
-      `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(fullAddress)}&country=IN&format=json&apiKey=${API_KEY}`
-    );
-    const data = await response.json();
+    const userId = req.session.userId || (req.user && req.user._id);
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please login to add address'
+      });
+    }
 
-    return {
-      isValid: data.results && data.results.length > 0,
-      suggestions: data.results || [],
-      coordinates: data.results && data.results.length > 0 ? {
-        lat: data.results[0].lat,
-        lon: data.results[0].lon
-      } : null
+    // Validate required fields
+    const { fullName, mobileNumber, addressDetails, state, district, city, pincode, addressType } = req.body;
+    
+    if (!fullName || !mobileNumber || !addressDetails || !state || !district || !city || !pincode || !addressType) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be filled'
+      });
+    }
+
+    // Validate field formats
+    if (fullName.trim().length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name must be at least 4 characters long'
+      });
+    }
+
+    if (!/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit mobile number'
+      });
+    }
+
+    if (req.body.altPhone && !/^[6-9]\d{9}$/.test(req.body.altPhone.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit alternative phone number'
+      });
+    }
+
+    if (addressDetails.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Address details must be at least 10 characters long'
+      });
+    }
+
+    if (!/^[1-9]\d{5}$/.test(pincode.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 6-digit pincode'
+      });
+    }
+
+    if (city.trim().length < 2 || !/^[a-zA-Z\s]+$/.test(city.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid city name'
+      });
+    }
+
+    if (!['home', 'office', 'other'].includes(addressType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid address type'
+      });
+    }
+
+    // Create new address object
+    const newAddress = {
+      addressType: addressType,
+      name: fullName.trim(),
+      city: city.trim(),
+      landMark: addressDetails.trim(),
+      state: state,
+      pincode: parseInt(pincode.trim()),
+      phone: mobileNumber.trim(),
+      altPhone: req.body.altPhone ? req.body.altPhone.trim() : '',
+      isDefault: false
     };
+
+    // Add coordinates if provided
+    if (req.body.coordinates && req.body.coordinates.lat && req.body.coordinates.lon) {
+      newAddress.coordinates = {
+        lat: req.body.coordinates.lat,
+        lon: req.body.coordinates.lon
+      };
+    }
+
+    // Find or create user's address document
+    let userAddresses = await Address.findOne({ userId });
+    
+    if (!userAddresses) {
+      // First address for user - make it default
+      newAddress.isDefault = true;
+      userAddresses = new Address({
+        userId: userId,
+        address: [newAddress]
+      });
+    } else {
+      // Check if user wants this as default or if it's their first address
+      if (req.body.makeDefault === true || userAddresses.address.length === 0) {
+        // Unset all existing defaults
+        userAddresses.address.forEach(addr => {
+          addr.isDefault = false;
+        });
+        newAddress.isDefault = true;
+      }
+      
+      // Add new address to array
+      userAddresses.address.push(newAddress);
+    }
+
+    await userAddresses.save();
+
+    res.json({
+      success: true,
+      message: 'Address added successfully'
+    });
+
   } catch (error) {
-    console.error('Geoapify validation error:', error);
-    return {
-      isValid: false,
-      suggestions: [],
-      coordinates: null
-    };
+    console.error('Error adding address:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to add address. Please try again.'
+    });
   }
 };
 
-// Check for duplicate addresses using coordinates
-const checkDuplicateAddress = (newCoordinates, existingAddresses) => {
-  if (!newCoordinates || !newCoordinates.lat || !newCoordinates.lon) return false;
-  
-  const threshold = 0.001; // ~100 meters
-  
-  return existingAddresses.some(existing => {
-    if (!existing.coordinates || !existing.coordinates.lat || !existing.coordinates.lon) return false;
+// Update existing address
+exports.updateAddress = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    const addressId = req.params.addressId;
     
-    const latDiff = Math.abs(existing.coordinates.lat - newCoordinates.lat);
-    const lonDiff = Math.abs(existing.coordinates.lon - newCoordinates.lon);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please login to update address'
+      });
+    }
+
+    // Validate required fields
+    const { fullName, mobileNumber, addressDetails, state, district, city, pincode, addressType } = req.body;
     
-    return latDiff < threshold && lonDiff < threshold;
-  });
-};
+    if (!fullName || !mobileNumber || !addressDetails || !state || !district || !city || !pincode || !addressType) {
+      return res.status(400).json({
+        success: false,
+        message: 'All required fields must be filled'
+      });
+    }
 
-// Validation functions
-const validateAddressData = (data) => {
-  const errors = {};
+    // Validate field formats (same as add)
+    if (fullName.trim().length < 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'Full name must be at least 4 characters long'
+      });
+    }
 
-  // Validate name
-  if (!data.name || data.name.trim().length < 4) {
-    errors.name = 'Full name must be at least 4 characters long';
-  } else if (!/^[a-zA-Z\s]+$/.test(data.name.trim())) {
-    errors.name = 'Full name can only contain alphabets and spaces';
+    if (!/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit mobile number'
+      });
+    }
+
+    if (req.body.altPhone && !/^[6-9]\d{9}$/.test(req.body.altPhone.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit alternative phone number'
+      });
+    }
+
+    if (addressDetails.trim().length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Address details must be at least 10 characters long'
+      });
+    }
+
+    if (!/^[1-9]\d{5}$/.test(pincode.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 6-digit pincode'
+      });
+    }
+
+    if (city.trim().length < 2 || !/^[a-zA-Z\s]+$/.test(city.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid city name'
+      });
+    }
+
+    if (!['home', 'office', 'other'].includes(addressType)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a valid address type'
+      });
+    }
+
+    // Find user's address document
+    const userAddresses = await Address.findOne({ userId });
+
+    if (!userAddresses) {
+      return res.status(404).json({
+        success: false,
+        message: 'Address not found'
+      });
+    }
+
+    // Find the specific address to update
+    const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === addressId);
+
+    if (addressIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Address not found'
+      });
+    }
+
+    // Update address fields
+    const addressToUpdate = userAddresses.address[addressIndex];
+    addressToUpdate.addressType = addressType;
+    addressToUpdate.name = fullName.trim();
+    addressToUpdate.city = city.trim();
+    addressToUpdate.landMark = addressDetails.trim();
+    addressToUpdate.state = state;
+    addressToUpdate.pincode = parseInt(pincode.trim());
+    addressToUpdate.phone = mobileNumber.trim();
+    addressToUpdate.altPhone = req.body.altPhone ? req.body.altPhone.trim() : '';
+
+    // Update coordinates if provided
+    if (req.body.coordinates && req.body.coordinates.lat && req.body.coordinates.lon) {
+      addressToUpdate.coordinates = {
+        lat: req.body.coordinates.lat,
+        lon: req.body.coordinates.lon
+      };
+    }
+
+    // Handle default address setting
+    if (req.body.makeDefault === true) {
+      // Unset all existing defaults
+      userAddresses.address.forEach(addr => {
+        addr.isDefault = false;
+      });
+      addressToUpdate.isDefault = true;
+    }
+
+    await userAddresses.save();
+
+    res.json({
+      success: true,
+      message: 'Address updated successfully'
+    });
+
+  } catch (error) {
+    console.error('Error updating address:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update address. Please try again.'
+    });
   }
-
-  // Validate phone
-  if (!data.phone || !/^[6-9]\d{9}$/.test(data.phone.trim())) {
-    errors.phone = 'Please enter a valid 10-digit mobile number starting with 6, 7, 8, or 9';
-  }
-
-  // Validate alternative phone (optional)
-  if (data.altPhone && data.altPhone.trim() && !/^[6-9]\d{9}$/.test(data.altPhone.trim())) {
-    errors.altPhone = 'Please enter a valid 10-digit alternative phone number starting with 6, 7, 8, or 9';
-  }
-
-  // Validate address details
-  if (!data.landMark || data.landMark.trim().length < 10) {
-    errors.landMark = 'Address details must be at least 10 characters long';
-  }
-
-  // Validate state
-  if (!data.state || data.state.trim() === '') {
-    errors.state = 'Please select a state';
-  }
-
-  // Validate city
-  if (!data.city || data.city.trim().length < 2) {
-    errors.city = 'City must be at least 2 characters long';
-  } else if (!/^[a-zA-Z\s]+$/.test(data.city.trim())) {
-    errors.city = 'City can only contain alphabets and spaces';
-  }
-
-  // Validate pincode
-  if (!data.pincode || !/^[1-9]\d{5}$/.test(data.pincode.toString().trim())) {
-    errors.pincode = 'Please enter a valid 6-digit pincode that does not start with 0';
-  }
-
-  // Validate address type
-  if (!data.addressType || !['home', 'office', 'other'].includes(data.addressType)) {
-    errors.addressType = 'Please select a valid address type';
-  }
-
-  return {
-    isValid: Object.keys(errors).length === 0,
-    errors
-  };
 };
 
 // Get all addresses for a user
@@ -129,120 +299,8 @@ exports.getAddresses = async (req, res) => {
   }
 };
 
-// Add new address
-exports.addAddress = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please login to add address'
-      });
-    }
-
-    const { fullName, mobileNumber, altPhone, addressDetails, state, district, city, pincode, landmark, addressType, makeDefault, coordinates } = req.body;
-
-    // Prepare address data for validation
-    const addressData = {
-      name: fullName,
-      phone: mobileNumber,
-      altPhone: altPhone || '',
-      landMark: addressDetails,
-      state,
-      city,
-      pincode: parseInt(pincode),
-      addressType
-    };
-
-    // Validate address data
-    const validation = validateAddressData(addressData);
-    if (!validation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: validation.errors
-      });
-    }
-
-    // Backend address validation with Geoapify
-    const geoapifyValidation = await validateAddressWithGeoapify(addressData);
-    if (!geoapifyValidation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Unable to validate the address. Please check your address details and try again.'
-      });
-    }
-
-    // Use coordinates from frontend or from backend validation
-    const finalCoordinates = coordinates || geoapifyValidation.coordinates;
-
-    // Check for duplicate addresses (only for new addresses)
-    const userAddresses = await Address.findOne({ userId });
-    if (userAddresses && finalCoordinates) {
-      const isDuplicate = checkDuplicateAddress(finalCoordinates, userAddresses.address);
-      if (isDuplicate) {
-        return res.status(400).json({
-          success: false,
-          message: 'This address appears to be very similar to an existing address. Please check your saved addresses.'
-        });
-      }
-    }
-
-    // Create new address object
-    const newAddress = {
-      addressType,
-      name: fullName.trim(),
-      city: city.trim(),
-      landMark: addressDetails.trim(),
-      state,
-      pincode: parseInt(pincode),
-      phone: mobileNumber.trim(),
-      altPhone: altPhone ? altPhone.trim() : '',
-      isDefault: makeDefault || false,
-      coordinates: finalCoordinates
-    };
-
-    // Find user's address document or create new one
-    let userAddressDoc = userAddresses;
-
-    if (!userAddressDoc) {
-      // Create new address document for user
-      userAddressDoc = new Address({
-        userId,
-        address: [newAddress]
-      });
-    } else {
-      // If making this default, unset other defaults
-      if (makeDefault) {
-        userAddressDoc.address.forEach(addr => {
-          addr.isDefault = false;
-        });
-      }
-      
-      // Add new address to existing document
-      userAddressDoc.address.push(newAddress);
-    }
-
-    await userAddressDoc.save();
-
-    res.json({
-      success: true,
-      message: 'Address added successfully',
-      address: newAddress
-    });
-
-  } catch (error) {
-    console.error('Error adding address:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to add address'
-    });
-  }
-};
-
-// Update existing address
-exports.updateAddress = async (req, res) => {
+// Get a single address by ID
+exports.getAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const addressId = req.params.addressId;
@@ -250,36 +308,12 @@ exports.updateAddress = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Please login to update address'
-      });
-    }
-
-    const { fullName, mobileNumber, altPhone, addressDetails, state, district, city, pincode, landmark, addressType, makeDefault } = req.body;
-
-    // Prepare address data for validation
-    const addressData = {
-      name: fullName,
-      phone: mobileNumber,
-      altPhone: altPhone || '',
-      landMark: addressDetails,
-      state,
-      city,
-      pincode: parseInt(pincode),
-      addressType
-    };
-
-    // Validate address data
-    const validation = validateAddressData(addressData);
-    if (!validation.isValid) {
-      return res.status(400).json({
-        success: false,
-        message: 'Validation failed',
-        errors: validation.errors
+        message: 'Please login to view address'
       });
     }
 
     // Find user's address document
-    const userAddresses = await Address.findOne({ userId });
+    const userAddresses = await Address.findOne({ userId }).lean();
 
     if (!userAddresses) {
       return res.status(404).json({
@@ -288,53 +322,29 @@ exports.updateAddress = async (req, res) => {
       });
     }
 
-    // Find the specific address to update
-    const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === addressId);
+    // Find the specific address
+    const address = userAddresses.address.find(addr => addr._id.toString() === addressId);
 
-    if (addressIndex === -1) {
+    if (!address) {
       return res.status(404).json({
         success: false,
         message: 'Address not found'
       });
     }
 
-    // If making this default, unset other defaults
-    if (makeDefault) {
-      userAddresses.address.forEach(addr => {
-        addr.isDefault = false;
-      });
-    }
-
-    // Update the address
-    userAddresses.address[addressIndex] = {
-      ...userAddresses.address[addressIndex],
-      addressType,
-      name: fullName.trim(),
-      city: city.trim(),
-      landMark: addressDetails.trim(),
-      state,
-      pincode: parseInt(pincode),
-      phone: mobileNumber.trim(),
-      altPhone: altPhone ? altPhone.trim() : '',
-      isDefault: makeDefault || false
-    };
-
-    await userAddresses.save();
-
     res.json({
       success: true,
-      message: 'Address updated successfully',
-      address: userAddresses.address[addressIndex]
+      address
     });
-
   } catch (error) {
-    console.error('Error updating address:', error);
+    console.error('Error fetching address:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update address'
+      message: 'Failed to fetch address'
     });
   }
 };
+
 
 // Delete address
 exports.deleteAddress = async (req, res) => {
@@ -450,53 +460,6 @@ exports.setDefaultAddress = async (req, res) => {
   }
 };
 
-// Get single address
-exports.getAddress = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    const addressId = req.params.addressId;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Please login to view address'
-      });
-    }
-
-    // Find user's address document
-    const userAddresses = await Address.findOne({ userId });
-
-    if (!userAddresses) {
-      return res.status(404).json({
-        success: false,
-        message: 'Address not found'
-      });
-    }
-
-    // Find the specific address
-    const address = userAddresses.address.find(addr => addr._id.toString() === addressId);
-
-    if (!address) {
-      return res.status(404).json({
-        success: false,
-        message: 'Address not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      address
-    });
-
-  } catch (error) {
-    console.error('Error fetching address:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch address'
-    });
-  }
-};
-
 // Load addresses page
 exports.loadAddresses = async (req, res) => {
   try {
@@ -526,81 +489,6 @@ exports.loadAddresses = async (req, res) => {
   } catch (error) {
     console.error('Error loading addresses page:', error);
     res.status(500).render('error', { message: 'Error loading addresses page' });
-  }
-};
-
-// Load add address page
-exports.loadAddAddress = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    
-    if (!userId) {
-      return res.redirect('/login');
-    }
-
-    const user = await User.findById(userId).select('name email profilePhoto');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    const returnTo = req.query.returnTo || '';
-
-    res.render('user/add-address', {
-      user,
-      returnTo,
-      title: 'Add Address - LacedUp',
-      layout: 'user/layouts/user-layout',
-      active: 'addresses'
-    });
-  } catch (error) {
-    console.error('Error loading add address page:', error);
-    res.status(500).render('error', { message: 'Error loading add address page' });
-  }
-};
-
-// Load edit address page
-exports.loadEditAddress = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    const addressId = req.params.addressId;
-    
-    if (!userId) {
-      return res.redirect('/login');
-    }
-
-    const user = await User.findById(userId).select('name email profilePhoto');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    // Find user's address document
-    const userAddresses = await Address.findOne({ userId });
-
-    if (!userAddresses) {
-      return res.redirect('/profile/addresses');
-    }
-
-    // Find the specific address
-    const address = userAddresses.address.find(addr => addr._id.toString() === addressId);
-
-    if (!address) {
-      return res.redirect('/profile/addresses');
-    }
-
-    const returnTo = req.query.returnTo || '';
-
-    res.render('user/edit-address', {
-      user,
-      address,
-      returnTo,
-      isEdit: true,
-      title: 'Edit Address - LacedUp',
-      layout: 'user/layouts/user-layout',
-      active: 'addresses'
-    });
-  } catch (error) {
-    console.error('Error loading edit address page:', error);
-    res.status(500).render('error', { message: 'Error loading edit address page' });
   }
 };
 

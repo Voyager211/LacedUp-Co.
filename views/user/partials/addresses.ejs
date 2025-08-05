@@ -840,8 +840,9 @@
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
                 submitBtn.disabled = true;
 
-                const isEdit = window.location.pathname.includes('/edit/');
-                const addressId = isEdit ? window.location.pathname.split('/').pop() : null;
+                // Use currentEditingId from parent scope to determine if editing
+                const isEdit = typeof currentEditingId !== 'undefined' && currentEditingId !== null;
+                const addressId = currentEditingId;
                 
                 let url = isEdit ? `/api/address/${addressId}` : '/api/address';
                 const method = isEdit ? 'PUT' : 'POST';
@@ -860,16 +861,47 @@
                 .then(data => {
                     console.log('📥 Backend response:', data);
                     if (data && data.success) {
-                        // Success - show SweetAlert and redirect
-                        console.log('✅ Success - showing SweetAlert');
-                        showSweetAlert(data.message, 'success');
-                        setTimeout(() => {
-                            window.location.href = '/addresses';
-                        }, 1500);
+                        // Success - check if we're on checkout page
+                        console.log('✅ Success - checking current page context');
+                        
+                        // Check if we're on checkout page
+                        const isCheckoutPage = window.location.pathname.includes('/checkout');
+                        
+                        if (isCheckoutPage) {
+                            // On checkout page - close modal and refresh page
+                            console.log('📍 On checkout page - closing modal and refreshing');
+                            showSweetAlert(data.message, 'success');
+                            
+                            // Close the modal
+                            const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+                            if (modal) {
+                                modal.hide();
+                            }
+                            
+                            // Refresh the page to show updated addresses
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        } else {
+                            // On address book page - redirect to addresses page
+                            console.log('📍 On address book page - redirecting to addresses');
+                            showSweetAlert(data.message, 'success');
+                            setTimeout(() => {
+                                window.location.href = '/addresses';
+                            }, 1500);
+                        }
                     } else if (data && data.message) {
-                        // Backend validation failed - redirect to show flash message
-                        console.log('❌ Backend validation failed - redirecting for flash message');
-                        window.location.href = '/addresses?error=' + encodeURIComponent(data.message);
+                        // Backend validation failed
+                        console.log('❌ Backend validation failed');
+                        const isCheckoutPage = window.location.pathname.includes('/checkout');
+                        
+                        if (isCheckoutPage) {
+                            // On checkout page - show error and stay on page
+                            showSweetAlert(data.message, 'error');
+                        } else {
+                            // On address book page - redirect to show flash message
+                            window.location.href = '/addresses?error=' + encodeURIComponent(data.message);
+                        }
                     } else {
                         // Unknown error - show SweetAlert
                         console.log('❌ Unknown error - showing SweetAlert');
