@@ -1370,3 +1370,99 @@ exports.resetCartItemQuantity = async (req, res) => {
     });
   }
 };
+
+// Save item for later (move from cart to wishlist)
+exports.saveForLater = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const { productId, variantId } = req.body;
+
+    // Validate input
+    if (!productId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product ID is required'
+      });
+    }
+
+    if (!variantId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Variant ID is required'
+      });
+    }
+
+    // Find user's cart
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({
+        success: false,
+        message: 'Cart not found'
+      });
+    }
+
+    // Find the specific item in cart
+    const itemIndex = cart.items.findIndex(
+      item => item.productId.toString() === productId && item.variantId.toString() === variantId
+    );
+
+    if (itemIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product variant not found in cart'
+      });
+    }
+
+    // Get the cart item details
+    const cartItem = cart.items[itemIndex];
+
+    // Verify product exists and is valid
+    const product = await Product.findById(productId);
+    if (!product || !product.isListed || product.isDeleted) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product is no longer available'
+      });
+    }
+
+    // Remove item from cart first
+    cart.items.splice(itemIndex, 1);
+    await cart.save();
+
+    // Add to wishlist
+    let wishlist = await Wishlist.findOne({ userId });
+    if (!wishlist) {
+      wishlist = new Wishlist({ userId, products: [] });
+    }
+
+    // Check if product already in wishlist (avoid duplicates)
+    const existingWishlistItem = wishlist.products.find(
+      item => item.productId.toString() === productId
+    );
+
+    if (!existingWishlistItem) {
+      wishlist.products.push({ productId });
+      await wishlist.save();
+    }
+
+    // Get updated cart count
+    const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
+
+    // Get updated wishlist count
+    const wishlistCount = wishlist.products.length;
+
+    res.json({
+      success: true,
+      message: 'Item saved to wishlist successfully',
+      cartCount,
+      wishlistCount
+    });
+
+  } catch (error) {
+    console.error('Error saving item for later:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Unable to save item for later'
+    });
+  }
+};

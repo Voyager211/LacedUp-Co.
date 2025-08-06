@@ -2,6 +2,7 @@ const Wishlist = require('../../models/Wishlist');
 const Product = require('../../models/Product');
 const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
+const Cart = require('../../models/Cart');
 
 // Get wishlist page
 const getWishlist = async (req, res) => {
@@ -95,6 +96,15 @@ const addToWishlist = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'Product not found'
+      });
+    }
+
+    // Check if product is already in cart
+    const cart = await Cart.findOne({ userId });
+    if (cart && cart.items.some(item => item.productId.toString() === productId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Product is already in your cart'
       });
     }
 

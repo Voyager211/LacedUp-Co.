@@ -44,8 +44,11 @@ router.post('/remove', requireAuthAPI, cartController.removeFromCart);
 router.post('/clear', requireAuthAPI, cartController.clearCart);
 router.post('/remove-out-of-stock', requireAuthAPI, cartController.removeOutOfStockItems);
 
-// API route specifically for wishlist-to-cart functionality  
-router.post('/add', requireAuthAPI, cartController.addToCart);
+// // API route specifically for wishlist-to-cart functionality  
+// router.post('/add', requireAuthAPI, cartController.addToCart);
+
+// Save for later route (cart to wishlist)
+router.post('/save-for-later', requireAuthAPI, cartController.saveForLater)
 
 // Routes that can be accessed without authentication or with JSON response
 router.get('/count', cartController.getCartCount);

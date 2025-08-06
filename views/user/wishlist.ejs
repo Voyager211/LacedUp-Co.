@@ -375,6 +375,11 @@ document.addEventListener('DOMContentLoaded', function() {
             toastr.success(`${selectedSize} added to cart successfully!`);
           }
           
+          // ✅ ADD THIS: Update navbar cart count immediately
+          if (window.updateNavbarCartCount && data.cartCount !== undefined) {
+            window.updateNavbarCartCount(data.cartCount);
+          }
+
           // Remove from wishlist DOM
           const productCard = button.closest('.col-6, .col-md-4, .col-lg-3');
           if (productCard) {

@@ -630,6 +630,51 @@ async function removeAllOutOfStockItems() {
   }
 }
 
+// Save item for later (move from cart to wishlist)
+async function saveForLater(productId, variantId) {
+  console.log('saveForLater called:', { productId, variantId });
+
+  try {
+    const response = await fetch('/cart/save-for-later', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ productId, variantId })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      const cartItem = document.querySelector(`[data-product-id="${productId}"][data-variant-id="${variantId}"]`);
+      if (cartItem) {
+        cartItem.style.transition = 'all 0.3s ease';
+        cartItem.style.opacity = '0';
+        cartItem.style.transform = 'translateX(-100%)';
+
+        setTimeout(() => {
+          cartItem.remove();
+
+          const remainingItems = document.querySelectorAll('.cart-item-card');
+          if (remainingItems.length === 0) {
+            location.reload();
+          }
+        }, 300);
+      }
+
+      updateCartCounter(data.cartCount);
+      safeToast('success', 'Item saved to wishlist successfully!');
+    } else {
+      safeToast('error', data.message || 'Failed to save item for later');
+    }
+  } catch (error) {
+    console.error('Error saving for later:', error);
+    safeToast('error', 'Failed to save item for later. Please try again');
+  }
+}
+
+window.saveForLater = saveForLater;
+
 // Initialize cart functionality only on cart page
 function initializeCartPage() {
   // Only run on cart page
@@ -647,6 +692,32 @@ function initializeCartPage() {
     form.addEventListener('submit', function(e) {
       e.preventDefault();
       e.stopPropagation();
+      return false;
+    });
+  });
+
+  // Add event listeners to all save for later buttons
+  const saveForLaterButtons = document.querySelectorAll('.save-later-btn');
+  console.log('Found save for later buttons:', saveForLaterButtons.length);
+  saveForLaterButtons.forEach((button, index) => {
+    console.log(`Attaching event to save for later button ${index + 1}`);
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      console.log('Save for later button clicked');
+      
+      const cartItem = this.closest('.cart-item-card');
+      if (!cartItem) {
+        console.error('Cart item not found');
+        return false;
+      }
+      
+      const productId = cartItem.dataset.productId;
+      const variantId = cartItem.dataset.variantId;
+      
+      console.log('Saving for later:', { productId, variantId });
+      saveForLater(productId, variantId);
       return false;
     });
   });

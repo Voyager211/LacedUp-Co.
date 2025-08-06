@@ -1387,33 +1387,83 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Wishlist button handling
-    if (e.target.closest('.wishlist-btn')) {
+    if(e.target.closest('.wishlist-btn')) {
       e.preventDefault();
       const button = e.target.closest('.wishlist-btn');
       const productId = button.dataset.id;
 
-      <% if (!user) { %>
-        // User not authenticated - redirect to login
-        redirectToLogin();
-        return;
-      <% } %>
+      const isCurrentlyInWishlist = button.dataset.inWishlist === 'true' || button.classList.contains('btn-danger');
 
-      // User authenticated - handle wishlist functionality
-      console.log('Adding to wishlist:', productId);
+      // Show loading state
+      button.disabled = true;
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+      // ✅ CORRECT: Decide API endpoint based on current state
+      const apiUrl = isCurrentlyInWishlist ? `/wishlist/remove/${productId}` : '/wishlist/add';
+      const method = isCurrentlyInWishlist ? 'DELETE' : 'POST';
+      const requestBody = isCurrentlyInWishlist ? {} : { productId };
 
-      // Toggle heart icon and color
-      const icon = button.querySelector('i');
-      if (icon.classList.contains('bi-heart')) {
-        icon.classList.remove('bi-heart');
-        icon.classList.add('bi-heart-fill');
-        button.classList.remove('btn-outline-secondary');
-        button.classList.add('btn-danger');
-      } else {
-        icon.classList.remove('bi-heart-fill');
-        icon.classList.add('bi-heart');
-        button.classList.remove('btn-danger');
-        button.classList.add('btn-outline-secondary');
-      }
+      fetch(apiUrl, {
+        method: method,
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        ...(method === 'POST' && { body: JSON.stringify(requestBody) })
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Reset button state
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+
+        if (data.success) {
+          // ✅ CORRECT: Update button appearance and show correct message
+          const icon = button.querySelector('i');
+          
+          if (isCurrentlyInWishlist) {
+            // Product was removed from wishlist
+            icon.classList.remove('bi-heart-fill');
+            icon.classList.add('bi-heart');
+            button.classList.remove('btn-danger');
+            button.classList.add('btn-outline-secondary');
+            button.dataset.inWishlist = 'false';
+            button.title = 'Add to Wishlist';
+            
+            // ✅ CORRECT: Show removed message
+            if (window.toastr) {
+              toastr.success('Product removed from wishlist');
+            }
+          } else {
+            // Product was added to wishlist
+            icon.classList.remove('bi-heart');
+            icon.classList.add('bi-heart-fill');
+            button.classList.remove('btn-outline-secondary');
+            button.classList.add('btn-danger');
+            button.dataset.inWishlist = 'true';
+            button.title = 'Remove from Wishlist';
+            
+            // ✅ CORRECT: Show added message
+            if (window.toastr) {
+              toastr.success('Product added to wishlist successfully!');
+            }
+          }
+        } else {
+          // ✅ CORRECT: Show error message
+          if (window.toastr) {
+            toastr.error(data.message || 'Unable to update wishlist');
+          }
+        }
+      })
+      .catch(error => {
+        // Reset button state
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+        
+        if (window.toastr) {
+          toastr.error('Error updating wishlist');
+        }
+        console.error('Error updating wishlist:', error);
+      });
     }
   });
 });
