@@ -56,9 +56,8 @@ const walletSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate unique transaction ID
+// Generate unique transaction ID for new transactions
 walletSchema.pre('save', function(next) {
-  // Generate transaction IDs for new transactions
   this.transactions.forEach(transaction => {
     if (!transaction.transactionId) {
       transaction.transactionId = `TXN${Date.now()}${Math.floor(Math.random() * 1000)}`;
@@ -67,103 +66,22 @@ walletSchema.pre('save', function(next) {
   next();
 });
 
-// Method to add credit to wallet
-walletSchema.methods.addCredit = function(amount, description, orderId = null, returnId = null) {
-  const newBalance = this.balance + amount;
-  
-  this.transactions.push({
-    type: 'credit',
-    amount: amount,
-    description: description,
-    orderId: orderId,
-    returnId: returnId,
-    balanceAfter: newBalance,
-    status: 'completed'
-  });
-  
-  this.balance = newBalance;
-  return this.save();
-};
+// Virtual to get latest transaction
+walletSchema.virtual('latestTransaction').get(function() {
+  return this.transactions.length > 0 ? 
+    this.transactions[this.transactions.length - 1] : null;
+});
 
-// Method to debit from wallet
-walletSchema.methods.debitAmount = function(amount, description, orderId = null) {
-  if (this.balance < amount) {
-    throw new Error('Insufficient wallet balance');
-  }
-  
-  const newBalance = this.balance - amount;
-  
-  this.transactions.push({
-    type: 'debit',
-    amount: amount,
-    description: description,
-    orderId: orderId,
-    balanceAfter: newBalance,
-    status: 'completed'
-  });
-  
-  this.balance = newBalance;
-  return this.save();
-};
+// Virtual to get total transaction count
+walletSchema.virtual('transactionCount').get(function() {
+  return this.transactions.length;
+});
 
-// Method to get transaction history with pagination
-walletSchema.methods.getTransactionHistory = function(page = 1, limit = 10) {
-  const startIndex = (page - 1) * limit;
-  const endIndex = startIndex + limit;
-  
-  const sortedTransactions = this.transactions
-    .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(startIndex, endIndex);
-  
-  return {
-    transactions: sortedTransactions,
-    totalTransactions: this.transactions.length,
-    currentPage: page,
-    totalPages: Math.ceil(this.transactions.length / limit),
-    hasNextPage: endIndex < this.transactions.length,
-    hasPrevPage: page > 1
-  };
-};
-
-// Static method to get or create wallet for user
-walletSchema.statics.getOrCreateWallet = async function(userId) {
-  let wallet = await this.findOne({ userId });
-  
-  if (!wallet) {
-    wallet = new this({
-      userId: userId,
-      balance: 0,
-      transactions: []
-    });
-    await wallet.save();
-  }
-  
-  return wallet;
-};
-
-// Static method to transfer money between wallets
-walletSchema.statics.transferMoney = async function(fromUserId, toUserId, amount, description) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    const fromWallet = await this.getOrCreateWallet(fromUserId);
-    const toWallet = await this.getOrCreateWallet(toUserId);
-    
-    // Debit from sender
-    await fromWallet.debitAmount(amount, `Transfer to user: ${description}`, null);
-    
-    // Credit to receiver
-    await toWallet.addCredit(amount, `Transfer from user: ${description}`, null);
-    
-    await session.commitTransaction();
-    return { success: true, message: 'Transfer completed successfully' };
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
-};
+// Index for better query performance
+walletSchema.index({ userId: 1 });
+walletSchema.index({ 'transactions.date': -1 });
+walletSchema.index({ 'transactions.orderId': 1 });
+walletSchema.index({ 'transactions.returnId': 1 });
+walletSchema.index({ 'transactions.type': 1 });
 
 module.exports = mongoose.model('Wallet', walletSchema);

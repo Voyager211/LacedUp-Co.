@@ -1,6 +1,18 @@
 const Order = require('../../models/Order');
 const User = require('../../models/User');
 const Product = require('../../models/Product');
+const orderService = require('../../services/orderService');
+const {
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  CANCELLATION_REASONS,
+  RETURN_REASONS,
+  getOrderStatusArray,
+  getPaymentStatusArray,
+  getCancellationReasonsArray,
+  getReturnReasonsArray
+} = require('../../constants/orderEnums');
+
 
 // Get all orders for admin (showing individual items)
 exports.getAllOrders = async (req, res) => {
@@ -144,12 +156,12 @@ exports.getAllOrders = async (req, res) => {
 
     res.render('admin/orders', {
       title: 'Order Management',
-      orderItems: paginatedItems, // Changed from 'orders' to 'orderItems'
-      orders: [], // Keep empty for backward compatibility
+      orderItems: paginatedItems,
+      orders: [], 
       currentPage: page,
       totalPages,
       totalOrders,
-      totalItems, // Total individual items
+      totalItems, 
       orderStats,
       todayOrders,
       filters: {
@@ -160,7 +172,12 @@ exports.getAllOrders = async (req, res) => {
         sortBy,
         sortOrder
       },
-      layout: 'admin/layout'
+      layout: 'admin/layout',
+      orderStatuses: getOrderStatusArray(),
+      ORDER_STATUS: ORDER_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
+      orderStatuses: getOrderStatusArray(),
+      paymentStatuses: getPaymentStatusArray()
     });
 
   } catch (error) {
@@ -187,6 +204,9 @@ exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
 
+    console.log('🔍 Looking for order ID:', orderId);
+    console.log('🔍 Order ID type:', typeof orderId);
+
     const order = await Order.findOne({ orderId })
       .populate({
         path: 'user',
@@ -203,10 +223,23 @@ exports.getOrderDetails = async (req, res) => {
       .lean();
 
     if (!order) {
+      console.log('❌ No order found with orderId:', orderId);
+      const totalOrders = await Order.countDocuments();
+      console.log('📊 Total orders in database:', totalOrders);
+      // Show a few sample order IDs for comparison
+      const sampleOrders = await Order.find({}, { orderId: 1 }).limit(3).lean();
+      console.log('📝 Sample order IDs in database:', sampleOrders.map(o => o.orderId));
+
       return res.status(404).render('admin/order-details', {
         title: 'Order Not Found',
         order: null,
         error: 'Order not found',
+        orderStatuses: getOrderStatusArray(),
+        paymentStatuses: getPaymentStatusArray(),
+        cancellationReasons: getCancellationReasonsArray(),
+        returnReasons: getReturnReasonsArray(),
+        ORDER_STATUS: ORDER_STATUS,
+        PAYMENT_STATUS: PAYMENT_STATUS,
         layout: 'admin/layout'
       });
     }
@@ -217,7 +250,6 @@ exports.getOrderDetails = async (req, res) => {
       const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
       
       if (specificAddress) {
-        // Replace the deliveryAddress with the actual address data for easier access in the template
         order.deliveryAddress = {
           ...order.deliveryAddress,
           ...specificAddress
@@ -228,7 +260,6 @@ exports.getOrderDetails = async (req, res) => {
     // Create comprehensive status history combining order and item level changes
     const comprehensiveStatusHistory = [];
     
-    // Add order-level status history
     if (order.statusHistory && order.statusHistory.length > 0) {
       order.statusHistory.forEach(statusEntry => {
         comprehensiveStatusHistory.push({
@@ -242,7 +273,6 @@ exports.getOrderDetails = async (req, res) => {
       });
     }
 
-    // Add item-level status history
     if (order.items && order.items.length > 0) {
       order.items.forEach(item => {
         if (item.statusHistory && item.statusHistory.length > 0) {
@@ -261,15 +291,18 @@ exports.getOrderDetails = async (req, res) => {
       });
     }
 
-    // Sort comprehensive history by date (newest first)
     comprehensiveStatusHistory.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-
-    // Add the comprehensive status history to the order object
     order.comprehensiveStatusHistory = comprehensiveStatusHistory;
 
     res.render('admin/order-details', {
       title: `Order Details - ${orderId}`,
       order,
+      orderStatuses: getOrderStatusArray(),
+      paymentStatuses: getPaymentStatusArray(),
+      cancellationReasons: getCancellationReasonsArray(),
+      returnReasons: getReturnReasonsArray(),
+      ORDER_STATUS: ORDER_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
       layout: 'admin/layout'
     });
 
@@ -279,69 +312,65 @@ exports.getOrderDetails = async (req, res) => {
       title: 'Error',
       order: null,
       error: 'Error loading order details',
+      orderStatuses: getOrderStatusArray(),
+      paymentStatuses: getPaymentStatusArray(),
+      cancellationReasons: getCancellationReasonsArray(),
+      returnReasons: getReturnReasonsArray(),
+      ORDER_STATUS: ORDER_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
       layout: 'admin/layout'
     });
   }
 };
 
+
 // Get allowed status transitions based on current status
 const getAllowedStatusTransitions = (currentStatus) => {
-  const transitions = {
-    'Pending': ['Processing', 'Cancelled'],
-    'Processing': ['Shipped', 'Cancelled'],
-    'Shipped': ['Delivered'],
-    'Delivered': ['Returned'], // Special case for return request
-    'Cancelled': [], // No transitions allowed
-    'Partially Cancelled': ['Cancelled'], // Can only fully cancel
-    'Returned': [] // No transitions allowed
-  };
-  
-  return transitions[currentStatus] || [];
+  return orderService.getValidTransitions(currentStatus);
 };
 
 // Update order status
 exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, notes } = req.body;
+    const { status, notes, action } = req.body;
 
-    const order = await Order.findOne({ orderId });
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
+    // Handle different actions
+    if (action === 'cancel') {
+      // Use cancelOrder function instead
+      return exports.cancelOrder(req, res);
+    } else if (action === 'return') {
+      // Use returnOrder function instead  
+      return exports.returnOrder(req, res);
     }
 
-    const currentStatus = order.status;
-    const allowedTransitions = getAllowedStatusTransitions(currentStatus);
+    // ✅ FIXED: Regular status update - OrderService handles COD completion automatically
+    const result = await orderService.updateOrderStatus(
+      orderId, 
+      status, 
+      notes || `Status updated to ${status} by admin`,
+      'admin'
+    );
 
-    // Validate status transition
-    if (!allowedTransitions.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot change status from ${currentStatus} to ${status}. Allowed transitions: ${allowedTransitions.join(', ') || 'None'}`
-      });
-    }
-
-    // Use the model's updateStatus method for consistency
-    await order.updateStatus(status, notes || `Status updated to ${status} by admin`);
-
-    // Update payment status if order is delivered and payment method is COD
-    if (status === 'Delivered' && order.paymentMethod === 'cod') {
-      order.paymentStatus = 'Completed';
-      await order.save();
-    }
+    // ✅ REMOVED: Redundant COD payment status logic (OrderService already handles this)
+    // The OrderService.updateOrderStatus function already includes:
+    // - Auto COD completion when status = DELIVERED
+    // - Payment status updates for all items
+    // - Status history logging
 
     res.json({
       success: true,
-      message: `Order status updated to ${status}`,
+      message: result.message,
       order: {
-        orderId: order.orderId,
-        status: order.status,
-        paymentStatus: order.paymentStatus,
-        allowedTransitions: getAllowedStatusTransitions(status)
+        orderId: result.order.orderId,
+        status: result.order.status,
+        paymentStatus: result.order.paymentStatus,
+        // ✅ ADD: Include items for frontend updates
+        items: result.order.items.map(item => ({
+          _id: item._id,
+          status: item.status,
+          paymentStatus: item.paymentStatus
+        }))
       }
     });
 
@@ -349,10 +378,12 @@ exports.updateOrderStatus = async (req, res) => {
     console.error('Error updating order status:', error);
     res.status(500).json({
       success: false,
-      message: 'Error updating order status'
+      message: error.message || 'Error updating order status'
     });
   }
 };
+
+
 
 // Get allowed status transitions for a specific order
 exports.getAllowedTransitions = async (req, res) => {
@@ -391,7 +422,7 @@ exports.updatePaymentStatus = async (req, res) => {
     const { orderId } = req.params;
     const { paymentStatus } = req.body;
 
-    const validPaymentStatuses = ['Pending', 'Completed', 'Failed', 'Refunded'];
+    const validPaymentStatuses = getPaymentStatusArray();
     
     if (!validPaymentStatuses.includes(paymentStatus)) {
       return res.status(400).json({
@@ -437,8 +468,8 @@ exports.updateItemStatus = async (req, res) => {
     const { orderId, itemId } = req.params;
     const { status, notes } = req.body;
 
+    // Verify order exists first
     const order = await Order.findOne({ orderId });
-    
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -446,32 +477,20 @@ exports.updateItemStatus = async (req, res) => {
       });
     }
 
-    const item = order.items.id(itemId);
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: 'Item not found'
-      });
-    }
-
-    // Validate status transition for individual item
-    const validStatuses = ['Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled', 'Returned'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status'
-      });
-    }
-
-    // Use the model's updateItemStatus method
-    await order.updateItemStatus(itemId, status, notes || `Item status updated to ${status} by admin`);
+    // Use OrderService to update item status (includes validation)
+    const result = await orderService.updateItemStatus(
+      orderId,
+      itemId,
+      status,
+      notes || `Item status updated to ${status} by admin`
+    );
 
     res.json({
       success: true,
-      message: `Item status updated to ${status}`,
+      message: result.message,
       order: {
-        orderId: order.orderId,
-        status: order.status,
+        orderId: result.order.orderId,
+        status: result.order.status,
         itemStatus: status
       }
     });
@@ -491,8 +510,25 @@ exports.cancelItem = async (req, res) => {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
 
-    const order = await Order.findOne({ orderId });
+    // Validate cancel reason
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a cancellation reason'
+      });
+    }
+
+    // Validate reason is from allowed enum values
+    const validReasons = getCancellationReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cancellation reason provided'
+      });
+    }
     
+    // Verify order exists first
+    const order = await Order.findOne({ orderId });
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -500,15 +536,39 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Use the model's cancelItem method
-    await order.cancelItem(itemId, reason || 'Item cancelled by admin');
+    // Get item details before cancellation for stock restoration
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item not found'
+      });
+    }
+
+    // Use OrderService to cancel item
+    const result = await orderService.cancelItem(
+      orderId,
+      itemId,
+      reason || 'Item cancelled by admin',
+      'admin'
+    );
+
+    // Restore stock for cancelled item
+    const product = await Product.findById(item.productId);
+    if (product) {
+      const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+      if (variant) {
+        variant.stock += item.quantity;
+        await product.save();
+      }
+    }
 
     res.json({
       success: true,
-      message: 'Item cancelled successfully',
+      message: result.message,
       order: {
-        orderId: order.orderId,
-        status: order.status
+        orderId: result.order.orderId,
+        status: result.order.status
       }
     });
 
@@ -521,14 +581,93 @@ exports.cancelItem = async (req, res) => {
   }
 };
 
+// Cancel Entire Order
+exports.cancelOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    // Validate cancel reason
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a cancellation reason'
+      });
+    }
+
+    // Validate reason is from allowed enum values
+    const validReasons = getCancellationReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cancellation reason provided'
+      });
+    }
+
+    // Use OrderService to cancel order
+    const result = await orderService.cancelOrder(
+      orderId,
+      reason || 'Order cancelled by admin',
+      'admin'
+    );
+
+    // Restore stock for all cancelled items
+    for (const item of result.order.items) {
+      if (item.status === ORDER_STATUS.CANCELLED) {
+        const product = await Product.findById(item.productId);
+        if (product) {
+          const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+          if (variant) {
+            variant.stock += item.quantity;
+            await product.save();
+          }
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status
+      }
+    });
+
+  } catch (error) {
+    console.error('Error cancelling order:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error cancelling order'
+    });
+  }
+};
+
 // Return individual item
 exports.returnItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
 
+    // Return reason validation
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a return reason'
+      });
+    }
+
+    // Validate reason is from allowed enum values
+    const validReasons = getReturnReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid return reason provided'
+      });
+    }
+
+    // Verify order exists first
     const order = await Order.findOne({ orderId });
-    
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -536,15 +675,32 @@ exports.returnItem = async (req, res) => {
       });
     }
 
-    // Use the model's returnItem method
-    await order.returnItem(itemId, reason || 'Item returned by admin');
+    // Get item details before return for stock restoration
+    const item = order.items.id(itemId);
+    if (!item) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item not found'
+      });
+    }
+
+    // Use OrderService to process return
+    const result = await orderService.returnItem(
+      orderId,
+      itemId,
+      reason || 'Item returned by admin',
+      'admin'
+    );
+
+    // Note: Stock restoration for returns might be handled differently
+    // You may want to restore stock only when return is approved, not requested
 
     res.json({
       success: true,
-      message: 'Item return processed successfully',
+      message: result.message,
       order: {
-        orderId: order.orderId,
-        status: order.status
+        orderId: result.order.orderId,
+        status: result.order.status
       }
     });
 
@@ -556,6 +712,81 @@ exports.returnItem = async (req, res) => {
     });
   }
 };
+
+// Return entire order
+exports.returnOrder = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { reason } = req.body;
+
+    // Return reason validation
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a return reason'
+      });
+    }
+
+    // Validate reason is from allowed enum values
+    const validReasons = getReturnReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid return reason provided'
+      });
+    }
+
+    // Verify order exists first
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Store item details before return for potential stock restoration
+    const deliveredItems = order.items.filter(item => item.status === ORDER_STATUS.DELIVERED);
+
+    // Use OrderService to return entire order
+    const result = await orderService.returnOrder(
+      orderId,
+      reason || 'Order returned by admin'
+    );
+
+    // Restore stock for all returned items
+    // Note: You might want to handle this differently - perhaps only restore stock 
+    // when return is approved, not when return is initiated
+    for (const item of deliveredItems) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (variant) {
+          variant.stock += item.quantity;
+          await product.save();
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        itemsAffected: result.itemsAffected
+      }
+    });
+
+  } catch (error) {
+    console.error('Error returning order:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error returning order'
+    });
+  }
+};
+
 
 // Get order statistics for dashboard
 exports.getOrderStatistics = async (req, res) => {

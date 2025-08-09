@@ -6,37 +6,46 @@ const isAdmin = require('../../middlewares/isAdmin');
 // Admin route protection
 router.use(isAdmin);
 
+// ===== ORDERS COLLECTION =====
 // Get all orders
-router.get('/', orderController.getAllOrders);
+router.get('/', orderController.getAllOrders);  // ✅ CHANGED: /orders → /
 
-// API endpoint for filtered orders (for dynamic updates)
-router.get('/api/filtered', orderController.getFilteredOrders);
-
-// Get order details
-router.get('/details/:orderId', orderController.getOrderDetails);
+// Get specific order details  
+router.get('/:orderId', orderController.getOrderDetails);  // ✅ CHANGED: /orders/:orderId → /:orderId
 
 // Update order status
-router.put('/status/:orderId', orderController.updateOrderStatus);
-
-// Get allowed status transitions
-router.get('/transitions/:orderId', orderController.getAllowedTransitions);
+router.patch('/:orderId', orderController.updateOrderStatus);  // ✅ CHANGED: /orders/:orderId → /:orderId
 
 // Update payment status
-router.put('/payment/:orderId', orderController.updatePaymentStatus);
+router.patch('/:orderId/payment', orderController.updatePaymentStatus);  // ✅ CHANGED: /orders/:orderId/payment → /:orderId/payment
 
-// Update individual item status
-router.put('/item-status/:orderId/:itemId', orderController.updateItemStatus);
+// Cancel entire order
+router.patch('/:orderId/cancel', orderController.cancelOrder);  // ✅ CHANGED: /orders/:orderId/cancel → /:orderId/cancel
+
+// Return entire order
+router.patch('/:orderId/return', orderController.returnOrder);  // ✅ CHANGED: /orders/:orderId/return → /:orderId/return
+
+// Get allowed status transitions
+router.get('/:orderId/transitions', orderController.getAllowedTransitions);  // ✅ CHANGED: /orders/:orderId/transitions → /:orderId/transitions
+
+// ===== ORDER ITEMS =====
+// Update item status
+router.patch('/:orderId/items/:itemId', orderController.updateItemStatus);  // ✅ CHANGED: /orders/:orderId/items/:itemId → /:orderId/items/:itemId
 
 // Cancel individual item
-router.put('/cancel-item/:orderId/:itemId', orderController.cancelItem);
+router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);  // ✅ CHANGED: /orders/:orderId/items/:itemId/cancel → /:orderId/items/:itemId/cancel
 
 // Return individual item
-router.put('/return-item/:orderId/:itemId', orderController.returnItem);
+router.patch('/:orderId/items/:itemId/return', orderController.returnItem);  // ✅ CHANGED: /orders/:orderId/items/:itemId/return → /:orderId/items/:itemId/return
+
+// ===== UTILITY ENDPOINTS =====
+// Get filtered orders (API endpoint for dynamic updates)
+router.get('/api/filtered', orderController.getFilteredOrders);  // ✅ CHANGED: /orders/api/filtered → /api/filtered
 
 // Get order statistics
-router.get('/statistics', orderController.getOrderStatistics);
+router.get('/statistics', orderController.getOrderStatistics);  // ✅ CHANGED: /orders/statistics → /statistics
 
 // Export orders
-router.get('/export', orderController.exportOrders);
+router.get('/export', orderController.exportOrders);  // ✅ CHANGED: /orders/export → /export
 
 module.exports = router;

@@ -1,3 +1,180 @@
+<script>
+  const cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
+  const returnReasons = <%- JSON.stringify(returnReasons) %>;
+</script>
+
+<!-- Cancellation functions -->
+<script>
+// The working cancelItem function from orders listing page
+function cancelItem(orderId, itemId) {
+  // Convert array to object for SweetAlert inputOptions
+  const reasonOptions = cancellationReasons.reduce((options, reason, index) => {
+    options[reason] = reason;
+    return options;
+  }, {});
+
+  Swal.fire({
+    title: 'Cancel Item?',
+    text: 'Please select a reason for cancelling this item.',
+    icon: 'warning',
+    input: 'select',
+    inputOptions: reasonOptions,
+    inputPlaceholder: 'Select a reason for cancellation',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for cancellation');
+        } else {
+          resolve();
+        }
+      });
+    },
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Cancel Item',
+    cancelButtonText: 'Keep Item'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading
+      Swal.fire({
+        title: 'Cancelling Item...',
+        text: 'Please wait while we process your request.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      console.log('Selected Reason:', result.value);
+
+      fetch(`/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'cancel',
+          reason: result.value
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Item Cancelled',
+            text: 'Your item has been successfully cancelled.',
+            confirmButtonColor: '#28a745'
+          }).then(() => {
+            location.reload();
+          });
+        } else {
+          throw new Error(data.message || 'Failed to cancel item');
+        }
+      })
+      .catch(error => {
+        console.error('Error cancelling item:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Cancellation Failed',
+          text: error.message || 'Failed to cancel item. Please try again.',
+          confirmButtonColor: '#dc3545'
+        });
+      });
+    }
+  });
+}
+
+// Function for cancelling entire order
+function cancelOrder(orderId) {
+  // Convert array to object for SweetAlert inputOptions
+  const reasonOptions = cancellationReasons.reduce((options, reason, index) => {
+    options[reason] = reason;
+    return options;
+  }, {});
+
+  Swal.fire({
+    title: 'Cancel Entire Order?',
+    text: 'This will cancel all items in this order. Please select a reason.',
+    icon: 'warning',
+    input: 'select',
+    inputOptions: reasonOptions,
+    inputPlaceholder: 'Select a reason for cancellation',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for cancellation');
+        } else {
+          resolve();
+        }
+      });
+    },
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Cancel Order',
+    cancelButtonText: 'Keep Order'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading
+      Swal.fire({
+        title: 'Cancelling Order...',
+        text: 'Please wait while we process your request.',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      console.log('Selected Reason:', result.value);
+
+      fetch(`/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'cancel',
+          reason: result.value
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Order Cancelled',
+            text: 'Your order has been successfully cancelled.',
+            confirmButtonColor: '#28a745'
+          }).then(() => {
+            window.location.href = '/orders'; // Redirect to orders page
+          });
+        } else {
+          throw new Error(data.message || 'Failed to cancel order');
+        }
+      })
+      .catch(error => {
+        console.error('Error cancelling order:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Cancellation Failed',
+          text: error.message || 'Failed to cancel order. Please try again.',
+          confirmButtonColor: '#dc3545'
+        });
+      });
+    }
+  });
+}
+
+
+</script>
+
+
 <div class="container py-4">
   <!-- Breadcrumbs -->
   <%- include('partials/breadcrumb', {
@@ -196,8 +373,17 @@
               </div>
               <div class="payment-status mt-3">
                 <div class="fw-bold">Payment Status</div>
-                <span class="badge bg-<%= order.paymentStatus === 'Completed' ? 'success' : 'warning' %> text-uppercase">
+                <span class="status-badge payment-<%= order.paymentStatus.toLowerCase() %>">
                   <%= order.paymentStatus %>
+                  <% if (order.paymentMethod === 'cod') { %>
+                    <% if (order.paymentStatus === 'Pending') { %>
+                      <small class="text-muted">(Cash on Delivery)</small>
+                    <% } else if (order.paymentStatus === 'Completed') { %>
+                      <small class="text-muted">(Cash Collected)</small>
+                    <% } else if (order.paymentStatus === 'Refunded') { %>
+                      <small class="text-muted">(Cash Returned)</small>
+                    <% } %>
+                  <% } %>
                 </span>
               </div>
             </div>
@@ -663,16 +849,31 @@
 }
 </style>
 
+
+
+
 <script>
+
+
+
 // Order action functions
 function returnOrder(orderId) {
   Swal.fire({
     title: 'Return Order?',
-    text: 'Are you sure you want to return this order?',
+    text: 'Please select a reason for returning this order.',
     icon: 'warning',
-    input: 'textarea',
-    inputLabel: 'Reason for return (optional)',
-    inputPlaceholder: 'Please provide a reason for returning this order...',
+    input: 'select',
+    inputOptions: returnReasons,
+    inputPlaceholder: 'Select a reason for return',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for return');
+        } else {
+          resolve();
+        }
+      });
+    },
     showCancelButton: true,
     confirmButtonColor: '#ffc107',
     cancelButtonColor: '#6c757d',
@@ -680,27 +881,18 @@ function returnOrder(orderId) {
     cancelButtonText: 'Keep Order'
   }).then((result) => {
     if (result.isConfirmed) {
-      // Show loading
+      // Show loading and make API call
       Swal.fire({
         title: 'Processing Return...',
-        text: 'Please wait while we process your return request.',
         allowOutsideClick: false,
-        allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
+        didOpen: () => Swal.showLoading()
       });
 
-      // Make API call to return order
-      fetch(`/return-order/${orderId}`, {
+      fetch(`/orders/${orderId}/returns`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: result.value || ''
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: result.value })
       })
       .then(response => response.json())
       .then(data => {
@@ -708,36 +900,41 @@ function returnOrder(orderId) {
           Swal.fire({
             icon: 'success',
             title: 'Return Request Submitted',
-            text: 'Your return request has been submitted successfully.',
-            confirmButtonColor: '#28a745'
-          }).then(() => {
-            location.reload();
-          });
+            text: 'Your return request has been submitted successfully.'
+          }).then(() => location.reload());
         } else {
-          throw new Error(data.message || 'Failed to return order');
+          throw new Error(data.message);
         }
       })
       .catch(error => {
-        console.error('Error returning order:', error);
         Swal.fire({
           icon: 'error',
           title: 'Return Failed',
-          text: error.message || 'Failed to return order. Please try again.',
-          confirmButtonColor: '#dc3545'
+          text: error.message || 'Failed to return order.'
         });
       });
     }
   });
 }
 
+
 function cancelOrder(orderId) {
   Swal.fire({
     title: 'Cancel Order?',
-    text: 'Are you sure you want to cancel this order? This action cannot be undone.',
+    text: 'Please select a reason for cancelling this order.',
     icon: 'warning',
-    input: 'textarea',
-    inputLabel: 'Reason for cancellation (optional)',
-    inputPlaceholder: 'Please provide a reason for cancelling this order...',
+    input: 'select',
+    inputOptions: cancellationReasons,
+    inputPlaceholder: 'Select a reason for cancellation',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for cancellation');
+        } else {
+          resolve();
+        }
+      });
+    },
     showCancelButton: true,
     confirmButtonColor: '#dc3545',
     cancelButtonColor: '#6c757d',
@@ -745,27 +942,18 @@ function cancelOrder(orderId) {
     cancelButtonText: 'Keep Order'
   }).then((result) => {
     if (result.isConfirmed) {
-      // Show loading
+      // Show loading and make API call
       Swal.fire({
         title: 'Cancelling Order...',
-        text: 'Please wait while we process your request.',
         allowOutsideClick: false,
-        allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
+        didOpen: () => Swal.showLoading()
       });
 
-      // Make API call to cancel order
-      fetch(`/cancel-order/${orderId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: result.value || ''
-        })
+      fetch(`/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', reason: result.value })
       })
       .then(response => response.json())
       .then(data => {
@@ -773,22 +961,17 @@ function cancelOrder(orderId) {
           Swal.fire({
             icon: 'success',
             title: 'Order Cancelled',
-            text: 'Your order has been successfully cancelled.',
-            confirmButtonColor: '#28a745'
-          }).then(() => {
-            location.reload();
-          });
+            text: 'Your order has been successfully cancelled.'
+          }).then(() => location.reload());
         } else {
-          throw new Error(data.message || 'Failed to cancel order');
+          throw new Error(data.message);
         }
       })
       .catch(error => {
-        console.error('Error cancelling order:', error);
         Swal.fire({
           icon: 'error',
           title: 'Cancellation Failed',
-          text: error.message || 'Failed to cancel order. Please try again.',
-          confirmButtonColor: '#dc3545'
+          text: error.message || 'Failed to cancel order.'
         });
       });
     }
@@ -798,11 +981,20 @@ function cancelOrder(orderId) {
 function cancelItem(orderId, itemId) {
   Swal.fire({
     title: 'Cancel Item?',
-    text: 'Are you sure you want to cancel this item?',
+    text: 'Please select a reason for cancelling this item.',
     icon: 'warning',
-    input: 'textarea',
-    inputLabel: 'Reason for cancellation (optional)',
-    inputPlaceholder: 'Please provide a reason for cancelling this item...',
+    input: 'select',
+    inputOptions: cancellationReasons,
+    inputPlaceholder: 'Select a reason for cancellation',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for cancellation');
+        } else {
+          resolve();
+        }
+      });
+    },
     showCancelButton: true,
     confirmButtonColor: '#dc3545',
     cancelButtonColor: '#6c757d',
@@ -810,27 +1002,18 @@ function cancelItem(orderId, itemId) {
     cancelButtonText: 'Keep Item'
   }).then((result) => {
     if (result.isConfirmed) {
-      // Show loading
+      // Show loading and make API call
       Swal.fire({
         title: 'Cancelling Item...',
-        text: 'Please wait while we process your request.',
         allowOutsideClick: false,
-        allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
+        didOpen: () => Swal.showLoading()
       });
 
-      // Make API call to cancel item
-      fetch(`/cancel-item/${orderId}/${itemId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: result.value || ''
-        })
+      fetch(`/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel', reason: result.value })
       })
       .then(response => response.json())
       .then(data => {
@@ -838,36 +1021,40 @@ function cancelItem(orderId, itemId) {
           Swal.fire({
             icon: 'success',
             title: 'Item Cancelled',
-            text: 'The item has been successfully cancelled.',
-            confirmButtonColor: '#28a745'
-          }).then(() => {
-            location.reload();
-          });
+            text: 'Your item has been successfully cancelled.'
+          }).then(() => location.reload());
         } else {
-          throw new Error(data.message || 'Failed to cancel item');
+          throw new Error(data.message);
         }
       })
       .catch(error => {
-        console.error('Error cancelling item:', error);
         Swal.fire({
           icon: 'error',
           title: 'Cancellation Failed',
-          text: error.message || 'Failed to cancel item. Please try again.',
-          confirmButtonColor: '#dc3545'
+          text: error.message || 'Failed to cancel item.'
         });
       });
     }
   });
 }
 
-function returnItem(orderId, itemId) {
+
   Swal.fire({
     title: 'Return Item?',
-    text: 'Are you sure you want to return this item?',
+    text: 'Please select a reason for returning this item.',
     icon: 'warning',
-    input: 'textarea',
-    inputLabel: 'Reason for return (optional)',
-    inputPlaceholder: 'Please provide a reason for returning this item...',
+    input: 'select',
+    inputOptions: returnReasons,
+    inputPlaceholder: 'Select a reason for return',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for return');
+        } else {
+          resolve();
+        }
+      });
+    },
     showCancelButton: true,
     confirmButtonColor: '#ffc107',
     cancelButtonColor: '#6c757d',
@@ -887,14 +1074,13 @@ function returnItem(orderId, itemId) {
         }
       });
 
-      // Make API call to return item
-      fetch(`/return-item/${orderId}/${itemId}`, {
+      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          reason: result.value || ''
+          reason: result.value
         })
       })
       .then(response => response.json())
@@ -902,7 +1088,7 @@ function returnItem(orderId, itemId) {
         if (data.success) {
           Swal.fire({
             icon: 'success',
-            title: 'Return Request Sent for approval',
+            title: 'Return Request Submitted',
             text: 'Your return request has been sent for approval.',
             confirmButtonColor: '#28a745'
           }).then(() => {
@@ -923,6 +1109,64 @@ function returnItem(orderId, itemId) {
       });
     }
   });
+}function returnItem(orderId, itemId) {
+  Swal.fire({
+    title: 'Return Item?',
+    text: 'Please select a reason for returning this item.',
+    icon: 'warning',
+    input: 'select',
+    inputOptions: returnReasons,
+    inputPlaceholder: 'Select a reason for return',
+    inputValidator: (value) => {
+      return new Promise((resolve) => {
+        if (!value || value === '') {
+          resolve('Please select a reason for return');
+        } else {
+          resolve();
+        }
+      });
+    },
+    showCancelButton: true,
+    confirmButtonColor: '#ffc107',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Return Item',
+    cancelButtonText: 'Keep Item'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading and make API call
+      Swal.fire({
+        title: 'Processing Return...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+      });
+
+      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: result.value })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Return Request Submitted',
+            text: 'Your return request has been sent for approval.'
+          }).then(() => location.reload());
+        } else {
+          throw new Error(data.message);
+        }
+      })
+      .catch(error => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Return Failed',
+          text: error.message || 'Failed to return item.'
+        });
+      });
+    }
+  });
 }
 
 function trackOrder(orderId) {
@@ -936,7 +1180,6 @@ function trackOrder(orderId) {
 }
 
 function downloadInvoice(orderId) {
-  // Show loading state
   Swal.fire({
     title: 'Generating Invoice...',
     text: 'Please wait while we prepare your invoice.',
@@ -948,8 +1191,8 @@ function downloadInvoice(orderId) {
     }
   });
 
-  // Create a temporary link to download the invoice
-  fetch(`/download-invoice/${orderId}`, {
+  // FIXED: Use correct RESTful route
+  fetch(`/orders/${orderId}/invoice`, {
     method: 'GET'
   })
   .then(response => {
@@ -960,7 +1203,6 @@ function downloadInvoice(orderId) {
     }
   })
   .then(blob => {
-    // Create download link
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
@@ -971,7 +1213,6 @@ function downloadInvoice(orderId) {
     window.URL.revokeObjectURL(url);
     document.body.removeChild(a);
     
-    // Close loading and show success
     Swal.fire({
       icon: 'success',
       title: 'Invoice Downloaded',
@@ -991,4 +1232,5 @@ function downloadInvoice(orderId) {
     });
   });
 }
+
 </script>

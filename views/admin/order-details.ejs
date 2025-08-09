@@ -9,6 +9,7 @@
           <div>
             <nav aria-label="breadcrumb" class="mb-3">
               <ol class="breadcrumb">
+                <!-- FIXED: Use correct route -->
                 <li class="breadcrumb-item"><a href="/admin/orders" class="text-decoration-none">Orders</a></li>
                 <li class="breadcrumb-item active" aria-current="page">Order Details</li>
               </ol>
@@ -25,6 +26,7 @@
             </p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
+            <!-- FIXED: Use correct route -->
             <a href="/admin/orders" class="btn btn-dark btn-sm">
               <i class="bi bi-arrow-left me-1"></i>Back to Orders
             </a>
@@ -235,16 +237,16 @@
                           <button class="btn btn-sm btn-outline-primary" onclick="updateItemStatus('<%= order.orderId %>', '<%= item._id %>', '<%= item.status || 'Pending' %>')" title="Update Status">
                             <i class="bi bi-pencil"></i>
                           </button>
-                          <% if (['Pending', 'Processing'].includes(item.status || 'Pending')) { %>
-                            <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
-                              <i class="bi bi-x-circle"></i>
-                            </button>
-                          <% } %>
-                          <% if (item.status === 'Delivered') { %>
-                            <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
-                              <i class="bi bi-arrow-return-left"></i>
-                            </button>
-                          <% } %>
+                            <% if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status || ORDER_STATUS.PENDING)) { %>
+                              <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
+                                <i class="bi bi-x-circle"></i>
+                              </button>
+                            <% } %>
+                            <% if (item.status === ORDER_STATUS.DELIVERED) { %>
+                              <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
+                                <i class="bi bi-arrow-return-left"></i>
+                              </button>
+                            <% } %>
                         </div>
                       </td>
                     </tr>
@@ -412,12 +414,12 @@
           <div class="mb-3">
             <label for="itemStatus" class="form-label">Item Status</label>
             <select class="form-select" id="itemStatus" name="status" required>
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Shipped">Shipped</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="Returned">Returned</option>
+              <% orderStatuses.forEach(status => { %>
+                <!-- Exclude partial statuses for individual items -->
+                <% if (!status.includes('Partially')) { %>
+                  <option value="<%= status %>"><%= status %></option>
+                <% } %>
+              <% }); %>
             </select>
           </div>
           <div class="mb-3">
@@ -504,12 +506,9 @@
           <div class="mb-3">
             <label for="orderStatus" class="form-label">Order Status</label>
             <select class="form-select" id="orderStatus" name="status" required>
-              <option value="Pending">Pending</option>
-              <option value="Processing">Processing</option>
-              <option value="Shipped">Shipped</option>
-              <option value="Delivered">Delivered</option>
-              <option value="Cancelled">Cancelled</option>
-              <option value="Partially Cancelled">Partially Cancelled</option>
+              <% orderStatuses.forEach(status => { %>
+                <option value="<%= status %>"><%= status %></option>
+              <% }); %>
             </select>
           </div>
           <div class="mb-3">
@@ -541,10 +540,9 @@
           <div class="mb-3">
             <label for="paymentStatus" class="form-label">Payment Status</label>
             <select class="form-select" id="paymentStatus" name="paymentStatus" required>
-              <option value="Pending">Pending</option>
-              <option value="Completed">Completed</option>
-              <option value="Failed">Failed</option>
-              <option value="Refunded">Refunded</option>
+              <% paymentStatuses.forEach(status => { %>
+                <option value="<%= status %>"><%= status %></option>
+              <% }); %>
             </select>
           </div>
         </form>
@@ -915,8 +913,9 @@ function submitItemStatusUpdate() {
   const orderId = formData.get('orderId');
   const itemId = formData.get('itemId');
   
-  fetch(`/admin/orders/item-status/${orderId}/${itemId}`, {
-    method: 'PUT',
+  // FIXED: Use correct RESTful route and PATCH method
+  fetch(`/admin/orders/${orderId}/items/${itemId}`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -960,8 +959,9 @@ function submitItemCancellation() {
   const orderId = formData.get('orderId');
   const itemId = formData.get('itemId');
   
-  fetch(`/admin/orders/cancel-item/${orderId}/${itemId}`, {
-    method: 'PUT',
+  // FIXED: Use correct RESTful route and PATCH method
+  fetch(`/admin/orders/${orderId}/items/${itemId}/cancel`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -1004,8 +1004,9 @@ function submitItemReturn() {
   const orderId = formData.get('orderId');
   const itemId = formData.get('itemId');
   
-  fetch(`/admin/orders/return-item/${orderId}/${itemId}`, {
-    method: 'PUT',
+  // FIXED: Use correct RESTful route and PATCH method
+  fetch(`/admin/orders/${orderId}/items/${itemId}/return`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -1049,8 +1050,9 @@ function submitStatusUpdate() {
   const formData = new FormData(form);
   const orderId = formData.get('orderId');
   
-  fetch(`/admin/orders/status/${orderId}`, {
-    method: 'PUT',
+  // FIXED: Use correct RESTful route and PATCH method
+  fetch(`/admin/orders/${orderId}`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -1092,8 +1094,9 @@ function submitPaymentUpdate() {
   const formData = new FormData(form);
   const orderId = formData.get('orderId');
   
-  fetch(`/admin/orders/payment/${orderId}`, {
-    method: 'PUT',
+  // FIXED: Use correct RESTful route and PATCH method
+  fetch(`/admin/orders/${orderId}/payment`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },

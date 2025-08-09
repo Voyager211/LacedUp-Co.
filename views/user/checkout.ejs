@@ -698,7 +698,7 @@ function proceedToPayment() {
         
         // Send order placement request
         console.log('Sending order placement request with data:', orderData);
-        return fetch('/place-order', {
+        return fetch('/orders', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

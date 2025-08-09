@@ -3,6 +3,22 @@ const Order = require('../../models/Order');
 const User = require('../../models/User');
 const Product = require('../../models/Product');
 const Wallet = require('../../models/Wallet');
+const orderService = require('../../services/orderService');
+const {
+  ORDER_STATUS,
+  RETURN_STATUS,
+  PAYMENT_STATUS,
+  getCancellationReasonsArray,
+  getReturnReasonsArray,
+  getOrderStatusArray,
+  getPaymentStatusArray
+} = require('../../constants/orderEnums');
+
+const REFUND_STATUS = {
+  PENDING: 'Pending',
+  PROCESSED: 'Processed', 
+  FAILED: 'Failed'
+};
 
 // Get all return requests for admin
 exports.getAllReturns = async (req, res) => {
@@ -86,16 +102,17 @@ exports.getAllReturns = async (req, res) => {
     const totalReturns = await Return.countDocuments(filterQuery);
     const totalPages = Math.ceil(totalReturns / limit);
 
-    // Get statistics
+    //  Get statistics using enum constants
     const [pendingReturns, approvedReturns, totalRefundAmount] = await Promise.all([
-      Return.countDocuments({ status: 'Pending' }),
-      Return.countDocuments({ status: 'Approved' }),
+      Return.countDocuments({ status: RETURN_STATUS.PENDING }),    // 
+      Return.countDocuments({ status: RETURN_STATUS.APPROVED }),   // 
       Return.aggregate([
-        { $match: { status: { $in: ['Approved', 'Completed'] } } },
+        { $match: { status: { $in: [RETURN_STATUS.APPROVED, RETURN_STATUS.COMPLETED] } } },  // 
         { $group: { _id: null, total: { $sum: '$refundAmount' } } }
       ])
     ]);
 
+    //  Pass all enum constants to template
     res.render('admin/returns', {
       title: 'Return Management',
       returns,
@@ -105,6 +122,14 @@ exports.getAllReturns = async (req, res) => {
       pendingReturns,
       approvedReturns,
       totalRefundAmount: totalRefundAmount[0]?.total || 0,
+      //Complete enum constants for template dropdowns
+      orderStatuses: getOrderStatusArray(),
+      returnStatuses: Object.values(RETURN_STATUS),         
+      paymentStatuses: getPaymentStatusArray(),             
+      returnReasons: getReturnReasonsArray(),               
+      ORDER_STATUS: ORDER_STATUS,                           
+      RETURN_STATUS: RETURN_STATUS,                         
+      PAYMENT_STATUS: PAYMENT_STATUS,                       
       filters: {
         status,
         refundStatus,
@@ -113,6 +138,7 @@ exports.getAllReturns = async (req, res) => {
         sortBy,
         sortOrder
       },
+      refundStatuses: Object.values(REFUND_STATUS),
       layout: 'admin/layout'
     });
 
@@ -127,12 +153,21 @@ exports.getAllReturns = async (req, res) => {
       pendingReturns: 0,
       approvedReturns: 0,
       totalRefundAmount: 0,
+      orderStatuses: getOrderStatusArray(),
+      returnStatuses: Object.values(RETURN_STATUS),
+      paymentStatuses: getPaymentStatusArray(),
+      returnReasons: getReturnReasonsArray(),
+      ORDER_STATUS: ORDER_STATUS,
+      RETURN_STATUS: RETURN_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
       filters: {},
       error: 'Error loading returns',
       layout: 'admin/layout'
     });
   }
 };
+
+
 
 // Get single return details
 exports.getReturnDetails = async (req, res) => {
@@ -190,87 +225,20 @@ exports.approveReturn = async (req, res) => {
     const { returnId } = req.params;
     const { refundAmount, notes } = req.body;
 
-    const returnRequest = await Return.findById(returnId);
-    
-    if (!returnRequest) {
-      return res.status(404).json({
-        success: false,
-        message: 'Return request not found'
-      });
-    }
-
-    if (returnRequest.status !== 'Pending') {
-      return res.status(400).json({
-        success: false,
-        message: 'Only pending return requests can be approved'
-      });
-    }
-
-    // Get the order and item details
-    const order = await Order.findOne({ orderId: returnRequest.orderId });
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Associated order not found'
-      });
-    }
-
-    const item = order.items.id(returnRequest.itemId);
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: 'Associated item not found'
-      });
-    }
-
-    // Update product stock
-    const product = await Product.findById(returnRequest.productId);
-    if (product) {
-      const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
-      if (variant) {
-        variant.stock += returnRequest.quantity;
-        await product.save();
-        console.log(`Stock updated: Added ${returnRequest.quantity} units to ${product.productName} (${returnRequest.size})`);
-      }
-    }
-
-    // Credit amount to user's wallet using separate Wallet model
-    const user = await User.findById(returnRequest.userId);
-    if (user) {
-      const creditAmount = refundAmount || returnRequest.totalPrice;
-      
-      // Get or create wallet for the user
-      const wallet = await Wallet.getOrCreateWallet(returnRequest.userId);
-      
-      // Add credit to wallet
-      await wallet.addCredit(
-        creditAmount,
-        `Refund for returned item: ${returnRequest.productName} (${returnRequest.size})`,
-        returnRequest.orderId,
-        returnRequest.returnId
-      );
-      
-      console.log(`Wallet credited: ₹${creditAmount} added to user ${user.name}'s wallet. New balance: ₹${wallet.balance}`);
-    }
-
-    // Approve the return
-    await returnRequest.approve(notes, refundAmount, req.user?._id);
-
-    // Update the order item status to 'Returned'
-    if (order) {
-      const item = order.items.id(returnRequest.itemId);
-      if (item && item.status !== 'Returned') {
-        await order.updateItemStatus(returnRequest.itemId, 'Returned', 'Item return approved by admin');
-      }
-    }
+    // Use OrderService to approve return - handles everything automatically
+    const result = await orderService.approveItemReturn(
+      returnId,
+      req.user?._id || 'admin',
+      refundAmount // Optional custom refund amount
+    );
 
     res.json({
       success: true,
-      message: 'Return request approved successfully. Stock updated and amount credited to user wallet.',
+      message: result.message,
       return: {
-        returnId: returnRequest.returnId,
-        status: returnRequest.status,
-        refundAmount: returnRequest.refundAmount
+        returnId: result.returnRequest.returnId,
+        status: result.returnRequest.status,
+        refundAmount: result.refundAmount
       }
     });
 
@@ -278,7 +246,39 @@ exports.approveReturn = async (req, res) => {
     console.error('Error approving return:', error);
     res.status(500).json({
       success: false,
-      message: 'Error approving return request'
+      message: error.message || 'Error approving return request'
+    });
+  }
+};
+
+
+// Approving bulk order returns
+exports.approveOrderReturn = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    // Use OrderService to approve all returns for the order
+    const result = await orderService.approveOrderReturn(
+      orderId,
+      req.user?._id || 'admin'
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        itemsAffected: result.itemsAffected,
+        totalRefundAmount: result.totalRefundAmount
+      }
+    });
+
+  } catch (error) {
+    console.error('Error approving order return:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error approving order return'
     });
   }
 };
@@ -287,33 +287,35 @@ exports.approveReturn = async (req, res) => {
 exports.rejectReturn = async (req, res) => {
   try {
     const { returnId } = req.params;
-    const { reason } = req.body;
+    const { rejectionReason } = req.body;
 
-    const returnRequest = await Return.findById(returnId);
-    
-    if (!returnRequest) {
-      return res.status(404).json({
-        success: false,
-        message: 'Return request not found'
-      });
-    }
-
-    if (returnRequest.status !== 'Pending') {
+    //Simple validation for rejection reason (admin-provided text)
+    if (!rejectionReason || rejectionReason.trim() === '') {
       return res.status(400).json({
         success: false,
-        message: 'Only pending return requests can be rejected'
+        message: 'Please provide a rejection reason'
       });
     }
 
-    // Reject the return
-    await returnRequest.reject(reason, req.user?._id);
+    
+    // Rejection reasons are admin-provided free text, not from RETURN_REASONS enum
+    // const validReasons = getReturnReasonsArray();
+    // if (!validReasons.includes(rejectionReason)) { ... }
+
+    // Use OrderService to reject return
+    const result = await orderService.rejectItemReturn(
+      returnId,
+      req.user?._id || 'admin',
+      rejectionReason
+    );
 
     res.json({
       success: true,
-      message: 'Return request rejected successfully',
+      message: result.message,
       return: {
-        returnId: returnRequest.returnId,
-        status: returnRequest.status
+        returnId: result.returnRequest.returnId,
+        status: result.returnRequest.status,        
+        rejectionReason: result.returnRequest.rejectionReason
       }
     });
 
@@ -321,108 +323,54 @@ exports.rejectReturn = async (req, res) => {
     console.error('Error rejecting return:', error);
     res.status(500).json({
       success: false,
-      message: 'Error rejecting return request'
+      message: error.message || 'Error rejecting return request'
     });
   }
 };
 
-// Process refund
-exports.processRefund = async (req, res) => {
+
+
+//Reject all return requests for an order
+exports.rejectOrderReturn = async (req, res) => {
   try {
-    const { returnId } = req.params;
-    const { refundMethod, notes } = req.body;
+    const { orderId } = req.params;
+    const { rejectionReason } = req.body;
 
-    const returnRequest = await Return.findById(returnId);
-    
-    if (!returnRequest) {
-      return res.status(404).json({
-        success: false,
-        message: 'Return request not found'
-      });
-    }
-
-    if (returnRequest.status !== 'Approved') {
+    // Simple validation for rejection reason (admin-provided text)
+    if (!rejectionReason || rejectionReason.trim() === '') {
       return res.status(400).json({
         success: false,
-        message: 'Only approved return requests can be processed for refund'
+        message: 'Please provide a rejection reason'
       });
     }
 
-    if (returnRequest.refundStatus === 'Processed') {
-      return res.status(400).json({
-        success: false,
-        message: 'Refund has already been processed'
-      });
-    }
 
-    // Process the refund
-    await returnRequest.processRefund(refundMethod, req.user?._id);
-
-    // Update return status to completed
-    await returnRequest.updateStatus('Completed', notes || 'Refund processed successfully', req.user?._id);
+    // Use OrderService to reject all returns for the order
+    const result = await orderService.rejectOrderReturn(
+      orderId,
+      req.user?._id || 'admin',
+      rejectionReason
+    );
 
     res.json({
       success: true,
-      message: 'Refund processed successfully',
-      return: {
-        returnId: returnRequest.returnId,
-        status: returnRequest.status,
-        refundStatus: returnRequest.refundStatus
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        itemsAffected: result.itemsAffected
       }
     });
 
   } catch (error) {
-    console.error('Error processing refund:', error);
+    console.error('Error rejecting order return:', error);
     res.status(500).json({
       success: false,
-      message: 'Error processing refund'
+      message: error.message || 'Error rejecting order return'
     });
   }
 };
 
-// Update return status
-exports.updateReturnStatus = async (req, res) => {
-  try {
-    const { returnId } = req.params;
-    const { status, notes } = req.body;
-
-    const returnRequest = await Return.findById(returnId);
-    
-    if (!returnRequest) {
-      return res.status(404).json({
-        success: false,
-        message: 'Return request not found'
-      });
-    }
-
-    const validStatuses = ['Pending', 'Approved', 'Rejected', 'Processing', 'Completed'];
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status'
-      });
-    }
-
-    // Update the return status
-    await returnRequest.updateStatus(status, notes, req.user?._id);
-
-    res.json({
-      success: true,
-      message: `Return status updated to ${status}`,
-      return: {
-        returnId: returnRequest.returnId,
-        status: returnRequest.status
-      }
-    });
-
-  } catch (error) {
-    console.error('Error updating return status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating return status'
-    });
-  }
-};
 
 // Get return statistics for dashboard
 exports.getReturnStatistics = async (req, res) => {
@@ -461,10 +409,10 @@ exports.getReturnStatistics = async (req, res) => {
         }
       ]),
       
-      // Refund statistics
+      //Refund statistics using enum constants
       Return.aggregate([
         {
-          $match: { status: { $in: ['Approved', 'Completed'] } }
+          $match: { status: { $in: [RETURN_STATUS.APPROVED, RETURN_STATUS.COMPLETED] } }
         },
         {
           $group: {
@@ -496,6 +444,7 @@ exports.getReturnStatistics = async (req, res) => {
     });
   }
 };
+
 
 // Export returns data (CSV)
 exports.exportReturns = async (req, res) => {

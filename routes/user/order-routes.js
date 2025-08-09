@@ -4,12 +4,10 @@ const orderController = require('../../controllers/user/orderController');
 
 // Custom authentication middleware
 const requireAuth = (req, res, next) => {
-  // Check both session.userId and req.user (Passport.js)
   if (req.isAuthenticated() || req.session.userId) {
     return next();
   }
   
-  // For AJAX requests, return JSON error
   if (req.xhr || req.headers.accept.indexOf('json') > -1) {
     return res.status(401).json({
       success: false,
@@ -17,36 +15,38 @@ const requireAuth = (req, res, next) => {
     });
   }
   
-  // For regular requests, redirect to login
   req.flash('error', 'Please log in to continue');
   res.redirect('/login');
 };
 
-// Place order
-router.post('/place-order', requireAuth, orderController.placeOrder);
 
-// Order success page
-router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSuccess);
+// Create new order
+router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
 
 // Get all orders for user
 router.get('/orders', requireAuth, orderController.getUserOrders);
 
-// Get order details
-router.get('/order-details/:orderId', requireAuth, orderController.getOrderDetails);
+// Get specific order details
+router.get('/orders/:orderId', requireAuth, orderController.getOrderDetails);
 
-// Download invoice
-router.get('/download-invoice/:orderId', requireAuth, orderController.downloadInvoice);
+// Update order (cancel)
+router.patch('/orders/:orderId', requireAuth, orderController.cancelOrder);
 
-// Cancel entire order
-router.post('/cancel-order/:orderId', requireAuth, orderController.cancelOrder);
+// ===== ORDER ITEMS =====
+// Update specific item in order (cancel item)
+router.patch('/orders/:orderId/items/:itemId', requireAuth, orderController.cancelItem);
 
-// Cancel individual item
-router.post('/cancel-item/:orderId/:itemId', requireAuth, orderController.cancelItem);
+// Create return request for entire order
+router.post('/orders/:orderId/returns', requireAuth, orderController.requestOrderReturn);
 
-// Return entire order
-router.post('/return-order/:orderId', requireAuth, orderController.returnOrder);
+// Create return request for specific item
+router.post('/orders/:orderId/items/:itemId/returns', requireAuth, orderController.requestItemReturn);
 
-// Return individual item
-router.post('/return-item/:orderId/:itemId', requireAuth, orderController.returnItem);
+// ===== UTILITY ROUTES =====
+// Order success page (UI-specific)
+router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSuccess);
+
+// Download invoice (action on resource)
+router.get('/orders/:orderId/invoice', requireAuth, orderController.downloadInvoice);
 
 module.exports = router;

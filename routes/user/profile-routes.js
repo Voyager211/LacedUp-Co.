@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const profileController = require('../../controllers/user/profileController');
+const orderController = require('../../controllers/user/orderController');
 
 // Configure multer for profile photo uploads
 const storage = multer.memoryStorage();
@@ -64,7 +65,7 @@ router.get('/profile/addresses', requireAuth, profileController.loadAddresses);
 router.get('/profile/wallet', requireAuth, profileController.loadWallet);
 
 // Orders routes
-router.get('/orders', requireAuth, profileController.loadOrders);
+router.get('/orders', requireAuth, orderController.getUserOrders);
 
 // Profile photo routes
 router.post('/profile/photo', requireAuth, upload.single('profilePhoto'), profileController.uploadProfilePhoto);

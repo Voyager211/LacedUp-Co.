@@ -108,20 +108,18 @@
               <label class="form-label text-black">Return Status</label>
               <select class="form-select" name="status">
                 <option value="">All Status</option>
-                <option value="Pending" <%= filters.status === 'Pending' ? 'selected' : '' %>>Pending</option>
-                <option value="Approved" <%= filters.status === 'Approved' ? 'selected' : '' %>>Approved</option>
-                <option value="Rejected" <%= filters.status === 'Rejected' ? 'selected' : '' %>>Rejected</option>
-                <option value="Processing" <%= filters.status === 'Processing' ? 'selected' : '' %>>Processing</option>
-                <option value="Completed" <%= filters.status === 'Completed' ? 'selected' : '' %>>Completed</option>
+                <% returnStatuses.forEach(status => { %>
+                  <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
+                <% }); %>
               </select>
             </div>
             <div class="col-md-2">
               <label class="form-label text-black">Refund Status</label>
               <select class="form-select" name="refundStatus">
                 <option value="">All Status</option>
-                <option value="Pending" <%= filters.refundStatus === 'Pending' ? 'selected' : '' %>>Pending</option>
-                <option value="Processed" <%= filters.refundStatus === 'Processed' ? 'selected' : '' %>>Processed</option>
-                <option value="Failed" <%= filters.refundStatus === 'Failed' ? 'selected' : '' %>>Failed</option>
+                <% refundStatuses.forEach(status => { %>
+                  <option value="<%= status %>" <%= filters.refundStatus === status ? 'selected' : '' %>><%= status %></option>
+                <% }); %>
               </select>
             </div>
             <div class="col-md-2">
@@ -272,7 +270,7 @@
                                   <i class="bi bi-eye me-2 text-black"></i>View Details
                                 </button>
                               </li>
-                              <% if (returnItem.status === 'Pending') { %>
+                              <% if (returnItem.status === RETURN_STATUS.PENDING) { %>
                                 <li>
                                   <button class="dropdown-item text-black" onclick="approveReturn('<%= returnItem._id %>')">
                                     <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
@@ -284,18 +282,6 @@
                                   </button>
                                 </li>
                               <% } %>
-                              <% if (returnItem.status === 'Approved' && returnItem.refundStatus === 'Pending') { %>
-                                <li>
-                                  <button class="dropdown-item text-black" onclick="processRefund('<%= returnItem._id %>')">
-                                    <i class="bi bi-currency-rupee me-2 text-primary"></i>Process Refund
-                                  </button>
-                                </li>
-                              <% } %>
-                              <li>
-                                <button class="dropdown-item text-black" onclick="updateReturnStatus('<%= returnItem._id %>', '<%= returnItem.status %>')">
-                                  <i class="bi bi-pencil me-2 text-black"></i>Update Status
-                                </button>
-                              </li>
                             </ul>
                           </div>
                         </div>
@@ -410,75 +396,9 @@
   </div>
 </div>
 
-<!-- Process Refund Modal -->
-<div class="modal fade" id="processRefundModal" tabindex="-1" aria-labelledby="processRefundModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title text-black" id="processRefundModalLabel">Process Refund</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="processRefundForm">
-          <input type="hidden" id="refundReturnId" name="returnId">
-          <div class="mb-3">
-            <label for="refundMethod" class="form-label text-black">Refund Method</label>
-            <select class="form-select" id="refundMethod" name="refundMethod" required>
-              <option value="Original Payment Method">Original Payment Method</option>
-              <option value="Wallet">Wallet</option>
-              <option value="Bank Transfer">Bank Transfer</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="refundNotes" class="form-label text-black">Processing Notes</label>
-            <textarea class="form-control" id="refundNotes" name="notes" rows="3" 
-                      placeholder="Add any notes about the refund processing..."></textarea>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitProcessRefund()">Process Refund</button>
-      </div>
-    </div>
-  </div>
-</div>
 
-<!-- Update Status Modal -->
-<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title text-black" id="updateStatusModalLabel">Update Return Status</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="updateStatusForm">
-          <input type="hidden" id="updateReturnId" name="returnId">
-          <div class="mb-3">
-            <label for="returnStatus" class="form-label text-black">Return Status</label>
-            <select class="form-select" id="returnStatus" name="status" required>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Processing">Processing</option>
-              <option value="Completed">Completed</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="statusNotes" class="form-label text-black">Notes</label>
-            <textarea class="form-control" id="statusNotes" name="notes" rows="3" 
-                      placeholder="Add any notes about this status update..."></textarea>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-dark" onclick="submitUpdateStatus()">Update Status</button>
-      </div>
-    </div>
-  </div>
-</div>
+
+
 
 <style>
 /* General Styles */
@@ -929,13 +849,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // View return details
 function viewReturnDetails(returnId) {
   // Implement return details view
-  window.location.href = `/admin/returns/details/${returnId}`;
+  window.location.href = `/admin/returns/${returnId}`;
 }
 
 // Approve return
 function approveReturn(returnId) {
   // Get return data to pre-fill form
-  fetch(`/admin/returns/details/${returnId}`)
+  fetch(`/admin/returns/${returnId}`)
     .then(response => response.json())
     .then(data => {
       if (data.success) {
@@ -960,8 +880,8 @@ function submitApproveReturn() {
   const formData = new FormData(form);
   const returnId = formData.get('returnId');
   
-  fetch(`/admin/returns/approve/${returnId}`, {
-    method: 'PUT',
+  fetch(`/admin/returns/${returnId}/approve`, {
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
@@ -1003,13 +923,14 @@ function submitRejectReturn() {
   const formData = new FormData(form);
   const returnId = formData.get('returnId');
   
-  fetch(`/admin/returns/reject/${returnId}`, {
-    method: 'PUT',
+  // FIXED: Changed PUT to PATCH and fixed parameter name
+  fetch(`/admin/returns/${returnId}/reject`, {
+    method: 'PATCH',  // ✅ CORRECTED: Changed from PUT to PATCH
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      reason: formData.get('reason')
+      rejectionReason: formData.get('reason')  // ✅ CORRECTED: Parameter name matches controller
     })
   })
   .then(response => response.json())
@@ -1031,95 +952,88 @@ function submitRejectReturn() {
   bootstrap.Modal.getInstance(document.getElementById('rejectReturnModal')).hide();
 }
 
-// Process refund
-function processRefund(returnId) {
-  document.getElementById('refundReturnId').value = returnId;
-  document.getElementById('refundMethod').value = 'Original Payment Method';
-  document.getElementById('refundNotes').value = '';
-  
-  const modal = new bootstrap.Modal(document.getElementById('processRefundModal'));
-  modal.show();
-}
 
-function submitProcessRefund() {
-  const form = document.getElementById('processRefundForm');
-  const formData = new FormData(form);
-  const returnId = formData.get('returnId');
+
+
+// function submitProcessRefund() {
+//   const form = document.getElementById('processRefundForm');
+//   const formData = new FormData(form);
+//   const returnId = formData.get('returnId');
   
-  fetch(`/admin/returns/process-refund/${returnId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      refundMethod: formData.get('refundMethod'),
-      notes: formData.get('notes')
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
-    } else {
-      showToast('error', data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', 'Error processing refund');
-  });
+//   fetch(`/admin/returns/process-refund/${returnId}`, {
+//     method: 'PUT',
+//     headers: {
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({
+//       refundMethod: formData.get('refundMethod'),
+//       notes: formData.get('notes')
+//     })
+//   })
+//   .then(response => response.json())
+//   .then(data => {
+//     if (data.success) {
+//       showToast('success', data.message);
+//       setTimeout(() => {
+//         location.reload();
+//       }, 1000);
+//     } else {
+//       showToast('error', data.message);
+//     }
+//   })
+//   .catch(error => {
+//     console.error('Error:', error);
+//     showToast('error', 'Error processing refund');
+//   });
   
-  bootstrap.Modal.getInstance(document.getElementById('processRefundModal')).hide();
-}
+//   bootstrap.Modal.getInstance(document.getElementById('processRefundModal')).hide();
+// }
+
 
 // Update return status
-function updateReturnStatus(returnId, currentStatus) {
-  document.getElementById('updateReturnId').value = returnId;
-  document.getElementById('returnStatus').value = currentStatus;
-  document.getElementById('statusNotes').value = '';
-  
-  const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
-  modal.show();
-}
 
-function submitUpdateStatus() {
-  const form = document.getElementById('updateStatusForm');
-  const formData = new FormData(form);
-  const returnId = formData.get('returnId');
+
+
+
+// function submitUpdateStatus() {
+//   const form = document.getElementById('updateStatusForm');
+//   const formData = new FormData(form);
+//   const returnId = formData.get('returnId');
   
-  fetch(`/admin/returns/update-status/${returnId}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      status: formData.get('status'),
-      notes: formData.get('notes')
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
-    } else {
-      showToast('error', data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', 'Error updating return status');
-  });
+//   fetch(`/admin/returns/update-status/${returnId}`, {
+//     method: 'PUT',
+//     headers: {
+//       'Content-Type': 'application/json',
+//     },
+//     body: JSON.stringify({
+//       status: formData.get('status'),
+//       notes: formData.get('notes')
+//     })
+//   })
+//   .then(response => response.json())
+//   .then(data => {
+//     if (data.success) {
+//       showToast('success', data.message);
+//       setTimeout(() => {
+//         location.reload();
+//       }, 1000);
+//     } else {
+//       showToast('error', data.message);
+//     }
+//   })
+//   .catch(error => {
+//     console.error('Error:', error);
+//     showToast('error', 'Error updating return status');
+//   });
   
-  bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
-}
+//   bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+// }
+
+
+
 
 // Refresh returns
+
 function refreshReturns() {
   location.reload();
 }

@@ -4,6 +4,18 @@ const Product = require('../../models/Product');
 const Address = require('../../models/Address');
 const User = require('../../models/User');
 const Return = require('../../models/Return');
+const orderService = require('../../services/orderService');
+
+const {
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  CANCELLATION_REASONS, 
+  RETURN_REASONS,
+  getOrderStatusArray,
+  getPaymentStatusArray,
+  getCancellationReasonsArray,
+  getReturnReasonsArray
+} = require('../../constants/orderEnums');
 
 // Helper function to calculate variant-specific final price
 const calculateVariantFinalPrice = (product, variant) => {
@@ -237,7 +249,9 @@ exports.placeOrder = async (req, res) => {
         size: item.size,
         quantity: item.quantity,
         price: item.price,
-        totalPrice: item.totalPrice
+        totalPrice: item.totalPrice,
+        status: ORDER_STATUS.PENDING,                    
+        paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
       })),
       deliveryAddress: {
         addressId: userAddresses._id,
@@ -250,13 +264,13 @@ exports.placeOrder = async (req, res) => {
       shipping: shipping,
       totalAmount: Math.round(total),
       totalItemCount: totalItemCount,
-      status: 'Pending',
+      status: ORDER_STATUS.PENDING,                
       statusHistory: [{
-        status: 'Pending',
+        status: ORDER_STATUS.PENDING,                    
         updatedAt: new Date(),
         notes: 'Order placed'
       }],
-      paymentStatus: paymentMethod === 'cod' ? 'Pending' : 'Completed'
+      paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED 
     });
 
     await newOrder.save();
@@ -403,6 +417,10 @@ exports.getUserOrders = async (req, res) => {
       return res.redirect('/login');
     }
 
+    const cancellationReasons = CANCELLATION_REASONS;
+    const returnReasons = RETURN_REASONS;
+
+
     // Get user orders with populated address data
     const orders = await Order.find({ user: userId })
       .populate({
@@ -493,14 +511,22 @@ exports.getUserOrders = async (req, res) => {
       orderItems: orderItems,
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
-      active: 'orders'
+      active: 'orders',
+      cancellationReasons: getCancellationReasonsArray(), 
+      returnReasons:  getReturnReasonsArray()
     });
 
   } catch (error) {
     console.error('Error loading orders:', error);
     res.status(500).render('errors/server-error', { 
       message: 'Error loading orders',
-      error: error.message 
+      error: error.message,
+      title: 'Error',
+      layout: 'user/layouts/user-layout',
+      active: 'orders',
+      user: null, 
+      cancellationReasons: CANCELLATION_REASONS,
+      returnReasons: RETURN_REASONS
     });
   }
 };
@@ -514,6 +540,11 @@ exports.getOrderDetails = async (req, res) => {
     if (!userId) {
       return res.redirect('/login');
     }
+
+    // Extract enum values
+    const cancellationReasons = CANCELLATION_REASONS;
+    const returnReasons = RETURN_REASONS;
+
 
     // Get user data
     const user = await User.findById(userId).select('name email profilePhoto');
@@ -536,7 +567,11 @@ exports.getOrderDetails = async (req, res) => {
     if (!order) {
       return res.status(404).render('errors/404', {
         message: 'Order not found',
-        layout: 'user/layouts/user-layout'
+        layout: 'user/layouts/user-layout',
+        title: 'Order Not Found',
+        active: 'orders',
+        cancellationReasons: CANCELLATION_REASONS,
+        returnReasons: RETURN_REASONS
       });
     }
 
@@ -640,7 +675,10 @@ exports.getOrderDetails = async (req, res) => {
       order,
       title: `Order Details - ${orderId}`,
       layout: 'user/layouts/user-layout',
-      active: 'orders'
+      active: 'orders',
+      cancellationReasons: getCancellationReasonsArray(),
+      returnReasons: getReturnReasonsArray(),
+      ORDER_STATUS: ORDER_STATUS  
     });
 
   } catch (error) {
@@ -648,7 +686,11 @@ exports.getOrderDetails = async (req, res) => {
     res.status(500).render('errors/server-error', {
       message: 'Error loading order details',
       error: error.message,
-      layout: 'user/layouts/user-layout'
+      layout: 'user/layouts/user-layout',
+      title: 'Error',
+      active: 'orders',
+      cancellationReasons: CANCELLATION_REASONS,
+      returnReasons: RETURN_REASONS
     });
   }
 };
@@ -766,7 +808,23 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // Find the order
+    // Cancel reason validations
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a cancellation reason'
+      });
+    }
+
+    const validReasons = getCancellationReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cancellation reason selected'
+      });
+    }
+
+    // Find the order to verify ownership
     const order = await Order.findOne({ orderId: orderId, user: userId });
     if (!order) {
       return res.status(404).json({
@@ -775,19 +833,46 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // Check if order can be cancelled
-    if (!order.canBeCancelled()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order cannot be cancelled in current status'
+    // ✅ STEP 1 DEBUG: Check status BEFORE cancellation
+    console.log('🔍 BEFORE CANCEL ORDER:');
+    console.log('Order ID:', orderId);
+    console.log('Order status before:', order.status);
+    console.log('Order payment status before:', order.paymentStatus);
+    console.log('Order payment method:', order.paymentMethod);
+    console.log('Items before cancellation:');
+    order.items.forEach((item, index) => {
+      console.log(`  Item ${index + 1}:`, {
+        itemId: item._id,
+        status: item.status,
+        paymentStatus: item.paymentStatus,
+        size: item.size,
+        quantity: item.quantity
       });
-    }
+    });
+    console.log('------------------------');
 
-    // Cancel the order
-    await order.cancelOrder(reason);
+    // Use OrderService to cancel order
+    const result = await orderService.cancelOrder(orderId, reason, userId);
+
+    // ✅ STEP 1 DEBUG: Check status AFTER cancellation
+    console.log('🔍 AFTER CANCEL ORDER:');
+    const orderAfter = await Order.findOne({ orderId: orderId });
+    console.log('Order status after:', orderAfter.status);
+    console.log('Order payment status after:', orderAfter.paymentStatus);
+    console.log('Items after cancellation:');
+    orderAfter.items.forEach((item, index) => {
+      console.log(`  Item ${index + 1}:`, {
+        itemId: item._id,
+        status: item.status,
+        paymentStatus: item.paymentStatus,
+        size: item.size,
+        quantity: item.quantity
+      });
+    });
+    console.log('========================');
 
     // Restore stock for cancelled items
-    for (const item of order.items) {
+    for (const item of result.order.items) {
       if (item.status === 'Cancelled') {
         const product = await Product.findById(item.productId);
         if (product) {
@@ -802,7 +887,7 @@ exports.cancelOrder = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Order cancelled successfully'
+      message: result.message
     });
 
   } catch (error) {
@@ -818,7 +903,7 @@ exports.cancelOrder = async (req, res) => {
 exports.cancelItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
-    const { reason } = req.body;
+    const { reason, action } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
     if (!userId) {
@@ -828,20 +913,36 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Find the order
+    // Cancel reason validations
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a cancellation reason'
+      });
+    }
+
+    const validReasons = getCancellationReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid cancellation reason selected'
+      });
+    }
+
+    // Verify it's a cancel action
+    if (action && action !== 'cancel') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid action'
+      });
+    }
+
+    // Find the order to verify ownership
     const order = await Order.findOne({ orderId: orderId, user: userId });
     if (!order) {
       return res.status(404).json({
         success: false,
         message: 'Order not found'
-      });
-    }
-
-    // Check if item can be cancelled
-    if (!order.itemCanBeCancelled(itemId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Item cannot be cancelled in current status'
       });
     }
 
@@ -854,8 +955,41 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Cancel the item
-    await order.cancelItem(itemId, reason);
+    // ✅ STEP 1 DEBUG: Check status BEFORE item cancellation
+    console.log('🔍 BEFORE CANCEL ITEM:');
+    console.log('Order ID:', orderId);
+    console.log('Item ID:', itemId);
+    console.log('Order payment method:', order.paymentMethod);
+    console.log('Target item before cancellation:', {
+      itemId: item._id,
+      status: item.status,
+      paymentStatus: item.paymentStatus,
+      size: item.size,
+      quantity: item.quantity,
+      price: item.price
+    });
+    console.log('Order status before:', order.status);
+    console.log('Order payment status before:', order.paymentStatus);
+    console.log('------------------------');
+
+    // Use OrderService to cancel item
+    const result = await orderService.cancelItem(orderId, itemId, reason, userId);
+
+    // ✅ STEP 1 DEBUG: Check status AFTER item cancellation
+    console.log('🔍 AFTER CANCEL ITEM:');
+    const orderAfter = await Order.findOne({ orderId: orderId });
+    const itemAfter = orderAfter.items.id(itemId);
+    console.log('Target item after cancellation:', {
+      itemId: itemAfter._id,
+      status: itemAfter.status,
+      paymentStatus: itemAfter.paymentStatus,
+      size: itemAfter.size,
+      quantity: itemAfter.quantity,
+      price: itemAfter.price
+    });
+    console.log('Order status after:', orderAfter.status);
+    console.log('Order payment status after:', orderAfter.paymentStatus);
+    console.log('========================');
 
     // Restore stock for cancelled item
     const product = await Product.findById(item.productId);
@@ -869,7 +1003,7 @@ exports.cancelItem = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Item cancelled successfully'
+      message: result.message
     });
 
   } catch (error) {
@@ -881,8 +1015,9 @@ exports.cancelItem = async (req, res) => {
   }
 };
 
-// Return entire order
-exports.returnOrder = async (req, res) => {
+
+// Return request for entire order
+exports.requestOrderReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -895,7 +1030,24 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
-    // Find the order
+    // Return request validations
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a return reason'
+      });
+    }
+
+    // ADD: Enum validation  
+    const validReasons = getReturnReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid return reason selected'
+      });
+    }
+
+    // Verify order ownership
     const order = await Order.findOne({ orderId: orderId, user: userId });
     if (!order) {
       return res.status(404).json({
@@ -904,47 +1056,26 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
-    // Check if order can be returned
-    if (!order.canBeReturned()) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order can only be returned when delivered'
-      });
-    }
-
-    // Return the order
-    await order.returnOrder(reason);
-
-    // Restore stock for returned items
-    for (const item of order.items) {
-      if (item.status === 'Returned') {
-        const product = await Product.findById(item.productId);
-        if (product) {
-          const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
-          if (variant) {
-            variant.stock += item.quantity;
-            await product.save();
-          }
-        }
-      }
-    }
+    // Use OrderService to create return requests
+    const result = await orderService.requestOrderReturn(orderId, reason, userId);
 
     res.json({
       success: true,
-      message: 'Return request submitted successfully'
+      message: result.message,
+      returnRequestsCount: result.itemsAffected
     });
 
   } catch (error) {
-    console.error('Error returning order:', error);
+    console.error('Error creating order return request:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to return order'
+      message: error.message || 'Failed to submit order return request'
     });
   }
 };
 
-// Return individual item
-exports.returnItem = async (req, res) => {
+// Return request for individual item
+exports.requestItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -957,13 +1088,26 @@ exports.returnItem = async (req, res) => {
       });
     }
 
-    // Find the order with populated product data
-    const order = await Order.findOne({ orderId: orderId, user: userId })
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage'
+    // Return request validations
+    if (!reason || reason.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please select a return reason'
       });
-      
+    }
+
+    // ADD: Enum validation  
+    const validReasons = getReturnReasonsArray();
+    if (!validReasons.includes(reason)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid return reason selected'
+      });
+    }
+
+
+    // Verify order ownership
+    const order = await Order.findOne({ orderId: orderId, user: userId });
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -971,59 +1115,12 @@ exports.returnItem = async (req, res) => {
       });
     }
 
-    // Check if item can be returned
-    if (!order.itemCanBeReturned(itemId)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Item can only be returned when delivered'
-      });
-    }
-
-    // Get item details
-    const item = order.items.id(itemId);
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: 'Item not found'
-      });
-    }
-
-    // Check if return request already exists for this item
-    const existingReturn = await Return.findOne({
-      orderId: orderId,
-      itemId: itemId,
-      status: { $in: ['Pending', 'Approved', 'Processing'] }
-    });
-
-    if (existingReturn) {
-      return res.status(400).json({
-        success: false,
-        message: 'Return request already exists for this item'
-      });
-    }
-
-    // Create return request
-    const returnRequest = new Return({
-      orderId: orderId,
-      itemId: itemId,
-      userId: userId,
-      productId: item.productId ? item.productId._id : item.productId,
-      productName: item.productId ? item.productId.productName : 'Product Name',
-      productImage: item.productId ? item.productId.mainImage : null,
-      sku: item.sku,
-      size: item.size,
-      quantity: item.quantity,
-      price: item.price,
-      totalPrice: item.totalPrice,
-      reason: reason || 'Customer requested return',
-      status: 'Pending'
-    });
-
-    await returnRequest.save();
+    // Use OrderService to create return request
+    const result = await orderService.requestItemReturn(orderId, itemId, reason, userId);
 
     res.json({
       success: true,
-      message: 'Return Request Sent for approval'
+      message: result.message
     });
 
   } catch (error) {
@@ -1034,6 +1131,7 @@ exports.returnItem = async (req, res) => {
     });
   }
 };
+
 
 // Download invoice
 exports.downloadInvoice = async (req, res) => {
