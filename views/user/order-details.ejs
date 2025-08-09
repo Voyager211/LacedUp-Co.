@@ -858,12 +858,18 @@ function cancelOrder(orderId) {
 
 // Order action functions
 function returnOrder(orderId) {
+  // Convert array to object for SweetAlert inputOptions
+  const reasonOptions = returnReasons.reduce((options, reason, index) => {
+    options[reason] = reason;
+    return options;
+  }, {});
+
   Swal.fire({
-    title: 'Return Order?',
-    text: 'Please select a reason for returning this order.',
+    title: 'Return Entire Order?',
+    text: 'This will return all items in this order. Please select a reason.',
     icon: 'warning',
     input: 'select',
-    inputOptions: returnReasons,
+    inputOptions: reasonOptions,
     inputPlaceholder: 'Select a reason for return',
     inputValidator: (value) => {
       return new Promise((resolve) => {
@@ -881,18 +887,30 @@ function returnOrder(orderId) {
     cancelButtonText: 'Keep Order'
   }).then((result) => {
     if (result.isConfirmed) {
-      // Show loading and make API call
+      // Show loading
       Swal.fire({
         title: 'Processing Return...',
+        text: 'Please wait while we process your request.',
         allowOutsideClick: false,
+        allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
+        didOpen: () => {
+          Swal.showLoading();
+        }
       });
 
-      fetch(`/orders/${orderId}/returns`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: result.value })
+      console.log('Selected Reason:', result.value);
+
+      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
+      fetch(`/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'return',
+          reason: result.value
+        })
       })
       .then(response => response.json())
       .then(data => {
@@ -900,17 +918,22 @@ function returnOrder(orderId) {
           Swal.fire({
             icon: 'success',
             title: 'Return Request Submitted',
-            text: 'Your return request has been submitted successfully.'
-          }).then(() => location.reload());
+            text: 'Your return request has been sent for approval.',
+            confirmButtonColor: '#28a745'
+          }).then(() => {
+            location.reload();
+          });
         } else {
-          throw new Error(data.message);
+          throw new Error(data.message || 'Failed to return order');
         }
       })
       .catch(error => {
+        console.error('Error returning order:', error);
         Swal.fire({
           icon: 'error',
           title: 'Return Failed',
-          text: error.message || 'Failed to return order.'
+          text: error.message || 'Failed to return order. Please try again.',
+          confirmButtonColor: '#dc3545'
         });
       });
     }
@@ -1039,12 +1062,19 @@ function cancelItem(orderId, itemId) {
 }
 
 
+function returnItem(orderId, itemId) {
+  // Convert array to object for SweetAlert inputOptions
+  const reasonOptions = returnReasons.reduce((options, reason, index) => {
+    options[reason] = reason;
+    return options;
+  }, {});
+
   Swal.fire({
     title: 'Return Item?',
     text: 'Please select a reason for returning this item.',
     icon: 'warning',
     input: 'select',
-    inputOptions: returnReasons,
+    inputOptions: reasonOptions,
     inputPlaceholder: 'Select a reason for return',
     inputValidator: (value) => {
       return new Promise((resolve) => {
@@ -1074,12 +1104,16 @@ function cancelItem(orderId, itemId) {
         }
       });
 
-      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
-        method: 'POST',
+      console.log('Selected Reason:', result.value);
+
+      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
+      fetch(`/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          action: 'return',
           reason: result.value
         })
       })
@@ -1109,65 +1143,8 @@ function cancelItem(orderId, itemId) {
       });
     }
   });
-}function returnItem(orderId, itemId) {
-  Swal.fire({
-    title: 'Return Item?',
-    text: 'Please select a reason for returning this item.',
-    icon: 'warning',
-    input: 'select',
-    inputOptions: returnReasons,
-    inputPlaceholder: 'Select a reason for return',
-    inputValidator: (value) => {
-      return new Promise((resolve) => {
-        if (!value || value === '') {
-          resolve('Please select a reason for return');
-        } else {
-          resolve();
-        }
-      });
-    },
-    showCancelButton: true,
-    confirmButtonColor: '#ffc107',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'Yes, Return Item',
-    cancelButtonText: 'Keep Item'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // Show loading and make API call
-      Swal.fire({
-        title: 'Processing Return...',
-        allowOutsideClick: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-      });
-
-      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reason: result.value })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Return Request Submitted',
-            text: 'Your return request has been sent for approval.'
-          }).then(() => location.reload());
-        } else {
-          throw new Error(data.message);
-        }
-      })
-      .catch(error => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Return Failed',
-          text: error.message || 'Failed to return item.'
-        });
-      });
-    }
-  });
 }
+
 
 function trackOrder(orderId) {
   // Implement order tracking functionality

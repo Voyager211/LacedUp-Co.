@@ -445,12 +445,18 @@ function cancelItem(orderId, itemId) {
 
 
 function returnItem(orderId, itemId) {
+  // Convert array to object for SweetAlert inputOptions
+  const reasonOptions = returnReasons.reduce((options, reason, index) => {
+    options[reason] = reason;
+    return options;
+  }, {});
+
   Swal.fire({
     title: 'Return Item?',
     text: 'Please select a reason for returning this item.',
     icon: 'warning',
     input: 'select',
-    inputOptions: returnReasons,
+    inputOptions: reasonOptions,
     inputPlaceholder: 'Select a reason for return',
     inputValidator: (value) => {
       return new Promise((resolve) => {
@@ -480,12 +486,14 @@ function returnItem(orderId, itemId) {
         }
       });
 
-      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
-        method: 'POST',
+      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
+      fetch(`/orders/${orderId}/items/${itemId}`, {
+        method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          action: 'return',
           reason: result.value
         })
       })
@@ -516,7 +524,6 @@ function returnItem(orderId, itemId) {
     }
   });
 }
-
 
 function trackOrder(orderId) {
   // Implement order tracking functionality
