@@ -1,5 +1,6 @@
 const Wallet = require('../../models/Wallet');
 const User = require('../../models/User');
+const walletService = require('../../services/walletService'); // ✅ ADD: Import walletService
 
 // Get user wallet details
 exports.getWallet = async (req, res) => {
@@ -16,19 +17,24 @@ exports.getWallet = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get or create wallet for the user
-    const wallet = await Wallet.getOrCreateWallet(userId);
-
+    // ✅ FIXED: Use walletService functions properly
+    const walletBalance = await walletService.getWalletBalance(userId.toString());
+    
     // Get transaction history with pagination
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
-    const transactionHistory = wallet.getTransactionHistory(page, limit);
+    const transactionHistory = await walletService.getTransactionHistory(userId.toString(), page, limit);
 
     res.render('user/wallet', {
       user,
       wallet: {
-        balance: wallet.balance,
-        ...transactionHistory
+        balance: walletBalance.balance,
+        transactions: transactionHistory.transactions,
+        totalTransactions: transactionHistory.totalTransactions,
+        currentPage: transactionHistory.currentPage,
+        totalPages: transactionHistory.totalPages,
+        hasNextPage: transactionHistory.hasNextPage,
+        hasPrevPage: transactionHistory.hasPrevPage
       },
       title: 'My Wallet',
       layout: 'user/layouts/user-layout',
@@ -57,12 +63,12 @@ exports.getWalletBalance = async (req, res) => {
       });
     }
 
-    // Get or create wallet for the user
-    const wallet = await Wallet.getOrCreateWallet(userId);
+    // ✅ FIXED: Use walletService function
+    const walletBalance = await walletService.getWalletBalance(userId.toString());
 
     res.json({
       success: true,
-      balance: wallet.balance
+      balance: walletBalance.balance
     });
 
   } catch (error) {
@@ -88,11 +94,8 @@ exports.getTransactionHistory = async (req, res) => {
       });
     }
 
-    // Get or create wallet for the user
-    const wallet = await Wallet.getOrCreateWallet(userId);
-
-    // Get transaction history with pagination
-    const transactionHistory = wallet.getTransactionHistory(page, limit);
+    // ✅ FIXED: Use walletService function
+    const transactionHistory = await walletService.getTransactionHistory(userId.toString(), page, limit);
 
     res.json({
       success: true,
@@ -128,21 +131,22 @@ exports.useWalletForPayment = async (req, res) => {
       });
     }
 
-    // Get wallet for the user
-    const wallet = await Wallet.getOrCreateWallet(userId);
-
-    // Check if wallet has sufficient balance
-    if (wallet.balance < amount) {
+    // ✅ FIXED: Check balance first using walletService
+    const hasSufficientBalance = await walletService.hasSufficientBalance(userId.toString(), amount);
+    
+    if (!hasSufficientBalance) {
+      const walletBalance = await walletService.getWalletBalance(userId.toString());
       return res.status(400).json({
         success: false,
         message: 'Insufficient wallet balance',
-        currentBalance: wallet.balance,
+        currentBalance: walletBalance.balance,
         requiredAmount: amount
       });
     }
 
-    // Debit amount from wallet
-    await wallet.debitAmount(
+    // ✅ FIXED: Use walletService function
+    const result = await walletService.debitAmount(
+      userId.toString(),
       amount,
       description || 'Payment for order',
       orderId
@@ -151,7 +155,7 @@ exports.useWalletForPayment = async (req, res) => {
     res.json({
       success: true,
       message: 'Payment successful',
-      newBalance: wallet.balance,
+      newBalance: result.newBalance,
       amountDebited: amount
     });
 
@@ -184,11 +188,16 @@ exports.addMoneyToWallet = async (req, res) => {
       });
     }
 
-    // Get or create wallet for the user
-    const wallet = await Wallet.getOrCreateWallet(userId);
+    if (amount > 50000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum amount allowed is ₹50,000'
+      });
+    }
 
-    // Add credit to wallet
-    await wallet.addCredit(
+    // ✅ FIXED: Use walletService function
+    const result = await walletService.addCredit(
+      userId.toString(),
       amount,
       description || 'Money added to wallet'
     );
@@ -196,7 +205,7 @@ exports.addMoneyToWallet = async (req, res) => {
     res.json({
       success: true,
       message: 'Money added successfully',
-      newBalance: wallet.balance,
+      newBalance: result.newBalance,
       amountAdded: amount
     });
 
