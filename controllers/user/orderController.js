@@ -903,7 +903,7 @@ exports.cancelOrder = async (req, res) => {
 exports.cancelItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
-    const { reason, action } = req.body;
+    const { reason } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
     if (!userId) {
@@ -929,13 +929,6 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Verify it's a cancel action
-    if (action && action !== 'cancel') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid action'
-      });
-    }
 
     // Find the order to verify ownership
     const order = await Order.findOne({ orderId: orderId, user: userId });

@@ -14,6 +14,60 @@ const {
 } = require('../../constants/orderEnums');
 
 
+const validateTransitionAndGetOrder = async (orderId, newStatus, isItem = false, itemId = null) => {
+  const order = await Order.findOne({ orderId });
+  if (!order) {
+    throw new Error('Order not found');
+  }
+  
+  let currentStatus;
+  if (isItem) {
+    const item = order.items.id(itemId);
+    if (!item) throw new Error('Item not found');
+    currentStatus = item.status;
+  } else {
+    currentStatus = order.status;
+  }
+  
+  const { isValidStatusTransition, getValidTransitions } = require('../../services/orderService');
+  if (!isValidStatusTransition(currentStatus, newStatus)) {
+    const validTransitions = getValidTransitions(currentStatus);
+    throw new Error(`Invalid status transition from '${currentStatus}' to '${newStatus}'. Valid transitions: ${validTransitions.join(', ')}`);
+  }
+  
+  return { order, currentStatus };
+};
+
+const getStatusColor = (status) => {
+  const colorMap = {
+    'Pending': 'warning',
+    'Processing': 'info',
+    'Shipped': 'primary',
+    'Delivered': 'success',
+    'Processing Return': 'warning',
+    'Returned': 'secondary',
+    'Cancelled': 'danger',
+    'Partially Delivered': 'primary',
+    'Partially Cancelled': 'danger',
+    'Partially Returned': 'secondary'
+  };
+  return colorMap[status] || 'secondary';
+};
+
+const getPaymentStatusColor = (status) => {
+  const colorMap = {
+    'Pending': 'warning',
+    'Completed': 'success',
+    'Failed': 'danger',
+    'Refunded': 'info',
+    'Cancelled': 'secondary',
+    'Partially Completed': 'primary',
+    'Partially Refunded': 'secondary'
+  };
+  return colorMap[status] || 'secondary';
+};
+
+
 // Get all orders for admin (showing individual items)
 exports.getAllOrders = async (req, res) => {
   try {
@@ -176,7 +230,6 @@ exports.getAllOrders = async (req, res) => {
       orderStatuses: getOrderStatusArray(),
       ORDER_STATUS: ORDER_STATUS,
       PAYMENT_STATUS: PAYMENT_STATUS,
-      orderStatuses: getOrderStatusArray(),
       paymentStatuses: getPaymentStatusArray()
     });
 
@@ -199,13 +252,17 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-// Get single order details for admin
+
+// Get allowed status transitions based on current status
+const getAllowedStatusTransitions = (currentStatus) => {
+  return orderService.getValidTransitions(currentStatus);
+};
+
+// Update order status
 exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
-
-    console.log('🔍 Looking for order ID:', orderId);
-    console.log('🔍 Order ID type:', typeof orderId);
+    console.log('🔍 DEBUG: Accessing order details for:', orderId);
 
     const order = await Order.findOne({ orderId })
       .populate({
@@ -223,23 +280,10 @@ exports.getOrderDetails = async (req, res) => {
       .lean();
 
     if (!order) {
-      console.log('❌ No order found with orderId:', orderId);
-      const totalOrders = await Order.countDocuments();
-      console.log('📊 Total orders in database:', totalOrders);
-      // Show a few sample order IDs for comparison
-      const sampleOrders = await Order.find({}, { orderId: 1 }).limit(3).lean();
-      console.log('📝 Sample order IDs in database:', sampleOrders.map(o => o.orderId));
-
-      return res.status(404).render('admin/order-details', {
-        title: 'Order Not Found',
-        order: null,
-        error: 'Order not found',
-        orderStatuses: getOrderStatusArray(),
-        paymentStatuses: getPaymentStatusArray(),
-        cancellationReasons: getCancellationReasonsArray(),
-        returnReasons: getReturnReasonsArray(),
-        ORDER_STATUS: ORDER_STATUS,
-        PAYMENT_STATUS: PAYMENT_STATUS,
+      console.log('❌ Order not found:', orderId);
+      return res.status(404).render('errors/404', {
+        pageTitle: 'Order Not Found',
+        message: 'The requested order could not be found.',
         layout: 'admin/layout'
       });
     }
@@ -266,7 +310,7 @@ exports.getOrderDetails = async (req, res) => {
           type: 'order',
           status: statusEntry.status,
           updatedAt: statusEntry.updatedAt,
-          notes: statusEntry.notes || `Order status changed to ${statusEntry.status}`,
+          notes: statusEntry.notes || `Order status changed to ${statusEntry.status}`, // ✅ Fixed
           itemName: null,
           itemId: null
         });
@@ -282,9 +326,9 @@ exports.getOrderDetails = async (req, res) => {
               type: 'item',
               status: statusEntry.status,
               updatedAt: statusEntry.updatedAt,
-              notes: statusEntry.notes || `${productName} (Size: ${item.size}) status changed to ${statusEntry.status}`,
-              itemName: `${productName} (Size: ${item.size})`,
-              itemId: item._id
+              notes: statusEntry.notes || `${productName} (Size: ${item.size}) status changed to ${statusEntry.status}`, // ✅ Fixed
+              itemName: `${productName} (Size: ${item.size})`, // ✅ Fixed
+              itemId: item._id // ✅ Fixed
             });
           });
         }
@@ -294,96 +338,127 @@ exports.getOrderDetails = async (req, res) => {
     comprehensiveStatusHistory.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
     order.comprehensiveStatusHistory = comprehensiveStatusHistory;
 
+    // Get valid status transitions for current order
+    const { getValidTransitions } = require('../../services/orderService');
+    const allValidTransitions = getValidTransitions(order.status);
+    
+    // Filter out 'Returned' status - only available through return management
+    const validTransitions = allValidTransitions.filter(status => status !== 'Returned');
+
+    // ✅ ENHANCED: Add item-level transition debugging
+    order.items.forEach((item, index) => {
+      const itemTransitions = getValidTransitions(item.status);
+      console.log(`🔍 DEBUG - Item ${index} (${item.status}) transitions:`, itemTransitions); // ✅ Fixed
+    });
+
     res.render('admin/order-details', {
-      title: `Order Details - ${orderId}`,
+      title: `Order Details - ${orderId}`, // ✅ Fixed
       order,
       orderStatuses: getOrderStatusArray(),
       paymentStatuses: getPaymentStatusArray(),
       cancellationReasons: getCancellationReasonsArray(),
       returnReasons: getReturnReasonsArray(),
-      ORDER_STATUS: ORDER_STATUS,
-      PAYMENT_STATUS: PAYMENT_STATUS,
+      ORDER_STATUS: ORDER_STATUS, // ✅ Fixed
+      PAYMENT_STATUS: PAYMENT_STATUS, // ✅ Fixed
+      validTransitions: validTransitions,
+      getStatusColor,
+      getPaymentStatusColor,
       layout: 'admin/layout'
     });
 
   } catch (error) {
     console.error('Error fetching order details:', error);
-    res.status(500).render('admin/order-details', {
-      title: 'Error',
-      order: null,
-      error: 'Error loading order details',
-      orderStatuses: getOrderStatusArray(),
-      paymentStatuses: getPaymentStatusArray(),
-      cancellationReasons: getCancellationReasonsArray(),
-      returnReasons: getReturnReasonsArray(),
-      ORDER_STATUS: ORDER_STATUS,
-      PAYMENT_STATUS: PAYMENT_STATUS,
+    
+    res.status(500).render('errors/404', {
+      pageTitle: 'Server Error',
+      message: 'An error occurred while loading the order details.',
       layout: 'admin/layout'
     });
   }
 };
 
 
-// Get allowed status transitions based on current status
-const getAllowedStatusTransitions = (currentStatus) => {
-  return orderService.getValidTransitions(currentStatus);
-};
 
-// Update order status
-exports.updateOrderStatus = async (req, res) => {
+exports.getOrderDetailsJSON = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { status, notes, action } = req.body;
 
-    // Handle different actions
-    if (action === 'cancel') {
-      // Use cancelOrder function instead
-      return exports.cancelOrder(req, res);
-    } else if (action === 'return') {
-      // Use returnOrder function instead  
-      return exports.returnOrder(req, res);
+    const order = await Order.findOne({ orderId })
+      .populate({
+        path: 'user',
+        select: 'name email phone profilePhoto'
+      })
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage subImages regularPrice salePrice category brand'
+      })
+      .populate({
+        path: 'deliveryAddress.addressId',
+        select: 'address'
+      })
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
     }
 
-    // ✅ FIXED: Regular status update - OrderService handles COD completion automatically
-    const result = await orderService.updateOrderStatus(
-      orderId, 
-      status, 
-      notes || `Status updated to ${status} by admin`,
-      'admin'
-    );
+    // Extract the specific address from the address array using addressIndex
+    if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
+      const addressIndex = order.deliveryAddress.addressIndex;
+      const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
+      
+      if (specificAddress) {
+        order.deliveryAddress = {
+          ...order.deliveryAddress,
+          ...specificAddress
+        };
+      }
+    }
 
-    // ✅ REMOVED: Redundant COD payment status logic (OrderService already handles this)
-    // The OrderService.updateOrderStatus function already includes:
-    // - Auto COD completion when status = DELIVERED
-    // - Payment status updates for all items
-    // - Status history logging
+    // ✅ NEW: Get valid transitions for current order status
+    const validTransitions = await orderService.getValidTransitions(order.status);
 
+
+    // ✅ Return JSON response (not HTML)
     res.json({
       success: true,
-      message: result.message,
       order: {
-        orderId: result.order.orderId,
-        status: result.order.status,
-        paymentStatus: result.order.paymentStatus,
-        // ✅ ADD: Include items for frontend updates
-        items: result.order.items.map(item => ({
+        orderId: order.orderId,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        totalAmount: order.totalAmount,
+        user: order.user,
+        deliveryAddress: order.deliveryAddress,
+        items: order.items.map(item => ({
           _id: item._id,
+          productId: item.productId,
+          productName: item.productId ? item.productId.productName : 'Product',
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
           status: item.status,
           paymentStatus: item.paymentStatus
-        }))
-      }
+        })),
+        createdAt: order.createdAt,
+        updatedAt: order.updatedAt
+      },
+      validTransitions: validTransitions // ✅ Include valid transitions
     });
 
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error('Error fetching order details JSON:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error updating order status'
+      message: 'Error loading order details'
     });
   }
 };
-
-
 
 // Get allowed status transitions for a specific order
 exports.getAllowedTransitions = async (req, res) => {
@@ -416,93 +491,158 @@ exports.getAllowedTransitions = async (req, res) => {
   }
 };
 
-// Update payment status
-exports.updatePaymentStatus = async (req, res) => {
+// updateOrderStatus function with transition validation
+exports.updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const { paymentStatus } = req.body;
+    const { status, notes, action } = req.body;
 
-    const validPaymentStatuses = getPaymentStatusArray();
+    // Handle different actions
+    if (action === 'cancel') {
+      return exports.cancelOrder(req, res);
+    } else if (action === 'return') {
+      return exports.returnOrder(req, res);
+    }
+
+    // Get current order to validate transition
+    const currentOrder = await Order.findOne({ orderId });
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Validate status transition using OrderService
+    const { isValidStatusTransition } = require('../../services/orderService');
     
-    if (!validPaymentStatuses.includes(paymentStatus)) {
+    if (!isValidStatusTransition(currentOrder.status, status)) {
+      const { getValidTransitions } = require('../../services/orderService');
+      const validTransitions = getValidTransitions(currentOrder.status);
+      
       return res.status(400).json({
         success: false,
-        message: 'Invalid payment status'
+        message: `Invalid status transition from '${currentOrder.status}' to '${status}'. Valid transitions: ${validTransitions.join(', ')}`
       });
     }
 
-    const order = await Order.findOne({ orderId });
-    
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-
-    order.paymentStatus = paymentStatus;
-    await order.save();
-
-    res.json({
-      success: true,
-      message: `Payment status updated to ${paymentStatus}`,
-      order: {
-        orderId: order.orderId,
-        status: order.status,
-        paymentStatus: order.paymentStatus
-      }
-    });
-
-  } catch (error) {
-    console.error('Error updating payment status:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating payment status'
-    });
-  }
-};
-
-// Update individual item status
-exports.updateItemStatus = async (req, res) => {
-  try {
-    const { orderId, itemId } = req.params;
-    const { status, notes } = req.body;
-
-    // Verify order exists first
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-
-    // Use OrderService to update item status (includes validation)
-    const result = await orderService.updateItemStatus(
-      orderId,
-      itemId,
-      status,
-      notes || `Item status updated to ${status} by admin`
+    // Regular status update with validation passed
+    const result = await orderService.updateOrderStatus(
+      orderId, 
+      status, 
+      notes || `Status updated to ${status} by admin`,
+      'admin'
     );
 
+    // ✅ ENHANCED: Comprehensive response with all information needed for UI updates
     res.json({
       success: true,
       message: result.message,
       order: {
         orderId: result.order.orderId,
         status: result.order.status,
-        itemStatus: status
+        paymentStatus: result.order.paymentStatus, // ✅ Order-level payment status
+        paymentMethod: result.order.paymentMethod, // ✅ Helpful for frontend logic
+        totalAmount: result.order.totalAmount,
+        // ✅ ENHANCED: Complete item information for real-time badge updates
+        items: result.order.items.map(item => ({
+          _id: item._id,
+          productName: item.productId ? item.productId.productName : 'Product',
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          status: item.status,                    // ✅ Updated item status
+          paymentStatus: item.paymentStatus,      // ✅ Updated item payment status
+          // ✅ Additional info for debugging/logging
+          previousStatus: currentOrder.items.find(ci => ci._id.toString() === item._id.toString())?.status,
+          statusChanged: currentOrder.items.find(ci => ci._id.toString() === item._id.toString())?.status !== item.status
+        })),
+        // ✅ ENHANCED: Status change summary for frontend
+        changes: {
+          previousOrderStatus: currentOrder.status,
+          newOrderStatus: result.order.status,
+          previousOrderPaymentStatus: currentOrder.paymentStatus,
+          newOrderPaymentStatus: result.order.paymentStatus,
+          orderStatusChanged: currentOrder.status !== result.order.status,
+          orderPaymentStatusChanged: currentOrder.paymentStatus !== result.order.paymentStatus,
+          totalItemsUpdated: result.order.items.length,
+          itemsWithPaymentChanges: result.order.items.filter(item => {
+            const originalItem = currentOrder.items.find(ci => ci._id.toString() === item._id.toString());
+            return originalItem && originalItem.paymentStatus !== item.paymentStatus;
+          }).length
+        },
+        // ✅ ENHANCED: Metadata for frontend processing
+        updatedAt: result.order.updatedAt,
+        updatedBy: 'admin'
       }
     });
 
   } catch (error) {
-    console.error('Error updating item status:', error);
+    console.error('Error updating order status:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error updating item status'
+      message: error.message || 'Error updating order status',
+      // ✅ ENHANCED: Error context for debugging
+      context: {
+        orderId: req.params.orderId,
+        requestedStatus: req.body.status,
+        timestamp: new Date().toISOString()
+      }
     });
   }
 };
+
+
+// Update payment status
+// exports.updatePaymentStatus = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const { paymentStatus } = req.body;
+
+//     const validPaymentStatuses = getPaymentStatusArray();
+    
+//     if (!validPaymentStatuses.includes(paymentStatus)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: 'Invalid payment status'
+//       });
+//     }
+
+//     const order = await Order.findOne({ orderId });
+    
+//     if (!order) {
+//       return res.status(404).json({
+//         success: false,
+//         message: 'Order not found'
+//       });
+//     }
+
+//     order.paymentStatus = paymentStatus;
+//     await order.save();
+
+//     res.json({
+//       success: true,
+//       message: `Payment status updated to ${paymentStatus}`,
+//       order: {
+//         orderId: order.orderId,
+//         status: order.status,
+//         paymentStatus: order.paymentStatus
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error('Error updating payment status:', error);
+//     res.status(500).json({
+//       success: false,
+//       message: 'Error updating payment status'
+//     });
+//   }
+// };
+
+
+
 
 // Cancel individual item
 exports.cancelItem = async (req, res) => {
@@ -666,25 +806,10 @@ exports.returnItem = async (req, res) => {
       });
     }
 
-    // Verify order exists first
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
+    //  Use validation helper
+    const { order } = await validateTransitionAndGetOrder(orderId, 'Processing Return', true, itemId);
 
-    // Get item details before return for stock restoration
-    const item = order.items.id(itemId);
-    if (!item) {
-      return res.status(404).json({
-        success: false,
-        message: 'Item not found'
-      });
-    }
-
-    // Use OrderService to process return
+    // Use OrderService to process return (creates return request)
     const result = await orderService.returnItem(
       orderId,
       itemId,
@@ -692,20 +817,30 @@ exports.returnItem = async (req, res) => {
       'admin'
     );
 
-    // Note: Stock restoration for returns might be handled differently
-    // You may want to restore stock only when return is approved, not requested
+    // NO immediate stock restoration
+    // Stock will be restored only when return is approved via approveReturn function
 
     res.json({
       success: true,
-      message: result.message,
+      message: result.message + ' (Stock will be restored when return is approved)',
       order: {
         orderId: result.order.orderId,
-        status: result.order.status
+        status: result.order.status,
+        returnRequestCreated: true
       }
     });
 
   } catch (error) {
     console.error('Error processing item return:', error);
+    
+    // Handle validation errors specifically
+    if (error.message.includes('Invalid status transition')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Error processing item return'
@@ -736,56 +871,53 @@ exports.returnOrder = async (req, res) => {
       });
     }
 
-    // Verify order exists first
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
+    //  Use validation helper for order-level validation
+    const { order } = await validateTransitionAndGetOrder(orderId, 'Processing Return', false);
 
-    // Store item details before return for potential stock restoration
-    const deliveredItems = order.items.filter(item => item.status === ORDER_STATUS.DELIVERED);
+    // Store eligible items count for response
+    const eligibleItems = order.items.filter(item => 
+      item.status === ORDER_STATUS.DELIVERED || 
+      item.status === ORDER_STATUS.SHIPPED
+    );
 
-    // Use OrderService to return entire order
+    // Use OrderService to return entire order (creates return requests)
     const result = await orderService.returnOrder(
       orderId,
       reason || 'Order returned by admin'
     );
 
-    // Restore stock for all returned items
-    // Note: You might want to handle this differently - perhaps only restore stock 
-    // when return is approved, not when return is initiated
-    for (const item of deliveredItems) {
-      const product = await Product.findById(item.productId);
-      if (product) {
-        const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
-        if (variant) {
-          variant.stock += item.quantity;
-          await product.save();
-        }
-      }
-    }
+    // NO immediate stock restoration
+    // Stock will be restored only when individual returns are approved
 
     res.json({
       success: true,
-      message: result.message,
+      message: result.message + ' (Stock will be restored when returns are approved)',
       order: {
         orderId: result.order.orderId,
         status: result.order.status,
-        itemsAffected: result.itemsAffected
+        itemsAffected: eligibleItems.length,
+        returnRequestsCreated: true
       }
     });
 
   } catch (error) {
     console.error('Error returning order:', error);
+    
+    // Handle validation errors specifically
+    if (error.message.includes('Invalid status transition')) {
+      return res.status(400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Error returning order'
     });
   }
 };
+
 
 
 // Get order statistics for dashboard

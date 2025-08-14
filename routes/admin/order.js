@@ -8,44 +8,47 @@ router.use(isAdmin);
 
 // ===== ORDERS COLLECTION =====
 // Get all orders
-router.get('/', orderController.getAllOrders);  // ✅ CHANGED: /orders → /
+router.get('/', orderController.getAllOrders);
 
-// Get specific order details  
-router.get('/:orderId', orderController.getOrderDetails);  // ✅ CHANGED: /orders/:orderId → /:orderId
+// Get specific order details (HTML)
+router.get('/:orderId', orderController.getOrderDetails);
 
 // Update order status
-router.patch('/:orderId', orderController.updateOrderStatus);  // ✅ CHANGED: /orders/:orderId → /:orderId
+router.patch('/:orderId', orderController.updateOrderStatus);
 
 // Update payment status
-router.patch('/:orderId/payment', orderController.updatePaymentStatus);  // ✅ CHANGED: /orders/:orderId/payment → /:orderId/payment
+// router.patch('/:orderId/payment', orderController.updatePaymentStatus);
 
 // Cancel entire order
-router.patch('/:orderId/cancel', orderController.cancelOrder);  // ✅ CHANGED: /orders/:orderId/cancel → /:orderId/cancel
+router.patch('/:orderId/cancel', orderController.cancelOrder);
 
 // Return entire order
-router.patch('/:orderId/return', orderController.returnOrder);  // ✅ CHANGED: /orders/:orderId/return → /:orderId/return
+router.patch('/:orderId/return', orderController.returnOrder);
 
 // Get allowed status transitions
-router.get('/:orderId/transitions', orderController.getAllowedTransitions);  // ✅ CHANGED: /orders/:orderId/transitions → /:orderId/transitions
+router.get('/:orderId/transitions', orderController.getAllowedTransitions);
 
 // ===== ORDER ITEMS =====
-// Update item status
-router.patch('/:orderId/items/:itemId', orderController.updateItemStatus);  // ✅ CHANGED: /orders/:orderId/items/:itemId → /:orderId/items/:itemId
+
 
 // Cancel individual item
-router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);  // ✅ CHANGED: /orders/:orderId/items/:itemId/cancel → /:orderId/items/:itemId/cancel
+router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);
 
 // Return individual item
-router.patch('/:orderId/items/:itemId/return', orderController.returnItem);  // ✅ CHANGED: /orders/:orderId/items/:itemId/return → /:orderId/items/:itemId/return
+router.patch('/:orderId/items/:itemId/return', orderController.returnItem);
+
+// ===== JSON API ENDPOINTS =====
+// ✅ FIXED: Get order details as JSON (for AJAX calls)
+router.get('/api/:orderId', orderController.getOrderDetailsJSON);
 
 // ===== UTILITY ENDPOINTS =====
 // Get filtered orders (API endpoint for dynamic updates)
-router.get('/api/filtered', orderController.getFilteredOrders);  // ✅ CHANGED: /orders/api/filtered → /api/filtered
+router.get('/api/filtered', orderController.getFilteredOrders);
 
 // Get order statistics
-router.get('/statistics', orderController.getOrderStatistics);  // ✅ CHANGED: /orders/statistics → /statistics
+router.get('/statistics', orderController.getOrderStatistics);
 
 // Export orders
-router.get('/export', orderController.exportOrders);  // ✅ CHANGED: /orders/export → /export
+router.get('/export', orderController.exportOrders);
 
 module.exports = router;

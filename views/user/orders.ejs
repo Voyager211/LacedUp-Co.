@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Order action functions
 function cancelItem(orderId, itemId) {
-  // ✅ FIXED: Convert array to object for SweetAlert inputOptions
+  //  Convert array to object for SweetAlert inputOptions
   const reasonOptions = cancellationReasons.reduce((options, reason, index) => {
     options[reason] = reason;
     return options;
@@ -486,14 +486,13 @@ function returnItem(orderId, itemId) {
         }
       });
 
-      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
-      fetch(`/orders/${orderId}/items/${itemId}`, {
-        method: 'PATCH',
+      //  POST method, /returns path
+      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'return',
           reason: result.value
         })
       })
@@ -524,6 +523,7 @@ function returnItem(orderId, itemId) {
     }
   });
 }
+
 
 function trackOrder(orderId) {
   // Implement order tracking functionality

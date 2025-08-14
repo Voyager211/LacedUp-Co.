@@ -10,6 +10,8 @@ const flash = require('connect-flash');
 const passport = require('passport');
 const methodOverride = require('method-override');
 const expressLayouts = require('express-ejs-layouts');
+const morgan = require('morgan');
+const morganBody = require('morgan-body');
 
 // Middleware imports
 const connectDB = require('./config/db');
@@ -95,6 +97,15 @@ app.use(checkUserBlocked);
 
 // Make Geoapify API key available to all templates
 app.locals.geoapifyApiKey = process.env.GEOAPIFY_API_KEY;
+
+// Morgan
+app.use(morgan('dev'));
+morganBody(app, {
+  logRequestBody: true,
+  logResponseBody: true,
+  maxBodyLength: 1000,
+  prettify: true
+});
 
 // ROUTES
 // ✅ User Routes First

@@ -68,9 +68,6 @@
                   <button class="btn btn-primary" onclick="updateOrderStatus('<%= order.orderId %>', '<%= order.status %>')">
                     <i class="bi bi-pencil me-2"></i>Update Status
                   </button>
-                  <button class="btn btn-outline-primary" onclick="updatePaymentStatus('<%= order.orderId %>', '<%= order.paymentStatus %>')">
-                    <i class="bi bi-credit-card me-2"></i>Update Payment
-                  </button>
                 </div>
               </div>
             </div>
@@ -196,22 +193,24 @@
                     <th class="border-0 py-3">Price</th>
                     <th class="border-0 py-3">Total</th>
                     <th class="border-0 py-3">Status</th>
+                    <th class="border-0 py-3">Payment</th>
                     <th class="border-0 py-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   <% order.items.forEach(item => { %>
-                    <tr>
+                    <!-- ✅ NEW: Add data-item-id attribute -->
+                    <tr data-item-id="<%= item._id %>">
                       <td class="py-3">
                         <div class="d-flex align-items-center">
                           <% if (item.productId && item.productId.mainImage) { %>
                             <img src="<%= item.productId.mainImage %>" 
-                                 alt="<%= item.productId.productName %>" 
-                                 class="rounded me-3 product-thumb" 
-                                 style="width: 60px; height: 60px; object-fit: cover;">
+                                alt="<%= item.productId.productName %>" 
+                                class="rounded me-3 product-thumb" 
+                                style="width: 60px; height: 60px; object-fit: cover;">
                           <% } else { %>
                             <div class="bg-light rounded me-3 d-flex align-items-center justify-content-center product-thumb" 
-                                 style="width: 60px; height: 60px;">
+                                style="width: 60px; height: 60px;">
                               <i class="bi bi-image text-muted"></i>
                             </div>
                           <% } %>
@@ -228,15 +227,19 @@
                       <td class="py-3">₹<%= item.price.toLocaleString('en-IN') %></td>
                       <td class="py-3"><span class="fw-bold">₹<%= item.totalPrice.toLocaleString('en-IN') %></span></td>
                       <td class="py-3">
-                        <span class="status-badge item-<%= (item.status || 'pending').toLowerCase() %>">
+                        <span class="status-badge item-<%= (item.status || 'pending').toLowerCase() %> bg-<%= getStatusColor(item.status || 'Pending') %> badge">
                           <%= item.status || 'Pending' %>
+                        </span>
+                      </td>
+                      <!-- ✅ NEW: Payment Status Column -->
+                     <td class="py-3">
+                        <span class="payment-badge payment-<%= (item.paymentStatus || 'pending').toLowerCase().replace(/\s+/g, '-') %> bg-<%= getPaymentStatusColor(item.paymentStatus || 'Pending') %> badge" 
+                              data-payment-status="<%= item.paymentStatus || 'Pending' %>">
+                          <%= item.paymentStatus || 'Pending' %>
                         </span>
                       </td>
                       <td class="py-3 text-center">
                         <div class="btn-group" role="group">
-                          <button class="btn btn-sm btn-outline-primary" onclick="updateItemStatus('<%= order.orderId %>', '<%= item._id %>', '<%= item.status || 'Pending' %>')" title="Update Status">
-                            <i class="bi bi-pencil"></i>
-                          </button>
                             <% if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status || ORDER_STATUS.PENDING)) { %>
                               <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
                                 <i class="bi bi-x-circle"></i>
@@ -246,6 +249,9 @@
                               <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
                                 <i class="bi bi-arrow-return-left"></i>
                               </button>
+                            <% } %>
+                            <% if (![ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING, ORDER_STATUS.DELIVERED].includes(item.status || ORDER_STATUS.PENDING)) { %>
+                              <small class="text-muted">No actions</small>
                             <% } %>
                         </div>
                       </td>
@@ -399,43 +405,7 @@
   <% } %>
 </div>
 
-<!-- Update Item Status Modal -->
-<div class="modal fade" id="updateItemStatusModal" tabindex="-1" aria-labelledby="updateItemStatusModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="updateItemStatusModalLabel">Update Item Status</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="updateItemStatusForm">
-          <input type="hidden" id="itemOrderId" name="orderId">
-          <input type="hidden" id="itemId" name="itemId">
-          <div class="mb-3">
-            <label for="itemStatus" class="form-label">Item Status</label>
-            <select class="form-select" id="itemStatus" name="status" required>
-              <% orderStatuses.forEach(status => { %>
-                <!-- Exclude partial statuses for individual items -->
-                <% if (!status.includes('Partially')) { %>
-                  <option value="<%= status %>"><%= status %></option>
-                <% } %>
-              <% }); %>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label for="itemStatusNotes" class="form-label">Notes (Optional)</label>
-            <textarea class="form-control" id="itemStatusNotes" name="notes" rows="3" 
-                      placeholder="Add any notes about this status update..."></textarea>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitItemStatusUpdate()">Update Status</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <!-- Cancel Item Modal -->
 <div class="modal fade" id="cancelItemModal" tabindex="-1" aria-labelledby="cancelItemModalLabel" aria-hidden="true">
@@ -465,95 +435,104 @@
 </div>
 
 <!-- Return Item Modal -->
-<div class="modal fade" id="returnItemModal" tabindex="-1" aria-labelledby="returnItemModalLabel" aria-hidden="true">
+<div class="modal fade" id="returnItemModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="returnItemModalLabel">Return Item</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title text-dark">Return Item</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <div class="mb-3 p-3 bg-light border rounded">
+          <small class="text-muted">
+            This will create a return request for the selected item. The request will need approval before the item is marked as returned.
+          </small>
+        </div>
+        
         <form id="returnItemForm">
           <input type="hidden" id="returnOrderId" name="orderId">
           <input type="hidden" id="returnItemId" name="itemId">
+          
           <div class="mb-3">
-            <label for="returnReason" class="form-label">Return Reason</label>
-            <textarea class="form-control" id="returnReason" name="reason" rows="3" 
-                      placeholder="Enter reason for return..." required></textarea>
+            <label for="returnReason" class="form-label">Return Reason <span class="text-danger">*</span></label>
+            <select class="form-select" id="returnReason" name="reason" required>
+              <option value="">Select a return reason...</option>
+              <% returnReasons.forEach(reason => { %>
+                <option value="<%= reason %>"><%= reason %></option>
+              <% }); %>
+            </select>
+            <small class="form-text text-muted">Please select the most appropriate reason for this return.</small>
+          </div>
+          
+          <div class="mb-3">
+            <label for="returnNotes" class="form-label">Additional Notes (Optional)</label>
+            <textarea class="form-control" id="returnNotes" name="notes" rows="2" 
+                      placeholder="Add any additional details about this return..."></textarea>
+            <small class="form-text text-muted">Any additional context that might be helpful for processing the return.</small>
           </div>
         </form>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer border-top">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-warning" onclick="submitItemReturn()">Process Return</button>
+        <button type="button" class="btn btn-warning" onclick="submitItemReturn()">Create Return Request</button>
       </div>
     </div>
   </div>
 </div>
 
+
 <!-- Include existing modals -->
-<!-- Update Order Status Modal -->
-<div class="modal fade" id="updateStatusModal" tabindex="-1" aria-labelledby="updateStatusModalLabel" aria-hidden="true">
+<!-- ✅ ENHANCED: Update Order Status Modal -->
+<div class="modal fade" id="updateStatusModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="updateStatusModalLabel">Update Order Status</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      <div class="modal-header border-bottom">
+        <h5 class="modal-title text-dark">Update Order Status</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
+        <!-- ✅ Simple status info -->
+        <div class="mb-3 p-3 bg-light border rounded">
+          <div class="row">
+            <div class="col-sm-6">
+              <small class="text-muted">Current Status:</small>
+              <div class="fw-bold"><%= order.status %></div>
+            </div>
+            <div class="col-sm-6">
+              <small class="text-muted">Note:</small>
+              <div><small>All items in this order will be updated to the new status automatically</small></div>
+            </div>
+          </div>
+        </div>
+
+        
         <form id="updateStatusForm">
           <input type="hidden" id="statusOrderId" name="orderId">
           <div class="mb-3">
-            <label for="orderStatus" class="form-label">Order Status</label>
+            <label for="orderStatus" class="form-label">New Status</label>
             <select class="form-select" id="orderStatus" name="status" required>
-              <% orderStatuses.forEach(status => { %>
-                <option value="<%= status %>"><%= status %></option>
-              <% }); %>
+              <!-- Options populated dynamically by JavaScript -->
             </select>
+            <small class="form-text text-muted">
+              Only valid status transitions are shown. 'Returned' status is set through return management.
+            </small>
           </div>
           <div class="mb-3">
             <label for="statusNotes" class="form-label">Notes (Optional)</label>
             <textarea class="form-control" id="statusNotes" name="notes" rows="3" 
-                      placeholder="Add any notes about this status update..."></textarea>
+                      placeholder="Add any notes about this status change..."></textarea>
           </div>
         </form>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer border-top">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitStatusUpdate()">Update Status</button>
+        <button type="button" class="btn btn-dark" onclick="submitStatusUpdate()">Update Status</button>
       </div>
     </div>
   </div>
 </div>
 
-<!-- Update Payment Status Modal -->
-<div class="modal fade" id="updatePaymentModal" tabindex="-1" aria-labelledby="updatePaymentModalLabel" aria-hidden="true">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="updatePaymentModalLabel">Update Payment Status</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      <div class="modal-body">
-        <form id="updatePaymentForm">
-          <input type="hidden" id="paymentOrderId" name="orderId">
-          <div class="mb-3">
-            <label for="paymentStatus" class="form-label">Payment Status</label>
-            <select class="form-select" id="paymentStatus" name="paymentStatus" required>
-              <% paymentStatuses.forEach(status => { %>
-                <option value="<%= status %>"><%= status %></option>
-              <% }); %>
-            </select>
-          </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" onclick="submitPaymentUpdate()">Update Payment</button>
-      </div>
-    </div>
-  </div>
-</div>
+
 
 <style>
 /* General Layout Improvements */
@@ -891,36 +870,433 @@
     margin: 2px 0;
   }
 }
+
+/* ====================================
+   PAYMENT STATUS BADGE STYLES
+   ==================================== */
+
+.payment-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+  display: inline-block;
+  min-width: 70px;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Payment Status Border Indicators */
+.payment-pending { 
+  border-left: 3px solid #ffc107; 
+}
+
+.payment-completed { 
+  border-left: 3px solid #198754; 
+}
+
+.payment-failed { 
+  border-left: 3px solid #dc3545; 
+}
+
+.payment-refunded { 
+  border-left: 3px solid #0dcaf0; 
+}
+
+.payment-cancelled { 
+  border-left: 3px solid #6c757d; 
+}
+
+.payment-partially-completed { 
+  border-left: 3px solid #0d6efd; 
+}
+
+.payment-partially-refunded { 
+  border-left: 3px solid #6c757d; 
+}
+
+/* ====================================
+   ENHANCED ITEM STATUS BADGE STYLES
+   ==================================== */
+
+.status-badge {
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  text-transform: capitalize;
+  white-space: nowrap;
+  display: inline-block;
+  min-width: 80px;
+  text-align: center;
+  position: relative;
+  transition: all 0.2s ease-in-out;
+}
+
+/* Item Status Border Indicators */
+.item-pending { 
+  border-left: 3px solid #ffc107; 
+}
+
+.item-processing { 
+  border-left: 3px solid #0dcaf0; 
+}
+
+.item-shipped { 
+  border-left: 3px solid #0d6efd; 
+}
+
+.item-delivered { 
+  border-left: 3px solid #198754; 
+}
+
+.item-cancelled { 
+  border-left: 3px solid #dc3545; 
+}
+
+.item-returned { 
+  border-left: 3px solid #6c757d; 
+}
+
+.item-processing-return { 
+  border-left: 3px solid #fd7e14; 
+}
+
+.item-partially-delivered { 
+  border-left: 3px solid #198754; 
+  border-style: dashed;
+}
+
+.item-partially-cancelled { 
+  border-left: 3px solid #dc3545; 
+  border-style: dashed;
+}
+
+.item-partially-returned { 
+  border-left: 3px solid #6c757d; 
+  border-style: dashed;
+}
+
+/* ====================================
+   HOVER EFFECTS & INTERACTIONS
+   ==================================== */
+
+.payment-badge:hover,
+.status-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ====================================
+   TABLE ENHANCEMENTS
+   ==================================== */
+
+/* Payment column specific styling */
+.order-items-table th:nth-child(8) {
+  min-width: 90px;
+}
+
+.order-items-table td:nth-child(8) {
+  min-width: 90px;
+}
+
+/* Status column specific styling */
+.order-items-table th:nth-child(7) {
+  min-width: 100px;
+}
+
+.order-items-table td:nth-child(7) {
+  min-width: 100px;
+}
+
+/* ====================================
+   MODAL ENHANCEMENTS
+   ==================================== */
+
+/* Payment status dropdown styling */
+#itemPaymentStatus {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 7 7 7-7'/%3e%3c/svg%3e");
+}
+
+/* Modal form icons */
+.modal .form-label i {
+  color: #6c757d;
+}
+
+/* Enhanced modal buttons */
+.modal-footer .btn {
+  min-width: 120px;
+}
+
+/* ====================================
+   RESPONSIVE DESIGN
+   ==================================== */
+
+@media (max-width: 768px) {
+  .payment-badge,
+  .status-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.4rem;
+    min-width: 60px;
+  }
+  
+  .order-items-table th:nth-child(7),
+  .order-items-table td:nth-child(7),
+  .order-items-table th:nth-child(8),
+  .order-items-table td:nth-child(8) {
+    min-width: auto;
+  }
+}
+
+/* ====================================
+   ANIMATION EFFECTS
+   ==================================== */
+
+@keyframes statusUpdate {
+  0% { 
+    background-color: rgba(40, 167, 69, 0.3); 
+    transform: scale(1.05); 
+  }
+  100% { 
+    background-color: transparent; 
+    transform: scale(1); 
+  }
+}
+
+.status-updated {
+  animation: statusUpdate 0.6s ease-out;
+}
+
+/* Payment status update animation */
+@keyframes paymentUpdate {
+  0% { 
+    background-color: rgba(13, 110, 253, 0.3); 
+    transform: scale(1.05); 
+  }
+  100% { 
+    background-color: transparent; 
+    transform: scale(1); 
+  }
+}
+
+.payment-updated {
+  animation: paymentUpdate 0.6s ease-out;
+}
+
+/* ====================================
+   ACCESSIBILITY ENHANCEMENTS
+   ==================================== */
+
+.payment-badge:focus,
+.status-badge:focus {
+  outline: 2px solid #0d6efd;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .payment-badge,
+  .status-badge {
+    border-width: 2px;
+    border-style: solid;
+  }
+  
+  .payment-pending { border-color: #ffc107; }
+  .payment-completed { border-color: #198754; }
+  .payment-failed { border-color: #dc3545; }
+  .payment-refunded { border-color: #0dcaf0; }
+  .payment-cancelled { border-color: #6c757d; }
+}
+
+/* ====================================
+   PRINT STYLES
+   ==================================== */
+
+@media print {
+  .payment-badge,
+  .status-badge {
+    background-color: transparent !important;
+    color: #000 !important;
+    border: 1px solid #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
+/* ====================================
+   TABLE ROW HIGHLIGHTING
+   ==================================== */
+
+.order-items-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.025);
+}
+
+.order-items-table tbody tr:hover .payment-badge,
+.order-items-table tbody tr:hover .status-badge {
+  transform: translateY(-1px);
+}
+
+/* ====================================
+   LOADING STATES
+   ==================================== */
+
+.payment-badge.loading,
+.status-badge.loading {
+  position: relative;
+  color: transparent;
+}
+
+.payment-badge.loading::after,
+.status-badge.loading::after {
+  content: "";
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  top: 50%;
+  left: 50%;
+  margin-left: -8px;
+  margin-top: -8px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  border-top-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 </style>
 
 <script>
-// Individual Item Management Functions
+// ✅ Get valid transitions from template data
+let validTransitions = <%- JSON.stringify(validTransitions) %>;
+let currentOrderStatus = '<%= order.status %>';
 
-// Update item status
-function updateItemStatus(orderId, itemId, currentStatus) {
-  document.getElementById('itemOrderId').value = orderId;
-  document.getElementById('itemId').value = itemId;
-  document.getElementById('itemStatus').value = currentStatus;
-  document.getElementById('itemStatusNotes').value = '';
-  
-  const modal = new bootstrap.Modal(document.getElementById('updateItemStatusModal'));
-  modal.show();
+// ✅ NEW: Track updated item statuses dynamically
+const itemStatusTracker = {};
+
+// ===== ORDER MANAGEMENT FUNCTIONS =====
+
+// ✅ ENHANCED: Add debugging to modal opening
+function updateOrderStatus(orderId, currentStatus) {
+  try {
+    console.log('🔍 Opening modal - Initial parameters:', { orderId, currentStatus });
+    console.log('🔍 Opening modal - Global variables:', {
+      windowCurrentOrderStatus: window.currentOrderStatus,
+      windowValidTransitions: window.validTransitions,
+      originalValidTransitions: typeof validTransitions !== 'undefined' ? validTransitions : 'undefined'
+    });
+    
+    // Use current data (updated after each status change)
+    const actualCurrentStatus = window.currentOrderStatus || currentStatus;
+    const currentValidTransitions = window.validTransitions || validTransitions;
+    
+    console.log('🔍 Modal opening with:', { 
+      actualCurrentStatus, 
+      currentValidTransitions,
+      currentValidTransitionsLength: currentValidTransitions ? currentValidTransitions.length : 0
+    });
+    
+    if (!currentValidTransitions || currentValidTransitions.length === 0) {
+      console.warn('⚠️ No valid transitions available');
+      showToast('info', `No status transitions available from '${actualCurrentStatus}'`);
+      return;
+    }
+
+    // Populate modal
+    document.getElementById('statusOrderId').value = orderId;
+    document.getElementById('statusNotes').value = '';
+    
+    const statusSelect = document.getElementById('orderStatus');
+    statusSelect.innerHTML = '';
+    
+    // Current status option
+    const currentOption = document.createElement('option');
+    currentOption.value = '';
+    currentOption.textContent = `${actualCurrentStatus} (Current Status)`;
+    currentOption.disabled = true;
+    currentOption.selected = true;
+    currentOption.style.fontWeight = 'bold';
+    currentOption.style.color = '#6c757d';
+    statusSelect.appendChild(currentOption);
+    
+    // Separator
+    const separatorOption = document.createElement('option');
+    separatorOption.value = '';
+    separatorOption.textContent = '──────────────────';
+    separatorOption.disabled = true;
+    statusSelect.appendChild(separatorOption);
+    
+    // Valid transitions
+    console.log('🔍 Adding transition options...');
+    currentValidTransitions.forEach((status, index) => {
+      console.log(`🔍 Processing transition ${index}: ${status} (current: ${actualCurrentStatus})`);
+      if (status !== actualCurrentStatus) {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        statusSelect.appendChild(option);
+        console.log(`✅ Added option: ${status}`);
+      } else {
+        console.log(`⏭️ Skipped current status: ${status}`);
+      }
+    });
+    
+    console.log('✅ Modal populated - Total options:', statusSelect.children.length);
+    console.log('✅ Modal populated - Selectable options:', statusSelect.children.length - 2);
+    
+    const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
+    modal.show();
+    
+  } catch (error) {
+    console.error('❌ Error opening modal:', error);
+    showToast('error', 'Failed to open status update modal');
+  }
 }
 
-function submitItemStatusUpdate() {
-  const form = document.getElementById('updateItemStatusForm');
+function submitStatusUpdate() {
+  const form = document.getElementById('updateStatusForm');
   const formData = new FormData(form);
   const orderId = formData.get('orderId');
-  const itemId = formData.get('itemId');
+  const newStatus = formData.get('status');
   
-  // FIXED: Use correct RESTful route and PATCH method
-  fetch(`/admin/orders/${orderId}/items/${itemId}`, {
+  if (!newStatus || newStatus === '') {
+    showToast('error', 'Please select a new status');
+    return;
+  }
+
+  // ✅ FIXED: Use updated validTransitions, not the original one
+  const currentValidTransitions = window.validTransitions || validTransitions;
+  
+  if (!currentValidTransitions.includes(newStatus)) {
+    console.error('❌ Invalid transition:', {
+      selectedStatus: newStatus,
+      availableTransitions: currentValidTransitions,
+      originalTransitions: validTransitions,
+      windowTransitions: window.validTransitions
+    });
+    showToast('error', 'Invalid status transition selected');
+    return;
+  }
+
+  const submitBtn = document.querySelector('#updateStatusModal .btn-dark');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Updating...';
+
+  fetch(`/admin/orders/${orderId}`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      status: formData.get('status'),
+      status: newStatus,
       notes: formData.get('notes')
     })
   })
@@ -928,22 +1304,596 @@ function submitItemStatusUpdate() {
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+      bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+
+      // ✅ ENHANCED DEBUG: Specific debug for payment status issues
+      console.log('🔍 DELIVERED ORDER DEBUG:', {
+        orderStatus: data.order.status,
+        orderPaymentStatus: data.order.paymentStatus,
+        paymentMethod: data.order.paymentMethod,
+        items: data.order.items.map(item => ({
+          _id: item._id,
+          status: item.status,
+          paymentStatus: item.paymentStatus
+        }))
+      });
+
+      // ✅ ADD: Debug logging to see what data we received
+      console.log('🔍 COMPLETE SERVER RESPONSE:', data);
+      console.log('🔍 ORDER DATA:', data.order);
+      console.log('🔍 ITEMS DATA:', data.order.items);
+      
+      // Update UI first
+      updateOrderStatusInUI(data.order.status);
+      updateOrderPaymentStatusInUI(data.order.paymentStatus);
+      
+      // Update all item statuses and payment statuses
+      if (data.order.items && data.order.items.length > 0) {
+        console.log('🔍 AJAX Response Data:', data.order);
+        console.log('🔍 Items Data:', data.order.items);
+
+        data.order.items.forEach((item, index) => {
+          console.log(`🔍 UPDATING ITEM ${index}:`, {
+            itemId: item._id,
+            itemStatus: item.status,
+            itemPaymentStatus: item.paymentStatus,
+            previousStatus: item.previousStatus
+          });
+          
+          updateItemStatusInUI(item._id, item.status);
+          updateItemPaymentStatusInUI(item._id, item.paymentStatus);
+        });
+      }
+      
+      // Update modal data for next time
+      updateModalDataAfterStatusChange(orderId, data.order.status);
+      
     } else {
-      showToast('error', data.message);
+      throw new Error(data.message || 'Failed to update order status');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    showToast('error', 'Error updating item status');
+    showToast('error', error.message || 'Error updating order status');
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
   });
-  
-  bootstrap.Modal.getInstance(document.getElementById('updateItemStatusModal')).hide();
 }
 
-// Cancel item
+
+// ✅ ENHANCED: Add debugging to see what's happening
+function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
+  console.log('🔄 Updating modal data after status change to:', newCurrentStatus);
+  
+  // ✅ Fetch new valid transitions for the updated status
+  fetch(`/admin/orders/${orderId}/transitions`)
+    .then(response => {
+      console.log('🔍 Transitions fetch response status:', response.status);
+      return response.json();
+    })
+    .then(data => {
+      console.log('🔍 Transitions fetch response data:', data);
+      
+      if (data.success && data.allowedTransitions) {
+        // ✅ Update global variables for next modal open
+        window.currentOrderStatus = newCurrentStatus;
+        window.validTransitions = data.allowedTransitions;
+
+        validTransitions = data.allowedTransitions;
+        
+        console.log('✅ Modal data updated successfully:', {
+          currentStatus: window.currentOrderStatus,
+          validTransitions: window.validTransitions,
+          validTransitionsLength: window.validTransitions.length
+        });
+        
+      } else {
+        console.warn('❌ Could not fetch updated transitions:', data);
+      }
+    })
+    .catch(error => {
+      console.error('❌ Error updating modal data:', error);
+    });
+}
+
+
+// ✅ NEW: Update order-level payment status badges via fetch
+function updateOrderPaymentStatusInUI(newPaymentStatus) {
+  console.log('🔍 Updating order payment status in UI:', newPaymentStatus);
+  
+  try {
+    // Find order-level payment badges (not item-level ones)
+    const orderPaymentBadges = document.querySelectorAll('.status-badge[class*="payment-"]');
+    
+    orderPaymentBadges.forEach((badge, index) => {
+      // Skip item-level payment badges
+      const isItemLevel = badge.closest('tr, .item-row') !== null;
+      if (isItemLevel) {
+        return;
+      }
+      
+      console.log(`Updating order payment badge ${index}:`, badge);
+      
+      const originalText = badge.textContent;
+      badge.textContent = newPaymentStatus;
+      
+      // Update CSS classes
+      const backgroundClasses = ['bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'bg-light', 'bg-dark'];
+      backgroundClasses.forEach(cls => badge.classList.remove(cls));
+      
+      // Remove old payment classes
+      const classList = Array.from(badge.classList);
+      classList.forEach(cls => {
+        if (cls.startsWith('payment-')) {
+          badge.classList.remove(cls);
+        }
+      });
+      
+      // Add new classes
+      const newPaymentClass = `payment-${newPaymentStatus.toLowerCase().replace(/\s+/g, '-')}`;
+      badge.classList.add(newPaymentClass);
+      badge.classList.add(`bg-${getPaymentStatusColor(newPaymentStatus)}`);
+      
+      console.log(`✅ Order payment badge updated from "${originalText}" to "${newPaymentStatus}"`);
+    });
+    
+    console.log('✅ Order payment status updated in UI via fetch');
+    
+  } catch (error) {
+    console.error('❌ Error updating order payment status UI:', error);
+  }
+}
+
+
+// ✅ FIXED: More precise order status badge update (excludes item badges)
+function updateOrderStatusInUI(newStatus) {
+  console.log('🔍 Starting updateOrderStatusInUI with status:', newStatus);
+  
+  try {
+    // ✅ FIXED: More specific selector that EXCLUDES payment badges
+    const allElements = document.querySelectorAll('.status-badge, .badge');
+    const orderBadges = [];
+    
+    allElements.forEach(element => {
+      const isInItemRow = element.closest('tr, .item-row') !== null;
+      const isPaymentBadge = element.classList.contains('payment-badge') || 
+                            element.className.includes('payment-') ||
+                            element.hasAttribute('data-payment-status');
+      const isStatusBadge = element.classList.contains('status-badge') && 
+                           !isPaymentBadge;
+      
+      // ✅ ONLY include order status badges, NOT payment badges
+      if (!isInItemRow && isStatusBadge) {
+        orderBadges.push(element);
+        console.log('✅ Found ORDER status badge:', element);
+      } else if (!isInItemRow && isPaymentBadge) {
+        console.log('⏭️ Skipping payment badge (will be handled separately):', element);
+      }
+    });
+    
+    console.log(`🔍 Found ${orderBadges.length} ORDER status badges to update`);
+    
+    // ✅ FIXED: Only update order status badges
+    orderBadges.forEach((badge, index) => {
+      console.log(`Updating ORDER status badge ${index}:`, badge);
+      
+      const originalText = badge.textContent.trim();
+      badge.textContent = newStatus;
+      
+      // Update CSS classes
+      const backgroundClasses = ['bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info'];
+      backgroundClasses.forEach(cls => badge.classList.remove(cls));
+      badge.classList.add(`bg-${getStatusColor(newStatus)}`);
+      
+      if (!badge.classList.contains('badge')) {
+        badge.classList.add('badge');
+      }
+      
+      console.log(`✅ ORDER status badge updated from "${originalText}" to "${newStatus}"`);
+    });
+    
+    console.log('✅ updateOrderStatusInUI completed - updated ORDER status badges only');
+    
+  } catch (error) {
+    console.error('❌ Error updating order status UI:', error);
+  }
+}
+
+
+// ===== INDIVIDUAL ITEM MANAGEMENT FUNCTIONS =====
+
+// ✅ STEP 4: ENHANCED - Use dynamic valid transitions
+
+// ✅ ENHANCED: Update populateItemStatusModal to include payment status
+// update Item Payment Status in UI
+function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
+  console.log('🔍 Updating payment status in UI:', { itemId, newPaymentStatus });
+  
+  try {
+    let targetElement = null;
+    let paymentBadge = null;
+    
+    // ✅ STRATEGY 1: Find by data-item-id
+    targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (targetElement) {
+      console.log('✅ Found item row:', targetElement);
+      
+      // ✅ ENHANCED: Multiple selector strategies for payment badge
+      paymentBadge = targetElement.querySelector('.payment-badge') ||
+                    targetElement.querySelector('[data-payment-status]') ||
+                    targetElement.querySelector('.badge[class*="payment-"]') ||
+                    targetElement.querySelector('td:nth-last-child(2) .badge'); // Payment column badge
+      
+      if (paymentBadge) {
+        console.log('✅ Found payment badge via data-item-id:', paymentBadge);
+      }
+    }
+    
+    // ✅ STRATEGY 2: Fallback search if not found
+    if (!paymentBadge) {
+      console.log('🔍 Payment badge not found via data-item-id, searching fallback...');
+      const allRows = document.querySelectorAll('tr, .item-row, .order-item');
+      
+      allRows.forEach(row => {
+        const buttons = row.querySelectorAll('button[onclick]');
+        buttons.forEach(button => {
+          const onclickAttr = button.getAttribute('onclick');
+          if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
+            console.log('✅ Found matching row via button onclick');
+            targetElement = row;
+            
+            // ✅ ENHANCED: Multiple strategies for payment badge in this row
+            paymentBadge = row.querySelector('.payment-badge') ||
+                          row.querySelector('[data-payment-status]') ||
+                          row.querySelector('.badge[class*="payment-"]') ||
+                          row.querySelector('td:nth-last-child(2) .badge');
+                          
+            if (paymentBadge) {
+              console.log('✅ Found payment badge via fallback:', paymentBadge);
+            }
+          }
+        });
+      });
+    }
+    
+    // ✅ STRATEGY 3: Create payment badge if still not found
+    if (!paymentBadge && targetElement) {
+      console.log('⚠️ Payment badge not found, attempting to create/find...');
+      
+      // Look for any badge in the payment column that might have lost its classes
+      const paymentColumn = targetElement.querySelector('td:nth-last-child(2)');
+      if (paymentColumn) {
+        const existingBadge = paymentColumn.querySelector('.badge');
+        if (existingBadge) {
+          console.log('🔧 Found existing badge in payment column, will update:', existingBadge);
+          paymentBadge = existingBadge;
+          
+          // ✅ RESTORE: Add missing payment badge class
+          paymentBadge.classList.add('payment-badge');
+        }
+      }
+    }
+    
+    // ✅ UPDATE: Payment badge found
+    if (paymentBadge && targetElement) {
+      console.log('✅ Updating payment badge:', paymentBadge);
+      
+      const originalText = paymentBadge.textContent.trim();
+      paymentBadge.textContent = newPaymentStatus;
+      
+      // ✅ ENHANCED: Ensure payment badge class exists
+      if (!paymentBadge.classList.contains('payment-badge')) {
+        paymentBadge.classList.add('payment-badge');
+      }
+      
+      // Update CSS classes
+      const backgroundClasses = ['bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'bg-light', 'bg-dark'];
+      backgroundClasses.forEach(cls => paymentBadge.classList.remove(cls));
+      
+      // Remove old payment classes
+      const classList = Array.from(paymentBadge.classList);
+      classList.forEach(cls => {
+        if (cls.startsWith('payment-')) {
+          paymentBadge.classList.remove(cls);
+        }
+      });
+      
+      // Add new classes
+      const newPaymentClass = `payment-${newPaymentStatus.toLowerCase().replace(/\s+/g, '-')}`;
+      paymentBadge.classList.add(newPaymentClass);
+      paymentBadge.classList.add(`bg-${getPaymentStatusColor(newPaymentStatus)}`);
+      
+      // Ensure badge class exists
+      if (!paymentBadge.classList.contains('badge')) {
+        paymentBadge.classList.add('badge');
+      }
+      
+      // Update data attribute
+      paymentBadge.setAttribute('data-payment-status', newPaymentStatus);
+      
+      console.log(`✅ Payment status updated from "${originalText}" to "${newPaymentStatus}"`);
+      
+      // Visual feedback
+      const targetRow = paymentBadge.closest('tr, .item-row, .card');
+      if (targetRow) {
+        targetRow.style.transition = 'background-color 0.4s ease';
+        targetRow.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+        
+        setTimeout(() => {
+          targetRow.style.backgroundColor = '';
+        }, 2000);
+      }
+      
+    } else {
+      console.error('❌ Could not find or create payment badge for item:', itemId);
+      console.log('🔍 Debug info:', {
+        targetElement: targetElement,
+        itemId: itemId,
+        newPaymentStatus: newPaymentStatus
+      });
+      
+      // ✅ LAST RESORT: Log the actual HTML for debugging
+      if (targetElement) {
+        console.log('🔍 Target element HTML:', targetElement.outerHTML);
+      }
+    }
+    
+  } catch (error) {
+    console.error('❌ Error updating payment status UI:', error);
+  }
+}
+
+
+// ✅ ENHANCED: Fetch order status AND update valid transitions
+function fetchAndUpdateOrderStatus(orderId) {
+  console.log('🔍 Fetching updated order status for:', orderId);
+  
+  fetch(`/admin/orders/api/${orderId}`, {
+    method: 'GET',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    }
+  })
+  .then(response => {
+    console.log('🔍 Order status API response status:', response.status);
+    
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      throw new Error(`Expected JSON but received: ${contentType || 'unknown'}`);
+    }
+    
+    return response.json();
+  })
+  .then(data => {
+    console.log('🔍 Order status API response data:', data);
+    
+    if (data.success && data.order) {
+      const updatedOrderStatus = data.order.status;
+      console.log('🔍 Updated order status from backend:', updatedOrderStatus);
+      
+      // ✅ NEW: Update valid transitions if provided
+      if (data.validTransitions && Array.isArray(data.validTransitions)) {
+        window.validTransitions = data.validTransitions;
+        console.log('🔍 Updated valid transitions for', updatedOrderStatus, ':', data.validTransitions);
+      }
+      
+      if (updatedOrderStatus !== window.currentOrderStatus && updatedOrderStatus !== currentOrderStatus) {
+        console.log('✅ Order status changed, updating UI:', updatedOrderStatus);
+        updateOrderStatusInUI(updatedOrderStatus);
+      } else {
+        console.log('ℹ️ Order status unchanged:', updatedOrderStatus);
+      }
+    } else {
+      console.warn('⚠️ Invalid response format:', data);
+    }
+  })
+  .catch(error => {
+    console.warn('⚠️ Could not fetch updated order status:', error.message);
+    
+    if (error.message.includes('404') || error.message.includes('not found')) {
+      console.log('ℹ️ Order status API not available, skipping automatic update');
+    }
+  });
+}
+
+// ✅ FIXED: More precise item status UI update
+function updateItemStatusInUI(itemId, newStatus) {
+  console.log('🔍 Starting updateItemStatusInUI:', { itemId, newStatus });
+  
+  try {
+    let targetElement = null;
+    let statusBadge = null;
+    
+    // Find the target row using data-item-id
+    targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
+    if (targetElement) {
+      console.log('✅ Found item row by data-item-id:', targetElement);
+      statusBadge = targetElement.querySelector('.status-badge');
+    }
+    
+    // Fallback: Search by onclick containing itemId
+    if (!statusBadge) {
+      console.log('🔍 Fallback: Searching through table rows...');
+      const allRows = document.querySelectorAll('tr');
+      
+      allRows.forEach((row, index) => {
+        const buttons = row.querySelectorAll('button[onclick]');
+        buttons.forEach(button => {
+          const onclickAttr = button.getAttribute('onclick');
+          if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
+            console.log(`✅ Found matching row ${index} for itemId:`, itemId);
+            targetElement = row;
+            statusBadge = row.querySelector('.status-badge');
+            return;
+          }
+        });
+        if (statusBadge) return;
+      });
+    }
+    
+    if (statusBadge && targetElement) {
+      console.log('✅ Found status badge and target row, updating...', statusBadge);
+      
+      // ✅ UPDATE STATUS BADGE
+      const originalText = statusBadge.textContent;
+      statusBadge.textContent = newStatus;
+      
+      // Update CSS classes
+      const backgroundClasses = ['bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'bg-light', 'bg-dark'];
+      backgroundClasses.forEach(cls => statusBadge.classList.remove(cls));
+      statusBadge.classList.add(`bg-${getStatusColor(newStatus)}`);
+      
+      console.log(`✅ Status badge updated from "${originalText}" to "${newStatus}"`);
+      
+      // ✅ UPDATE ACTION BUTTONS
+      updateItemActionButtonsInRow(targetElement, newStatus, itemId);
+      
+      // Visual feedback
+      targetElement.style.transition = 'background-color 0.4s ease';
+      targetElement.style.backgroundColor = 'rgba(40, 167, 69, 0.1)';
+      setTimeout(() => {
+        targetElement.style.backgroundColor = '';
+      }, 2000);
+      
+      console.log('✅ Successfully updated item status and actions:', { itemId, newStatus });
+      
+    } else {
+      console.warn('⚠️ Could not find status badge for item:', itemId);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error updating item status UI:', error);
+  }
+}
+
+// ✅ NEW: Function to update action buttons based on status
+function updateItemActionButtonsInRow(rowElement, newStatus, itemId) {
+  console.log('🔍 Updating action buttons for status:', newStatus);
+  
+  try {
+    // Find the button group container
+    const buttonGroup = rowElement.querySelector('.btn-group');
+    if (!buttonGroup) {
+      console.warn('⚠️ Could not find button group in row');
+      return;
+    }
+    
+    // Clear existing buttons
+    buttonGroup.innerHTML = '';
+    
+    // Get orderId from the page URL or from existing buttons
+    const orderId = window.location.pathname.split('/').pop();
+    
+    // ✅ CREATE BUTTONS BASED ON STATUS (matching EJS logic)
+    if (['Pending', 'Processing'].includes(newStatus)) {
+      // Show Cancel button
+      const cancelButton = document.createElement('button');
+      cancelButton.className = 'btn btn-sm btn-outline-danger';
+      cancelButton.title = 'Cancel Item';
+      cancelButton.onclick = () => cancelItem(orderId, itemId);
+      cancelButton.innerHTML = '<i class="bi bi-x-circle"></i>';
+      buttonGroup.appendChild(cancelButton);
+      console.log('✅ Added Cancel button for status:', newStatus);
+      
+    } else if (newStatus === 'Delivered') {
+      // Show Return button
+      const returnButton = document.createElement('button');
+      returnButton.className = 'btn btn-sm btn-outline-warning';
+      returnButton.title = 'Return Item';
+      returnButton.onclick = () => returnItem(orderId, itemId);
+      returnButton.innerHTML = '<i class="bi bi-arrow-return-left"></i>';
+      buttonGroup.appendChild(returnButton);
+      console.log('✅ Added Return button for status:', newStatus);
+      
+    } else {
+      // Show "No actions" text
+      const noActionText = document.createElement('small');
+      noActionText.className = 'text-muted';
+      noActionText.textContent = 'No actions';
+      buttonGroup.appendChild(noActionText);
+      console.log('✅ Added "No actions" text for status:', newStatus);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error updating action buttons:', error);
+  }
+}
+
+
+function getStatusColor(status) {
+  const colorMap = {
+    'Pending': 'warning',
+    'Processing': 'info',
+    'Shipped': 'primary',
+    'Delivered': 'success',
+    'Processing Return': 'warning',
+    'Returned': 'secondary',
+    'Cancelled': 'danger',
+    'Partially Delivered': 'primary',
+    'Partially Cancelled': 'danger',
+    'Partially Returned': 'secondary'
+  };
+  return colorMap[status] || 'secondary';
+}
+
+
+function updateItemActionButtonsInRow(rowElement, newStatus, itemId) {
+  console.log('🔍 Updating action buttons for status:', newStatus);
+  
+  try {
+    // Find the button group container
+    const buttonGroup = rowElement.querySelector('.btn-group');
+    if (!buttonGroup) {
+      console.warn('⚠️ Could not find button group in row');
+      return;
+    }
+    
+    // Clear existing buttons
+    buttonGroup.innerHTML = '';
+    
+    // Get orderId from the page URL or from existing buttons
+    const orderId = window.location.pathname.split('/').pop();
+    
+    // ✅ CREATE BUTTONS BASED ON STATUS (matching EJS logic)
+    if (['Pending', 'Processing'].includes(newStatus)) {
+      // Show Cancel button
+      const cancelButton = document.createElement('button');
+      cancelButton.className = 'btn btn-sm btn-outline-danger';
+      cancelButton.title = 'Cancel Item';
+      cancelButton.onclick = () => cancelItem(orderId, itemId);
+      cancelButton.innerHTML = '<i class="bi bi-x-circle"></i>';
+      buttonGroup.appendChild(cancelButton);
+      console.log('✅ Added Cancel button for status:', newStatus);
+      
+    } else if (newStatus === 'Delivered') {
+      // Show Return button
+      const returnButton = document.createElement('button');
+      returnButton.className = 'btn btn-sm btn-outline-warning';
+      returnButton.title = 'Return Item';
+      returnButton.onclick = () => returnItem(orderId, itemId);
+      returnButton.innerHTML = '<i class="bi bi-arrow-return-left"></i>';
+      buttonGroup.appendChild(returnButton);
+      console.log('✅ Added Return button for status:', newStatus);
+      
+    } else {
+      // Show "No actions" text
+      const noActionText = document.createElement('small');
+      noActionText.className = 'text-muted';
+      noActionText.textContent = 'No actions';
+      buttonGroup.appendChild(noActionText);
+      console.log('✅ Added "No actions" text for status:', newStatus);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error updating action buttons:', error);
+  }
+}
+
+// ===== CANCEL FUNCTIONS =====
+
 function cancelItem(orderId, itemId) {
   document.getElementById('cancelOrderId').value = orderId;
   document.getElementById('cancelItemId').value = itemId;
@@ -959,7 +1909,11 @@ function submitItemCancellation() {
   const orderId = formData.get('orderId');
   const itemId = formData.get('itemId');
   
-  // FIXED: Use correct RESTful route and PATCH method
+  const submitBtn = document.querySelector('#cancelItemModal .btn-danger');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Cancelling...';
+  
   fetch(`/admin/orders/${orderId}/items/${itemId}/cancel`, {
     method: 'PATCH',
     headers: {
@@ -973,29 +1927,53 @@ function submitItemCancellation() {
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+      
+      bootstrap.Modal.getInstance(document.getElementById('cancelItemModal')).hide();
+      
+      itemStatusTracker[itemId] = 'Cancelled';
+      updateItemStatusInUI(itemId, 'Cancelled');
+      
+      fetchAndUpdateOrderStatus(orderId);
+      
     } else {
-      showToast('error', data.message);
+      throw new Error(data.message || 'Failed to cancel item');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    showToast('error', 'Error cancelling item');
+    showToast('error', error.message || 'Error cancelling item');
+  })
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
   });
-  
-  bootstrap.Modal.getInstance(document.getElementById('cancelItemModal')).hide();
 }
 
-// Return item
+// ===== RETURN FUNCTIONS =====
+
 function returnItem(orderId, itemId) {
-  document.getElementById('returnOrderId').value = orderId;
-  document.getElementById('returnItemId').value = itemId;
-  document.getElementById('returnReason').value = '';
+  console.log('🔍 Opening return modal for:', { orderId, itemId });
   
-  const modal = new bootstrap.Modal(document.getElementById('returnItemModal'));
-  modal.show();
+  try {
+    document.getElementById('returnOrderId').value = orderId;
+    document.getElementById('returnItemId').value = itemId;
+    
+    document.getElementById('returnReason').value = '';
+    
+    const notesField = document.getElementById('returnNotes');
+    if (notesField) {
+      notesField.value = '';
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('returnItemModal'));
+    modal.show();
+    
+    console.log('✅ Return modal opened successfully');
+    
+  } catch (error) {
+    console.error('❌ Error in returnItem:', error);
+    showToast('error', 'Error opening return modal: ' + error.message);
+  }
 }
 
 function submitItemReturn() {
@@ -1003,132 +1981,172 @@ function submitItemReturn() {
   const formData = new FormData(form);
   const orderId = formData.get('orderId');
   const itemId = formData.get('itemId');
+  const reason = formData.get('reason');
+
+  if (!reason || reason === '') {
+    showToast('error', 'Please select a return reason');
+    return;
+  }
   
-  // FIXED: Use correct RESTful route and PATCH method
+  const submitBtn = document.querySelector('#returnItemModal .btn-warning');
+  const originalText = submitBtn.textContent;
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Processing...';
+  
   fetch(`/admin/orders/${orderId}/items/${itemId}/return`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      reason: formData.get('reason')
+      reason: reason,
+      notes: formData.get('notes') || ''
     })
   })
   .then(response => response.json())
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+      
+      bootstrap.Modal.getInstance(document.getElementById('returnItemModal')).hide();
+      
+      itemStatusTracker[itemId] = 'Processing Return';
+      updateItemStatusInUI(itemId, 'Processing Return');
+      
+      fetchAndUpdateOrderStatus(orderId);
+      
     } else {
-      showToast('error', data.message);
+      throw new Error(data.message || 'Failed to process return');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    showToast('error', 'Error processing item return');
-  });
-  
-  bootstrap.Modal.getInstance(document.getElementById('returnItemModal')).hide();
-}
-
-// Existing Order Management Functions
-
-// Update order status
-function updateOrderStatus(orderId, currentStatus) {
-  document.getElementById('statusOrderId').value = orderId;
-  document.getElementById('orderStatus').value = currentStatus;
-  document.getElementById('statusNotes').value = '';
-  
-  const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
-  modal.show();
-}
-
-function submitStatusUpdate() {
-  const form = document.getElementById('updateStatusForm');
-  const formData = new FormData(form);
-  const orderId = formData.get('orderId');
-  
-  // FIXED: Use correct RESTful route and PATCH method
-  fetch(`/admin/orders/${orderId}`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      status: formData.get('status'),
-      notes: formData.get('notes')
-    })
+    showToast('error', error.message || 'Error processing item return');
   })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+  .finally(() => {
+    submitBtn.disabled = false;
+    submitBtn.textContent = originalText;
+  });
+}
+
+// ===== PAYMENT STATUS FUNCTIONS =====
+
+// ✅ ENHANCED: Improved Payment Status UI Update for Order-Level Changes
+function updatePaymentStatusInUI(newPaymentStatus) {
+  console.log('🔍 Starting updatePaymentStatusInUI with status:', newPaymentStatus);
+  
+  try {
+    // ✅ FIXED: More specific selectors that match actual payment badge classes
+    const paymentElements = document.querySelectorAll(
+      '.status-badge[class*="payment-"], ' +
+      '.payment-badge, ' +
+      '.badge[class*="payment-"], ' +
+      '[data-payment-status], ' +
+      '.payment-status'
+    );
+    
+    console.log('🔍 Found payment elements:', paymentElements.length, paymentElements);
+    
+    let updated = false;
+    
+    paymentElements.forEach((element, index) => {
+      console.log(`Payment element ${index}:`, {
+        element: element,
+        text: element.textContent.trim(),
+        classes: element.className
+      });
+      
+      // Skip item-level payment badges, only update order-level
+      const isItemLevel = element.closest('tr, .item-row') !== null;
+      if (isItemLevel) {
+        console.log(`Skipping item-level payment badge ${index}`);
+        return;
+      }
+      
+      if (element) {
+        const originalText = element.textContent;
+        element.textContent = newPaymentStatus;
+        
+        if (element.classList.contains('badge') || element.classList.contains('status-badge') || element.classList.contains('payment-badge')) {
+          // Remove old payment status classes
+          const classesToRemove = ['bg-primary', 'bg-secondary', 'bg-success', 'bg-danger', 'bg-warning', 'bg-info', 'bg-light', 'bg-dark'];
+          classesToRemove.forEach(cls => element.classList.remove(cls));
+          
+          // Remove old payment-specific classes
+          const classList = Array.from(element.classList);
+          classList.forEach(cls => {
+            if (cls.startsWith('payment-')) {
+              element.classList.remove(cls);
+            }
+          });
+          
+          // Add new payment status class and color
+          const newPaymentClass = `payment-${newPaymentStatus.toLowerCase().replace(/\s+/g, '-')}`;
+          element.classList.add(newPaymentClass);
+          element.classList.add(`bg-${getPaymentStatusColor(newPaymentStatus)}`);
+          
+          // Ensure badge class is present
+          if (!element.classList.contains('badge') && !element.classList.contains('status-badge') && !element.classList.contains('payment-badge')) {
+            element.classList.add('payment-badge');
+          }
+          
+          console.log(`✅ Updated payment element ${index}:`, {
+            originalText: originalText,
+            newText: element.textContent,
+            newClasses: element.className
+          });
+        }
+        
+        updated = true;
+      }
+    });
+    
+    if (updated) {
+      console.log('✅ Payment status updated in UI:', newPaymentStatus);
+      
+      // Visual feedback
+      const orderSection = document.querySelector('body');
+      if (orderSection) {
+        orderSection.style.transition = 'background-color 0.4s ease';
+        orderSection.style.backgroundColor = 'rgba(40, 167, 69, 0.05)';
+        
+        setTimeout(() => {
+          orderSection.style.backgroundColor = '';
+        }, 1000);
+      }
     } else {
-      showToast('error', data.message);
+      console.warn('⚠️ No order-level payment elements found to update');
     }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', 'Error updating order status');
-  });
-  
-  bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
+    
+  } catch (error) {
+    console.error('❌ Error updating payment status UI:', error);
+    setTimeout(() => location.reload(), 1000);
+  }
 }
 
-// Update payment status
-function updatePaymentStatus(orderId, currentPaymentStatus) {
-  document.getElementById('paymentOrderId').value = orderId;
-  document.getElementById('paymentStatus').value = currentPaymentStatus;
-  
-  const modal = new bootstrap.Modal(document.getElementById('updatePaymentModal'));
-  modal.show();
+// ✅ ENHANCED: Payment Status Color Function
+function getPaymentStatusColor(status) {
+  const colorMap = {
+    'Pending': 'warning',
+    'Completed': 'success',
+    'Failed': 'danger', 
+    'Refunded': 'info',
+    'Cancelled': 'secondary',
+    'Partially Completed': 'primary',
+    'Partially Refunded': 'secondary'
+  };
+  return colorMap[status] || 'secondary';
 }
 
-function submitPaymentUpdate() {
-  const form = document.getElementById('updatePaymentForm');
-  const formData = new FormData(form);
-  const orderId = formData.get('orderId');
-  
-  // FIXED: Use correct RESTful route and PATCH method
-  fetch(`/admin/orders/${orderId}/payment`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      paymentStatus: formData.get('paymentStatus')
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
-    } else {
-      showToast('error', data.message);
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', 'Error updating payment status');
-  });
-  
-  bootstrap.Modal.getInstance(document.getElementById('updatePaymentModal')).hide();
-}
 
-// Toast notification function
-function showToast(type, message) {
+// ===== UTILITY FUNCTIONS =====
+
+function showToast(type, message, duration = 3000) {
   const toastHtml = `
     <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : type === 'info' ? 'info' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">
+          <i class="bi bi-${type === 'success' ? 'check-circle' : type === 'info' ? 'info-circle' : 'exclamation-triangle'} me-2"></i>
           ${message}
         </div>
         <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
@@ -1140,17 +2158,29 @@ function showToast(type, message) {
   if (!toastContainer) {
     toastContainer = document.createElement('div');
     toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
   
   toastContainer.insertAdjacentHTML('beforeend', toastHtml);
   
   const toastElement = toastContainer.lastElementChild;
-  const toast = new bootstrap.Toast(toastElement);
+  const toast = new bootstrap.Toast(toastElement, {
+    autohide: true,
+    delay: duration
+  });
   toast.show();
   
   toastElement.addEventListener('hidden.bs.toast', () => {
     toastElement.remove();
   });
 }
+
+function testReturnModal() {
+  console.log('🔍 Testing return modal...');
+  returnItem('TEST_ORDER_ID', 'TEST_ITEM_ID');
+}
 </script>
+
+
+

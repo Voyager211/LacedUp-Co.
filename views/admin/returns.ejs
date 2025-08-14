@@ -169,7 +169,7 @@
                   <th class="border-0 text-black">Amount</th>
                   <th class="border-0 text-black">Reason</th>
                   <th class="border-0 text-black">Status</th>
-                  <th class="border-0 text-black">Refund Status</th>
+                  <!-- <th class="border-0 text-black">Refund Status</th> -->
                   <th class="border-0 text-center text-black">Actions</th>
                 </tr>
               </thead>
@@ -250,13 +250,13 @@
                           </span>
                         </div>
                       </td>
-                      <td>
-                        <div class="refund-status">
+                      <!-- <td> -->
+                        <!-- <div class="refund-status">
                           <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
                             <%= returnItem.refundStatus %>
                           </span>
-                        </div>
-                      </td>
+                        </div> -->
+                      <!-- </td> -->
                       <td class="text-center">
                         <div class="actions-dropdown">
                           <div class="dropdown">
@@ -265,11 +265,6 @@
                               <i class="bi bi-three-dots-vertical text-black"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end">
-                              <li>
-                                <button class="dropdown-item text-black" onclick="viewReturnDetails('<%= returnItem._id %>')">
-                                  <i class="bi bi-eye me-2 text-black"></i>View Details
-                                </button>
-                              </li>
                               <% if (returnItem.status === RETURN_STATUS.PENDING) { %>
                                 <li>
                                   <button class="dropdown-item text-black" onclick="approveReturn('<%= returnItem._id %>')">
@@ -340,32 +335,49 @@
 </div>
 
 <!-- Approve Return Modal -->
-<div class="modal fade" id="approveReturnModal" tabindex="-1" aria-labelledby="approveReturnModalLabel" aria-hidden="true">
+<div class="modal fade" id="approveReturnModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title text-black" id="approveReturnModalLabel">Approve Return Request</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <h5 class="modal-title">Approve Return Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <div class="modal-body">
-        <form id="approveReturnForm">
+      <form id="approveReturnForm">
+        <div class="modal-body">
           <input type="hidden" id="approveReturnId" name="returnId">
+          
+          <!-- ✅ CHANGED: Read-only refund amount display -->
           <div class="mb-3">
-            <label for="refundAmount" class="form-label text-black">Refund Amount</label>
-            <input type="number" class="form-control" id="refundAmount" name="refundAmount" step="0.01" required>
-            <small class="text-muted">Original amount will be pre-filled. Adjust if needed.</small>
+            <label class="form-label fw-semibold">Refund Amount:</label>
+            <div class="p-2 bg-light border rounded">
+              <span class="fw-bold text-success fs-5" id="displayRefundAmount">₹0</span>
+            </div>
+            <small class="form-text text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              This amount is calculated based on the original item price and cannot be modified.
+            </small>
+            <!-- Hidden input to send the value -->
+            <input type="hidden" id="refundAmount" name="refundAmount">
           </div>
+          
           <div class="mb-3">
-            <label for="approveNotes" class="form-label text-black">Admin Notes</label>
+            <label for="approveNotes" class="form-label">Admin Notes (Optional):</label>
             <textarea class="form-control" id="approveNotes" name="notes" rows="3" 
                       placeholder="Add any notes about this approval..."></textarea>
           </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-success" onclick="submitApproveReturn()">Approve Return</button>
-      </div>
+          
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong>Approval Action:</strong> This will approve the return request and initiate the refund process.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="submitApproveReturn()">
+            <i class="bi bi-check-circle me-1"></i>Approve Return
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -806,12 +818,10 @@ document.addEventListener('DOMContentLoaded', function() {
   
   dropdownButtons.forEach(button => {
     button.addEventListener('click', function() {
-      // Remove dropdown-open class from all rows
       document.querySelectorAll('.return-row').forEach(row => {
         row.classList.remove('dropdown-open');
       });
       
-      // Add dropdown-open class to current row
       const currentRow = this.closest('.return-row');
       if (currentRow) {
         currentRow.classList.add('dropdown-open');
@@ -819,7 +829,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Remove dropdown-open class when dropdown is hidden
   document.addEventListener('click', function(event) {
     if (!event.target.closest('.actions-dropdown')) {
       document.querySelectorAll('.return-row').forEach(row => {
@@ -828,7 +837,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
 
-  // Bootstrap dropdown events
   document.querySelectorAll('.dropdown').forEach(dropdown => {
     dropdown.addEventListener('shown.bs.dropdown', function() {
       const row = this.closest('.return-row');
@@ -846,33 +854,25 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// View return details
-function viewReturnDetails(returnId) {
-  // Implement return details view
-  window.location.href = `/admin/returns/${returnId}`;
-}
-
-// Approve return
+// ✅ FIXED: Approve return function
 function approveReturn(returnId) {
-  // Get return data to pre-fill form
-  fetch(`/admin/returns/${returnId}`)
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        document.getElementById('approveReturnId').value = returnId;
-        document.getElementById('refundAmount').value = data.return.totalPrice;
-        document.getElementById('approveNotes').value = '';
-        
-        const modal = new bootstrap.Modal(document.getElementById('approveReturnModal'));
-        modal.show();
-      } else {
-        showToast('error', 'Failed to load return details');
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      showToast('error', 'Failed to load return details');
-    });
+  // Get return data from the current page row
+  const returnRow = document.querySelector(`button[onclick*="${returnId}"]`).closest('.return-row');
+  const amountElement = returnRow.querySelector('.return-amount');
+  const amountText = amountElement.textContent.replace('₹', '').replace(/,/g, '');
+  const originalAmount = parseFloat(amountText) || 0;
+  
+  // Pre-fill the modal
+  document.getElementById('approveReturnId').value = returnId;
+  
+  // ✅ UPDATED: Set both display and hidden field
+  document.getElementById('displayRefundAmount').textContent = `₹${originalAmount.toLocaleString('en-IN')}`;
+  document.getElementById('refundAmount').value = originalAmount;
+  
+  document.getElementById('approveNotes').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('approveReturnModal'));
+  modal.show();
 }
 
 function submitApproveReturn() {
@@ -923,14 +923,13 @@ function submitRejectReturn() {
   const formData = new FormData(form);
   const returnId = formData.get('returnId');
   
-  // FIXED: Changed PUT to PATCH and fixed parameter name
   fetch(`/admin/returns/${returnId}/reject`, {
-    method: 'PATCH',  // ✅ CORRECTED: Changed from PUT to PATCH
+    method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      rejectionReason: formData.get('reason')  // ✅ CORRECTED: Parameter name matches controller
+      rejectionReason: formData.get('reason')
     })
   })
   .then(response => response.json())
@@ -952,107 +951,22 @@ function submitRejectReturn() {
   bootstrap.Modal.getInstance(document.getElementById('rejectReturnModal')).hide();
 }
 
-
-
-
-// function submitProcessRefund() {
-//   const form = document.getElementById('processRefundForm');
-//   const formData = new FormData(form);
-//   const returnId = formData.get('returnId');
-  
-//   fetch(`/admin/returns/process-refund/${returnId}`, {
-//     method: 'PUT',
-//     headers: {
-//       'Content-Type': 'application/json',
-//     },
-//     body: JSON.stringify({
-//       refundMethod: formData.get('refundMethod'),
-//       notes: formData.get('notes')
-//     })
-//   })
-//   .then(response => response.json())
-//   .then(data => {
-//     if (data.success) {
-//       showToast('success', data.message);
-//       setTimeout(() => {
-//         location.reload();
-//       }, 1000);
-//     } else {
-//       showToast('error', data.message);
-//     }
-//   })
-//   .catch(error => {
-//     console.error('Error:', error);
-//     showToast('error', 'Error processing refund');
-//   });
-  
-//   bootstrap.Modal.getInstance(document.getElementById('processRefundModal')).hide();
-// }
-
-
-// Update return status
-
-
-
-
-// function submitUpdateStatus() {
-//   const form = document.getElementById('updateStatusForm');
-//   const formData = new FormData(form);
-//   const returnId = formData.get('returnId');
-  
-//   fetch(`/admin/returns/update-status/${returnId}`, {
-//     method: 'PUT',
-//     headers: {
-//       'Content-Type': 'application/json',
-//     },
-//     body: JSON.stringify({
-//       status: formData.get('status'),
-//       notes: formData.get('notes')
-//     })
-//   })
-//   .then(response => response.json())
-//   .then(data => {
-//     if (data.success) {
-//       showToast('success', data.message);
-//       setTimeout(() => {
-//         location.reload();
-//       }, 1000);
-//     } else {
-//       showToast('error', data.message);
-//     }
-//   })
-//   .catch(error => {
-//     console.error('Error:', error);
-//     showToast('error', 'Error updating return status');
-//   });
-  
-//   bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
-// }
-
-
-
-
 // Refresh returns
-
 function refreshReturns() {
   location.reload();
 }
 
 // Toast notification function
 function showToast(type, message) {
-  // Create toast element
   const toastHtml = `
-    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
       <div class="d-flex">
-        <div class="toast-body">
-          ${message}
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     </div>
   `;
   
-  // Add to toast container
   let toastContainer = document.querySelector('.toast-container');
   if (!toastContainer) {
     toastContainer = document.createElement('div');
@@ -1062,12 +976,10 @@ function showToast(type, message) {
   
   toastContainer.insertAdjacentHTML('beforeend', toastHtml);
   
-  // Show toast
   const toastElement = toastContainer.lastElementChild;
   const toast = new bootstrap.Toast(toastElement);
   toast.show();
   
-  // Remove toast element after it's hidden
   toastElement.addEventListener('hidden.bs.toast', () => {
     toastElement.remove();
   });

@@ -899,17 +899,14 @@ function returnOrder(orderId) {
         }
       });
 
-      console.log('Selected Reason:', result.value);
-
-      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
-      fetch(`/orders/${orderId}`, {
-        method: 'PATCH',
+      //   Use POST method to match your routes
+      fetch(`/orders/${orderId}/returns`, {
+        method: 'POST',  //  Changed from PATCH to POST
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'return',
-          reason: result.value
+          reason: result.value  //  No action parameter needed
         })
       })
       .then(response => response.json())
@@ -930,7 +927,7 @@ function returnOrder(orderId) {
       .catch(error => {
         console.error('Error returning order:', error);
         Swal.fire({
-          icon: 'error',
+          icon: 'error',  
           title: 'Return Failed',
           text: error.message || 'Failed to return order. Please try again.',
           confirmButtonColor: '#dc3545'
@@ -939,7 +936,6 @@ function returnOrder(orderId) {
     }
   });
 }
-
 
 function cancelOrder(orderId) {
   Swal.fire({
@@ -1104,17 +1100,14 @@ function returnItem(orderId, itemId) {
         }
       });
 
-      console.log('Selected Reason:', result.value);
-
-      // ✅ FIXED: Use PATCH method with action parameter (consistent with cancel flow)
-      fetch(`/orders/${orderId}/items/${itemId}`, {
-        method: 'PATCH',
+      //   Use POST method to match your routes
+      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
+        method: 'POST',  //  Changed from PATCH to POST
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          action: 'return',
-          reason: result.value
+          reason: result.value  //  No action parameter needed
         })
       })
       .then(response => response.json())
@@ -1168,7 +1161,7 @@ function downloadInvoice(orderId) {
     }
   });
 
-  // FIXED: Use correct RESTful route
+  //  Use correct RESTful route
   fetch(`/orders/${orderId}/invoice`, {
     method: 'GET'
   })

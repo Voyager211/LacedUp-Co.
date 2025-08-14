@@ -18,7 +18,7 @@ router.get('/export', returnController.exportReturns);
 router.get('/', returnController.getAllReturns);
 
 // Get return details
-router.get('/:returnId', returnController.getReturnDetails);
+// router.get('/:returnId', returnController.getReturnDetails);
 
 // Approve individual return request
 router.patch('/:returnId/approve', returnController.approveReturn);

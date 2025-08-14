@@ -167,7 +167,6 @@
                   <th class="border-0 text-black">Product</th>
                   <th class="border-0 text-black">Customer</th>
                   <th class="border-0 text-black">Date</th>
-                  <th class="border-0 text-black">Size/Qty</th>
                   <th class="border-0 text-black">Amount</th>
                   <th class="border-0 text-black">Payment</th>
                   <th class="border-0 text-black">Status</th>
@@ -196,7 +195,12 @@
                           <% } %>
                           <div class="product-details">
                             <div class="product-name text-black"><%= item.productName %></div>
-                            <small class="text-muted">SKU: <%= item.sku %></small>
+                            <small class="text-muted">
+                              <%= item.sku %> x <%= item.quantity %>
+                              <% if (item.size) { %>
+                                <span class="text-muted ms-2">• Size: <%= item.size %></span>
+                              <% } %>
+                            </small>
                           </div>
                         </div>
                       </td>
@@ -221,12 +225,6 @@
                               minute: '2-digit' 
                             }) %>
                           </div>
-                        </div>
-                      </td>
-                      <td>
-                        <div class="size-qty-info">
-                          <div class="size text-black">Size: <%= item.size %></div>
-                          <div class="quantity text-black">Qty: <%= item.quantity %></div>
                         </div>
                       </td>
                       <td>
@@ -267,7 +265,7 @@
                   <% }) %>
                 <% } else { %>
                   <tr>
-                    <td colspan="9" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                       <div class="empty-state">
                         <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
                         <h5 class="text-black">No order items found</h5>
@@ -449,16 +447,6 @@
   font-size: 0.8rem;
 }
 
-/* Size/Qty Info Styling */
-.size-qty-info {
-  min-width: 80px;
-}
-
-.size, .quantity {
-  color: #000000 !important;
-  font-size: 0.85rem;
-  margin-bottom: 2px;
-}
 
 /* Amount Info Styling */
 .amount-info {
@@ -853,17 +841,65 @@ function generateOrderRowHTML(item) {
     ? `<img src="${item.productImage}" alt="${item.productName}" class="product-thumb me-3">`
     : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
   
-  const cancelButtonHTML = [ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status) 
+  const cancelButtonHTML = ['Pending', 'Processing'].includes(item.status) 
     ? `<li><button class="dropdown-item text-black" onclick="cancelItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-x-circle me-2 text-black"></i>Cancel Item</button></li>`
     : '';
   
-  const returnButtonHTML = item.status === ORDER_STATUS.DELIVERED 
+  const returnButtonHTML = item.status === 'Delivered' 
     ? `<li><button class="dropdown-item text-black" onclick="returnItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-arrow-return-left me-2 text-black"></i>Return Item</button></li>`
     : '';
   
   return `
-     <tr class="order-row">
-      <!-- ... existing table cells ... -->
+    <tr class="order-row">
+      <td>
+        <div class="order-id">
+          <span class="fw-bold text-black">#${item.orderId}</span>
+        </div>
+      </td>
+      <td>
+        <div class="product-info d-flex align-items-center">
+          ${productImageHTML}
+          <div class="product-details">
+            <div class="product-name text-black">${item.productName}</div>
+            <small class="text-muted">
+              ${item.sku} x ${item.quantity}
+              ${item.size ? `<span class="text-muted ms-2">• Size: ${item.size}</span>` : ''}
+            </small>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="customer-info">
+          <div class="customer-name text-black">${item.user?.name || 'N/A'}</div>
+          <div class="customer-email text-black">${item.user?.email || 'N/A'}</div>
+        </div>
+      </td>
+      <td>
+        <div class="date-info">
+          <div class="order-date text-black">${formattedDate}</div>
+          <div class="order-time text-black">${formattedTime}</div>
+        </div>
+      </td>
+      <td>
+        <div class="amount-info">
+          <div class="item-amount text-black">₹${item.totalPrice.toLocaleString('en-IN')}</div>
+          <div class="payment-method text-black">${item.paymentMethod.toUpperCase()}</div>
+        </div>
+      </td>
+      <td>
+        <div class="payment-status">
+          <span class="status-badge payment-${item.paymentStatus.toLowerCase()}">
+            ${item.paymentStatus}
+          </span>
+        </div>
+      </td>
+      <td>
+        <div class="item-status">
+          <span class="status-badge item-${item.status.toLowerCase()}">
+            ${item.status}
+          </span>
+        </div>
+      </td>
       <td class="text-center">
         <div class="actions-dropdown">
           <div class="dropdown">
@@ -873,12 +909,12 @@ function generateOrderRowHTML(item) {
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <!-- FIXED: Use correct route -->
                 <a class="dropdown-item text-black" href="/admin/orders/${item.orderId}">
                   <i class="bi bi-eye me-2 text-black"></i>View Order Details
                 </a>
               </li>
-              <!-- ... other dropdown items ... -->
+              ${cancelButtonHTML}
+              ${returnButtonHTML}
             </ul>
           </div>
         </div>
@@ -886,6 +922,7 @@ function generateOrderRowHTML(item) {
     </tr>
   `;
 }
+
 
 // Function to update statistics
 function updateStatistics(data) {

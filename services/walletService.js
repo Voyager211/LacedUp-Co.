@@ -68,8 +68,12 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
 
     const wallet = await getOrCreateWallet(userId);
     const newBalance = wallet.balance + amount;
+
+    // generate unique transaction ID
+    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     wallet.transactions.push({
+      transactionId: transactionId,
       type: 'credit',
       amount: amount,
       description: description,
@@ -87,6 +91,7 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
     return {
       success: true,
       newBalance: wallet.balance,
+      transactionId: transactionId,
       transaction: wallet.transactions[wallet.transactions.length - 1],
       message: `₹${amount} credited to wallet successfully`
     };
@@ -117,9 +122,12 @@ const debitAmount = async (userId, amount, description, orderId = null) => {
     }
     
     const newBalance = wallet.balance - amount;
+
+    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     wallet.transactions.push({
       type: 'debit',
+      transactionId: transactionId,
       amount: amount,
       description: description,
       orderId: orderId,
@@ -135,6 +143,7 @@ const debitAmount = async (userId, amount, description, orderId = null) => {
     return {
       success: true,
       newBalance: wallet.balance,
+      transactionId: transactionId,
       transaction: wallet.transactions[wallet.transactions.length - 1],
       message: `₹${amount} debited from wallet successfully`
     };

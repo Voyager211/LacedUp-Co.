@@ -170,54 +170,91 @@ exports.getAllReturns = async (req, res) => {
 
 
 // Get single return details
-exports.getReturnDetails = async (req, res) => {
-  try {
-    const { returnId } = req.params;
+// exports.getReturnDetails = async (req, res) => {
+//   try {
+//     const { returnId } = req.params;
 
-    const returnRequest = await Return.findById(returnId)
-      .populate({
-        path: 'userId',
-        select: 'name email phone profilePhoto'
-      })
-      .populate({
-        path: 'productId',
-        select: 'productName mainImage subImages regularPrice salePrice category brand'
-      })
-      .populate({
-        path: 'processedBy',
-        select: 'name email'
-      })
-      .lean();
+//     const returnRequest = await Return.findById(returnId)
+//       .populate({
+//         path: 'userId',
+//         select: 'name email phone profilePhoto'
+//       })
+//       .populate({
+//         path: 'productId',
+//         select: 'productName mainImage subImages regularPrice salePrice category brand'
+//       })
+//       .populate({
+//         path: 'processedBy',
+//         select: 'name email'
+//       })
+//       .lean();
 
-    if (!returnRequest) {
-      return res.status(404).json({
-        success: false,
-        message: 'Return request not found'
-      });
-    }
+//     if (!returnRequest) {
+//       return res.status(404).render('error/404', {
+//         title: 'Return Request Not Found',
+//         message: 'The requested return could not be found.',
+//         error: {
+//           status: 404,
+//           stack: ''
+//         },
+//         layout: 'admin/layout'
+//       });
+//     }
 
-    // Get the original order for additional context
-    const order = await Order.findOne({ orderId: returnRequest.orderId })
-      .populate({
-        path: 'deliveryAddress.addressId',
-        select: 'address'
-      })
-      .lean();
+//     // Get the original order for additional context
+//     const order = await Order.findOne({ orderId: returnRequest.orderId })
+//       .populate({
+//         path: 'deliveryAddress.addressId',
+//         select: 'address'
+//       })
+//       .lean();
 
-    res.json({
-      success: true,
-      return: returnRequest,
-      order: order
-    });
+//     // Extract specific delivery address if available
+//     if (order && order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
+//       const addressIndex = order.deliveryAddress.addressIndex;
+//       const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
+      
+//       if (specificAddress) {
+//         order.deliveryAddress = {
+//           ...order.deliveryAddress,
+//           ...specificAddress
+//         };
+//       }
+//     }
 
-  } catch (error) {
-    console.error('Error fetching return details:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error loading return details'
-    });
-  }
-};
+//     // ✅ RENDER: EJS template instead of JSON response
+//     res.render('admin/return-details', {
+//       title: `Return Details - ${returnRequest._id}`,
+//       returnRequest,
+//       order,
+//       // Helper functions for status colors
+//       getReturnStatusColor: (status) => {
+//         const colorMap = {
+//           'pending': 'warning',
+//           'approved': 'success', 
+//           'rejected': 'danger',
+//           'completed': 'info',
+//           'cancelled': 'secondary'
+//         };
+//         return colorMap[status] || 'secondary';
+//       },
+//       layout: 'admin/layout'
+//     });
+
+
+//   } catch (error) {
+//     console.error('Error fetching return details:', error);
+//     res.status(500).render('admin/error', {
+//       title: 'Server Error',
+//       message: 'An error occurred while loading the return details.',
+//       error: {
+//         status: 500,
+//         stack: process.env.NODE_ENV === 'development' ? error.stack : ''
+//       },
+//       layout: 'admin/layout'
+//     });
+//   }
+// };
 
 // Approve return request
 exports.approveReturn = async (req, res) => {
