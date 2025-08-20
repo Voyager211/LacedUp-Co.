@@ -167,7 +167,115 @@ exports.getAllReturns = async (req, res) => {
   }
 };
 
+exports.getReturnsAPI = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      search = '',
+      status = '',
+      refundStatus = '',
+      dateRange = '',
+      sortBy = 'requestDate',
+      sortOrder = 'desc'
+    } = req.query;
 
+    const limit = 10;
+    const filters = { search, status, refundStatus, dateRange, sortBy, sortOrder };
+
+    // Your existing filter logic here (same as getReturns function)
+    let query = {};
+    
+    // Apply filters
+    if (search) {
+      query.$or = [
+        { returnId: { $regex: search, $options: 'i' } },
+        { orderId: { $regex: search, $options: 'i' } },
+        { productName: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (status) query.status = status;
+    if (refundStatus) query.refundStatus = refundStatus;
+
+    // Date range filter
+    if (dateRange) {
+      const now = new Date();
+      let startDate;
+      
+      switch (dateRange) {
+        case 'today':
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          break;
+        case 'week':
+          startDate = new Date(now.setDate(now.getDate() - 7));
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+      }
+      
+      if (startDate) {
+        query.requestDate = { $gte: startDate };
+      }
+    }
+
+    // Sorting
+    const sortOptions = {};
+    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+
+    // Execute query
+    const returns = await Return.find(query)
+      .populate('userId', 'name email')
+      .sort(sortOptions)
+      .limit(limit * 1)
+      .skip((page - 1) * limit)
+      .lean();
+
+    const totalReturns = await Return.countDocuments(query);
+    const totalPages = Math.ceil(totalReturns / limit);
+
+    // Calculate statistics
+    const stats = await Return.aggregate([
+      { $match: {} },
+      {
+        $group: {
+          _id: null,
+          pendingReturns: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
+          approvedReturns: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, 1, 0] } },
+          totalReturns: { $sum: 1 },
+          totalRefundAmount: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, "$refundAmount", 0] } }
+        }
+      }
+    ]);
+
+    const statistics = stats[0] || {
+      pendingReturns: 0,
+      approvedReturns: 0,
+      totalReturns: 0,
+      totalRefundAmount: 0
+    };
+
+    // Return JSON response
+    res.json({
+      success: true,
+      returns,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalReturns
+      },
+      statistics,
+      filters
+    });
+
+  } catch (error) {
+    console.error('Error fetching returns API:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching returns'
+    });
+  }
+};
 
 // Get single return details
 // exports.getReturnDetails = async (req, res) => {

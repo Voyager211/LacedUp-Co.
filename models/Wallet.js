@@ -6,6 +6,7 @@ const walletSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
     unique: true
+    // ✅ REMOVED: individual index (using compound index instead)
   },
   balance: {
     type: Number,
@@ -17,6 +18,7 @@ const walletSchema = new mongoose.Schema({
       type: String,
       required: true,
       unique: true
+      // ✅ REMOVED: individual index (MongoDB automatically indexes unique fields)
     },
     type: {
       type: String,
@@ -46,6 +48,7 @@ const walletSchema = new mongoose.Schema({
     date: {
       type: Date,
       default: Date.now
+      // ✅ REMOVED: individual index (using compound index instead)
     },
     balanceAfter: {
       type: Number,
@@ -77,11 +80,23 @@ walletSchema.virtual('transactionCount').get(function() {
   return this.transactions.length;
 });
 
-// Index for better query performance
+// ✅ OPTIMIZED: Strategic indexes for performance
+// Primary index for user wallet lookups
 walletSchema.index({ userId: 1 });
-walletSchema.index({ 'transactions.date': -1 });
-walletSchema.index({ 'transactions.orderId': 1 });
-walletSchema.index({ 'transactions.returnId': 1 });
-walletSchema.index({ 'transactions.type': 1 });
+
+// ✅ COMPOUND INDEXES: For common query patterns
+walletSchema.index({ userId: 1, updatedAt: -1 }); // User wallets by last update
+walletSchema.index({ userId: 1, balance: -1 }); // User wallet balance queries
+
+// ✅ TRANSACTION INDEXES: For efficient transaction queries  
+walletSchema.index({ 'transactions.date': -1 }); // Latest transactions first
+walletSchema.index({ 'transactions.transactionId': 1 }); // Transaction lookups
+walletSchema.index({ 'transactions.orderId': 1 }); // Order-related transactions
+walletSchema.index({ 'transactions.returnId': 1 }); // Return-related transactions
+walletSchema.index({ 'transactions.type': 1, 'transactions.date': -1 }); // Filter by type + date
+
+// ✅ SPARSE INDEXES: Only index documents that have these fields
+walletSchema.index({ 'transactions.orderId': 1 }, { sparse: true });
+walletSchema.index({ 'transactions.returnId': 1 }, { sparse: true });
 
 module.exports = mongoose.model('Wallet', walletSchema);

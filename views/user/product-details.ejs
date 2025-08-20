@@ -1597,8 +1597,8 @@
         });
 
         // Update cart count in navbar if it exists
-        if (window.updateNavbarCartCount) {
-          window.updateNavbarCartCount(result.cartCount);
+        if (window.fetchCartCount) {
+          window.fetchCartCount();
         }
       } else {
         // Handle different error types
@@ -2515,8 +2515,8 @@
 
               // Update cart count in navbar if it exists
               // Update cart count in navbar if it exists
-              if (window.updateNavbarCartCount) {
-                window.updateNavbarCartCount(result.cartCount);
+              if (window.fetchCartCount) {
+                window.fetchCartCount();
               }
             } else {
               // Handle different error types

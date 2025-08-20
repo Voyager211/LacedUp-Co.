@@ -29,14 +29,15 @@ const validateUser = async (userId) => {
  */
 const getOrCreateWallet = async (userId) => {
   try {
-    // Validate user exists and is not blocked
     await validateUser(userId);
 
-    let wallet = await Wallet.findOne({ userId });
+    // ✅ CRITICAL FIX: Convert to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    let wallet = await Wallet.findOne({ userId: userObjectId });
     
     if (!wallet) {
       wallet = new Wallet({
-        userId: userId,
+        userId: userObjectId, // ✅ Use ObjectId
         balance: 0,
         transactions: []
       });
@@ -50,6 +51,8 @@ const getOrCreateWallet = async (userId) => {
     throw error;
   }
 };
+
+
 
 /**
  * Add credit to user wallet
@@ -184,21 +187,43 @@ const addReturnRefund = async (userId, amount, orderId, returnId) => {
  * @returns {Object} - Wallet balance and info
  */
 const getWalletBalance = async (userId) => {
+  console.log(`🔄 walletService.getWalletBalance called with userId: ${userId}`);
+  console.time(`getWalletBalance-${userId}`);
+  
   try {
-    const wallet = await getOrCreateWallet(userId);
+    // ✅ CRITICAL FIX: Convert string to ObjectId for proper matching
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    console.log(`🔍 Converted userId to ObjectId: ${userObjectId}`);
     
-    return {
-      success: true,
-      balance: wallet.balance,
-      totalTransactions: wallet.transactions.length,
-      lastTransaction: wallet.transactions.length > 0 ? 
-        wallet.transactions[wallet.transactions.length - 1] : null
-    };
+    const wallet = await Wallet.findOne({ userId: userObjectId })
+      .select('balance')
+      .lean();
+    
+    console.log(`🔍 Database query result:`, wallet);
+    
+    if (!wallet) {
+      console.log('⚠️ No wallet found, creating new wallet...');
+      const newWallet = new Wallet({ 
+        userId: userObjectId, // ✅ Use ObjectId here too
+        balance: 0, 
+        transactions: [] 
+      });
+      await newWallet.save();
+      console.timeEnd(`getWalletBalance-${userId}`);
+      return { success: true, balance: 0 };
+    }
+    
+    console.log(`✅ Wallet found with balance: ${wallet.balance}`);
+    console.timeEnd(`getWalletBalance-${userId}`);
+    return { success: true, balance: wallet.balance };
+    
   } catch (error) {
-    console.error('Error getting wallet balance:', error);
+    console.error(`❌ walletService.getWalletBalance error:`, error);
+    console.timeEnd(`getWalletBalance-${userId}`);
     throw error;
   }
 };
+
 
 /**
  * Get transaction history with pagination
@@ -208,30 +233,68 @@ const getWalletBalance = async (userId) => {
  * @returns {Object} - Paginated transaction history
  */
 const getTransactionHistory = async (userId, page = 1, limit = 10) => {
+  console.time(`getTransactionHistory-${userId}`);
+  
   try {
-    const wallet = await getOrCreateWallet(userId);
+    // ✅ CRITICAL FIX: Convert string to ObjectId
+    const userObjectId = new mongoose.Types.ObjectId(userId);
     
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + limit;
+    const result = await Wallet.aggregate([
+      { $match: { userId: userObjectId } }, // ✅ Use ObjectId instead of string
+      {
+        $project: {
+          balance: 1,
+          totalTransactions: { $size: '$transactions' },
+          transactions: {
+            $slice: [
+              { 
+                $sortArray: { 
+                  input: '$transactions', 
+                  sortBy: { date: -1 } 
+                } 
+              },
+              (page - 1) * limit,
+              limit
+            ]
+          }
+        }
+      }
+    ]);
+
+    const wallet = result[0];
+    if (!wallet) {
+      console.timeEnd(`getTransactionHistory-${userId}`);
+      return {
+        success: true,
+        transactions: [],
+        totalTransactions: 0,
+        currentPage: page,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      };
+    }
+
+    const totalPages = Math.ceil(wallet.totalTransactions / limit);
     
-    const sortedTransactions = wallet.transactions
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
-      .slice(startIndex, endIndex);
+    console.timeEnd(`getTransactionHistory-${userId}`);
     
     return {
       success: true,
-      transactions: sortedTransactions,
-      totalTransactions: wallet.transactions.length,
+      transactions: wallet.transactions || [],
+      totalTransactions: wallet.totalTransactions,
       currentPage: parseInt(page),
-      totalPages: Math.ceil(wallet.transactions.length / limit),
-      hasNextPage: endIndex < wallet.transactions.length,
+      totalPages: totalPages,
+      hasNextPage: page < totalPages,
       hasPrevPage: page > 1
     };
+    
   } catch (error) {
-    console.error('Error getting transaction history:', error);
+    console.timeEnd(`getTransactionHistory-${userId}`);
     throw error;
   }
 };
+
 
 /**
  * Get wallet with user details

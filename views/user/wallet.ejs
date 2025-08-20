@@ -28,6 +28,7 @@
                     <i class="bi bi-wallet2 me-2 text-primary"></i>
                     My Wallet
                   </h3>
+                  <!-- Add this RIGHT BEFORE the existing balance-amount div -->
                   <div class="balance-display">
                     <span class="balance-label">Available Balance</span>
                     <div class="balance-amount">₹<%= wallet.balance.toLocaleString('en-IN') %></div>
@@ -77,12 +78,12 @@
                             <div class="transaction-description"><%= transaction.description %></div>
                             <div class="transaction-meta">
                               <span class="transaction-id">ID: <%= transaction.transactionId %></span>
-                              <% if (transaction.orderId) { %>
+                              <!-- <% if (transaction.orderId) { %>
                                 <span class="transaction-order">Order: <%= transaction.orderId %></span>
-                              <% } %>
-                              <% if (transaction.returnId) { %>
+                              <% } %> -->
+                              <!-- <% if (transaction.returnId) { %>
                                 <span class="transaction-return">Return: <%= transaction.returnId %></span>
-                              <% } %>
+                              <% } %> -->
                             </div>
                           </div>
                         </div>
@@ -101,18 +102,13 @@
                             </div>
                           </div>
                         </div>
-                        <div class="col-md-2 text-end">
+                        <div class="col-md-3 text-end">
                           <div class="transaction-amount <%= transaction.type %>">
                             <%= transaction.type === 'credit' ? '+' : '-' %>₹<%= transaction.amount.toLocaleString('en-IN') %>
                           </div>
                           <div class="balance-after">
                             Balance: ₹<%= transaction.balanceAfter.toLocaleString('en-IN') %>
                           </div>
-                        </div>
-                        <div class="col-md-1 text-end">
-                          <span class="badge bg-<%= transaction.status === 'completed' ? 'success' : transaction.status === 'pending' ? 'warning' : 'danger' %>">
-                            <%= transaction.status %>
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -221,8 +217,10 @@
 }
 
 .wallet-balance-card .card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #000000 !important;
   color: white;
+  border: none !important;
+  border-top: 4px solid #dc3545 !important;
 }
 
 .wallet-title {
@@ -241,6 +239,49 @@
   font-size: 2.5rem;
   font-weight: 700;
   line-height: 1;
+}
+
+/* ✅ RED THEME: Change all blue (primary) elements to red */
+.wallet-balance-card .text-primary {
+  color: #dc3545 !important;
+}
+
+.btn-primary {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-primary:hover {
+  background-color: #c82333 !important;
+  border-color: #bd2130 !important;
+}
+
+.btn-primary:focus, .btn-primary.focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.btn-outline-primary {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+.btn-outline-primary:focus, .btn-outline-primary.focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.text-primary {
+  color: #dc3545 !important;
 }
 
 /* Transaction Styles */
@@ -363,7 +404,10 @@
 </style>
 
 <script>
-// Add money modal
+// Wallet functionality
+let isProcessing = false;
+
+// Show add money modal
 function showAddMoneyModal() {
   const modal = new bootstrap.Modal(document.getElementById('addMoneyModal'));
   modal.show();
@@ -375,102 +419,193 @@ function setAmount(amount) {
 }
 
 // Add money to wallet
-function addMoney() {
+async function addMoney() {
+  if (isProcessing) return;
+  
   const form = document.getElementById('addMoneyForm');
   const formData = new FormData(form);
-  
   const amount = parseFloat(formData.get('amount'));
   const description = formData.get('description');
   
+  // Validation
   if (!amount || amount <= 0) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Invalid Amount',
-      text: 'Please enter a valid amount',
-      confirmButtonColor: '#dc3545'
-    });
+    showAlert('error', 'Invalid Amount', 'Please enter a valid amount');
     return;
   }
   
   if (amount > 50000) {
-    Swal.fire({
-      icon: 'error',
-      title: 'Amount Too High',
-      text: 'Maximum amount allowed is ₹50,000',
-      confirmButtonColor: '#dc3545'
-    });
+    showAlert('error', 'Amount Too High', 'Maximum amount allowed is ₹50,000');
     return;
   }
   
-  // Show loading
-  Swal.fire({
-    title: 'Processing...',
-    text: 'Adding money to your wallet',
-    allowOutsideClick: false,
-    allowEscapeKey: false,
-    showConfirmButton: false,
-    didOpen: () => {
-      Swal.showLoading();
-    }
-  });
+  isProcessing = true;
+  showLoading('Processing...', 'Adding money to your wallet');
   
-  // Make API call
-  fetch('/api/wallet/add-money', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      amount: amount,
-      description: description || `Added ₹${amount} to wallet`
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
+  try {
+    const response = await fetch('/api/wallet/add-money', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount, description: description || `Added ₹${amount} to wallet` })
+    });
+
+    const data = await response.json();
+
     if (data.success) {
-      Swal.fire({
-        icon: 'success',
-        title: 'Money Added Successfully!',
-        text: `₹${amount.toLocaleString('en-IN')} has been added to your wallet`,
-        confirmButtonColor: '#28a745'
-      }).then(() => {
-        // Close modal and reload page
-        bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
-        location.reload();
-      });
+      // Update balance immediately
+      updateBalance(data.newBalance);
+      
+      // Add transaction to list
+      if (data.transaction) {
+        addTransactionToList(data.transaction);
+      }
+
+      // Success message
+      showAlert('success', 'Success!', `₹${amount.toLocaleString('en-IN')} added to wallet`);
+      
+      // Close modal and reset form
+      bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
+      form.reset();
     } else {
       throw new Error(data.message || 'Failed to add money');
     }
-  })
-  .catch(error => {
-    console.error('Error adding money:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Failed to Add Money',
-      text: error.message || 'Please try again later',
-      confirmButtonColor: '#dc3545'
-    });
+  } catch (error) {
+    console.error('Add money error:', error);
+    showAlert('error', 'Error', error.message || 'Failed to add money. Please try again.');
+  } finally {
+    isProcessing = false;
+    Swal.close();
+  }
+}
+
+// Update balance display
+function updateBalance(newBalance) {
+  const balanceElement = document.querySelector('.balance-amount');
+  if (balanceElement) {
+    // Animate balance update
+    balanceElement.style.transform = 'scale(1.1)';
+    balanceElement.style.color = '#28a745';
+    balanceElement.textContent = `₹${newBalance.toLocaleString('en-IN')}`;
+    
+    setTimeout(() => {
+      balanceElement.style.transform = 'scale(1)';
+      balanceElement.style.color = '';
+    }, 300);
+  }
+  
+  console.log(`💰 Balance updated: ₹${newBalance.toLocaleString('en-IN')}`);
+}
+
+// Add transaction to list
+function addTransactionToList(transaction) {
+  const transactionList = document.querySelector('.transaction-list');
+  const emptyState = document.querySelector('.empty-transactions');
+  
+  // Hide empty state
+  if (emptyState) {
+    emptyState.style.display = 'none';
+  }
+  
+  // Create transaction list if it doesn't exist
+  if (!transactionList && emptyState) {
+    const cardBody = emptyState.parentElement;
+    cardBody.innerHTML = '<div class="transaction-list"></div>';
+  }
+  
+  const list = document.querySelector('.transaction-list');
+  if (!list) return;
+  
+  // Create transaction HTML
+  const transactionDate = new Date(transaction.date);
+  const transactionHtml = `
+    <div class="transaction-item new-transaction" data-type="${transaction.type}">
+      <div class="row align-items-center py-3 px-4">
+        <div class="col-md-1">
+          <div class="transaction-icon ${transaction.type}">
+            <i class="bi bi-${transaction.type === 'credit' ? 'arrow-down-circle' : 'arrow-up-circle'}"></i>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="transaction-details">
+            <div class="transaction-description">${transaction.description}</div>
+            <div class="transaction-meta">
+              <span class="transaction-id">ID: ${transaction.transactionId}</span>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-2 text-center">
+          <div class="transaction-date">
+            ${transactionDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+            <div class="transaction-time">
+              ${transactionDate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+            </div>
+          </div>
+        </div>
+        <div class="col-md-2 text-end">
+          <div class="transaction-amount ${transaction.type}">
+            ${transaction.type === 'credit' ? '+' : '-'}₹${transaction.amount.toLocaleString('en-IN')}
+          </div>
+          <div class="balance-after">
+            Balance: ₹${transaction.balanceAfter.toLocaleString('en-IN')}
+          </div>
+        </div>
+        <div class="col-md-1 text-end">
+          <span class="badge bg-success">completed</span>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Add to top with animation
+  list.insertAdjacentHTML('afterbegin', transactionHtml);
+  
+  // Animate new transaction
+  const newTransaction = list.querySelector('.new-transaction');
+  newTransaction.style.backgroundColor = '#d4edda';
+  newTransaction.style.transform = 'scale(0.95)';
+  newTransaction.style.opacity = '0.7';
+  
+  setTimeout(() => {
+    newTransaction.style.transition = 'all 0.3s ease';
+    newTransaction.style.transform = 'scale(1)';
+    newTransaction.style.opacity = '1';
+    newTransaction.style.backgroundColor = '';
+    newTransaction.classList.remove('new-transaction');
+  }, 100);
+}
+
+// Utility functions
+function showAlert(icon, title, text) {
+  Swal.fire({
+    icon: icon,
+    title: title,
+    text: text,
+    confirmButtonColor: icon === 'success' ? '#28a745' : '#dc3545'
+  });
+}
+
+function showLoading(title, text) {
+  Swal.fire({
+    title: title,
+    text: text,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => Swal.showLoading()
   });
 }
 
 // Transaction filter
 document.addEventListener('DOMContentLoaded', function() {
   const filterSelect = document.getElementById('transactionFilter');
-  const transactionItems = document.querySelectorAll('.transaction-item');
-  
   if (filterSelect) {
     filterSelect.addEventListener('change', function() {
       const selectedType = this.value;
+      const transactionItems = document.querySelectorAll('.transaction-item');
       
       transactionItems.forEach(item => {
         const itemType = item.getAttribute('data-type');
-        
         if (selectedType === '' || itemType === selectedType) {
           item.style.display = 'block';
-          item.style.opacity = '0';
-          setTimeout(() => {
-            item.style.opacity = '1';
-          }, 100);
         } else {
           item.style.display = 'none';
         }
@@ -478,21 +613,5 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 });
-
-// Auto-refresh balance every 30 seconds
-setInterval(function() {
-  fetch('/api/wallet/balance')
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        const balanceElement = document.querySelector('.balance-amount');
-        if (balanceElement) {
-          balanceElement.textContent = `₹${data.balance.toLocaleString('en-IN')}`;
-        }
-      }
-    })
-    .catch(error => {
-      console.error('Error refreshing balance:', error);
-    });
-}, 30000);
 </script>
+

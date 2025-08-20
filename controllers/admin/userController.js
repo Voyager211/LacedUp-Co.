@@ -60,31 +60,6 @@ exports.apiUsers = async (req, res) => {
     }
 };
 
-// exports.blockUser = async (req, res) => {
-//     try {
-//         await User.findByIdAndUpdate(req.params.id, {
-//             isBlocked: true,
-//             blockedAt: new Date()
-//         });
-//         res.redirect('/admin/users');
-//     } catch (error) {
-//         console.error('Error blocking user:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
-
-// exports.unblockUser = async (req, res) => {
-//     try {
-//         await User.findByIdAndUpdate(req.params.id, {
-//             isBlocked: false,
-//             blockedAt: null
-//         });
-//         res.redirect('/admin/users');
-//     } catch (error) {
-//         console.error('Error unblocking user:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
 
 // AJAX blocking & unblocking
 exports.apiBlockUser = async (req, res) => {

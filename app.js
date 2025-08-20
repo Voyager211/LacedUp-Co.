@@ -114,12 +114,13 @@ app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
 app.use('/', userProductRoutes);
 app.use('/', userReviewRoutes);
+app.use('/', userWalletRoutes);
 app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
 app.use('/cart', userCartRoutes);
 app.use('/wishlist', userWishlistRoutes);
 app.use('/', userOrderRoutes);
-app.use('/', userWalletRoutes);
+
 
 
 

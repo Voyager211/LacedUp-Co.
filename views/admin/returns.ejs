@@ -97,60 +97,54 @@
   <div class="row mb-4">
     <div class="col-12">
       <div class="card border-0 shadow-sm">
-        <div class="card-body">
-          <form id="filterForm" class="row g-3">
-            <div class="col-md-3">
-              <label class="form-label text-black">Search Returns</label>
-              <input type="text" class="form-control" name="search" placeholder="Return ID, Order ID, Customer name..." 
-                     value="<%= filters.search || '' %>">
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Return Status</label>
-              <select class="form-select" name="status">
-                <option value="">All Status</option>
-                <% returnStatuses.forEach(status => { %>
-                  <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
-                <% }); %>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Refund Status</label>
-              <select class="form-select" name="refundStatus">
-                <option value="">All Status</option>
-                <% refundStatuses.forEach(status => { %>
-                  <option value="<%= status %>" <%= filters.refundStatus === status ? 'selected' : '' %>><%= status %></option>
-                <% }); %>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Date Range</label>
-              <select class="form-select" name="dateRange">
-                <option value="">All Time</option>
-                <option value="today" <%= filters.dateRange === 'today' ? 'selected' : '' %>>Today</option>
-                <option value="week" <%= filters.dateRange === 'week' ? 'selected' : '' %>>This Week</option>
-                <option value="month" <%= filters.dateRange === 'month' ? 'selected' : '' %>>This Month</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Sort By</label>
-              <select class="form-select" name="sortBy">
-                <option value="requestDate" <%= filters.sortBy === 'requestDate' ? 'selected' : '' %>>Request Date</option>
-                <option value="totalPrice" <%= filters.sortBy === 'totalPrice' ? 'selected' : '' %>>Amount</option>
-                <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
-              </select>
-            </div>
-            <div class="col-md-1">
-              <label class="form-label text-black">Order</label>
-              <select class="form-select" name="sortOrder">
-                <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
-                <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
-              </select>
-            </div>
-          </form>
+        <div class="card-body p-0"> <!-- ✅ CHANGED: Added p-0 like the table -->
+          <div class="filters-content p-3"> <!-- ✅ NEW: Custom padding container -->
+            <form id="filterForm" class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label text-black">Search Returns</label>
+                <input type="text" class="form-control" name="search"
+                      value="<%= filters.search || '' %>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-black">Return Status</label>
+                <select class="form-select" name="status">
+                  <option value="">All Status</option>
+                  <% returnStatuses.forEach(status => { %>
+                    <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-black">Date Range</label>
+                <select class="form-select" name="dateRange">
+                  <option value="">All Time</option>
+                  <option value="today" <%= filters.dateRange === 'today' ? 'selected' : '' %>>Today</option>
+                  <option value="week" <%= filters.dateRange === 'week' ? 'selected' : '' %>>This Week</option>
+                  <option value="month" <%= filters.dateRange === 'month' ? 'selected' : '' %>>This Month</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-black">Sort By</label>
+                <select class="form-select" name="sortBy">
+                  <option value="requestDate" <%= filters.sortBy === 'requestDate' ? 'selected' : '' %>>Request Date</option>
+                  <option value="totalPrice" <%= filters.sortBy === 'totalPrice' ? 'selected' : '' %>>Amount</option>
+                  <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label text-black">Order</label>
+                <select class="form-select" name="sortOrder">
+                  <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
+                  <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
+                </select>
+              </div>
+            </form>
+          </div> <!-- ✅ END: Custom padding container -->
         </div>
       </div>
     </div>
   </div>
+
 
   <!-- Returns Table -->
   <div class="row">
@@ -161,11 +155,11 @@
             <table class="table table-hover mb-0 returns-table">
               <thead>
                 <tr>
-                  <th class="border-0 text-black">Return ID</th>
+                  <th class="border-0 text-black">Return._Id</th>
                   <th class="border-0 text-black">Product</th>
-                  <th class="border-0 text-black">Customer</th>
-                  <th class="border-0 text-black">Order ID</th>
-                  <th class="border-0 text-black">Request Date</th>
+                  <th class="border-0 text-black">Customer/Order</th>
+                  <!-- <th class="border-0 text-black">Order ID</th> -->
+                  <th class="border-0 text-black">Date</th>
                   <th class="border-0 text-black">Amount</th>
                   <th class="border-0 text-black">Reason</th>
                   <th class="border-0 text-black">Status</th>
@@ -202,15 +196,19 @@
                       </td>
                       <td>
                         <div class="customer-info">
+                          <div class="order-info">
+                            <span class="fw-bold text-black">#<%= returnItem.orderId %></span>
+                          </div>
                           <div class="customer-name text-black"><%= returnItem.userId?.name || 'N/A' %></div>
                           <div class="customer-email text-black"><%= returnItem.userId?.email || 'N/A' %></div>
+
                         </div>
                       </td>
-                      <td>
+                      <!-- <td>
                         <div class="order-info">
                           <span class="fw-bold text-black">#<%= returnItem.orderId %></span>
                         </div>
-                      </td>
+                      </td> -->
                       <td>
                         <div class="date-info">
                           <div class="request-date text-black">
@@ -249,6 +247,12 @@
                             <%= returnItem.status %>
                           </span>
                         </div>
+                        <br>
+                        <!-- <div class="refund-status">
+                          <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
+                            <%= returnItem.refundStatus %>
+                          </span>
+                        </div> -->
                       </td>
                       <!-- <td> -->
                         <!-- <div class="refund-status">
@@ -788,17 +792,68 @@
     font-size: 0.8rem;
   }
 }
+
+.filters-card,
+.table-card {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.filters-card .card-body,
+.table-card .card-body {
+  padding: 1.5rem !important;
+}
+
+/* Ensure the row and columns take full width */
+.filters-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* ✅ SOLUTION: Match filters and table card widths exactly */
+.filters-content {
+  padding: 1.5rem !important;
+}
+
+/* Ensure both cards have identical borders and shadows */
+.card {
+  border: none !important;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  border-radius: 12px !important;
+}
+
+/* Remove any margin differences that could cause width variations */
+.row.mb-4,
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.col-12 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Ensure form takes full width */
+#filterForm {
+  margin: 0 !important;
+  width: 100% !important;
+}
+
 </style>
 
 <script>
-// Auto-submit filter form on change
+// Filter management without page refresh
 document.addEventListener('DOMContentLoaded', function() {
   const filterForm = document.getElementById('filterForm');
   const formElements = filterForm.querySelectorAll('input, select');
   
+  // Remove the old submit event listeners
   formElements.forEach(element => {
     element.addEventListener('change', function() {
-      filterForm.submit();
+      applyFilters(); // ✅ NEW: Use fetch instead of form submit
     });
   });
   
@@ -809,11 +864,21 @@ document.addEventListener('DOMContentLoaded', function() {
   searchInput.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      filterForm.submit();
+      applyFilters(); // ✅ NEW: Use fetch instead of form submit
     }, 500);
   });
 
-  // Handle dropdown z-index issues
+  // ✅ NEW: Pagination click handlers
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.page-link') && !e.target.closest('.disabled')) {
+      e.preventDefault();
+      const url = new URL(e.target.closest('.page-link').href);
+      const page = url.searchParams.get('page');
+      applyFilters(page);
+    }
+  });
+
+  // Handle dropdown z-index issues (keep existing code)
   const dropdownButtons = document.querySelectorAll('.action-btn');
   
   dropdownButtons.forEach(button => {
@@ -854,21 +919,253 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ✅ FIXED: Approve return function
+// ✅ NEW: Apply filters using fetch API
+async function applyFilters(page = 1) {
+  try {
+    // Show loading state
+    showLoadingState();
+    
+    // Get form data
+    const filterForm = document.getElementById('filterForm');
+    const formData = new FormData(filterForm);
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', page);
+    
+    for (const [key, value] of formData.entries()) {
+      if (value.trim()) {
+        params.append(key, value);
+      }
+    }
+    
+    // Make API request
+    const response = await fetch(`/admin/returns/api/returns?${params.toString()}`);
+    const data = await response.json();
+    
+    if (data.success) {
+      // Update URL without page refresh
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.pushState(null, '', newUrl);
+      
+      // Update the page content
+      updateReturnsTable(data.returns);
+      updateStatistics(data.statistics);
+      updatePagination(data.pagination, data.filters);
+      
+      hideLoadingState();
+    } else {
+      throw new Error(data.message || 'Failed to fetch returns');
+    }
+    
+  } catch (error) {
+    console.error('Error applying filters:', error);
+    hideLoadingState();
+    showToast('error', 'Error loading returns. Please try again.');
+  }
+}
+
+// ✅ NEW: Show loading state
+function showLoadingState() {
+  const tbody = document.querySelector('.returns-table tbody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="8" class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="mt-2">Loading returns...</div>
+      </td>
+    </tr>
+  `;
+}
+
+// ✅ NEW: Hide loading state
+function hideLoadingState() {
+  // Loading state will be replaced by updateReturnsTable
+}
+
+// ✅ NEW: Update returns table
+function updateReturnsTable(returns) {
+  const tbody = document.querySelector('.returns-table tbody');
+  
+  if (!returns || returns.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-5">
+          <div class="empty-state">
+            <i class="bi bi-arrow-return-left display-1 d-block mb-3 text-black"></i>
+            <h5 class="text-black">No return requests found</h5>
+            <p class="text-black">No return requests match your current filters.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  const rowsHtml = returns.map(returnItem => `
+    <tr class="return-row">
+      <td>
+        <div class="return-id">
+          <span class="fw-bold text-black">#${returnItem.returnId}</span>
+        </div>
+      </td>
+      <td>
+        <div class="product-info d-flex align-items-center">
+          ${returnItem.productImage ? 
+            `<img src="${returnItem.productImage}" alt="${returnItem.productName}" class="product-thumb me-3">` :
+            `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`
+          }
+          <div class="product-details">
+            <div class="product-name text-black">${returnItem.productName}</div>
+            <small class="text-muted">Size: ${returnItem.size} | Qty: ${returnItem.quantity}</small>
+            <br><small class="text-muted">SKU: ${returnItem.sku}</small>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="customer-info">
+          <div class="order-info">
+            <span class="fw-bold text-black">#${returnItem.orderId}</span>
+          </div>
+          <div class="customer-name text-black">${returnItem.userId?.name || 'N/A'}</div>
+          <div class="customer-email text-black">${returnItem.userId?.email || 'N/A'}</div>
+        </div>
+      </td>
+      <td>
+        <div class="date-info">
+          <div class="request-date text-black">
+            ${new Date(returnItem.requestDate).toLocaleDateString('en-IN', { 
+              day: 'numeric', 
+              month: 'short', 
+              year: 'numeric' 
+            })}
+          </div>
+          <div class="request-time text-black">
+            ${new Date(returnItem.requestDate).toLocaleTimeString('en-IN', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="amount-info">
+          <div class="return-amount text-black fw-bold">₹${returnItem.totalPrice.toLocaleString('en-IN')}</div>
+          ${returnItem.refundAmount && returnItem.refundAmount !== returnItem.totalPrice ? 
+            `<div class="refund-amount text-muted">Refund: ₹${returnItem.refundAmount.toLocaleString('en-IN')}</div>` : 
+            ''
+          }
+        </div>
+      </td>
+      <td>
+        <div class="reason-info">
+          <span class="text-black" title="${returnItem.reason}">
+            ${returnItem.reason.length > 30 ? returnItem.reason.substring(0, 30) + '...' : returnItem.reason}
+          </span>
+        </div>
+      </td>
+      <td>
+        <div class="return-status">
+          <span class="status-badge return-${returnItem.status.toLowerCase()}">
+            ${returnItem.status}
+          </span>
+        </div>
+      </td>
+      <td class="text-center">
+        <div class="actions-dropdown">
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                    data-bs-toggle="dropdown" aria-expanded="false">
+              <i class="bi bi-three-dots-vertical text-black"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              ${returnItem.status === 'Pending' ? `
+                <li>
+                  <button class="dropdown-item text-black" onclick="approveReturn('${returnItem._id}')">
+                    <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
+                  </button>
+                </li>
+                <li>
+                  <button class="dropdown-item text-black" onclick="rejectReturn('${returnItem._id}')">
+                    <i class="bi bi-x-circle me-2 text-danger"></i>Reject Return
+                  </button>
+                </li>
+              ` : ''}
+            </ul>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+  
+  tbody.innerHTML = rowsHtml;
+}
+
+// ✅ NEW: Update statistics cards
+function updateStatistics(stats) {
+  document.querySelector('.col-xl-3:nth-child(1) h3').textContent = stats.pendingReturns || 0;
+  document.querySelector('.col-xl-3:nth-child(2) h3').textContent = stats.approvedReturns || 0;
+  document.querySelector('.col-xl-3:nth-child(3) h3').textContent = stats.totalReturns || 0;
+  document.querySelector('.col-xl-3:nth-child(4) h3').textContent = `₹${(stats.totalRefundAmount || 0).toLocaleString('en-IN')}`;
+}
+
+// ✅ NEW: Update pagination
+function updatePagination(pagination, filters) {
+  const paginationContainer = document.querySelector('.pagination');
+  if (!paginationContainer) return;
+  
+  const { currentPage, totalPages } = pagination;
+  
+  if (totalPages <= 1) {
+    paginationContainer.closest('.row').style.display = 'none';
+    return;
+  }
+  
+  paginationContainer.closest('.row').style.display = 'block';
+  
+  // Build pagination HTML
+  let paginationHtml = `
+    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link text-black" href="?page=${currentPage - 1}&${new URLSearchParams(filters).toString()}">
+        <i class="bi bi-chevron-left text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
+    paginationHtml += `
+      <li class="page-item ${i === currentPage ? 'active' : ''}">
+        <a class="page-link ${i === currentPage ? 'text-white' : 'text-black'}" href="?page=${i}&${new URLSearchParams(filters).toString()}">
+          ${i}
+        </a>
+      </li>
+    `;
+  }
+  
+  paginationHtml += `
+    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+      <a class="page-link text-black" href="?page=${currentPage + 1}&${new URLSearchParams(filters).toString()}">
+        <i class="bi bi-chevron-right text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  paginationContainer.innerHTML = paginationHtml;
+}
+
+// Keep all your existing functions (approveReturn, rejectReturn, etc.)
 function approveReturn(returnId) {
-  // Get return data from the current page row
+  // Your existing approveReturn function code
   const returnRow = document.querySelector(`button[onclick*="${returnId}"]`).closest('.return-row');
   const amountElement = returnRow.querySelector('.return-amount');
   const amountText = amountElement.textContent.replace('₹', '').replace(/,/g, '');
   const originalAmount = parseFloat(amountText) || 0;
   
-  // Pre-fill the modal
   document.getElementById('approveReturnId').value = returnId;
-  
-  // ✅ UPDATED: Set both display and hidden field
   document.getElementById('displayRefundAmount').textContent = `₹${originalAmount.toLocaleString('en-IN')}`;
   document.getElementById('refundAmount').value = originalAmount;
-  
   document.getElementById('approveNotes').value = '';
   
   const modal = new bootstrap.Modal(document.getElementById('approveReturnModal'));
@@ -894,8 +1191,9 @@ function submitApproveReturn() {
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
+      // ✅ UPDATED: Refresh data without page reload
       setTimeout(() => {
-        location.reload();
+        applyFilters();
       }, 1000);
     } else {
       showToast('error', data.message);
@@ -909,7 +1207,6 @@ function submitApproveReturn() {
   bootstrap.Modal.getInstance(document.getElementById('approveReturnModal')).hide();
 }
 
-// Reject return
 function rejectReturn(returnId) {
   document.getElementById('rejectReturnId').value = returnId;
   document.getElementById('rejectReason').value = '';
@@ -936,8 +1233,9 @@ function submitRejectReturn() {
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
+      // ✅ UPDATED: Refresh data without page reload
       setTimeout(() => {
-        location.reload();
+        applyFilters();
       }, 1000);
     } else {
       showToast('error', data.message);
@@ -951,12 +1249,10 @@ function submitRejectReturn() {
   bootstrap.Modal.getInstance(document.getElementById('rejectReturnModal')).hide();
 }
 
-// Refresh returns
 function refreshReturns() {
-  location.reload();
+  applyFilters(); // ✅ UPDATED: Use fetch instead of location.reload()
 }
 
-// Toast notification function
 function showToast(type, message) {
   const toastHtml = `
     <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
@@ -985,3 +1281,4 @@ function showToast(type, message) {
   });
 }
 </script>
+

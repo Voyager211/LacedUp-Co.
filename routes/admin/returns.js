@@ -16,6 +16,7 @@ router.get('/export', returnController.exportReturns);
 // ===== RETURN COLLECTION =====
 // Get all return requests
 router.get('/', returnController.getAllReturns);
+router.get('/api/returns', returnController.getReturnsAPI);
 
 // Get return details
 // router.get('/:returnId', returnController.getReturnDetails);

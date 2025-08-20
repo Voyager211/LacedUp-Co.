@@ -636,50 +636,6 @@
         }
     }
 
-    // State change handler
-    document.addEventListener('DOMContentLoaded', function() {
-        const stateSelect = document.getElementById('state');
-        if (stateSelect) {
-            stateSelect.addEventListener('change', function() {
-                const selectedState = this.value;
-                console.log(`🔄 State changed to: ${selectedState}`);
-                updateDistricts(selectedState);
-                
-                const districtField = validationFields.find(f => f.id === 'district');
-                if (districtField) {
-                    clearFieldError('district');
-                }
-            });
-        }
-    });
-
-    // Modal event handler
-    document.addEventListener('DOMContentLoaded', function() {
-        const addressModal = document.getElementById('addressModal');
-        if (addressModal) {
-            addressModal.addEventListener('shown.bs.modal', function() {
-                setTimeout(() => {
-                    const stateSelect = document.getElementById('state');
-                    if (stateSelect) {
-                        const newStateSelect = stateSelect.cloneNode(true);
-                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
-                        
-                        newStateSelect.addEventListener('change', function() {
-                            const selectedState = this.value;
-                            console.log(`🔄 State changed to: ${selectedState}`);
-                            updateDistricts(selectedState);
-                            
-                            const districtField = validationFields.find(f => f.id === 'district');
-                            if (districtField) {
-                                clearFieldError('district');
-                            }
-                        });
-                    }
-                }, 100);
-            });
-        }
-    });
-
     // Validation function for individual fields
     function validateField(field) {
         const input = document.getElementById(field.id);
@@ -716,8 +672,26 @@
         }
     }
 
-    // Real-time validation on input
+    // ======= CHECKOUT PAGE DETECTION AND EARLY EXIT ======= 
+    function isOnCheckoutPage() {
+        return window.location.pathname.includes('/checkout') || 
+               window.location.pathname.includes('/cart/checkout');
+    }
+
+    // ======= ADDRESS BOOK ONLY - FORM SUBMISSION ======= 
     document.addEventListener('DOMContentLoaded', function() {
+        // EARLY EXIT: Don't initialize anything on checkout pages
+        if (isOnCheckoutPage()) {
+            console.log('🚫 ADDRESSES PARTIAL: On checkout page - skipping all initialization');
+            return;
+        }
+
+        console.log('✅ ADDRESSES PARTIAL: On address book page - initializing');
+        
+        // Initialize state/district data
+        loadStateDistrictData();
+
+        // Real-time validation on input - ADDRESS BOOK ONLY
         validationFields.forEach(field => {
             const input = document.getElementById(field.id);
             if (input) {
@@ -734,7 +708,7 @@
             }
         });
 
-        // Input formatting
+        // Input formatting - ADDRESS BOOK ONLY
         const mobileInput = document.getElementById('mobileNumber');
         if (mobileInput) {
             mobileInput.addEventListener('input', function(e) {
@@ -769,26 +743,38 @@
                 this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
             });
         }
-    });
 
-    // Form submission handler with proper 2-layer validation - PRIORITY HANDLER
-    document.addEventListener('DOMContentLoaded', function() {
+        // State change handler - ADDRESS BOOK ONLY
+        const stateSelect = document.getElementById('state');
+        if (stateSelect) {
+            stateSelect.addEventListener('change', function() {
+                const selectedState = this.value;
+                console.log(`🔄 ADDRESSES PARTIAL: State changed to: ${selectedState}`);
+                updateDistricts(selectedState);
+                
+                const districtField = validationFields.find(f => f.id === 'district');
+                if (districtField) {
+                    clearFieldError('district');
+                }
+            });
+        }
+
+        // FORM SUBMISSION HANDLER - ADDRESS BOOK ONLY
         const form = document.getElementById('addressForm');
-        if (form && !form.hasAttribute('data-validation-attached')) {
+        if (form && !form.hasAttribute('data-addressbook-handler-attached')) {
             // Mark form to prevent duplicate handlers
-            form.setAttribute('data-validation-attached', 'true');
+            form.setAttribute('data-addressbook-handler-attached', 'true');
             
-            // Use capture=true to run before other handlers
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                e.stopImmediatePropagation(); // Prevent other handlers from running
+                e.stopImmediatePropagation();
                 
-                console.log('🔍 PARTIAL HANDLER: Form submitted - starting validation...');
+                console.log('📝 ADDRESSES PARTIAL: Form submitted - starting validation...');
 
                 let isFormValid = true;
                 let firstInvalidField = null;
 
-                // Layer 1: Frontend validation - show inline errors only
+                // Frontend validation - show inline errors only
                 validationFields.forEach(field => {
                     const isFieldValid = validateField(field);
                     if (!isFieldValid) {
@@ -796,26 +782,25 @@
                         if (!firstInvalidField) {
                             firstInvalidField = field;
                         }
-                        console.log(`❌ Field ${field.id} failed validation`);
+                        console.log(`❌ ADDRESSES PARTIAL: Field ${field.id} failed validation`);
                     } else {
-                        console.log(`✅ Field ${field.id} passed validation`);
+                        console.log(`✅ ADDRESSES PARTIAL: Field ${field.id} passed validation`);
                     }
                 });
 
                 if (!isFormValid) {
-                    // Layer 1: Frontend validation failed - show inline errors only, NO SweetAlert
-                    console.log('❌ Frontend validation failed - showing inline errors only');
+                    console.log('❌ ADDRESSES PARTIAL: Frontend validation failed');
                     if (firstInvalidField) {
                         const firstInvalidInput = document.getElementById(firstInvalidField.id);
                         if (firstInvalidInput) {
                             firstInvalidInput.focus();
-                            console.log(`🎯 Focused on field: ${firstInvalidField.id}`);
+                            console.log(`🎯 ADDRESSES PARTIAL: Focused on field: ${firstInvalidField.id}`);
                         }
                     }
-                    return; // STOP HERE - Don't submit form, don't call backend
+                    return;
                 }
 
-                console.log('✅ Frontend validation passed - proceeding to backend...');
+                console.log('✅ ADDRESSES PARTIAL: Frontend validation passed - proceeding to backend...');
 
                 // Get form data
                 const formData = new FormData(this);
@@ -847,9 +832,9 @@
                 let url = isEdit ? `/api/address/${addressId}` : '/api/address';
                 const method = isEdit ? 'PUT' : 'POST';
 
-                console.log('🚀 Sending to backend:', url, method);
+                console.log('🚀 ADDRESSES PARTIAL: Sending to backend:', url, method);
 
-                // Layer 2: Backend validation
+                // Backend submission
                 fetch(url, {
                     method: method,
                     headers: {
@@ -859,58 +844,38 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('📥 Backend response:', data);
+                    console.log('📥 ADDRESSES PARTIAL: Backend response:', data);
                     if (data && data.success) {
-                        // Success - check if we're on checkout page
-                        console.log('✅ Success - checking current page context');
+                        console.log('✅ ADDRESSES PARTIAL: Address saved successfully');
                         
-                        // Check if we're on checkout page
-                        const isCheckoutPage = window.location.pathname.includes('/checkout');
+                        // Show success and redirect to addresses page
+                        showSweetAlert(data.message || 'Address saved successfully', 'success');
                         
-                        if (isCheckoutPage) {
-                            // On checkout page - close modal and refresh page
-                            console.log('📍 On checkout page - closing modal and refreshing');
-                            showSweetAlert(data.message, 'success');
-                            
-                            // Close the modal
-                            const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
-                            if (modal) {
-                                modal.hide();
-                            }
-                            
-                            // Refresh the page to show updated addresses
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        } else {
-                            // On address book page - redirect to addresses page
-                            console.log('📍 On address book page - redirecting to addresses');
-                            showSweetAlert(data.message, 'success');
-                            setTimeout(() => {
-                                window.location.href = '/addresses';
-                            }, 1500);
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+                        if (modal) {
+                            modal.hide();
                         }
+                        
+                        // Reset form
+                        this.reset();
+                        currentEditingId = null;
+                        
+                        // Redirect to addresses page (for address book)
+                        setTimeout(() => {
+                            window.location.href = '/addresses';
+                        }, 1500);
+                        
                     } else if (data && data.message) {
-                        // Backend validation failed
-                        console.log('❌ Backend validation failed');
-                        const isCheckoutPage = window.location.pathname.includes('/checkout');
-                        
-                        if (isCheckoutPage) {
-                            // On checkout page - show error and stay on page
-                            showSweetAlert(data.message, 'error');
-                        } else {
-                            // On address book page - redirect to show flash message
-                            window.location.href = '/addresses?error=' + encodeURIComponent(data.message);
-                        }
+                        console.log('❌ ADDRESSES PARTIAL: Backend validation failed');
+                        showSweetAlert(data.message, 'error');
                     } else {
-                        // Unknown error - show SweetAlert
-                        console.log('❌ Unknown error - showing SweetAlert');
+                        console.log('❌ ADDRESSES PARTIAL: Unknown error');
                         showSweetAlert('An unexpected error occurred. Please try again.', 'error');
                     }
                 })
                 .catch(error => {
-                    console.error('❌ Network error:', error);
-                    // Network/Unknown error - show SweetAlert
+                    console.error('❌ ADDRESSES PARTIAL: Network error:', error);
                     showSweetAlert('An error occurred while saving the address. Please try again.', 'error');
                 })
                 .finally(() => {
@@ -918,12 +883,40 @@
                     submitBtn.innerHTML = originalText;
                     submitBtn.disabled = false;
                 });
-            }, true); // Use capture=true to run before other handlers
+            });
         }
     });
 
-    // Initialize on page load
+    // Modal event handler - ADDRESS BOOK ONLY
     document.addEventListener('DOMContentLoaded', function() {
-        loadStateDistrictData();
+        // EARLY EXIT: Don't attach modal handlers on checkout pages
+        if (isOnCheckoutPage()) {
+            return;
+        }
+
+        const addressModal = document.getElementById('addressModal');
+        if (addressModal) {
+            addressModal.addEventListener('shown.bs.modal', function() {
+                setTimeout(() => {
+                    const stateSelect = document.getElementById('state');
+                    if (stateSelect) {
+                        const newStateSelect = stateSelect.cloneNode(true);
+                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                        
+                        newStateSelect.addEventListener('change', function() {
+                            const selectedState = this.value;
+                            console.log(`🔄 ADDRESSES PARTIAL: Modal state changed to: ${selectedState}`);
+                            updateDistricts(selectedState);
+                            
+                            const districtField = validationFields.find(f => f.id === 'district');
+                            if (districtField) {
+                                clearFieldError('district');
+                            }
+                        });
+                    }
+                }, 100);
+            });
+        }
     });
 </script>
+

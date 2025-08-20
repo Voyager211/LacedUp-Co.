@@ -152,7 +152,9 @@ async function updateQuantity(productId, variantId, newQuantity) {
       qtyInput.value = newQuantity;
       itemTotal.textContent = `₹${Math.round(result.itemTotal)}`;
 
-      updateCartCounter(result.cartCount);
+      if (window.fetchCartCount) {
+        window.fetchCartCount();
+      }
       updateButtonStates(productId, variantId);
 
       safeToast('success', 'Quantity updated successfully');
@@ -223,7 +225,9 @@ async function removeFromCart(productId, variantId) {
         }, 300);
       }
 
-      updateCartCounter(data.cartCount);
+      if (window.fetchCartCount) {
+        window.fetchCartCount();
+      }
       safeToast('success', 'Item removed from cart');
     } else {
       safeToast('error', data.message || 'Failed to remove item');
@@ -249,7 +253,9 @@ async function clearCart() {
     const data = await response.json();
 
     if (data.success) {
-      updateCartCounter(0);
+      if (window.fetchCartCount) {
+        window.fetchCartCount();
+      }
       safeToast('success', 'Cart cleared successfully');
       setTimeout(() => {
         location.reload();
@@ -594,7 +600,9 @@ async function removeAllOutOfStockItems() {
         }, 300);
       });
 
-      updateCartCounter(data.cartCount);
+      if (window.fetchCartCount) {
+        window.fetchCartCount();
+      }
 
       setTimeout(() => {
         const banner = document.getElementById('outOfStockBanner');
@@ -662,7 +670,9 @@ async function saveForLater(productId, variantId) {
         }, 300);
       }
 
-      updateCartCounter(data.cartCount);
+      if (window.fetchCartCount) {
+        window.fetchCartCount();
+      }
       safeToast('success', 'Item saved to wishlist successfully!');
     } else {
       safeToast('error', data.message || 'Failed to save item for later');
