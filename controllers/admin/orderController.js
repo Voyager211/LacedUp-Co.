@@ -12,7 +12,7 @@ const {
   getCancellationReasonsArray,
   getReturnReasonsArray
 } = require('../../constants/orderEnums');
-
+const { paginateAggregate } = require('../../utils/paginateAggregate');
 
 const validateTransitionAndGetOrder = async (orderId, newStatus, isItem = false, itemId = null) => {
   const order = await Order.findOne({ orderId });
@@ -67,12 +67,172 @@ const getPaymentStatusColor = (status) => {
   return colorMap[status] || 'secondary';
 };
 
+// Helper function to build aggregation pipeline
+function buildOrderItemsPipeline(filters) {
+  const pipeline = [];
+
+  // Step 1: Initial match for order-level filters
+  const orderMatch = {};
+  
+  if (filters.paymentMethod) {
+    orderMatch.paymentMethod = filters.paymentMethod;
+  }
+  
+  if (filters.paymentStatus) {
+    orderMatch.paymentStatus = filters.paymentStatus;
+  }
+
+  if (filters.search) {
+    orderMatch.$or = [
+      { orderId: { $regex: filters.search, $options: 'i' } },
+      { 'deliveryAddress.name': { $regex: filters.search, $options: 'i' } },
+      { 'deliveryAddress.phone': { $regex: filters.search, $options: 'i' } }
+    ];
+  }
+
+  if (Object.keys(orderMatch).length > 0) {
+    pipeline.push({ $match: orderMatch });
+  }
+
+  // Step 2: Populate user data
+  pipeline.push({
+    $lookup: {
+      from: 'users',
+      localField: 'user',
+      foreignField: '_id',
+      as: 'user'
+    }
+  });
+  pipeline.push({ $unwind: '$user' });
+
+  // Step 3: Populate delivery address
+  pipeline.push({
+    $lookup: {
+      from: 'addresses',
+      localField: 'deliveryAddress.addressId',
+      foreignField: '_id',
+      as: 'deliveryAddressDoc'
+    }
+  });
+
+  // Step 4: Unwind items to flatten
+  pipeline.push({ $unwind: '$items' });
+
+  // Step 5: Populate product data for items
+  pipeline.push({
+    $lookup: {
+      from: 'products',
+      localField: 'items.productId',
+      foreignField: '_id',
+      as: 'items.productId'
+    }
+  });
+  pipeline.push({
+    $unwind: {
+      path: '$items.productId',
+      preserveNullAndEmptyArrays: true
+    }
+  });
+
+  // Step 6: Item-level filtering
+  const itemMatch = {};
+  if (filters.status) {
+    itemMatch['items.status'] = filters.status;
+  }
+
+  if (Object.keys(itemMatch).length > 0) {
+    pipeline.push({ $match: itemMatch });
+  }
+
+  // Step 7: Project final structure
+  pipeline.push({
+    $project: {
+      // Order information
+      orderId: 1,
+      orderDate: '$createdAt',
+      paymentMethod: 1,
+      paymentStatus: 1,
+      orderStatus: '$status',
+      totalAmount: 1,
+      user: {
+        name: '$user.name',
+        email: '$user.email'
+      },
+      deliveryAddress: {
+        $cond: {
+          if: { $gt: [{ $size: '$deliveryAddressDoc' }, 0] },
+          then: {
+            $arrayElemAt: [
+              { $arrayElemAt: ['$deliveryAddressDoc.address', '$deliveryAddress.addressIndex'] },
+              0
+            ]
+          },
+          else: {
+            name: 'Address not found',
+            city: 'N/A',
+            state: 'N/A',
+            phone: 'N/A'
+          }
+        }
+      },
+      
+      // Item information
+      itemId: '$items._id',
+      productId: '$items.productId',
+      productName: {
+        $ifNull: ['$items.productId.productName', 'Product']
+      },
+      productImage: '$items.productId.mainImage',
+      sku: '$items.sku',
+      size: '$items.size',
+      quantity: '$items.quantity',
+      price: '$items.price',
+      totalPrice: '$items.totalPrice',
+      status: { $ifNull: ['$items.status', '$status'] },
+      statusHistory: { $ifNull: ['$items.statusHistory', []] },
+      cancellationReason: '$items.cancellationReason',
+      returnReason: '$items.returnReason',
+      cancellationDate: '$items.cancellationDate',
+      returnRequestDate: '$items.returnRequestDate'
+    }
+  });
+
+  // Step 8: Sorting
+  const sortObj = {};
+  sortObj[filters.sortBy === 'createdAt' ? 'orderDate' : filters.sortBy] = 
+    filters.sortOrder === 'desc' ? -1 : 1;
+  pipeline.push({ $sort: sortObj });
+
+  return pipeline;
+}
+
+// Helper functions for statistics
+async function getOrderItemStatistics() {
+  const stats = await Order.aggregate([
+    { $unwind: '$items' },
+    {
+      $group: {
+        _id: '$items.status',
+        count: { $sum: 1 }
+      }
+    }
+  ]);
+  return stats;
+}
+
+async function getTodayOrdersCount() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return await Order.countDocuments({
+    createdAt: { $gte: today }
+  });
+}
 
 // Get all orders for admin (showing individual items)
 exports.getAllOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20; // Increased limit since we're showing individual items
+    const limit = parseInt(req.query.limit) || 5;
     
     // Get filter parameters
     const status = req.query.status || '';
@@ -82,140 +242,38 @@ exports.getAllOrders = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'desc';
 
-    // Build filter query
-    let filterQuery = {};
-    
-    if (paymentMethod) {
-      filterQuery.paymentMethod = paymentMethod;
-    }
-    
-    if (paymentStatus) {
-      filterQuery.paymentStatus = paymentStatus;
-    }
-
-    // Search functionality
-    if (search) {
-      filterQuery.$or = [
-        { orderId: { $regex: search, $options: 'i' } },
-        { 'deliveryAddress.name': { $regex: search, $options: 'i' } },
-        { 'deliveryAddress.phone': { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Build sort object
-    const sortObj = {};
-    sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-
-    // Get all orders first (without pagination to flatten items)
-    const allOrders = await Order.find(filterQuery)
-      .populate({
-        path: 'user',
-        select: 'name email'
-      })
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage'
-      })
-      .populate({
-        path: 'deliveryAddress.addressId',
-        select: 'address'
-      })
-      .sort(sortObj)
-      .lean();
-
-    // Flatten orders to individual items (similar to user side)
-    const orderItems = [];
-    
-    allOrders.forEach(order => {
-      // Get the actual delivery address from the populated address document
-      let actualDeliveryAddress = null;
-      if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
-        const addressIndex = order.deliveryAddress.addressIndex;
-        actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
-      }
-
-      order.items.forEach(item => {
-        orderItems.push({
-          // Order information
-          orderId: order.orderId,
-          orderDate: order.createdAt,
-          paymentMethod: order.paymentMethod,
-          paymentStatus: order.paymentStatus,
-          orderStatus: order.status,
-          totalAmount: order.totalAmount,
-          user: order.user,
-          deliveryAddress: actualDeliveryAddress || {
-            name: 'Address not found',
-            city: 'N/A',
-            state: 'N/A',
-            phone: 'N/A'
-          },
-          
-          // Item information
-          itemId: item._id,
-          productId: item.productId,
-          productName: item.productId ? item.productId.productName : 'Product',
-          productImage: item.productId ? item.productId.mainImage : null,
-          sku: item.sku,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-          totalPrice: item.totalPrice,
-          status: item.status || order.status, // Use item status if available, otherwise order status
-          statusHistory: item.statusHistory || [],
-          cancellationReason: item.cancellationReason,
-          returnReason: item.returnReason,
-          cancellationDate: item.cancellationDate,
-          returnRequestDate: item.returnRequestDate
-        });
-      });
+    // Build aggregation pipeline
+    const pipeline = buildOrderItemsPipeline({
+      status,
+      paymentMethod,
+      paymentStatus,
+      search,
+      sortBy,
+      sortOrder
     });
 
-    // Apply status filter to individual items if specified
-    let filteredOrderItems = orderItems;
-    if (status) {
-      filteredOrderItems = orderItems.filter(item => item.status === status);
-    }
+    
 
-    // Apply pagination to the flattened items
-    const totalItems = filteredOrderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const skip = (page - 1) * limit;
-    const paginatedItems = filteredOrderItems.slice(skip, skip + limit);
+    // Use new paginateAggregate utility
+    const result = await paginateAggregate(Order, pipeline, page, limit);
 
-    // Get order statistics (based on individual items)
-    const itemStats = {};
-    orderItems.forEach(item => {
-      if (itemStats[item.status]) {
-        itemStats[item.status]++;
-      } else {
-        itemStats[item.status] = 1;
-      }
-    });
+    const { data: orderItems, totalPages, count } = result;
 
-    const orderStats = Object.keys(itemStats).map(status => ({
-      _id: status,
-      count: itemStats[status]
-    }));
+    // Get statistics (separate aggregation for performance)
+    const [orderStats, todayOrders] = await Promise.all([
+      getOrderItemStatistics(),
+      getTodayOrdersCount()
+    ]);
 
-    // Get recent orders count (unique orders, not items)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayOrders = await Order.countDocuments({
-      createdAt: { $gte: today }
-    });
-
-    // Get total unique orders count
-    const totalOrders = allOrders.length;
+    const totalOrders = await Order.countDocuments();
 
     res.render('admin/orders', {
       title: 'Order Management',
-      orderItems: paginatedItems,
-      orders: [], 
+      orderItems,
       currentPage: page,
       totalPages,
       totalOrders,
-      totalItems, 
+      totalItems: count,
       orderStats,
       todayOrders,
       filters: {
@@ -238,7 +296,6 @@ exports.getAllOrders = async (req, res) => {
     res.status(500).render('admin/orders', {
       title: 'Order Management',
       orderItems: [],
-      orders: [],
       currentPage: 1,
       totalPages: 1,
       totalOrders: 0,
@@ -994,9 +1051,8 @@ exports.getOrderStatistics = async (req, res) => {
 exports.getFilteredOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 5;
     
-    // Get filter parameters
     const status = req.query.status || '';
     const paymentMethod = req.query.paymentMethod || '';
     const paymentStatus = req.query.paymentStatus || '';
@@ -1004,140 +1060,39 @@ exports.getFilteredOrders = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'desc';
 
-    // Build filter query
-    let filterQuery = {};
-    
-    if (paymentMethod) {
-      filterQuery.paymentMethod = paymentMethod;
-    }
-    
-    if (paymentStatus) {
-      filterQuery.paymentStatus = paymentStatus;
-    }
-
-    // Search functionality
-    if (search) {
-      filterQuery.$or = [
-        { orderId: { $regex: search, $options: 'i' } },
-        { 'deliveryAddress.name': { $regex: search, $options: 'i' } },
-        { 'deliveryAddress.phone': { $regex: search, $options: 'i' } }
-      ];
-    }
-
-    // Build sort object
-    const sortObj = {};
-    sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
-
-    // Get all orders first (without pagination to flatten items)
-    const allOrders = await Order.find(filterQuery)
-      .populate({
-        path: 'user',
-        select: 'name email'
-      })
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage'
-      })
-      .populate({
-        path: 'deliveryAddress.addressId',
-        select: 'address'
-      })
-      .sort(sortObj)
-      .lean();
-
-    // Flatten orders to individual items
-    const orderItems = [];
-    
-    allOrders.forEach(order => {
-      // Get the actual delivery address from the populated address document
-      let actualDeliveryAddress = null;
-      if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
-        const addressIndex = order.deliveryAddress.addressIndex;
-        actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
-      }
-
-      order.items.forEach(item => {
-        orderItems.push({
-          // Order information
-          orderId: order.orderId,
-          orderDate: order.createdAt,
-          paymentMethod: order.paymentMethod,
-          paymentStatus: order.paymentStatus,
-          orderStatus: order.status,
-          totalAmount: order.totalAmount,
-          user: order.user,
-          deliveryAddress: actualDeliveryAddress || {
-            name: 'Address not found',
-            city: 'N/A',
-            state: 'N/A',
-            phone: 'N/A'
-          },
-          
-          // Item information
-          itemId: item._id,
-          productId: item.productId,
-          productName: item.productId ? item.productId.productName : 'Product',
-          productImage: item.productId ? item.productId.mainImage : null,
-          sku: item.sku,
-          size: item.size,
-          quantity: item.quantity,
-          price: item.price,
-          totalPrice: item.totalPrice,
-          status: item.status || order.status,
-          statusHistory: item.statusHistory || [],
-          cancellationReason: item.cancellationReason,
-          returnReason: item.returnReason,
-          cancellationDate: item.cancellationDate,
-          returnRequestDate: item.returnRequestDate
-        });
-      });
+    // Build aggregation pipeline
+    const pipeline = buildOrderItemsPipeline({
+      status,
+      paymentMethod,
+      paymentStatus,
+      search,
+      sortBy,
+      sortOrder
     });
 
-    // Apply status filter to individual items if specified
-    let filteredOrderItems = orderItems;
-    if (status) {
-      filteredOrderItems = orderItems.filter(item => item.status === status);
-    }
+    // Use paginateAggregate for efficient pagination
+    const { data: orderItems, totalPages, count } = await paginateAggregate(
+      Order,
+      pipeline,
+      page,
+      limit
+    );
 
-    // Apply pagination to the flattened items
-    const totalItems = filteredOrderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
-    const skip = (page - 1) * limit;
-    const paginatedItems = filteredOrderItems.slice(skip, skip + limit);
+    const [orderStats, todayOrders] = await Promise.all([
+      getOrderItemStatistics(),
+      getTodayOrdersCount()
+    ]);
 
-    // Get order statistics (based on individual items)
-    const itemStats = {};
-    orderItems.forEach(item => {
-      if (itemStats[item.status]) {
-        itemStats[item.status]++;
-      } else {
-        itemStats[item.status] = 1;
-      }
-    });
-
-    const orderStats = Object.keys(itemStats).map(status => ({
-      _id: status,
-      count: itemStats[status]
-    }));
-
-    // Get recent orders count (unique orders, not items)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayOrders = await Order.countDocuments({
-      createdAt: { $gte: today }
-    });
-
-    // Get total unique orders count
-    const totalOrders = allOrders.length;
+    const totalOrders = await Order.countDocuments();
 
     res.json({
       success: true,
       data: {
-        orderItems: paginatedItems,
+        orderItems,
         currentPage: page,
         totalPages,
         totalOrders,
-        totalItems,
+        totalItems: count,
         orderStats,
         todayOrders,
         filters: {

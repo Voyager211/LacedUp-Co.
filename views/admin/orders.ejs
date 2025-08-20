@@ -282,33 +282,16 @@
     </div>
   </div>
 
+
   <!-- Pagination -->
-  <% if (totalPages > 1) { %>
+  <% if (totalPages >= 1) { %>
     <div class="row mt-4">
       <div class="col-12">
-        <nav aria-label="Orders pagination">
-          <ul class="pagination justify-content-center">
-            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
-              <a class="page-link text-black" href="?page=<%= currentPage - 1 %>&<%= new URLSearchParams(filters).toString() %>">
-                <i class="bi bi-chevron-left text-black"></i>
-              </a>
-            </li>
-            
-            <% for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
-              <li class="page-item <%= i === currentPage ? 'active' : '' %>">
-                <a class="page-link <%= i === currentPage ? 'text-white' : 'text-black' %>" href="?page=<%= i %>&<%= new URLSearchParams(filters).toString() %>">
-                  <%= i %>
-                </a>
-              </li>
-            <% } %>
-            
-            <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
-              <a class="page-link text-black" href="?page=<%= currentPage + 1 %>&<%= new URLSearchParams(filters).toString() %>">
-                <i class="bi bi-chevron-right text-black"></i>
-              </a>
-            </li>
-          </ul>
-        </nav>
+        <%- include('partials/pagination', {
+          currentPage: currentPage,
+          totalPages: totalPages,
+          paginationCallbackName: 'applyFilters'
+        }) %>
       </div>
     </div>
   <% } %>
@@ -680,8 +663,15 @@
 let currentPage = <%= currentPage %>;
 let isLoading = false;
 
+// Set up pagination callback for the shared partial
+window.applyFilters = applyFilters; // Make it globally accessible
+
 // Auto-submit filter form on change with fetch
 document.addEventListener('DOMContentLoaded', function() {
+  // ✅ ADD: Define callback functions for pagination partial compatibility
+  window.fetchCallback = applyFilters;
+  window.paginationCallback = applyFilters;
+
   const filterForm = document.getElementById('filterForm');
   const formElements = filterForm.querySelectorAll('input, select');
   
@@ -702,7 +692,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
   });
 
-
+  // Pagination click handler for the shared partial
+  document.addEventListener('click', function(e) {
+    const paginationLink = e.target.closest('.pagination .page-link');
+    if (!paginationLink || paginationLink.classList.contains('disabled-btn')) return;
+    
+    e.preventDefault();
+    const page = parseInt(paginationLink.dataset.page);
+    
+    if (!isNaN(page) && page >= 1) {
+      applyFilters(page);
+    }
+  });
 
   // Remove dropdown-open class when dropdown is hidden
   document.addEventListener('click', function(event) {
@@ -751,7 +752,6 @@ async function applyFilters(page = 1) {
       }
     }
     
-    // FIXED: Use correct route without /admin prefix
     const response = await fetch(`/admin/orders/api/filtered?${params.toString()}`);
     const result = await response.json();
     
@@ -759,6 +759,7 @@ async function applyFilters(page = 1) {
       updateOrdersTable(result.data);
       updateStatistics(result.data);
       updatePagination(result.data);
+      
       currentPage = result.data.currentPage;
     } else {
       showToast('error', result.message || 'Error loading orders');
@@ -841,14 +842,6 @@ function generateOrderRowHTML(item) {
     ? `<img src="${item.productImage}" alt="${item.productName}" class="product-thumb me-3">`
     : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
   
-  const cancelButtonHTML = ['Pending', 'Processing'].includes(item.status) 
-    ? `<li><button class="dropdown-item text-black" onclick="cancelItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-x-circle me-2 text-black"></i>Cancel Item</button></li>`
-    : '';
-  
-  const returnButtonHTML = item.status === 'Delivered' 
-    ? `<li><button class="dropdown-item text-black" onclick="returnItem('${item.orderId}', '${item.itemId}')"><i class="bi bi-arrow-return-left me-2 text-black"></i>Return Item</button></li>`
-    : '';
-  
   return `
     <tr class="order-row">
       <td>
@@ -901,23 +894,9 @@ function generateOrderRowHTML(item) {
         </div>
       </td>
       <td class="text-center">
-        <div class="actions-dropdown">
-          <div class="dropdown">
-            <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
-                    data-bs-toggle="dropdown" aria-expanded="false">
-              <i class="bi bi-three-dots-vertical text-black"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-              <li>
-                <a class="dropdown-item text-black" href="/admin/orders/${item.orderId}">
-                  <i class="bi bi-eye me-2 text-black"></i>View Order Details
-                </a>
-              </li>
-              ${cancelButtonHTML}
-              ${returnButtonHTML}
-            </ul>
-          </div>
-        </div>
+        <a href="/admin/orders/${item.orderId}" class="btn btn-sm view-btn">
+          <i class="bi bi-eye me-1"></i>
+        </a>
       </td>
     </tr>
   `;
@@ -945,7 +924,8 @@ function updateStatistics(data) {
   
   // Update pending items
   if (totalOrdersElements[3]) {
-    const pendingStat = data.orderStats.find(stat => stat._id === ORDER_STATUS.PENDING);
+    // ✅ FIXED: Use string instead of ORDER_STATUS.PENDING
+    const pendingStat = data.orderStats.find(stat => stat._id === 'Pending');
     totalOrdersElements[3].textContent = pendingStat?.count || 0;
   }
 }
@@ -971,7 +951,7 @@ function updatePagination(data) {
   // Previous button
   paginationHTML += `
     <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
-      <a class="page-link text-black" href="#" onclick="applyFilters(${data.currentPage - 1}); return false;">
+      <a class="page-link text-black" href="#" data-page="${data.currentPage - 1}">
         <i class="bi bi-chevron-left text-black"></i>
       </a>
     </li>
@@ -984,7 +964,7 @@ function updatePagination(data) {
   for (let i = startPage; i <= endPage; i++) {
     paginationHTML += `
       <li class="page-item ${i === data.currentPage ? 'active' : ''}">
-        <a class="page-link ${i === data.currentPage ? 'text-white' : 'text-black'}" href="#" onclick="applyFilters(${i}); return false;">
+        <a class="page-link ${i === data.currentPage ? 'text-white' : 'text-black'}" href="#" data-page="${i}">
           ${i}
         </a>
       </li>
@@ -994,7 +974,7 @@ function updatePagination(data) {
   // Next button
   paginationHTML += `
     <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
-      <a class="page-link text-black" href="#" onclick="applyFilters(${data.currentPage + 1}); return false;">
+      <a class="page-link text-black" href="#" data-page="${data.currentPage + 1}">
         <i class="bi bi-chevron-right text-black"></i>
       </a>
     </li>
@@ -1003,18 +983,24 @@ function updatePagination(data) {
   paginationContainer.innerHTML = paginationHTML;
 }
 
+// Add missing function for dropdown events
+function attachDropdownEventListeners() {
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
 
-
-
-
-
-
-
-
-
-
-
-
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
+}
 
 // Refresh orders
 function refreshOrders() {
@@ -1056,3 +1042,4 @@ function showToast(type, message) {
   });
 }
 </script>
+

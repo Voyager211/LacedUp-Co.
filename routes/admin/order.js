@@ -10,6 +10,10 @@ router.use(isAdmin);
 // Get all orders
 router.get('/', orderController.getAllOrders);
 
+// ===== UTILITY ENDPOINTS =====
+// Get filtered orders (API endpoint for dynamic updates)
+router.get('/api/filtered', orderController.getFilteredOrders);
+
 // Get specific order details (HTML)
 router.get('/:orderId', orderController.getOrderDetails);
 
@@ -37,13 +41,12 @@ router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);
 // Return individual item
 router.patch('/:orderId/items/:itemId/return', orderController.returnItem);
 
+
+
 // ===== JSON API ENDPOINTS =====
 // ✅ FIXED: Get order details as JSON (for AJAX calls)
 router.get('/api/:orderId', orderController.getOrderDetailsJSON);
 
-// ===== UTILITY ENDPOINTS =====
-// Get filtered orders (API endpoint for dynamic updates)
-router.get('/api/filtered', orderController.getFilteredOrders);
 
 // Get order statistics
 router.get('/statistics', orderController.getOrderStatistics);

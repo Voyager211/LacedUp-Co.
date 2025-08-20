@@ -307,32 +307,14 @@
   </div>
 
   <!-- Pagination -->
-  <% if (totalPages > 1) { %>
+  <% if (totalPages >= 1) { %>
     <div class="row mt-4">
       <div class="col-12">
-        <nav aria-label="Returns pagination">
-          <ul class="pagination justify-content-center">
-            <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
-              <a class="page-link text-black" href="?page=<%= currentPage - 1 %>&<%= new URLSearchParams(filters).toString() %>">
-                <i class="bi bi-chevron-left text-black"></i>
-              </a>
-            </li>
-            
-            <% for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) { %>
-              <li class="page-item <%= i === currentPage ? 'active' : '' %>">
-                <a class="page-link <%= i === currentPage ? 'text-white' : 'text-black' %>" href="?page=<%= i %>&<%= new URLSearchParams(filters).toString() %>">
-                  <%= i %>
-                </a>
-              </li>
-            <% } %>
-            
-            <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
-              <a class="page-link text-black" href="?page=<%= currentPage + 1 %>&<%= new URLSearchParams(filters).toString() %>">
-                <i class="bi bi-chevron-right text-black"></i>
-              </a>
-            </li>
-          </ul>
-        </nav>
+        <%- include('partials/pagination', {
+          currentPage: currentPage,
+          totalPages: totalPages,
+          paginationCallbackName: 'applyFilters'
+        }) %>
       </div>
     </div>
   <% } %>
@@ -845,15 +827,26 @@
 </style>
 
 <script>
+// Global variables for pagination and filtering
+let currentPage = 1;
+let isLoading = false;
+
+// Set up pagination callback for the shared partial
+window.applyFilters = applyFilters; // Make it globally accessible
+
 // Filter management without page refresh
 document.addEventListener('DOMContentLoaded', function() {
+  // ✅ ADD: Define callback functions for pagination partial compatibility
+  window.fetchCallback = applyFilters;
+  window.paginationCallback = applyFilters;
+
   const filterForm = document.getElementById('filterForm');
   const formElements = filterForm.querySelectorAll('input, select');
   
   // Remove the old submit event listeners
   formElements.forEach(element => {
     element.addEventListener('change', function() {
-      applyFilters(); // ✅ NEW: Use fetch instead of form submit
+      applyFilters(1); // Reset to page 1 when filters change
     });
   });
   
@@ -864,16 +857,19 @@ document.addEventListener('DOMContentLoaded', function() {
   searchInput.addEventListener('input', function() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-      applyFilters(); // ✅ NEW: Use fetch instead of form submit
+      applyFilters(1); // Reset to page 1 when search changes
     }, 500);
   });
 
-  // ✅ NEW: Pagination click handlers
+  // ✅ UPDATED: Pagination click handlers for shared partial
   document.addEventListener('click', function(e) {
-    if (e.target.closest('.page-link') && !e.target.closest('.disabled')) {
-      e.preventDefault();
-      const url = new URL(e.target.closest('.page-link').href);
-      const page = url.searchParams.get('page');
+    const paginationLink = e.target.closest('.pagination .page-link');
+    if (!paginationLink || paginationLink.classList.contains('disabled-btn')) return;
+    
+    e.preventDefault();
+    const page = parseInt(paginationLink.dataset.page);
+    
+    if (!isNaN(page) && page >= 1) {
       applyFilters(page);
     }
   });
@@ -919,12 +915,14 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// ✅ NEW: Apply filters using fetch API
+// ✅ UPDATED: Apply filters using fetch API
 async function applyFilters(page = 1) {
+  if (isLoading) return;
+  
+  isLoading = true;
+  showLoadingState();
+  
   try {
-    // Show loading state
-    showLoadingState();
-    
     // Get form data
     const filterForm = document.getElementById('filterForm');
     const formData = new FormData(filterForm);
@@ -934,58 +932,57 @@ async function applyFilters(page = 1) {
     params.append('page', page);
     
     for (const [key, value] of formData.entries()) {
-      if (value.trim()) {
+      if (value.trim() !== '') {
         params.append(key, value);
       }
     }
     
-    // Make API request
-    const response = await fetch(`/admin/returns/api/returns?${params.toString()}`);
-    const data = await response.json();
+    // ✅ FIXED: Use correct API endpoint to match orders pattern
+    const response = await fetch(`/admin/returns/api/filtered?${params.toString()}`);
+    const result = await response.json();
     
-    if (data.success) {
-      // Update URL without page refresh
-      const newUrl = `${window.location.pathname}?${params.toString()}`;
-      window.history.pushState(null, '', newUrl);
+    if (result.success) {
+      // Update the page content with the corrected data structure
+      updateReturnsTable(result.data.returns);
+      updateStatistics(result.data);
+      // No need to manually update pagination - shared partial handles it
+      currentPage = result.data.currentPage;
       
-      // Update the page content
-      updateReturnsTable(data.returns);
-      updateStatistics(data.statistics);
-      updatePagination(data.pagination, data.filters);
-      
-      hideLoadingState();
     } else {
-      throw new Error(data.message || 'Failed to fetch returns');
+      throw new Error(result.message || 'Failed to fetch returns');
     }
-    
   } catch (error) {
     console.error('Error applying filters:', error);
-    hideLoadingState();
     showToast('error', 'Error loading returns. Please try again.');
+  } finally {
+    isLoading = false;
+    hideLoadingState();
   }
 }
 
-// ✅ NEW: Show loading state
+// Show loading state
 function showLoadingState() {
   const tbody = document.querySelector('.returns-table tbody');
   tbody.innerHTML = `
     <tr>
       <td colspan="8" class="text-center py-5">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
+        <div class="loading-state">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted">Loading returns...</p>
         </div>
-        <div class="mt-2">Loading returns...</div>
       </td>
     </tr>
   `;
 }
 
-// ✅ NEW: Hide loading state
+// Hide loading state
 function hideLoadingState() {
   // Loading state will be replaced by updateReturnsTable
 }
 
-// ✅ NEW: Update returns table
+// Update returns table
 function updateReturnsTable(returns) {
   const tbody = document.querySelector('.returns-table tbody');
   
@@ -1001,6 +998,9 @@ function updateReturnsTable(returns) {
         </td>
       </tr>
     `;
+    
+    // Re-attach event listeners for new dropdown buttons
+    attachDropdownEventListeners();
     return;
   }
   
@@ -1101,58 +1101,41 @@ function updateReturnsTable(returns) {
   `).join('');
   
   tbody.innerHTML = rowsHtml;
+  
+  // Re-attach event listeners for new dropdown buttons
+  attachDropdownEventListeners();
 }
 
-// ✅ NEW: Update statistics cards
-function updateStatistics(stats) {
-  document.querySelector('.col-xl-3:nth-child(1) h3').textContent = stats.pendingReturns || 0;
-  document.querySelector('.col-xl-3:nth-child(2) h3').textContent = stats.approvedReturns || 0;
-  document.querySelector('.col-xl-3:nth-child(3) h3').textContent = stats.totalReturns || 0;
-  document.querySelector('.col-xl-3:nth-child(4) h3').textContent = `₹${(stats.totalRefundAmount || 0).toLocaleString('en-IN')}`;
+// ✅ FIXED: Update statistics cards with correct data structure
+function updateStatistics(data) {
+  const pendingReturnsElement = document.querySelector('.col-xl-3:nth-child(1) h3');
+  const approvedReturnsElement = document.querySelector('.col-xl-3:nth-child(2) h3');
+  const totalReturnsElement = document.querySelector('.col-xl-3:nth-child(3) h3');
+  const refundAmountElement = document.querySelector('.col-xl-3:nth-child(4) h3');
+  
+  if (pendingReturnsElement) pendingReturnsElement.textContent = data.pendingReturns || 0;
+  if (approvedReturnsElement) approvedReturnsElement.textContent = data.approvedReturns || 0;
+  if (totalReturnsElement) totalReturnsElement.textContent = data.totalReturns || 0;
+  if (refundAmountElement) refundAmountElement.textContent = `₹${(data.totalRefundAmount || 0).toLocaleString('en-IN')}`;
 }
 
-// ✅ NEW: Update pagination
-function updatePagination(pagination, filters) {
-  const paginationContainer = document.querySelector('.pagination');
-  if (!paginationContainer) return;
-  
-  const { currentPage, totalPages } = pagination;
-  
-  if (totalPages <= 1) {
-    paginationContainer.closest('.row').style.display = 'none';
-    return;
-  }
-  
-  paginationContainer.closest('.row').style.display = 'block';
-  
-  // Build pagination HTML
-  let paginationHtml = `
-    <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-      <a class="page-link text-black" href="?page=${currentPage - 1}&${new URLSearchParams(filters).toString()}">
-        <i class="bi bi-chevron-left text-black"></i>
-      </a>
-    </li>
-  `;
-  
-  for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
-    paginationHtml += `
-      <li class="page-item ${i === currentPage ? 'active' : ''}">
-        <a class="page-link ${i === currentPage ? 'text-white' : 'text-black'}" href="?page=${i}&${new URLSearchParams(filters).toString()}">
-          ${i}
-        </a>
-      </li>
-    `;
-  }
-  
-  paginationHtml += `
-    <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-      <a class="page-link text-black" href="?page=${currentPage + 1}&${new URLSearchParams(filters).toString()}">
-        <i class="bi bi-chevron-right text-black"></i>
-      </a>
-    </li>
-  `;
-  
-  paginationContainer.innerHTML = paginationHtml;
+// ✅ ADD: Missing function for dropdown events
+function attachDropdownEventListeners() {
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.return-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
+
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.return-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
 }
 
 // Keep all your existing functions (approveReturn, rejectReturn, etc.)
@@ -1193,7 +1176,7 @@ function submitApproveReturn() {
       showToast('success', data.message);
       // ✅ UPDATED: Refresh data without page reload
       setTimeout(() => {
-        applyFilters();
+        applyFilters(currentPage);
       }, 1000);
     } else {
       showToast('error', data.message);
@@ -1235,7 +1218,7 @@ function submitRejectReturn() {
       showToast('success', data.message);
       // ✅ UPDATED: Refresh data without page reload
       setTimeout(() => {
-        applyFilters();
+        applyFilters(currentPage);
       }, 1000);
     } else {
       showToast('error', data.message);
@@ -1250,15 +1233,15 @@ function submitRejectReturn() {
 }
 
 function refreshReturns() {
-  applyFilters(); // ✅ UPDATED: Use fetch instead of location.reload()
+  applyFilters(currentPage); // ✅ UPDATED: Use fetch instead of location.reload()
 }
 
 function showToast(type, message) {
   const toastHtml = `
-    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
         <div class="toast-body">${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
       </div>
     </div>
   `;
@@ -1281,4 +1264,5 @@ function showToast(type, message) {
   });
 }
 </script>
+
 

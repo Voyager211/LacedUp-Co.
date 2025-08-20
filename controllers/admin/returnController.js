@@ -24,7 +24,7 @@ const REFUND_STATUS = {
 exports.getAllReturns = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 6;
     
     // Get filter parameters
     const status = req.query.status || '';
@@ -102,6 +102,7 @@ exports.getAllReturns = async (req, res) => {
     const totalReturns = await Return.countDocuments(filterQuery);
     const totalPages = Math.ceil(totalReturns / limit);
 
+
     //  Get statistics using enum constants
     const [pendingReturns, approvedReturns, totalRefundAmount] = await Promise.all([
       Return.countDocuments({ status: RETURN_STATUS.PENDING }),    // 
@@ -169,103 +170,116 @@ exports.getAllReturns = async (req, res) => {
 
 exports.getReturnsAPI = async (req, res) => {
   try {
-    const {
-      page = 1,
-      search = '',
-      status = '',
-      refundStatus = '',
-      dateRange = '',
-      sortBy = 'requestDate',
-      sortOrder = 'desc'
-    } = req.query;
-
-    const limit = 10;
-    const filters = { search, status, refundStatus, dateRange, sortBy, sortOrder };
-
-    // Your existing filter logic here (same as getReturns function)
-    let query = {};
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
     
-    // Apply filters
+    // Get filter parameters (keep your existing filter logic)
+    const status = req.query.status || '';
+    const refundStatus = req.query.refundStatus || '';
+    const search = req.query.search || '';
+    const dateRange = req.query.dateRange || '';
+    const sortBy = req.query.sortBy || 'requestDate';
+    const sortOrder = req.query.sortOrder || 'desc';
+
+    // Build filter query (keep your existing logic)
+    let filterQuery = {};
+    
+    if (status) {
+      filterQuery.status = status;
+    }
+    
+    if (refundStatus) {
+      filterQuery.refundStatus = refundStatus;
+    }
+
+    // Search functionality
     if (search) {
-      query.$or = [
+      filterQuery.$or = [
         { returnId: { $regex: search, $options: 'i' } },
         { orderId: { $regex: search, $options: 'i' } },
-        { productName: { $regex: search, $options: 'i' } }
+        { productName: { $regex: search, $options: 'i' } },
+        { sku: { $regex: search, $options: 'i' } }
       ];
     }
 
-    if (status) query.status = status;
-    if (refundStatus) query.refundStatus = refundStatus;
-
-    // Date range filter
+    // Date range filter (keep your existing logic)
     if (dateRange) {
       const now = new Date();
       let startDate;
       
       switch (dateRange) {
         case 'today':
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          startDate = new Date(now.setHours(0, 0, 0, 0));
           break;
         case 'week':
           startDate = new Date(now.setDate(now.getDate() - 7));
           break;
         case 'month':
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          startDate = new Date(now.setMonth(now.getMonth() - 1));
           break;
       }
       
       if (startDate) {
-        query.requestDate = { $gte: startDate };
+        filterQuery.requestDate = { $gte: startDate };
       }
     }
 
-    // Sorting
-    const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'asc' ? 1 : -1;
+    // Build sort object
+    const sortObj = {};
+    sortObj[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    // Execute query
-    const returns = await Return.find(query)
-      .populate('userId', 'name email')
-      .sort(sortOptions)
-      .limit(limit * 1)
-      .skip((page - 1) * limit)
+    // Get returns with pagination
+    const skip = (page - 1) * limit;
+    
+    const returns = await Return.find(filterQuery)
+      .populate({
+        path: 'userId',
+        select: 'name email'
+      })
+      .populate({
+        path: 'productId',
+        select: 'productName mainImage'
+      })
+      .sort(sortObj)
+      .skip(skip)
+      .limit(limit)
       .lean();
 
-    const totalReturns = await Return.countDocuments(query);
+    // Get total count for pagination
+    const totalReturns = await Return.countDocuments(filterQuery);
     const totalPages = Math.ceil(totalReturns / limit);
 
-    // Calculate statistics
-    const stats = await Return.aggregate([
-      { $match: {} },
-      {
-        $group: {
-          _id: null,
-          pendingReturns: { $sum: { $cond: [{ $eq: ["$status", "Pending"] }, 1, 0] } },
-          approvedReturns: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, 1, 0] } },
-          totalReturns: { $sum: 1 },
-          totalRefundAmount: { $sum: { $cond: [{ $eq: ["$status", "Approved"] }, "$refundAmount", 0] } }
-        }
-      }
+
+    // Get statistics
+    const [pendingReturns, approvedReturns, totalRefundAmount] = await Promise.all([
+      Return.countDocuments({ status: RETURN_STATUS.PENDING }),
+      Return.countDocuments({ status: RETURN_STATUS.APPROVED }),
+      Return.aggregate([
+        { $match: { status: { $in: [RETURN_STATUS.APPROVED, RETURN_STATUS.COMPLETED] } } },
+        { $group: { _id: null, total: { $sum: '$refundAmount' } } }
+      ])
     ]);
 
-    const statistics = stats[0] || {
-      pendingReturns: 0,
-      approvedReturns: 0,
-      totalReturns: 0,
-      totalRefundAmount: 0
-    };
-
-    // Return JSON response
+    // ✅ FIXED: Match the orders API response structure
     res.json({
       success: true,
-      returns,
-      pagination: {
-        currentPage: parseInt(page),
+      data: {
+        returns,
+        currentPage: page,
         totalPages,
-        totalReturns
-      },
-      statistics,
-      filters
+        totalReturns,
+        pendingReturns,
+        approvedReturns,
+        totalRefundAmount: totalRefundAmount[0]?.total || 0,
+        filters: {
+          status,
+          refundStatus,
+          search,
+          dateRange,
+          sortBy,
+          sortOrder
+        }
+      }
     });
 
   } catch (error) {
@@ -276,6 +290,9 @@ exports.getReturnsAPI = async (req, res) => {
     });
   }
 };
+
+
+
 
 // Get single return details
 // exports.getReturnDetails = async (req, res) => {
