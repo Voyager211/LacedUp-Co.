@@ -23,6 +23,9 @@ const requireAuth = (req, res, next) => {
 // Create new order
 router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
 
+// Get all orders for user (api)
+router.get('/orders/api/filtered', requireAuth, orderController.getUserOrdersPaginated);
+
 // Get all orders for user
 router.get('/orders', requireAuth, orderController.getUserOrders);
 

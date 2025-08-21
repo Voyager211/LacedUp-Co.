@@ -469,7 +469,7 @@ exports.loadAddresses = async (req, res) => {
       return res.redirect('/login');
     }
 
-    const user = await User.findById(userId).select('name email profilePhoto');
+    const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
     }

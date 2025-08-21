@@ -17,6 +17,7 @@ router.get('/profile/wallet', ensureAuthenticated, noCacheMiddleware, walletCont
 // API endpoints
 router.get('/api/wallet/balance', ensureAuthenticated, walletController.getWalletBalance);
 router.get('/api/wallet/transactions', ensureAuthenticated, walletController.getTransactions);
+router.get('/api/wallet/transactions/paginated', ensureAuthenticated, walletController.getTransactionsPaginated);
 router.post('/api/wallet/add-money', ensureAuthenticated, walletController.addMoney);
 router.post('/api/wallet/use', ensureAuthenticated, walletController.useWallet);
 

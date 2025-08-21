@@ -34,38 +34,44 @@
             </div>
           </div>
 
-          <% if (orderItems && orderItems.length > 0) { %>
-            <div id="ordersContainer">
-          <% orderItems.forEach(item => { %>
-            <%- include('partials/order-card', { item: item }) %>
-          <% }) %>
-        </div>
-
-        <!-- Pagination (if needed) -->
-        <div class="d-flex justify-content-center mt-4">
-          <nav aria-label="Orders pagination">
-            <!-- Add pagination here if implementing server-side pagination -->
-          </nav>
-        </div>
-
-      <% } else { %>
-        <!-- Empty State -->
-        <div class="text-center py-5">
-          <div class="mb-4">
-            <i class="bi bi-bag-x display-1 text-muted"></i>
+          <!-- Orders Container -->
+          <div id="ordersContainer">
+            <% if (orderItems && orderItems.length > 0) { %>
+              <% orderItems.forEach(item => { %>
+                <%- include('partials/order-card', { item: item }) %>
+              <% }) %>
+            <% } else { %>
+              <!-- Empty State -->
+              <div class="text-center py-5" id="emptyState">
+                <div class="mb-4">
+                  <i class="bi bi-bag-x display-1 text-muted"></i>
+                </div>
+                <h4 class="text-muted mb-3">No Orders Found</h4>
+                <p class="text-muted mb-4">You haven't placed any orders yet. Start shopping to see your orders here!</p>
+                <a href="/shop" class="btn btn-primary">
+                  <i class="bi bi-shop me-2"></i>Start Shopping
+                </a>
+              </div>
+            <% } %>
           </div>
-          <h4 class="text-muted mb-3">No Orders Found</h4>
-          <p class="text-muted mb-4">You haven't placed any orders yet. Start shopping to see your orders here!</p>
-          <a href="/shop" class="btn btn-primary">
-            <i class="bi bi-shop me-2"></i>Start Shopping
-          </a>
-        </div>
-      <% } %>
+
+          <!-- Pagination -->
+          <% if (totalPages > 1) { %>
+            <div class="row mt-4">
+              <div class="col-12">
+                <%- include('partials/pagination', {
+                  currentPage: currentPage,
+                  totalPages: totalPages
+                }) %>
+              </div>
+            </div>
+          <% } %>
         </div>
       </div>
     </div>
   </div>
 </div>
+
 
 <!-- Order Actions Modal -->
 <div class="modal fade" id="orderActionModal" tabindex="-1" aria-labelledby="orderActionModalLabel" aria-hidden="true">
@@ -299,65 +305,248 @@
 </script>
 
 <script>
+// Global variables for pagination and filtering
+let currentPage = 1;
+let isLoading = false;
+
 document.addEventListener('DOMContentLoaded', function() {
+  // Set up pagination callbacks for the user pagination partial
+  window.fetchCallback = loadOrders;
+  window.paginationCallback = loadOrders;
+
   // Order status filter
   const statusFilter = document.getElementById('orderStatusFilter');
-  const orderCards = document.querySelectorAll('.order-card');
-
+  
   statusFilter.addEventListener('change', function() {
-    const selectedStatus = this.value;
-    
-    orderCards.forEach(card => {
-      const cardStatus = card.getAttribute('data-status');
-      
-      if (selectedStatus === '' || cardStatus === selectedStatus) {
-        card.style.display = 'block';
-        // Add fade in animation
-        card.style.opacity = '0';
-        setTimeout(() => {
-          card.style.opacity = '1';
-        }, 100);
-      } else {
-        card.style.display = 'none';
-      }
-    });
-
-    // Show/hide empty state if no orders match filter
-    const visibleCards = Array.from(orderCards).filter(card => card.style.display !== 'none');
-    if (visibleCards.length === 0 && selectedStatus !== '') {
-      showEmptyFilterState();
-    } else {
-      hideEmptyFilterState();
-    }
+    loadOrders(1, this.value); // Reset to page 1 when filter changes
   });
+});
 
-  function showEmptyFilterState() {
-    const container = document.getElementById('ordersContainer');
-    if (!document.getElementById('emptyFilterState')) {
-      const emptyState = document.createElement('div');
-      emptyState.id = 'emptyFilterState';
-      emptyState.className = 'text-center py-5';
-      emptyState.innerHTML = `
+// Load orders via AJAX
+async function loadOrders(page = 1, status = '') {
+  if (isLoading) return;
+  
+  isLoading = true;
+  showLoadingState();
+  
+  try {
+    // Get current filter if not provided
+    if (!status) {
+      const statusFilter = document.getElementById('orderStatusFilter');
+      status = statusFilter.value;
+    }
+    
+    // Build query parameters
+    const params = new URLSearchParams();
+    params.append('page', page);
+    if (status) params.append('status', status);
+    
+    // Make API request
+    const response = await fetch(`/orders/api/filtered?${params.toString()}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      updateOrdersContainer(result.data.orderItems);
+      currentPage = result.data.currentPage;
+    } else {
+      throw new Error(result.message || 'Failed to load orders');
+    }
+  } catch (error) {
+    console.error('Error loading orders:', error);
+    showToast.error('Error loading orders. Please try again.');
+  } finally {
+    isLoading = false;
+    hideLoadingState();
+  }
+}
+
+// Show loading state
+function showLoadingState() {
+  const container = document.getElementById('ordersContainer');
+  container.innerHTML = `
+    <div class="text-center py-5">
+      <div class="loading-state">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading your orders...</p>
+      </div>
+    </div>
+  `;
+}
+
+// Hide loading state
+function hideLoadingState() {
+  // Loading state will be replaced by updateOrdersContainer
+}
+
+// Update orders container
+function updateOrdersContainer(orderItems) {
+  const container = document.getElementById('ordersContainer');
+  
+  if (!orderItems || orderItems.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-5" id="emptyState">
         <div class="mb-4">
           <i class="bi bi-funnel display-1 text-muted"></i>
         </div>
         <h4 class="text-muted mb-3">No Orders Found</h4>
         <p class="text-muted mb-4">No orders match the selected filter criteria.</p>
-        <button class="btn btn-outline-primary" onclick="document.getElementById('orderStatusFilter').value = ''; document.getElementById('orderStatusFilter').dispatchEvent(new Event('change'));">
+        <button class="btn btn-outline-primary" onclick="clearFilter()">
           <i class="bi bi-arrow-clockwise me-2"></i>Clear Filter
         </button>
-      `;
-      container.appendChild(emptyState);
-    }
+      </div>
+    `;
+    return;
   }
+  
+  // Generate order cards HTML
+  let cardsHTML = '';
+  orderItems.forEach(item => {
+    cardsHTML += generateOrderCardHTML(item);
+  });
+  
+  container.innerHTML = cardsHTML;
+}
 
-  function hideEmptyFilterState() {
-    const emptyState = document.getElementById('emptyFilterState');
-    if (emptyState) {
-      emptyState.remove();
-    }
+// Generate order card HTML (matches your existing partial structure)
+function generateOrderCardHTML(item) {
+  const orderDate = new Date(item.orderDate);
+  const formattedDate = orderDate.toLocaleDateString('en-IN', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+  
+  const productImageHTML = item.productImage 
+    ? `<img src="${item.productImage}" alt="${item.productName}" class="product-thumb me-3">`
+    : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
+  
+  const statusClass = 
+    item.status === 'Delivered' ? 'success' : 
+    item.status === 'Shipped' ? 'info' : 
+    item.status === 'Processing' ? 'warning' : 
+    item.status === 'Processing Return' ? 'warning' :
+    item.status === 'Cancelled' ? 'danger' : 
+    item.status === 'Returned' ? 'secondary' : 'secondary';
+  
+  // Generate action buttons based on status
+  let actionButtons = `
+    <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${item.orderId}')">
+      <i class="bi bi-eye me-1"></i>View Details
+    </button>
+    <div class="d-flex gap-2">
+  `;
+  
+  if (item.status === 'Pending' || item.status === 'Processing') {
+    actionButtons += `
+      <button class="btn btn-outline-danger btn-sm flex-fill" onclick="cancelItem('${item.orderId}', '${item.itemId}')">
+        <i class="bi bi-x-circle me-1"></i>Cancel
+      </button>
+    `;
   }
-});
+  
+  if (item.status === 'Shipped') {
+    actionButtons += `
+      <button class="btn btn-outline-info btn-sm flex-fill" onclick="trackOrder('${item.orderId}')">
+        <i class="bi bi-truck me-1"></i>Track
+      </button>
+    `;
+  }
+  
+  if (item.status === 'Delivered') {
+    if (item.returnRequest) {
+      const returnStatusClass = 
+        item.returnRequest.status === 'Pending' ? 'warning' : 
+        item.returnRequest.status === 'Approved' ? 'success' : 
+        item.returnRequest.status === 'Rejected' ? 'danger' : 'secondary';
+      
+      actionButtons += `
+        <span class="badge bg-${returnStatusClass} flex-fill text-center py-2">
+          <i class="bi bi-arrow-return-left me-1"></i>
+          Return ${item.returnRequest.status}
+        </span>
+      `;
+    } else {
+      actionButtons += `
+        <button class="btn btn-outline-warning btn-sm flex-fill" onclick="returnItem('${item.orderId}', '${item.itemId}')">
+          <i class="bi bi-arrow-return-left me-1"></i>Return
+        </button>
+      `;
+    }
+    
+    actionButtons += `
+      <button class="btn btn-outline-success btn-sm flex-fill" onclick="downloadInvoice('${item.orderId}')">
+        <i class="bi bi-download me-1"></i>Invoice
+      </button>
+    `;
+  }
+  
+  actionButtons += `</div>`;
+  
+  return `
+    <div class="order-card mb-3" data-status="${item.status}">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-4">
+          <div class="row align-items-center">
+            <!-- Order Info -->
+            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+              <div class="order-info">
+                <h6 class="mb-1 fw-bold text-dark">Order #${item.orderId}</h6>
+                <small class="text-muted">
+                  <i class="bi bi-calendar3 me-1"></i>
+                  ${formattedDate}
+                </small>
+                <div class="mt-1">
+                  <small class="text-muted">Size: ${item.size} | Qty: ${item.quantity}</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Preview -->
+            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+              <div class="product-preview d-flex align-items-center">
+                ${productImageHTML}
+                <div class="product-info">
+                  <div class="fw-semibold text-dark">
+                    ${item.productName}
+                  </div>
+                  <small class="text-muted">SKU: ${item.sku}</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Status & Amount -->
+            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+              <div class="status-amount text-center">
+                <span class="badge bg-${statusClass} fs-6 px-3 py-2 mb-2">
+                  ${item.status}
+                </span>
+                <div class="fw-bold text-dark fs-5">₹${item.totalPrice.toLocaleString('en-IN')}</div>
+                <small class="text-muted text-uppercase">
+                  ${item.paymentMethod === 'cod' ? 'Cash on Delivery' : item.paymentMethod}
+                </small>
+              </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="col-lg-3 col-md-6">
+              <div class="order-actions d-flex flex-column gap-2">
+                ${actionButtons}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Clear filter function
+function clearFilter() {
+  document.getElementById('orderStatusFilter').value = '';
+  loadOrders(1, '');
+}
 
 // Order action functions
 function cancelItem(orderId, itemId) {
@@ -402,7 +591,6 @@ function cancelItem(orderId, itemId) {
         }
       });
 
-      
       console.log('Selected Reason:', result.value);  
       console.log('Type of Reason:', typeof result.value);  
       fetch(`/orders/${orderId}/items/${itemId}`, {
@@ -424,7 +612,8 @@ function cancelItem(orderId, itemId) {
             text: 'Your item has been successfully cancelled.',
             confirmButtonColor: '#28a745'
           }).then(() => {
-            location.reload();
+            // Refresh current page instead of full reload
+            loadOrders(currentPage);
           });
         } else {
           throw new Error(data.message || 'Failed to cancel item');
@@ -442,7 +631,6 @@ function cancelItem(orderId, itemId) {
     }
   });
 }
-
 
 function returnItem(orderId, itemId) {
   // Convert array to object for SweetAlert inputOptions
@@ -505,7 +693,8 @@ function returnItem(orderId, itemId) {
             text: 'Your return request has been sent for approval.',
             confirmButtonColor: '#28a745'
           }).then(() => {
-            location.reload();
+            // Refresh current page instead of full reload
+            loadOrders(currentPage);
           });
         } else {
           throw new Error(data.message || 'Failed to return item');
@@ -523,7 +712,6 @@ function returnItem(orderId, itemId) {
     }
   });
 }
-
 
 function trackOrder(orderId) {
   // Implement order tracking functionality

@@ -1,13 +1,14 @@
 const Wallet = require('../../models/Wallet');
 const User = require('../../models/User');
 const mongoose = require('mongoose');
+const walletService = require('../../services/walletService'); 
+
 
 /**
  * Get wallet page with balance and transactions
  */
 exports.getWallet = async (req, res) => {
-  console.log('🚀🚀🚀 WALLET CONTROLLER HIT - TIME:', new Date().toISOString());
-  console.log('💰 Loading wallet page...');
+  console.log('🚀 WALLET CONTROLLER - Loading wallet page...');
   const startTime = Date.now();
   
   try {
@@ -18,16 +19,15 @@ exports.getWallet = async (req, res) => {
     }
 
     // Get user info
-    const user = await User.findById(userId).select('name email profilePhoto').lean();
+    const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
     }
 
-    // Get or create wallet with transactions (single query)
+    // Get or create wallet
     let wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) }).lean();
     
     if (!wallet) {
-      // Create new wallet
       const newWallet = new Wallet({
         userId: userId,
         balance: 0,
@@ -37,36 +37,32 @@ exports.getWallet = async (req, res) => {
       wallet = { balance: 0, transactions: [] };
     }
 
-    // Pagination setup
-    const page = parseInt(req.query.page) || 1;
-    const limit = 10;
-    const totalTransactions = wallet.transactions ? wallet.transactions.length : 0;
-    const totalPages = Math.ceil(totalTransactions / limit);
+    // ✅ DATABASE-LEVEL PAGINATION: Get first page using walletService
+    const page = 1;
+    const limit = 6;
     
-    // Get paginated transactions (latest first)
-    const sortedTransactions = wallet.transactions 
-      ? wallet.transactions.sort((a, b) => new Date(b.date) - new Date(a.date))
-      : [];
+    const result = await walletService.getTransactionHistory(userId, page, limit);
     
-    const startIndex = (page - 1) * limit;
-    const paginatedTransactions = sortedTransactions.slice(startIndex, startIndex + limit);
-
-    // Prepare wallet data for template
-    const walletData = {
-      balance: wallet.balance,
-      transactions: paginatedTransactions,
-      totalTransactions: totalTransactions,
-      currentPage: page,
-      totalPages: totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1
+    // ✅ PAGINATION DATA: For pagination partial
+    const paginationData = {
+      currentPage: result.currentPage,
+      totalPages: result.totalPages,
+      hasNextPage: result.hasNextPage,
+      hasPrevPage: result.hasPrevPage
     };
 
     console.log(`💰 Wallet loaded in ${Date.now() - startTime}ms - Balance: ₹${wallet.balance}`);
 
     res.render('user/wallet', {
       user,
-      wallet: walletData,
+      wallet: {
+        balance: wallet.balance,
+        transactions: result.transactions,
+        totalTransactions: result.totalTransactions
+      },
+      // ✅ ADD: Pagination data for partial
+      currentPage: paginationData.currentPage,
+      totalPages: paginationData.totalPages,
       title: 'My Wallet',
       layout: 'user/layouts/user-layout',
       active: 'wallet'
@@ -317,6 +313,51 @@ exports.getTransactions = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error getting transaction history'
+    });
+  }
+};
+
+exports.getTransactionsPaginated = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const page = parseInt(req.query.page) || 1;
+    const limit = 6; // ✅ 6 transactions per page as requested
+    const type = req.query.type || ''; // credit, debit, or empty for all
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // ✅ Use existing walletService method
+    const result = await walletService.getTransactionHistory(userId, page, limit);
+
+    // ✅ Apply client-side type filtering if needed
+    let transactions = result.transactions;
+    if (type && ['credit', 'debit'].includes(type)) {
+      transactions = result.transactions.filter(t => t.type === type);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        transactions: transactions,
+        currentPage: result.currentPage,
+        totalPages: result.totalPages,
+        totalTransactions: result.totalTransactions,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        filters: { type }
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Get paginated transactions error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error loading transactions'
     });
   }
 };
