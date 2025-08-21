@@ -177,27 +177,8 @@ exports.loadChangePassword = async (req, res) => {
 // Note: loadAddresses moved to addressController.js
 // This function is kept for backward compatibility but should use the address controller
 exports.loadAddresses = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    if (!userId) {
-      return res.redirect('/login');
-    }
-
-    const user = await User.findById(userId).select('name email profilePhoto');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    res.render('user/address-book', {
-      user,
-      title: 'Address Book - LacedUp',
-      layout: 'user/layouts/user-layout',
-      active: 'addresses'
-    });
-  } catch (error) {
-    console.error('Error loading addresses page:', error);
-    res.status(500).render('error', { message: 'Error loading addresses page' });
-  }
+  // Redirect to the proper address controller route
+  res.redirect('/addresses');
 };
 
 exports.loadWallet = async (req, res) => {
@@ -1117,6 +1098,49 @@ exports.logout = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+};
+
+exports.getAddressesPaginated = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please login to view addresses'
+      });
+    }
+
+    const page = parseInt(req.query.page) || 1;
+    const limit = 2; // 2 addresses per page
+    const skip = (page - 1) * limit;
+
+    const userAddresses = await Address.findOne({ userId }).lean();
+    const allAddresses = userAddresses ? userAddresses.address : [];
+
+    const totalAddresses = allAddresses.length;
+    const totalPages = Math.ceil(totalAddresses / limit) || 1;
+    const addresses = allAddresses.slice(skip, skip + limit);
+
+    res.json({
+      success: true,
+      data: {
+        addresses: addresses,
+        currentPage: page,
+        totalPages: totalPages,
+        totalAddresses: totalAddresses,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching paginated addresses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch addresses'
     });
   }
 };

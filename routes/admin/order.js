@@ -13,6 +13,7 @@ router.get('/', orderController.getAllOrders);
 // ===== UTILITY ENDPOINTS =====
 // Get filtered orders (API endpoint for dynamic updates)
 router.get('/api/filtered', orderController.getFilteredOrders);
+router.get('/api/statistics', orderController.getSystemStatistics);
 
 // Get specific order details (HTML)
 router.get('/:orderId', orderController.getOrderDetails);

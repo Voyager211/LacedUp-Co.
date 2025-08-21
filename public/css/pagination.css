@@ -1,0 +1,152 @@
+/* ========= PAGINATION COMPONENT STYLES ========= */
+/* Override Bootstrap pagination with custom square button design */
+
+.pagination {
+  display: flex !important;
+  gap: 6px !important;
+  justify-content: center !important;
+  margin-bottom: 0 !important;
+}
+
+.pagination .page-item {
+  margin: 0 !important;
+}
+
+/* ✅ SQUARE BUTTONS: All pagination buttons are square */
+.pagination .page-link {
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  border-radius: 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-weight: 500 !important;
+  text-decoration: none !important;
+  color: #333 !important;
+  background-color: #fff !important;
+  border: 1px solid #ddd !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+}
+
+/* ✅ RED HOVER: Override Bootstrap blue hover */
+.pagination .page-link:hover:not(.disabled-btn),
+.pagination .page-link:hover:not([aria-disabled="true"]) {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3) !important;
+  text-decoration: none !important;
+}
+
+/* ✅ BLACK ACTIVE: Override Bootstrap blue active */
+.pagination .page-item.active .page-link,
+.pagination .page-item.active .page-link:hover,
+.pagination .page-item.active .page-link:focus,
+.pagination .page-item.active .page-link:active {
+  background-color: #000 !important;
+  border-color: #000 !important;
+  color: #fff !important;
+  font-weight: 600 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ✅ DISABLED STATE: Override Bootstrap disabled styling */
+.pagination .page-item.disabled .page-link,
+.pagination .page-link.disabled-btn,
+.pagination .page-link[aria-disabled="true"] {
+  color: #adb5bd !important;
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  cursor: not-allowed !important;
+  opacity: 0.6 !important;
+  pointer-events: none !important;
+}
+
+.pagination .disabled-btn:hover,
+.pagination .page-item.disabled .page-link:hover,
+.pagination .page-link[aria-disabled="true"]:hover {
+  background-color: #f8f9fa !important;
+  border-color: #dee2e6 !important;
+  color: #adb5bd !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ✅ ICON STYLING: Consistent arrow icon appearance */
+.pagination .page-link i {
+  font-size: 14px !important;
+  line-height: 1 !important;
+}
+
+/* ✅ FOCUS STATES: Accessibility improvements */
+.pagination .page-link:focus {
+  outline: 2px solid #dc3545 !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.pagination .page-item.active .page-link:focus {
+  outline: 2px solid #000 !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.25) !important;
+}
+
+/* ✅ RESPONSIVE: Mobile optimizations */
+@media (max-width: 576px) {
+  .pagination {
+    gap: 4px !important;
+  }
+  
+  .pagination .page-link {
+    width: 36px !important;
+    height: 36px !important;
+    font-size: 14px !important;
+  }
+
+  .pagination .page-link i {
+    font-size: 12px !important;
+  }
+}
+
+/* ✅ ADDITIONAL OVERRIDES: Ensure no Bootstrap interference */
+.pagination .page-link:not(.active):not(.disabled) {
+  color: #333 !important;
+}
+
+.pagination .page-link:not(.active):not(.disabled):hover {
+  color: #fff !important;
+}
+
+/* Remove any Bootstrap focus ring styles */
+.pagination .page-link:focus-visible {
+  outline: 2px solid #dc3545 !important;
+  outline-offset: 2px !important;
+  box-shadow: none !important;
+}
+
+.pagination .page-item.active .page-link,
+.pagination .page-item.active .page-link:hover,
+.pagination .page-item.active .page-link:focus,
+.pagination .page-item.active .page-link:active,
+.pagination .page-item.active .page-link:visited {
+  background-color: #000 !important;
+  border-color: #000 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* ✅ ADDITIONAL: Override any Bootstrap text color inheritance */
+.pagination .page-item.active .page-link * {
+  color: #ffffff !important;
+}
+
+/* ✅ FORCE: Override Bootstrap's .text-primary or similar classes */
+.pagination .page-item.active .page-link,
+.pagination .page-item.active a.page-link {
+  color: #ffffff !important;
+}

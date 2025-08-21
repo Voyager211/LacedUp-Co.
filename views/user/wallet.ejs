@@ -402,27 +402,25 @@ function updatePaginationPartial(data) {
   
   paginationContainer.style.display = 'block';
   
-  // ✅ GENERATE: Pagination using the exact same pattern as the partial
+  // Generate pagination HTML (same as before, but cleaner)
   let paginationHTML = `
     <nav class="mt-4">
-      <ul class="pagination justify-content-center" id="pagination-container">
+      <ul class="pagination justify-content-center" id="pagination-container" data-total-pages="${data.totalPages}">
         <!-- Previous Button -->
         <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
-          <a class="page-link pagination-btn arrow-btn ${data.currentPage === 1 ? 'disabled-btn' : ''}"
+          <a class="page-link pagination-btn ${data.currentPage === 1 ? 'disabled-btn' : ''}"
              href="#"
              data-page="${data.currentPage - 1}"
              ${data.currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
             <i class="bi bi-chevron-left"></i>
           </a>
         </li>
-
-        <!-- Page Numbers -->
   `;
   
   for (let i = 1; i <= data.totalPages; i++) {
     paginationHTML += `
       <li class="page-item ${i === data.currentPage ? 'active' : ''}">
-        <a class="page-link pagination-btn page-number" href="#" data-page="${i}">${i}</a>
+        <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
       </li>
     `;
   }
@@ -430,7 +428,7 @@ function updatePaginationPartial(data) {
   paginationHTML += `
         <!-- Next Button -->
         <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
-          <a class="page-link pagination-btn arrow-btn ${data.currentPage === data.totalPages ? 'disabled-btn' : ''}"
+          <a class="page-link pagination-btn ${data.currentPage === data.totalPages ? 'disabled-btn' : ''}"
              href="#"
              data-page="${data.currentPage + 1}"
              ${data.currentPage === data.totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
@@ -442,6 +440,11 @@ function updatePaginationPartial(data) {
   `;
   
   paginationContainer.innerHTML = paginationHTML;
+  
+  // ✅ USE: New pagination utilities
+  if (window.PaginationUtils) {
+    window.PaginationUtils.updateState(data.currentPage, data.totalPages);
+  }
 }
 
 // ✅ RENDER: Show transactions (same as before)

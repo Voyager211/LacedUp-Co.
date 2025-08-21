@@ -33,7 +33,7 @@
                             placeholder="Start typing your address..."
                             value="<%= typeof address !== 'undefined' && address ? address.landMark : '' %>">
                         <div class="error-message" id="addressDetails-error">Address details are required</div>
-                        <small class="text-muted">Start typing for address suggestions</small>
+                        <!-- <small class="text-muted">Start typing for address suggestions</small> -->
                     </div>
                     <div class="col-md-6 mb-3">
                         <label for="state" class="form-label">State *</label>
@@ -58,7 +58,7 @@
                         <label for="pincode" class="form-label">Pincode *</label>
                         <input type="text" class="form-control" id="pincode" name="pincode" maxlength="6" value="<%= typeof address !== 'undefined' && address ? address.pincode : '' %>">
                         <div class="error-message" id="pincode-error">Please enter a valid 6-digit pincode</div>
-                        <small class="text-muted">Enter pincode to auto-fill location</small>
+                        <!-- <small class="text-muted">Enter pincode to auto-fill location</small> -->
                     </div>
                     <div class="col-12 mb-3">
                         <label for="landmark" class="form-label">Landmark (Optional)</label>

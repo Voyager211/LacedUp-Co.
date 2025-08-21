@@ -474,13 +474,29 @@ exports.loadAddresses = async (req, res) => {
       return res.redirect('/login');
     }
 
+    // ✅ ADD: Get pagination parameters for initial page load
+    const page = parseInt(req.query.page) || 1;
+    const limit = 2; // 2 addresses per page
+    const skip = (page - 1) * limit;
+
     // Get user addresses
     const userAddresses = await Address.findOne({ userId }).lean();
-    const addresses = userAddresses ? userAddresses.address : [];
+    const allAddresses = userAddresses ? userAddresses.address : [];
+    
+    // ✅ ADD: Calculate pagination for initial render
+    const totalAddresses = allAddresses.length;
+    const totalPages = Math.ceil(totalAddresses / limit) || 1;
+    const addresses = allAddresses.slice(skip, skip + limit);
+
+    console.log(`📄 Initial page load: ${addresses.length} addresses for page ${page}/${totalPages}`);
 
     res.render('user/address-book', {
       user,
       addresses,
+      // ✅ ADD: Pagination data for EJS template
+      currentPage: page,
+      totalPages: totalPages,
+      totalAddresses: totalAddresses,
       title: 'Address Book - LacedUp',
       layout: 'user/layouts/user-layout',
       active: 'addresses',
@@ -652,6 +668,58 @@ exports.getStatesAndDistricts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch states and districts data'
+    });
+  }
+};
+
+exports.getAddressesPaginated = async (req, res) => {
+  try {
+    const userId = req.session.userId || (req.user && req.user._id);
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Please login to view addresses'
+      });
+    }
+
+    // Get pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = 2; // ✅ 2 addresses per page as requested
+    const skip = (page - 1) * limit;
+
+    console.log(`📄 Fetching addresses page ${page} (limit: ${limit}, skip: ${skip})`);
+
+    // Get all user addresses
+    const userAddresses = await Address.findOne({ userId }).lean();
+    const allAddresses = userAddresses ? userAddresses.address : [];
+
+    // Calculate pagination
+    const totalAddresses = allAddresses.length;
+    const totalPages = Math.ceil(totalAddresses / limit) || 1;
+    
+    // Get addresses for current page (application-level pagination)
+    const addresses = allAddresses.slice(skip, skip + limit);
+
+    console.log(`✅ Found ${totalAddresses} total addresses, returning ${addresses.length} for page ${page}/${totalPages}`);
+
+    res.json({
+      success: true,
+      data: {
+        addresses: addresses,
+        currentPage: page,
+        totalPages: totalPages,
+        totalAddresses: totalAddresses,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching paginated addresses:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch addresses'
     });
   }
 };

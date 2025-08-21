@@ -22,37 +22,85 @@
         <div class="address-header">
           <div class="header-content">
             <h2><i class="bi bi-geo-alt me-2"></i> Address Book</h2>
-            <p class="text-muted">Manage your delivery addresses</p>
+            <% if (typeof totalAddresses !== 'undefined' && totalAddresses > 0) { %>
+              <p class="text-muted">Manage your delivery addresses</p>
+            <% } else { %>
+              <p class="text-muted">Manage your delivery addresses</p>
+            <% } %>
           </div>
           <button class="btn btn-primary add-address-btn" onclick="addNewAddress()">
             <i class="bi bi-plus me-2"></i> Add New Address
           </button>
         </div>
 
-        <!-- Addresses Grid -->
+        <!-- ✅ ADDRESSES GRID: Updated for pagination -->
         <div class="addresses-grid" id="addressesGrid">
-          <!-- Loading state -->
-          <div class="loading-state" id="loadingState">
-            <div class="spinner-border" role="status">
-              <span class="visually-hidden">Loading...</span>
+          <% if (typeof addresses !== 'undefined' && addresses.length > 0) { %>
+            <% addresses.forEach(function(address) { %>
+              <div class="address-card <%= address.isDefault ? 'default' : '' %>">
+                <% if (address.isDefault) { %>
+                  <div class="default-badge">
+                    <i class="bi bi-star-fill me-1"></i> Default
+                  </div>
+                <% } %>
+                
+                <div class="address-type">
+                  <i class="bi bi-<%= address.addressType === 'home' ? 'house' : address.addressType === 'office' ? 'briefcase' : 'geo-alt' %>"></i>
+                  <%= address.addressType.charAt(0).toUpperCase() + address.addressType.slice(1) %>
+                </div>
+                
+                <div class="address-details">
+                  <h5><%= address.name %></h5>
+                  <div class="address-text">
+                    <%= address.landMark %><br>
+                    <%= address.city %>, <%= address.state %> - <%= address.pincode %><br>
+                    <strong>Phone:</strong> <%= address.phone %>
+                    <% if (address.altPhone) { %>
+                      <br><strong>Alt Phone:</strong> <%= address.altPhone %>
+                    <% } %>
+                  </div>
+                </div>
+                
+                <div class="address-actions">
+                  <button class="btn btn-outline-primary btn-sm" onclick="editAddress('<%= address._id %>')">
+                    <i class="bi bi-pencil me-1"></i> Edit
+                  </button>
+                  <% if (!address.isDefault) { %>
+                    <button class="btn btn-outline-success btn-sm" onclick="setDefaultAddress('<%= address._id %>')">
+                      <i class="bi bi-star me-1"></i> Set Default
+                    </button>
+                  <% } %>
+                  <button class="btn btn-outline-danger btn-sm" onclick="deleteAddress('<%= address._id %>')">
+                    <i class="bi bi-trash me-1"></i> Delete
+                  </button>
+                </div>
+              </div>
+            <% }); %>
+          <% } else { %>
+            <!-- Empty state -->
+            <div class="empty-state" id="emptyState">
+              <div class="empty-icon">
+                <i class="bi bi-geo-alt"></i>
+              </div>
+              <h4>No addresses found</h4>
+              <p>Add your first delivery address to get started</p>
+              <button class="btn btn-primary" onclick="addNewAddress()">
+                <i class="bi bi-plus me-2"></i> Add Address
+              </button>
             </div>
-            <p>Loading addresses...</p>
-          </div>
-
-          <!-- Empty state -->
-          <div class="empty-state" id="emptyState" style="display: none;">
-            <div class="empty-icon">
-              <i class="bi bi-geo-alt"></i>
-            </div>
-            <h4>No addresses found</h4>
-            <p>Add your first delivery address to get started</p>
-            <button class="btn btn-primary" onclick="addNewAddress()">
-              <i class="bi bi-plus me-2"></i> Add Address
-            </button>
-          </div>
-
-          <!-- Addresses will be loaded here -->
+          <% } %>
         </div>
+
+        <!-- ✅ PAGINATION: Using your existing pagination partial -->
+        <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+          <div class="pagination-wrapper">
+            <%- include('partials/pagination', {
+              currentPage: currentPage,
+              totalPages: totalPages
+            }) %>
+          </div>
+        <% } %>
+
       </div>
     </div>
   </div>
@@ -250,6 +298,13 @@
 .btn-outline-danger:hover {
   background: #dc3545;
   border-color: #dc3545;
+}
+
+/* ✅ PAGINATION WRAPPER: Consistent with wallet/orders */
+.pagination-wrapper {
+  padding: 1.5rem 2rem;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
 }
 
 /* Modal Styles */
@@ -776,198 +831,120 @@ class GeoapifyAddressForm {
   }
 }
 
+
+
 let addresses = [];
 let currentEditingId = null;
+let currentPage = 1;
+let totalPages = 1;
+let isLoading = false;
 
-// Load addresses on page load
 document.addEventListener('DOMContentLoaded', function() {
-  loadAddresses();
+  // ✅ Set up pagination callbacks for integration with pagination.js
+  window.fetchCallback = loadAddressesPage;
+  window.paginationCallback = loadAddressesPage;
   
   // Initialize Geoapify when modal is shown
   const addressModal = document.getElementById('addressModal');
   if (addressModal) {
     addressModal.addEventListener('shown.bs.modal', function() {
-      // Initialize Geoapify with secure API key from backend
       const API_KEY = '<%= geoapifyApiKey %>';
       new GeoapifyAddressForm(API_KEY);
     });
   }
+  
+  // Initialize with current page data
+  currentPage = <%= typeof currentPage !== 'undefined' ? currentPage : 1 %>;
+  totalPages = <%= typeof totalPages !== 'undefined' ? totalPages : 1 %>;
+  
+  console.log(`📄 Address book initialized: page ${currentPage}/${totalPages}`);
 });
 
-// ✅ NEW: Handle address form submission without page refresh
-document.addEventListener('DOMContentLoaded', function() {
-  // Wait for modal and form to be available
-  const addressModal = document.getElementById('addressModal');
-  if (addressModal) {
-    addressModal.addEventListener('shown.bs.modal', function() {
-      // Set up form handler when modal opens
-      setTimeout(() => {
-        const form = document.getElementById('addressForm');
-        if (form) {
-          // Remove existing event listeners to prevent duplicates
-          const newForm = form.cloneNode(true);
-          form.parentNode.replaceChild(newForm, form);
-          
-          // Add new event listener
-          newForm.addEventListener('submit', handleAddressSubmit);
-          console.log('✅ Form submission handler attached');
-        }
-      }, 100);
-    });
-  }
-});
-
-// ✅ NEW: Handle form submission with fetch
-async function handleAddressSubmit(e) {
-  e.preventDefault(); // ✅ CRITICAL: Prevent default form submission
+// ✅ NEW: Load specific page of addresses (called by pagination.js)
+async function loadAddressesPage(page = 1) {
+  if (isLoading) return;
   
-  console.log('📝 Form submitted, processing...');
+  isLoading = true;
+  currentPage = page;
   
-  const formData = new FormData(e.target);
-  const addressData = {
-    fullName: formData.get('fullName')?.trim() || '',
-    mobileNumber: formData.get('mobileNumber')?.trim() || '',
-    altPhone: formData.get('altPhone')?.trim() || '',
-    addressDetails: formData.get('addressDetails')?.trim() || '',
-    state: formData.get('state') || '',
-    district: formData.get('district') || '',
-    city: formData.get('city')?.trim() || '',
-    pincode: formData.get('pincode')?.trim() || '',
-    landmark: formData.get('landmark')?.trim() || '',
-    addressType: formData.get('addressType') || 'home',
-    makeDefault: document.getElementById('makeDefault')?.checked || false
-  };
-
-  console.log('📦 Address data:', addressData);
-
   // Show loading state
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  const originalText = submitBtn.innerHTML;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-  submitBtn.disabled = true;
-
-  try {
-    // Determine URL and method
-    const url = currentEditingId ? `/api/address/${currentEditingId}` : '/api/address';
-    const method = currentEditingId ? 'PUT' : 'POST';
-    
-    console.log(`🚀 Sending ${method} request to ${url}`);
-
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(addressData)
-    });
-
-    console.log('📡 Response status:', response.status);
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    console.log('📦 Response data:', data);
-
-    if (data.success) {
-      console.log('✅ Address saved successfully');
-      
-      // Show success message
-      showSuccess(data.message || 'Address saved successfully');
-      
-      // Close modal
-      const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
-      modal.hide();
-      
-      // ✅ CRITICAL: Update addresses without page refresh
-      await loadAddresses();
-      
-      // Reset form for next use
-      e.target.reset();
-      currentEditingId = null;
-      
-    } else {
-      throw new Error(data.message || 'Failed to save address');
-    }
-  } catch (error) {
-    console.error('❌ Error saving address:', error);
-    showError(`Failed to save address: ${error.message}`);
-  } finally {
-    // Restore button state
-    submitBtn.innerHTML = originalText;
-    submitBtn.disabled = false;
+  const grid = document.getElementById('addressesGrid');
+  if (grid) {
+    grid.classList.add('loading');
   }
-}
-
-
-// Load addresses from API
-async function loadAddresses() {
+  
   try {
-    console.log('🔄 Loading addresses...');
+    console.log(`🔄 Loading addresses page ${page}...`);
     
-    // Show loading state on grid
-    const grid = document.getElementById('addressesGrid');
-    if (grid) {
-      grid.classList.add('loading');
-    }
-    
-    const response = await fetch('/api/addresses');
-    console.log('📡 Response status:', response.status);
+    const response = await fetch(`/api/addresses/paginated?page=${page}`);
     
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
     }
     
-    const data = await response.json();
-    console.log('📦 Response data:', data);
+    const result = await response.json();
+    console.log('📦 Paginated response:', result);
 
-    if (data && data.success) {
-      addresses = data.addresses || [];
-      console.log('✅ Addresses loaded:', addresses.length, 'addresses');
+    if (result && result.success) {
+      addresses = result.data.addresses || [];
+      currentPage = result.data.currentPage;
+      totalPages = result.data.totalPages;
+      
+      console.log(`✅ Loaded ${addresses.length} addresses for page ${currentPage}/${totalPages}`);
+      
+      // Render addresses
       renderAddresses();
+      
+      // ✅ Update pagination UI using existing utilities
+      if (window.PaginationUtils && totalPages > 1) {
+        window.PaginationUtils.updateState(currentPage, totalPages);
+      }
+      
     } else {
-      console.error('❌ API returned error:', data ? data.message : 'Unknown error');
-      showError(data && data.message ? data.message : 'Failed to load addresses');
+      console.error('❌ API returned error:', result ? result.message : 'Unknown error');
+      showError(result && result.message ? result.message : 'Failed to load addresses');
     }
   } catch (error) {
     console.error('❌ Error loading addresses:', error);
     showError(`Failed to load addresses: ${error.message}`);
-  } finally {
-    console.log('🏁 Hiding loading state');
-    const loadingState = document.getElementById('loadingState');
-    if (loadingState) {
-      loadingState.style.display = 'none';
-    }
     
-    // Remove loading state from grid
-    const grid = document.getElementById('addressesGrid');
+    // Remove loading states from pagination buttons on error
+    if (window.PaginationUtils) {
+      const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
+      loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
+    }
+  } finally {
+    isLoading = false;
+    
+    // Hide loading state
     if (grid) {
       grid.classList.remove('loading');
     }
   }
 }
 
-// Render addresses in the grid
+// ✅ UPDATED: Render addresses in grid
 function renderAddresses() {
   const grid = document.getElementById('addressesGrid');
-  const emptyState = document.getElementById('emptyState');
-  
-  // Check if required elements exist
   if (!grid) {
     console.error('❌ addressesGrid element not found');
     return;
   }
   
   if (addresses.length === 0) {
-    if (emptyState) {
-      emptyState.style.display = 'flex';
-    }
+    grid.innerHTML = `
+      <div class="empty-state">
+        <div class="empty-icon">
+          <i class="bi bi-geo-alt"></i>
+        </div>
+        <h4>No addresses found</h4>
+        <p>Add your first delivery address to get started</p>
+        <button class="btn btn-primary" onclick="addNewAddress()">
+          <i class="bi bi-plus me-2"></i> Add Address
+        </button>
+      </div>
+    `;
     return;
-  }
-
-  if (emptyState) {
-    emptyState.style.display = 'none';
   }
   
   const addressesHTML = addresses.map(address => `
@@ -1008,125 +985,7 @@ function renderAddresses() {
   grid.innerHTML = addressesHTML;
 }
 
-// Helper functions
-function getAddressIcon(type) {
-  switch(type) {
-    case 'home': return 'house';
-    case 'office': return 'briefcase';
-    case 'other': return 'geo-alt';
-    default: return 'geo-alt';
-  }
-}
-
-function capitalizeFirst(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
-// Add new address
-function addNewAddress() {
-  currentEditingId = null;
-  document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-plus me-2"></i> Add New Address';
-  
-  // Reset form when modal opens
-  const modal = new bootstrap.Modal(document.getElementById('addressModal'));
-  
-  // Reset form after modal is shown
-  document.getElementById('addressModal').addEventListener('shown.bs.modal', function resetForm() {
-    const form = document.getElementById('addressForm');
-    if (form) {
-      form.reset();
-      
-      // Clear any validation states
-      form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
-        el.classList.remove('is-invalid', 'is-valid');
-      });
-      
-      form.querySelectorAll('.error-message').forEach(el => {
-        el.style.display = 'none';
-      });
-      
-      // Reset district dropdown
-      const districtSelect = document.getElementById('district');
-      if (districtSelect) {
-        districtSelect.innerHTML = '<option value="">Select District</option>';
-        districtSelect.disabled = true;
-      }
-      
-      console.log('✅ Form reset for new address');
-    }
-    
-    // Remove this event listener to prevent it from running multiple times
-    this.removeEventListener('shown.bs.modal', resetForm);
-  });
-  
-  modal.show();
-}
-
-// Edit address
-async function editAddress(addressId) {
-  currentEditingId = addressId;
-  document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i> Edit Address';
-  
-  const address = addresses.find(addr => addr._id === addressId);
-  if (!address) {
-    showError('Address not found');
-    return;
-  }
-
-  const modal = new bootstrap.Modal(document.getElementById('addressModal'));
-  
-  // Populate form after modal is shown
-  document.getElementById('addressModal').addEventListener('shown.bs.modal', function populateForm() {
-    const form = document.getElementById('addressForm');
-    if (form) {
-      // Populate basic fields
-      form.querySelector('#fullName').value = address.name || '';
-      form.querySelector('#mobileNumber').value = address.phone || '';
-      form.querySelector('#altPhone').value = address.altPhone || '';
-      form.querySelector('#addressDetails').value = address.landMark || '';
-      form.querySelector('#city').value = address.city || '';
-      form.querySelector('#pincode').value = address.pincode || '';
-      
-      // Set address type
-      const addressTypeRadio = form.querySelector(`input[name="addressType"][value="${address.addressType}"]`);
-      if (addressTypeRadio) {
-        addressTypeRadio.checked = true;
-      }
-      
-      // Set default checkbox
-      const makeDefaultCheck = form.querySelector('#makeDefault');
-      if (makeDefaultCheck) {
-        makeDefaultCheck.checked = address.isDefault;
-      }
-      
-      // Handle state and district
-      const stateSelect = form.querySelector('#state');
-      if (stateSelect && address.state) {
-        stateSelect.value = address.state;
-        
-        // Trigger state change to load districts
-        stateSelect.dispatchEvent(new Event('change'));
-        
-        // Set district after districts are loaded
-        setTimeout(() => {
-          const districtSelect = form.querySelector('#district');
-          if (districtSelect && address.district) {
-            districtSelect.value = address.district;
-          }
-        }, 200);
-      }
-      
-      console.log('✅ Form populated for editing address:', addressId);
-    }
-    
-    // Remove this event listener to prevent it from running multiple times
-    this.removeEventListener('shown.bs.modal', populateForm);
-  });
-  
-  modal.show();
-}
-
-// Set default address
+// ✅ UPDATED: Refresh current page after CRUD operations
 async function setDefaultAddress(addressId) {
   try {
     console.log('🔄 Setting default address:', addressId);
@@ -1138,59 +997,24 @@ async function setDefaultAddress(addressId) {
       }
     });
 
-    console.log('📡 Set default response status:', response.status);
-    console.log('📡 Set default response headers:', response.headers);
-    
-    // Check if response is ok
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ HTTP error response:', errorText);
-      throw new Error(`HTTP error! status: ${response.status}, response: ${errorText}`);
-    }
-
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.includes('application/json')) {
-      const responseText = await response.text();
-      console.error('❌ Non-JSON response:', responseText);
-      throw new Error(`Expected JSON response but got: ${contentType}, content: ${responseText}`);
-    }
-
     const data = await response.json();
-    console.log('📦 Set default response data:', data);
 
     if (data && data.success) {
       console.log('✅ Default address set successfully');
       showSuccess(data.message || 'Default address updated successfully');
       
-      // Update the addresses array directly instead of reloading from API
-      console.log('🔄 Updating addresses array directly...');
-      addresses.forEach(addr => {
-        addr.isDefault = addr._id === addressId;
-      });
+      // ✅ Reload current page to reflect changes
+      await loadAddressesPage(currentPage);
       
-      // Re-render the addresses with updated data
-      console.log('🎨 Re-rendering addresses...');
-      renderAddresses();
-      
-      console.log('✅ UI updated successfully without API call');
     } else {
-      console.error('❌ Backend returned error:', data ? data.message : 'Unknown error');
-      console.error('❌ Full response data:', data);
-      showError(data && data.message ? data.message : 'Failed to set default address - unknown error');
+      showError(data && data.message ? data.message : 'Failed to set default address');
     }
   } catch (error) {
     console.error('❌ Error setting default address:', error);
-    console.error('❌ Error details:', {
-      name: error.name,
-      message: error.message,
-      stack: error.stack
-    });
     showError(`Failed to set default address: ${error.message}`);
   }
 }
 
-// Delete address
 async function deleteAddress(addressId) {
   // Use SweetAlert for confirmation
   if (typeof Swal !== 'undefined') {
@@ -1210,7 +1034,6 @@ async function deleteAddress(addressId) {
       return;
     }
   } else {
-    // Fallback to browser confirm if SweetAlert is not available
     if (!confirm('Are you sure you want to delete this address?')) {
       return;
     }
@@ -1225,7 +1048,14 @@ async function deleteAddress(addressId) {
 
     if (data.success) {
       showSuccess(data.message);
-      loadAddresses(); // Reload addresses
+      
+      // ✅ Smart page handling: if deleting last address on page > 1, go to previous page
+      const currentAddressCount = addresses.length;
+      if (currentAddressCount === 1 && currentPage > 1) {
+        await loadAddressesPage(currentPage - 1);
+      } else {
+        await loadAddressesPage(currentPage);
+      }
     } else {
       showError(data.message);
     }
@@ -1235,262 +1065,134 @@ async function deleteAddress(addressId) {
   }
 }
 
-
-// Address validation function
-async function validateAddress(addressData) {
-  const API_KEY = '<%= geoapifyApiKey %>';
-  const fullAddress = `${addressData.addressDetails}, ${addressData.city}, ${addressData.state}, ${addressData.pincode}`;
-  
-  try {
-    const response = await fetch(
-      `https://api.geoapify.com/v1/geocode/search?text=${encodeURIComponent(fullAddress)}&country=IN&format=json&apiKey=${API_KEY}`
-    );
-    const data = await response.json();
-
-    return {
-      isValid: data.results && data.results.length > 0,
-      suggestions: data.results || [],
-      coordinates: data.results && data.results.length > 0 ? {
-        lat: data.results[0].lat,
-        lon: data.results[0].lon
-      } : null
-    };
-  } catch (error) {
-    console.error('Address validation error:', error);
-    return {
-      isValid: false,
-      suggestions: [],
-      coordinates: null
-    };
+// ✅ Helper functions
+function getAddressIcon(type) {
+  switch(type) {
+    case 'home': return 'house';
+    case 'office': return 'briefcase';
+    case 'other': return 'geo-alt';
+    default: return 'geo-alt';
   }
 }
 
-// Check for duplicate addresses using coordinates
-function checkDuplicateAddress(newAddress, existingAddresses) {
-  if (!newAddress.lat || !newAddress.lon) return false;
-  
-  const threshold = 0.001; // ~100 meters
-  
-  return existingAddresses.some(existing => {
-    if (!existing.lat || !existing.lon) return false;
-    
-    const latDiff = Math.abs(existing.lat - newAddress.lat);
-    const lonDiff = Math.abs(existing.lon - newAddress.lon);
-    
-    return latDiff < threshold && lonDiff < threshold;
-  });
+function capitalizeFirst(str) {
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-// Show address validation modal
-function showAddressValidationModal(suggestions, onConfirm, onCancel) {
-  const modalHtml = `
-    <div class="modal fade" id="addressValidationModal" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">Address Validation</h5>
-            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body">
-            <p>We found some suggestions for your address. Please select the most accurate one:</p>
-            <div class="address-suggestions">
-              ${suggestions.map((suggestion, index) => `
-                <div class="form-check mb-2">
-                  <input class="form-check-input" type="radio" name="addressSuggestion" id="suggestion${index}" value="${index}">
-                  <label class="form-check-label" for="suggestion${index}">
-                    ${suggestion.formatted}
-                  </label>
-                </div>
-              `).join('')}
-              <div class="form-check mb-2">
-                <input class="form-check-input" type="radio" name="addressSuggestion" id="useOriginal" value="original">
-                <label class="form-check-label" for="useOriginal">
-                  Use my original address as entered
-                </label>
-              </div>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" id="confirmAddressBtn">Confirm</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
+function addNewAddress() {
+  currentEditingId = null;
+  document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-plus me-2"></i> Add New Address';
   
-  // Remove existing modal if any
-  const existingModal = document.getElementById('addressValidationModal');
-  if (existingModal) {
-    existingModal.remove();
-  }
+  const modal = new bootstrap.Modal(document.getElementById('addressModal'));
   
-  // Add modal to DOM
-  document.body.insertAdjacentHTML('beforeend', modalHtml);
-  
-  const modal = new bootstrap.Modal(document.getElementById('addressValidationModal'));
-  
-  // Handle confirm button
-  document.getElementById('confirmAddressBtn').addEventListener('click', function() {
-    const selectedSuggestion = document.querySelector('input[name="addressSuggestion"]:checked');
-    if (selectedSuggestion) {
-      const selectedIndex = selectedSuggestion.value;
-      if (selectedIndex === 'original') {
-        onConfirm(null);
-      } else {
-        onConfirm(suggestions[parseInt(selectedIndex)]);
+  document.getElementById('addressModal').addEventListener('shown.bs.modal', function resetForm() {
+    const form = document.getElementById('addressForm');
+    if (form) {
+      form.reset();
+      
+      form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
+        el.classList.remove('is-invalid', 'is-valid');
+      });
+      
+      form.querySelectorAll('.error-message').forEach(el => {
+        el.style.display = 'none';
+      });
+      
+      const districtSelect = document.getElementById('district');
+      if (districtSelect) {
+        districtSelect.innerHTML = '<option value="">Select District</option>';
+        districtSelect.disabled = true;
       }
-      modal.hide();
-    } else {
-      showError('Please select an address option');
+      
+      console.log('✅ Form reset for new address');
     }
-  });
-  
-  // Handle cancel
-  modal._element.addEventListener('hidden.bs.modal', function() {
-    if (onCancel) onCancel();
-    this.remove();
+    
+    this.removeEventListener('shown.bs.modal', resetForm);
   });
   
   modal.show();
 }
 
-// DISABLED: Handle address form submission
-/*
-async function handleAddressSubmit_DISABLED(e) {
-  e.preventDefault();
-
-  const formData = new FormData(e.target);
-  const addressData = {
-    fullName: formData.get('fullName').trim(),
-    mobileNumber: formData.get('mobileNumber').trim(),
-    altPhone: formData.get('altPhone') ? formData.get('altPhone').trim() : '',
-    addressDetails: formData.get('addressDetails').trim(),
-    state: formData.get('state'),
-    district: formData.get('district'),
-    city: formData.get('city').trim(),
-    pincode: formData.get('pincode').trim(),
-    landmark: formData.get('landmark') ? formData.get('landmark').trim() : '',
-    addressType: formData.get('addressType'),
-    makeDefault: document.getElementById('makeDefault').checked
-  };
-
-  // Show loading state
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-  const originalText = submitBtn.innerHTML;
-  submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validating...';
-  submitBtn.disabled = true;
-
-  try {
-    // Step 1: Validate address
-    const validation = await validateAddress(addressData);
-    
-    if (!validation.isValid) {
-      showError('Unable to validate the address. Please check your address details and try again.');
-      return;
-    }
-
-    // Step 2: Check for duplicates (only for new addresses)
-    if (!currentEditingId && validation.coordinates) {
-      const isDuplicate = checkDuplicateAddress(validation.coordinates, addresses);
-      if (isDuplicate) {
-        showError('This address appears to be very similar to an existing address. Please check your saved addresses.');
-        return;
-      }
-    }
-
-    // Step 3: Handle address suggestions
-    if (validation.suggestions.length > 1) {
-      showAddressValidationModal(
-        validation.suggestions,
-        async (selectedSuggestion) => {
-          // Update address data with selected suggestion if any
-          if (selectedSuggestion) {
-            addressData.coordinates = {
-              lat: selectedSuggestion.lat,
-              lon: selectedSuggestion.lon
-            };
-            // Optionally update form fields with corrected data
-            if (selectedSuggestion.properties) {
-              if (selectedSuggestion.properties.city) {
-                addressData.city = selectedSuggestion.properties.city;
-              }
-              if (selectedSuggestion.properties.state) {
-                addressData.state = selectedSuggestion.properties.state;
-              }
-              if (selectedSuggestion.properties.postcode) {
-                addressData.pincode = selectedSuggestion.properties.postcode;
-              }
-            }
-          } else {
-            // Use original coordinates
-            addressData.coordinates = validation.coordinates;
-          }
-          
-          await submitAddressData(addressData);
-        },
-        () => {
-          // User cancelled - restore button state
-          submitBtn.innerHTML = originalText;
-          submitBtn.disabled = false;
-        }
-      );
-    } else {
-      // Single suggestion or no suggestions - proceed directly
-      addressData.coordinates = validation.coordinates;
-      await submitAddressData(addressData);
-    }
-
-  } catch (error) {
-    console.error('Error during address validation:', error);
-    showError('Failed to validate address. Please try again.');
-  } finally {
-    // Restore button state if not handled by modal
-    if (!document.getElementById('addressValidationModal')) {
-      submitBtn.innerHTML = originalText;
-      submitBtn.disabled = false;
-    }
-  }
-}
-*/
-
-// Submit address data to backend
-async function submitAddressData(addressData) {
-  const submitBtn = document.querySelector('#addressForm button[type="submit"]');
+async function editAddress(addressId) {
+  currentEditingId = addressId;
+  document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i> Edit Address';
   
-  try {
-    const url = currentEditingId ? `/api/address/${currentEditingId}` : '/api/address';
-    const method = currentEditingId ? 'PUT' : 'POST';
-
-    const response = await fetch(url, {
-      method: method,
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(addressData)
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      showSuccess(data.message);
-      const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
-      modal.hide();
-      loadAddresses(); // Reload addresses
-    } else {
-      showError(data.message);
-    }
-  } catch (error) {
-    console.error('Error saving address:', error);
-    showError('Failed to save address');
-  } finally {
-    // Restore button state
-    submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Address';
-    submitBtn.disabled = false;
+  const address = addresses.find(addr => addr._id === addressId);
+  if (!address) {
+    showError('Address not found');
+    return;
   }
+
+  const modal = new bootstrap.Modal(document.getElementById('addressModal'));
+  
+  document.getElementById('addressModal').addEventListener('shown.bs.modal', function populateForm() {
+    const form = document.getElementById('addressForm');
+    if (form) {
+      form.querySelector('#fullName').value = address.name || '';
+      form.querySelector('#mobileNumber').value = address.phone || '';
+      form.querySelector('#altPhone').value = address.altPhone || '';
+      form.querySelector('#addressDetails').value = address.landMark || '';
+      form.querySelector('#city').value = address.city || '';
+      form.querySelector('#pincode').value = address.pincode || '';
+      
+      const addressTypeRadio = form.querySelector(`input[name="addressType"][value="${address.addressType}"]`);
+      if (addressTypeRadio) {
+        addressTypeRadio.checked = true;
+      }
+      
+      const makeDefaultCheck = form.querySelector('#makeDefault');
+      if (makeDefaultCheck) {
+        makeDefaultCheck.checked = address.isDefault;
+      }
+      
+      const stateSelect = form.querySelector('#state');
+      if (stateSelect && address.state) {
+        stateSelect.value = address.state;
+        stateSelect.dispatchEvent(new Event('change'));
+        
+        setTimeout(() => {
+          const districtSelect = form.querySelector('#district');
+          if (districtSelect && address.district) {
+            districtSelect.value = address.district;
+          }
+        }, 200);
+      }
+      
+      console.log('✅ Form populated for editing address:', addressId);
+    }
+    
+    this.removeEventListener('shown.bs.modal', populateForm);
+  });
+  
+  modal.show();
 }
 
-// Utility functions for notifications
+// ✅ Handle form submission to refresh current page after add/edit
+document.addEventListener('DOMContentLoaded', function() {
+  const addressModal = document.getElementById('addressModal');
+  if (addressModal) {
+    addressModal.addEventListener('shown.bs.modal', function() {
+      setTimeout(() => {
+        const form = document.getElementById('addressForm');
+        if (form && !form.hasAttribute('data-pagination-handler')) {
+          form.setAttribute('data-pagination-handler', 'true');
+          
+          const originalHandler = form.querySelector('script')?.textContent;
+          
+          // Override the success callback to refresh current page
+          form.addEventListener('submit', async function(e) {
+            // Let the original handler run first
+            // After successful submission, reload current page
+            setTimeout(async () => {
+              await loadAddressesPage(currentPage);
+            }, 2000); // Wait for success message and modal close
+          });
+        }
+      }, 100);
+    });
+  }
+});
+
 function showSuccess(message) {
   if (typeof Swal !== 'undefined') {
     Swal.fire({

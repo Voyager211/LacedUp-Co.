@@ -103,8 +103,32 @@
           <form id="filterForm" class="row g-3">
             <div class="col-md-3">
               <label class="form-label text-black">Search Orders</label>
-              <input type="text" class="form-control" name="search" placeholder="Order ID, Customer name, Phone..." 
-                     value="<%= filters.search || '' %>">
+              <!-- search input with icons -->
+              <div class="search-input-container position-relative">
+                <input type="text" 
+                      class="form-control search-input" 
+                      id="orderSearch"
+                      name="search" 
+                      placeholder="Order ID, Customer name, Phone..." 
+                      value="<%= filters.search || '' %>">
+                
+                <!-- ✅ FIXED: Added type="button" to prevent form submission -->
+                <button type="button" 
+                        id="clearSearchBtn" 
+                        class="clear-search-btn"
+                        title="Clear search"
+                        style="display: none;">
+                  <i class="bi bi-x"></i>
+                </button>
+                
+                <!-- ✅ FIXED: Added type="button" to prevent form submission -->
+                <button type="button" 
+                        id="searchSubmitBtn" 
+                        class="search-icon-btn"
+                        title="Search orders">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
             </div>
             <div class="col-md-2">
               <label class="form-label text-black">Item Status</label>
@@ -656,6 +680,106 @@
   padding-right: 0rem;
 }
 
+.search-input-container {
+  position: relative;
+}
+
+.search-input {
+  padding-right: 80px !important; /* Space for both buttons */
+  padding-left: 12px;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  height: 42px;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  border-color: #000000;
+  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.search-icon-btn,
+.clear-search-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.search-icon-btn {
+  right: 40px; /* Position for search button */
+  color: #000000;
+  font-weight: 600;
+}
+
+.search-icon-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+.clear-search-btn {
+  right: 8px; /* Position for clear button */
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.clear-search-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+/* Show clear button when input has value */
+.search-input:not(:placeholder-shown) + .search-icon-btn + .clear-search-btn {
+  display: flex !important;
+}
+
+/* Search loading state */
+.search-input.searching {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 50px center;
+  background-size: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========= SEARCH RESULTS HIGHLIGHTING ========= */
+.search-highlight {
+  background-color: #fff3cd;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* ========= SEARCH STATUS INDICATOR ========= */
+.search-status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.search-status.active {
+  color: #000000;
+  font-weight: 500;
+}
+
 </style>
 
 <script>
@@ -666,30 +790,140 @@ let isLoading = false;
 // Set up pagination callback for the shared partial
 window.applyFilters = applyFilters; // Make it globally accessible
 
-// Auto-submit filter form on change with fetch
+// ✅ FIXED: Load system statistics once on page load
+async function loadSystemStatistics() {
+  try {
+    const response = await fetch('/admin/orders/api/statistics');
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update dashboard cards with system-wide data
+      const statsElements = document.querySelectorAll('.card-body h3');
+      
+      // Today's Orders
+      if (statsElements[0]) {
+        statsElements.textContent = result.statistics.todayOrders || 0;
+      }
+      
+      // Total Orders  
+      if (statsElements[1]) {
+        statsElements[1].textContent = result.statistics.totalOrders || 0;
+      }
+      
+      // Total Items (system-wide)
+      if (statsElements[2]) {
+        statsElements[2].textContent = result.statistics.totalItems || 0;
+      }
+      
+      // Pending Items
+      if (statsElements[3]) {
+        const pendingStat = result.statistics.orderStats.find(stat => stat._id === 'Pending');
+        statsElements[3].textContent = pendingStat?.count || 0;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading system statistics:', error);
+  }
+}
+
+// Main DOMContentLoaded event listener
 document.addEventListener('DOMContentLoaded', function() {
-  // ✅ ADD: Define callback functions for pagination partial compatibility
+  // ✅ Load system statistics once
+  loadSystemStatistics();
+  
+  // ✅ Define callback functions for pagination partial compatibility
   window.fetchCallback = applyFilters;
   window.paginationCallback = applyFilters;
 
   const filterForm = document.getElementById('filterForm');
-  const formElements = filterForm.querySelectorAll('input, select');
+  const searchInput = document.getElementById('orderSearch');
+  const searchSubmitBtn = document.getElementById('searchSubmitBtn');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+
+  // ✅ PREVENT FORM SUBMISSION entirely
+  filterForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    return false;
+  });
   
+  // ✅ PREVENT FORM SUBMISSION on Enter key in search input
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // ✅ Prevent form submission
+      e.stopPropagation(); // ✅ Stop event bubbling
+      performSearch();
+      return false; // ✅ Extra prevention
+    }
+  });
+  
+  // ✅ PREVENT FORM SUBMISSION on search button click
+  searchSubmitBtn.addEventListener('click', function(e) {
+    e.preventDefault(); // ✅ Prevent any form submission
+    e.stopPropagation(); // ✅ Stop event bubbling
+    performSearch();
+    return false; // ✅ Extra prevention
+  });
+  
+  // ✅ FIXED: Clear search functionality - clears input AND searches
+  clearSearchBtn.addEventListener('click', function(e) {
+    e.preventDefault(); // ✅ Prevent any form submission
+    e.stopPropagation(); // ✅ Stop event bubbling
+    
+    // Clear the input value
+    searchInput.value = '';
+    
+    // Update clear button visibility
+    toggleClearButton();
+    
+    // Perform search with empty value (shows all results)
+    performSearch();
+    
+    return false; // ✅ Extra prevention
+  });
+  
+  // ✅ Show/hide clear button based on input value
+  function toggleClearButton() {
+    if (searchInput.value.trim().length > 0) {
+      clearSearchBtn.style.display = 'flex';
+    } else {
+      clearSearchBtn.style.display = 'none';
+    }
+  }
+  
+  // ✅ Show/hide clear button on input (without triggering search)
+  searchInput.addEventListener('input', function(e) {
+    toggleClearButton();
+    // Don't trigger search automatically - only on submit
+  });
+  
+  // ✅ Initialize clear button visibility
+  toggleClearButton();
+  
+  // ✅ Main search function
+  function performSearch() {
+    const searchTerm = searchInput.value.trim();
+    
+    // Visual feedback
+    searchInput.classList.add('searching');
+    searchSubmitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+    searchSubmitBtn.disabled = true;
+    
+    // Perform the search
+    applyFilters(1).finally(() => {
+      // Remove loading state
+      searchInput.classList.remove('searching');
+      searchSubmitBtn.innerHTML = '<i class="bi bi-search"></i>';
+      searchSubmitBtn.disabled = false;
+    });
+  }
+  
+  // ✅ Auto-submit other filters (non-search) on change
+  const formElements = filterForm.querySelectorAll('select'); // Only selects, not search input
   formElements.forEach(element => {
     element.addEventListener('change', function() {
       applyFilters(1); // Reset to page 1 when filters change
     });
-  });
-  
-  // Search input with debounce
-  const searchInput = filterForm.querySelector('input[name="search"]');
-  let searchTimeout;
-  
-  searchInput.addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      applyFilters(1); // Reset to page 1 when search changes
-    }, 500);
   });
 
   // Pagination click handler for the shared partial
@@ -778,7 +1012,7 @@ function showLoadingState() {
   const tableBody = document.querySelector('.orders-table tbody');
   tableBody.innerHTML = `
     <tr>
-      <td colspan="9" class="text-center py-5">
+      <td colspan="8" class="text-center py-5">
         <div class="loading-state">
           <div class="spinner-border text-primary" role="status">
             <span class="visually-hidden">Loading...</span>
@@ -813,7 +1047,7 @@ function updateOrdersTable(data) {
   } else {
     tableBody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-center py-5">
+        <td colspan="8" class="text-center py-5">
           <div class="empty-state">
             <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
             <h5 class="text-black">No order items found</h5>
@@ -902,31 +1136,36 @@ function generateOrderRowHTML(item) {
   `;
 }
 
-
-// Function to update statistics
+// ✅ FIXED: Only show filtered results count (don't update dashboard cards)
 function updateStatistics(data) {
-  // Update today's orders
-  const todayOrdersElement = document.querySelector('.card-body h3');
-  if (todayOrdersElement) {
-    todayOrdersElement.textContent = data.todayOrders || 0;
-  }
+  // Don't update dashboard cards anymore - they show system-wide stats
   
-  // Update total orders
-  const totalOrdersElements = document.querySelectorAll('.card-body h3');
-  if (totalOrdersElements[1]) {
-    totalOrdersElements[1].textContent = data.totalOrders || 0;
-  }
+  // Optional: Show filtered results count somewhere
+  console.log(`Showing ${data.filteredItemsCount} filtered results`);
   
-  // Update total items
-  if (totalOrdersElements[2]) {
-    totalOrdersElements[2].textContent = data.totalItems || 0;
-  }
+  // Optional: Update "Total Items" label to show it's filtered (if you want visual feedback)
+  const searchInput = document.getElementById('orderSearch');
+  const hasFilters = searchInput.value.trim() !== '' || 
+                    document.querySelector('select[name="status"]').value !== '' ||
+                    document.querySelector('select[name="paymentMethod"]').value !== '' ||
+                    document.querySelector('select[name="paymentStatus"]').value !== '';
   
-  // Update pending items
-  if (totalOrdersElements[3]) {
-    // ✅ FIXED: Use string instead of ORDER_STATUS.PENDING
-    const pendingStat = data.orderStats.find(stat => stat._id === 'Pending');
-    totalOrdersElements[3].textContent = pendingStat?.count || 0;
+  // Update the "Total Items" label to show it's filtered
+  const totalItemsCard = document.querySelector('.col-xl-3:nth-child(3) .card');
+  const totalItemsLabel = document.querySelector('.col-xl-3:nth-child(3) h6');
+  
+  if (hasFilters && totalItemsLabel) {
+    totalItemsLabel.textContent = 'Showing Results';
+    totalItemsLabel.style.color = '#007bff'; // Blue color to indicate filtering
+    if (totalItemsCard) {
+      totalItemsCard.style.borderLeft = '4px solid #007bff';
+    }
+  } else if (totalItemsLabel) {
+    totalItemsLabel.textContent = 'Total Items';
+    totalItemsLabel.style.color = ''; // Reset color
+    if (totalItemsCard) {
+      totalItemsCard.style.borderLeft = '';
+    }
   }
 }
 
@@ -1004,6 +1243,8 @@ function attachDropdownEventListeners() {
 
 // Refresh orders
 function refreshOrders() {
+  // Reload system statistics and refresh the current view
+  loadSystemStatistics();
   applyFilters(currentPage);
 }
 
@@ -1042,4 +1283,5 @@ function showToast(type, message) {
   });
 }
 </script>
+
 

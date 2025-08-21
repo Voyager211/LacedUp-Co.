@@ -323,6 +323,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Load orders via AJAX
+// Load orders via AJAX
 async function loadOrders(page = 1, status = '') {
   if (isLoading) return;
   
@@ -348,16 +349,94 @@ async function loadOrders(page = 1, status = '') {
     if (result.success) {
       updateOrdersContainer(result.data.orderItems);
       currentPage = result.data.currentPage;
+      
+      // ✅ FIX: Update pagination UI and remove loading states
+      if (window.PaginationUtils && result.data.totalPages) {
+        window.PaginationUtils.updateState(result.data.currentPage, result.data.totalPages);
+      }
+      
+      // ✅ FIX: Update pagination container if it exists
+      updatePaginationContainer(result.data);
+      
     } else {
       throw new Error(result.message || 'Failed to load orders');
     }
   } catch (error) {
     console.error('Error loading orders:', error);
     showToast.error('Error loading orders. Please try again.');
+    
+    // ✅ FIX: Remove loading states from pagination buttons on error
+    if (window.PaginationUtils) {
+      const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
+      loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
+    }
   } finally {
     isLoading = false;
     hideLoadingState();
   }
+}
+
+function updatePaginationContainer(data) {
+  const paginationContainer = document.querySelector('.pagination');
+  if (!paginationContainer || !data.totalPages || data.totalPages <= 1) {
+    return;
+  }
+
+  // Update pagination data attributes
+  paginationContainer.dataset.totalPages = data.totalPages;
+  
+  // If pagination structure needs to be regenerated (for dynamic pages)
+  if (data.totalPages !== parseInt(paginationContainer.dataset.totalPages)) {
+    regeneratePagination(data.currentPage, data.totalPages);
+  }
+}
+
+// ✅ NEW: Regenerate pagination if total pages changed
+function regeneratePagination(currentPage, totalPages) {
+  const paginationWrapper = document.querySelector('.pagination').closest('nav').parentElement;
+  if (!paginationWrapper) return;
+  
+  let paginationHTML = `
+    <div class="row mt-4">
+      <div class="col-12">
+        <nav class="mt-4">
+          <ul class="pagination justify-content-center" id="pagination-container" data-total-pages="${totalPages}">
+            <!-- Previous Button -->
+            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+              <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}"
+                 href="#"
+                 data-page="${currentPage - 1}"
+                 ${currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                <i class="bi bi-chevron-left"></i>
+              </a>
+            </li>
+  `;
+  
+  for (let i = 1; i <= totalPages; i++) {
+    paginationHTML += `
+      <li class="page-item ${i === currentPage ? 'active' : ''}">
+        <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+      </li>
+    `;
+  }
+  
+  paginationHTML += `
+            <!-- Next Button -->
+            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+              <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}"
+                 href="#"
+                 data-page="${currentPage + 1}"
+                 ${currentPage === totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  `;
+  
+  paginationWrapper.innerHTML = paginationHTML;
 }
 
 // Show loading state
@@ -377,7 +456,11 @@ function showLoadingState() {
 
 // Hide loading state
 function hideLoadingState() {
-  // Loading state will be replaced by updateOrdersContainer
+  // ✅ ENHANCED: Also remove pagination button loading states
+  if (window.PaginationUtils) {
+    const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
+    loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
+  }
 }
 
 // Update orders container

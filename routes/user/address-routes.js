@@ -24,11 +24,13 @@ router.get('/addresses', requireAuth, addressController.loadAddresses);
 
 // API routes
 router.get('/api/addresses', requireAuth, addressController.getAddresses);
+router.get('/api/addresses/paginated', requireAuth, addressController.getAddressesPaginated);
 router.get('/api/address/:addressId', requireAuth, addressController.getAddress);
 router.post('/api/address', requireAuth, addressController.addAddress);
 router.put('/api/address/:addressId', requireAuth, addressController.updateAddress);
 router.delete('/api/address/:addressId', requireAuth, addressController.deleteAddress);
 router.patch('/api/address/:addressId/default', requireAuth, addressController.setDefaultAddress);
+
 
 // States and districts data
 router.get('/api/states-districts', addressController.getStatesAndDistricts);

@@ -70,8 +70,10 @@ const getPaymentStatusColor = (status) => {
 // Helper function to build aggregation pipeline
 function buildOrderItemsPipeline(filters) {
   const pipeline = [];
+  
+  console.log('🔍 Building pipeline with filters:', filters);
 
-  // Step 1: Initial match for order-level filters
+  // Step 1: Initial match for order-level filters ONLY (NO SEARCH HERE!)
   const orderMatch = {};
   
   if (filters.paymentMethod) {
@@ -82,19 +84,15 @@ function buildOrderItemsPipeline(filters) {
     orderMatch.paymentStatus = filters.paymentStatus;
   }
 
-  if (filters.search) {
-    orderMatch.$or = [
-      { orderId: { $regex: filters.search, $options: 'i' } },
-      { 'deliveryAddress.name': { $regex: filters.search, $options: 'i' } },
-      { 'deliveryAddress.phone': { $regex: filters.search, $options: 'i' } }
-    ];
-  }
+  // ✅ CRITICAL FIX: Removed search from initial match!
+  // Search will ONLY be applied after lookups in the enhanced search stage
 
   if (Object.keys(orderMatch).length > 0) {
     pipeline.push({ $match: orderMatch });
+    console.log('📍 Added initial order match (no search):', orderMatch);
   }
 
-  // Step 2: Populate user data
+  // Step 2: User lookup
   pipeline.push({
     $lookup: {
       from: 'users',
@@ -105,7 +103,7 @@ function buildOrderItemsPipeline(filters) {
   });
   pipeline.push({ $unwind: '$user' });
 
-  // Step 3: Populate delivery address
+  // Step 3: Address lookup  
   pipeline.push({
     $lookup: {
       from: 'addresses',
@@ -115,10 +113,10 @@ function buildOrderItemsPipeline(filters) {
     }
   });
 
-  // Step 4: Unwind items to flatten
+  // Step 4: Unwind items (this creates the flattened structure)
   pipeline.push({ $unwind: '$items' });
 
-  // Step 5: Populate product data for items
+  // Step 5: Product lookup
   pipeline.push({
     $lookup: {
       from: 'products',
@@ -134,20 +132,37 @@ function buildOrderItemsPipeline(filters) {
     }
   });
 
-  // Step 6: Item-level filtering
-  const itemMatch = {};
+  // ✅ ENHANCED SEARCH: This is now the ONLY search stage (after all lookups)
+  if (filters.search && filters.search.trim() !== '') {
+    // ✅ FIX: Handle '#' prefix in order ID search
+    let searchTerm = filters.search.trim();
+    let orderIdSearchTerm = searchTerm.startsWith('#') ? searchTerm.substring(1) : searchTerm;
+    
+    const searchMatch = {
+      $or: [
+        { orderId: { $regex: orderIdSearchTerm, $options: 'i' } }, // ✅ Use cleaned term for orderId
+        { 'user.name': { $regex: searchTerm, $options: 'i' } },
+        { 'user.email': { $regex: searchTerm, $options: 'i' } },
+        { 'items.productId.productName': { $regex: searchTerm, $options: 'i' } },
+        { 'items.sku': { $regex: searchTerm, $options: 'i' } }
+      ]
+    };
+    
+    pipeline.push({ $match: searchMatch });
+    console.log('🔍 Added enhanced search match for:', searchTerm);
+    console.log('🔍 OrderId search term (# stripped):', orderIdSearchTerm);
+  }
+
+  // Step 6: Item-level status filtering
   if (filters.status) {
-    itemMatch['items.status'] = filters.status;
+    const statusMatch = { 'items.status': filters.status };
+    pipeline.push({ $match: statusMatch });
+    console.log('📊 Added status match:', statusMatch);
   }
 
-  if (Object.keys(itemMatch).length > 0) {
-    pipeline.push({ $match: itemMatch });
-  }
-
-  // Step 7: Project final structure
+  // Step 7: Project the final structure
   pipeline.push({
     $project: {
-      // Order information
       orderId: 1,
       orderDate: '$createdAt',
       paymentMethod: 1,
@@ -175,8 +190,6 @@ function buildOrderItemsPipeline(filters) {
           }
         }
       },
-      
-      // Item information
       itemId: '$items._id',
       productId: '$items.productId',
       productName: {
@@ -203,8 +216,11 @@ function buildOrderItemsPipeline(filters) {
     filters.sortOrder === 'desc' ? -1 : 1;
   pipeline.push({ $sort: sortObj });
 
+  console.log('✅ Final pipeline length:', pipeline.length);
+  console.log('🎯 Search will now work for customer names, product names, order IDs, and SKUs!');
   return pipeline;
 }
+
 
 // Helper functions for statistics
 async function getOrderItemStatistics() {
@@ -1060,6 +1076,10 @@ exports.getFilteredOrders = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder || 'desc';
 
+    console.log('🚀 API called with filters:', {
+      page, limit, status, paymentMethod, paymentStatus, search, sortBy, sortOrder
+    });
+
     // Build aggregation pipeline
     const pipeline = buildOrderItemsPipeline({
       status,
@@ -1071,30 +1091,24 @@ exports.getFilteredOrders = async (req, res) => {
     });
 
     // Use paginateAggregate for efficient pagination
-    const { data: orderItems, totalPages, count } = await paginateAggregate(
-      Order,
-      pipeline,
-      page,
-      limit
-    );
+    const result = await paginateAggregate(Order, pipeline, page, limit);
+    console.log('📊 Aggregation result:', { 
+      totalItems: result.count, 
+      currentPage: result.currentPage || page,
+      totalPages: result.totalPages,
+      itemsReturned: result.data?.length || 0 
+    });
 
-    const [orderStats, todayOrders] = await Promise.all([
-      getOrderItemStatistics(),
-      getTodayOrdersCount()
-    ]);
+    const { data: orderItems, totalPages, count } = result;
 
-    const totalOrders = await Order.countDocuments();
-
+    // ✅ FIXED: Don't include system-wide statistics in filtered response
     res.json({
       success: true,
       data: {
         orderItems,
         currentPage: page,
         totalPages,
-        totalOrders,
-        totalItems: count,
-        orderStats,
-        todayOrders,
+        filteredItemsCount: count, // ✅ Only the filtered count
         filters: {
           status,
           paymentMethod,
@@ -1107,13 +1121,15 @@ exports.getFilteredOrders = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error fetching filtered orders:', error);
+    console.error('❌ Error in getFilteredOrders:', error);
     res.status(500).json({
       success: false,
-      message: 'Error loading orders'
+      message: 'Error loading orders',
+      debug: error.message
     });
   }
 };
+
 
 // Export orders data (CSV)
 exports.exportOrders = async (req, res) => {
@@ -1180,6 +1196,41 @@ exports.exportOrders = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error exporting orders'
+    });
+  }
+};
+
+exports.getSystemStatistics = async (req, res) => {
+  try {
+    const [orderStats, todayOrders] = await Promise.all([
+      getOrderItemStatistics(),
+      getTodayOrdersCount()
+    ]);
+
+    const totalOrders = await Order.countDocuments();
+    
+    // Get total items count (all items in system)
+    const totalItemsResult = await Order.aggregate([
+      { $unwind: '$items' },
+      { $count: 'totalItems' }
+    ]);
+    const totalItems = totalItemsResult[0]?.totalItems || 0;
+
+    res.json({
+      success: true,
+      statistics: {
+        todayOrders,
+        totalOrders, 
+        totalItems,
+        orderStats
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching system statistics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching statistics'
     });
   }
 };
