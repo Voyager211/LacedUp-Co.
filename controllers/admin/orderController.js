@@ -1234,3 +1234,78 @@ exports.getSystemStatistics = async (req, res) => {
     });
   }
 };
+
+// Fix payment status for cancelled order
+exports.fixCancelledOrderPaymentStatus = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    
+    const order = await Order.findOne({ orderId });
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    if (order.status !== ORDER_STATUS.CANCELLED) {
+      return res.status(400).json({
+        success: false,
+        message: 'Order is not cancelled'
+      });
+    }
+
+    // Fix payment statuses
+    const oldOrderPaymentStatus = order.paymentStatus;
+    
+    if (order.paymentMethod === 'cod') {
+      order.paymentStatus = PAYMENT_STATUS.CANCELLED;
+    } else {
+      order.paymentStatus = order.paymentStatus === PAYMENT_STATUS.COMPLETED 
+        ? PAYMENT_STATUS.REFUNDED 
+        : PAYMENT_STATUS.CANCELLED;
+    }
+
+    order.items.forEach(item => {
+      if (item.status === ORDER_STATUS.CANCELLED) {
+        const oldItemPaymentStatus = item.paymentStatus;
+        
+        if (order.paymentMethod === 'cod') {
+          item.paymentStatus = PAYMENT_STATUS.CANCELLED;
+        } else {
+          item.paymentStatus = item.paymentStatus === PAYMENT_STATUS.COMPLETED 
+            ? PAYMENT_STATUS.REFUNDED 
+            : PAYMENT_STATUS.CANCELLED;
+        }
+      }
+    });
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: 'Payment statuses fixed successfully',
+      changes: {
+        orderPaymentStatus: `${oldOrderPaymentStatus} → ${order.paymentStatus}`,
+        itemsFixed: order.items.length
+      },
+      order: {
+        orderId: order.orderId,
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        items: order.items.map(item => ({
+          _id: item._id,
+          status: item.status,
+          paymentStatus: item.paymentStatus
+        }))
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fixing cancelled order payment status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fixing payment status'
+    });
+  }
+};

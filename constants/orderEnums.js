@@ -16,6 +16,7 @@ const PAYMENT_STATUS = {
   COMPLETED: 'Completed',
   FAILED: 'Failed',
   REFUNDED: 'Refunded',
+  CANCELLED: 'Cancelled',
   PARTIALLY_COMPLETED: 'Partially Completed',
   PARTIALLY_REFUNDED: 'Partially Refunded'
 };

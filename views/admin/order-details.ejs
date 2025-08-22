@@ -9,7 +9,6 @@
           <div>
             <nav aria-label="breadcrumb" class="mb-3">
               <ol class="breadcrumb">
-                <!-- FIXED: Use correct route -->
                 <li class="breadcrumb-item"><a href="/admin/orders" class="text-decoration-none">Orders</a></li>
                 <li class="breadcrumb-item active" aria-current="page">Order Details</li>
               </ol>
@@ -26,7 +25,6 @@
             </p>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <!-- FIXED: Use correct route -->
             <a href="/admin/orders" class="btn btn-dark btn-sm">
               <i class="bi bi-arrow-left me-1"></i>Back to Orders
             </a>
@@ -52,8 +50,9 @@
               <div class="col-lg-2 col-md-4">
                 <div class="text-center">
                   <h6 class="text-muted mb-2 fw-normal">Payment Status</h6>
-                  <span class="status-badge payment-<%= order.paymentStatus.toLowerCase() %>">
-                    <%= order.paymentStatus %>
+                  <!-- ✅ FIXED: Added missing closing span tag -->
+                  <span class="status-badge payment-<%= (order.paymentStatus || 'unknown').toLowerCase() %>">
+                    <%= order.paymentStatus || 'Unknown' %>
                   </span>
                 </div>
               </div>
@@ -199,7 +198,6 @@
                 </thead>
                 <tbody>
                   <% order.items.forEach(item => { %>
-                    <!-- ✅ NEW: Add data-item-id attribute -->
                     <tr data-item-id="<%= item._id %>">
                       <td class="py-3">
                         <div class="d-flex align-items-center">
@@ -231,8 +229,7 @@
                           <%= item.status || 'Pending' %>
                         </span>
                       </td>
-                      <!-- ✅ NEW: Payment Status Column -->
-                     <td class="py-3">
+                      <td class="py-3">
                         <span class="payment-badge payment-<%= (item.paymentStatus || 'pending').toLowerCase().replace(/\s+/g, '-') %> bg-<%= getPaymentStatusColor(item.paymentStatus || 'Pending') %> badge" 
                               data-payment-status="<%= item.paymentStatus || 'Pending' %>">
                           <%= item.paymentStatus || 'Pending' %>
@@ -240,19 +237,19 @@
                       </td>
                       <td class="py-3 text-center">
                         <div class="btn-group" role="group">
-                            <% if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status || ORDER_STATUS.PENDING)) { %>
-                              <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
-                                <i class="bi bi-x-circle"></i>
-                              </button>
-                            <% } %>
-                            <% if (item.status === ORDER_STATUS.DELIVERED) { %>
-                              <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
-                                <i class="bi bi-arrow-return-left"></i>
-                              </button>
-                            <% } %>
-                            <% if (![ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING, ORDER_STATUS.DELIVERED].includes(item.status || ORDER_STATUS.PENDING)) { %>
-                              <small class="text-muted">No actions</small>
-                            <% } %>
+                          <% if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status || ORDER_STATUS.PENDING)) { %>
+                            <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
+                              <i class="bi bi-x-circle"></i>
+                            </button>
+                          <% } %>
+                          <% if (item.status === ORDER_STATUS.DELIVERED) { %>
+                            <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
+                              <i class="bi bi-arrow-return-left"></i>
+                            </button>
+                          <% } %>
+                          <% if (![ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING, ORDER_STATUS.DELIVERED].includes(item.status || ORDER_STATUS.PENDING)) { %>
+                            <small class="text-muted">No actions</small>
+                          <% } %>
                         </div>
                       </td>
                     </tr>
@@ -377,8 +374,9 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="small text-muted">Status:</span>
-                  <span class="status-badge payment-<%= order.paymentStatus.toLowerCase() %>">
-                    <%= order.paymentStatus %>
+                  <!-- ✅ FIXED: Handle undefined paymentStatus -->
+                  <span class="status-badge payment-<%= (order.paymentStatus || 'unknown').toLowerCase() %>">
+                    <%= order.paymentStatus || 'Unknown' %>
                   </span>
                 </div>
               </div>
@@ -404,6 +402,7 @@
     </div>
   <% } %>
 </div>
+
 
 
 
@@ -1169,6 +1168,12 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.payment-cancelled {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
 }
 
 </style>

@@ -10,7 +10,7 @@
           <p class="text-black mb-0">Manage and track all customer orders (showing individual items)</p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-dark" onclick="refreshOrders()">
+          <button class="btn btn-dark" id="headerRefreshBtn">
             <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
           </button>
         </div>
@@ -100,10 +100,10 @@
     <div class="col-12">
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <form id="filterForm" class="row g-3">
-            <div class="col-md-3">
+          <div class="row g-3 align-items-end">
+            <!-- Search Input -->
+            <div class="col-md-8">
               <label class="form-label text-black">Search Orders</label>
-              <!-- search input with icons -->
               <div class="search-input-container position-relative">
                 <input type="text" 
                       class="form-control search-input" 
@@ -112,7 +112,6 @@
                       placeholder="Order ID, Customer name, Phone..." 
                       value="<%= filters.search || '' %>">
                 
-                <!-- ✅ FIXED: Added type="button" to prevent form submission -->
                 <button type="button" 
                         id="clearSearchBtn" 
                         class="clear-search-btn"
@@ -121,7 +120,6 @@
                   <i class="bi bi-x"></i>
                 </button>
                 
-                <!-- ✅ FIXED: Added type="button" to prevent form submission -->
                 <button type="button" 
                         id="searchSubmitBtn" 
                         class="search-icon-btn"
@@ -130,49 +128,90 @@
                 </button>
               </div>
             </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Item Status</label>
-              <select class="form-select" name="status">
-                <option value="">All Status</option>
-                <% orderStatuses.forEach(status => { %>
-                  <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
-                <% }); %>
-              </select>
+            
+            <!-- View Filters Toggle Button -->
+            <div class="col-md-4 d-flex justify-content-end">
+              <button type="button" 
+                      id="viewFiltersBtn" 
+                      class="btn view-filters-btn"
+                      data-bs-toggle="collapse" 
+                      data-bs-target="#filtersSection" 
+                      aria-expanded="false">
+                <i class="bi bi-funnel me-2"></i>View Filters
+              </button>
             </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Payment Method</label>
-              <select class="form-select" name="paymentMethod">
-                <option value="">All Methods</option>
-                <option value="cod" <%= filters.paymentMethod === 'cod' ? 'selected' : '' %>>Cash on Delivery</option>
-                <option value="razorpay" <%= filters.paymentMethod === 'razorpay' ? 'selected' : '' %>>Razorpay</option>
-                <option value="wallet" <%= filters.paymentMethod === 'wallet' ? 'selected' : '' %>>Wallet</option>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Payment Status</label>
-              <select class="form-select" name="paymentStatus">
-                <option value="">All Status</option>
-                <% paymentStatuses.forEach(status => { %>
-                  <option value="<%= status %>" <%= filters.paymentStatus === status ? 'selected' : '' %>><%= status %></option>
-                <% }); %>
-              </select>
-            </div>
-            <div class="col-md-2">
-              <label class="form-label text-black">Sort By</label>
-              <select class="form-select" name="sortBy">
-                <option value="createdAt" <%= filters.sortBy === 'createdAt' ? 'selected' : '' %>>Order Date</option>
-                <option value="totalAmount" <%= filters.sortBy === 'totalAmount' ? 'selected' : '' %>>Amount</option>
-                <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
-              </select>
-            </div>
-            <div class="col-md-1">
-              <label class="form-label text-black">Order</label>
-              <select class="form-select" name="sortOrder">
-                <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
-                <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
-              </select>
-            </div>
-          </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsible Filters Section -->
+  <div class="collapse" id="filtersSection">
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm filters-card">
+          <div class="card-body">
+            <form id="filterForm" class="row g-3">
+              <!-- All Filter Controls -->
+              <div class="col-md-2">
+                <label class="form-label text-black">Item Status</label>
+                <select class="form-select" name="status">
+                  <option value="">All Status</option>
+                  <% orderStatuses.forEach(status => { %>
+                    <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Payment Method</label>
+                <select class="form-select" name="paymentMethod">
+                  <option value="">All Methods</option>
+                  <option value="cod" <%= filters.paymentMethod === 'cod' ? 'selected' : '' %>>Cash on Delivery</option>
+                  <option value="razorpay" <%= filters.paymentMethod === 'razorpay' ? 'selected' : '' %>>Razorpay</option>
+                  <option value="wallet" <%= filters.paymentMethod === 'wallet' ? 'selected' : '' %>>Wallet</option>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Payment Status</label>
+                <select class="form-select" name="paymentStatus">
+                  <option value="">All Status</option>
+                  <% paymentStatuses.forEach(status => { %>
+                    <option value="<%= status %>" <%= filters.paymentStatus === status ? 'selected' : '' %>><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Sort By</label>
+                <select class="form-select" name="sortBy">
+                  <option value="createdAt" <%= filters.sortBy === 'createdAt' ? 'selected' : '' %>>Order Date</option>
+                  <option value="totalAmount" <%= filters.sortBy === 'totalAmount' ? 'selected' : '' %>>Amount</option>
+                  <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Order</label>
+                <select class="form-select" name="sortOrder">
+                  <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
+                  <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
+                </select>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div class="col-md-2 d-flex flex-column">
+                <label class="form-label text-black">&nbsp;</label>
+                <button type="button" 
+                        id="resetFiltersBtn" 
+                        class="btn reset-filters-btn">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       </div>
     </div>
@@ -259,18 +298,7 @@
                       </td>
                       <td>
                         <div class="payment-status">
-                          <span class="status-badge payment-<%= item.paymentStatus.toLowerCase() %>">
-                            <%= item.paymentStatus %>
-                            <% if (item.paymentMethod === 'cod') { %>
-                              <% if (item.paymentStatus === 'Pending') { %>
-                                <small class="text-muted">(Cash on Delivery)</small>
-                              <% } else if (item.paymentStatus === 'Completed') { %>
-                                <small class="text-muted">(Cash Collected)</small>
-                              <% } else if (item.paymentStatus === 'Refunded') { %>
-                                <small class="text-muted">(Cash Returned)</small>
-                              <% } %>
-                            <% } %>
-                          </span>
+                          <span class="status-badge payment-<%= (item.paymentStatus || 'unknown').toLowerCase() %>"><%= item.paymentStatus || 'Unknown' %>
                         </div>
                       </td>
                       <td>
@@ -780,6 +808,190 @@
   font-weight: 500;
 }
 
+.payment-cancelled {
+  background-color: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d6d8db;
+}
+
+#resetFiltersBtn {
+  background-color: transparent !important;
+  border: 1px solid #6c757d !important;
+  color: #6c757d !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 140px;
+  justify-content: center;
+}
+
+#resetFiltersBtn:hover {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+#resetFiltersBtn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+  outline: none;
+}
+
+#resetFiltersBtn:active {
+  background-color: #5a6268 !important;
+  transform: translateY(0);
+}
+
+/* Button group spacing */
+.col-12.d-flex button {
+  white-space: nowrap;
+}
+
+/* ========= VIEW FILTERS BUTTON STYLING ========= */
+.view-filters-btn {
+  background-color: transparent !important;
+  border: 2px solid #dc3545 !important;
+  color: #dc3545 !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 150px;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+}
+
+.view-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.view-filters-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.view-filters-btn:active {
+  background-color: #b02a37 !important;
+  transform: translateY(0);
+}
+
+/* Change icon and text when expanded */
+.view-filters-btn[aria-expanded="true"] {
+  background-color: #dc3545 !important;
+  color: white !important;
+}
+
+.view-filters-btn[aria-expanded="true"] i::before {
+  content: "\f62d"; /* Bootstrap funnel-fill icon */
+}
+
+/* ========= RESET FILTERS BUTTON STYLING ========= */
+.reset-filters-btn {
+  background-color: #000000 !important;
+  border: 2px solid #000000 !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.reset-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.reset-filters-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.reset-filters-btn:active {
+  background-color: #b02a37 !important;
+  transform: translateY(0);
+}
+
+/* ========= FILTERS CARD ANIMATION ========= */
+.filters-card {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+#filtersSection {
+  transition: all 0.3s ease-in-out;
+}
+
+#filtersSection.collapsing {
+  transition: height 0.3s ease-in-out;
+}
+
+/* ========= SEARCH BAR ENHANCEMENTS ========= */
+.search-input-container {
+  position: relative;
+}
+
+.search-input {
+  padding-right: 80px !important;
+  padding-left: 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  height: 46px;
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+}
+
+.search-input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+  outline: none;
+}
+
+/* ========= FORM CONTROLS STYLING ========= */
+.form-select {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.form-select:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+}
+
+/* ========= RESPONSIVE DESIGN ========= */
+@media (max-width: 768px) {
+  .view-filters-btn {
+    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .reset-filters-btn {
+    margin-top: 1rem;
+  }
+}
 </style>
 
 <script>
@@ -802,7 +1014,7 @@ async function loadSystemStatistics() {
       
       // Today's Orders
       if (statsElements[0]) {
-        statsElements.textContent = result.statistics.todayOrders || 0;
+        statsElements[0].textContent = result.statistics.todayOrders || 0;
       }
       
       // Total Orders  
@@ -839,69 +1051,136 @@ document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('orderSearch');
   const searchSubmitBtn = document.getElementById('searchSubmitBtn');
   const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const viewFiltersBtn = document.getElementById('viewFiltersBtn');
+  const headerRefreshBtn = document.getElementById('headerRefreshBtn');
+
+  // ✅ NEW: Header refresh button functionality
+  if (headerRefreshBtn) {
+    headerRefreshBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Add loading state
+      const originalText = headerRefreshBtn.innerHTML;
+      headerRefreshBtn.disabled = true;
+      headerRefreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1 text-white"></i>Refreshing...';
+      
+      // Reload statistics and current view
+      Promise.all([
+        loadSystemStatistics(),
+        applyFilters(currentPage)
+      ]).finally(() => {
+        // Remove loading state
+        headerRefreshBtn.disabled = false;
+        headerRefreshBtn.innerHTML = originalText;
+      });
+    });
+  }
+
+  // ✅ NEW: View Filters button toggle functionality
+  if (viewFiltersBtn) {
+    viewFiltersBtn.addEventListener('click', function() {
+      const filtersSection = document.getElementById('filtersSection');
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      // Update button text and icon immediately for responsiveness
+      if (!isExpanded) {
+        this.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+      } else {
+        this.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+      }
+    });
+    
+    // ✅ Listen to Bootstrap collapse events for accurate state management
+    const filtersSection = document.getElementById('filtersSection');
+    if (filtersSection) {
+      filtersSection.addEventListener('shown.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'true');
+      });
+      
+      filtersSection.addEventListener('hidden.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'false');
+      });
+    }
+  }
 
   // ✅ PREVENT FORM SUBMISSION entirely
-  filterForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    return false;
-  });
+  if (filterForm) {
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
+  }
   
   // ✅ PREVENT FORM SUBMISSION on Enter key in search input
-  searchInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault(); // ✅ Prevent form submission
+  if (searchInput) {
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // ✅ Prevent form submission
+        e.stopPropagation(); // ✅ Stop event bubbling
+        performSearch();
+        return false; // ✅ Extra prevention
+      }
+    });
+  }
+  
+  // ✅ PREVENT FORM SUBMISSION on search button click
+  if (searchSubmitBtn) {
+    searchSubmitBtn.addEventListener('click', function(e) {
+      e.preventDefault(); // ✅ Prevent any form submission
       e.stopPropagation(); // ✅ Stop event bubbling
       performSearch();
       return false; // ✅ Extra prevention
-    }
-  });
-  
-  // ✅ PREVENT FORM SUBMISSION on search button click
-  searchSubmitBtn.addEventListener('click', function(e) {
-    e.preventDefault(); // ✅ Prevent any form submission
-    e.stopPropagation(); // ✅ Stop event bubbling
-    performSearch();
-    return false; // ✅ Extra prevention
-  });
+    });
+  }
   
   // ✅ FIXED: Clear search functionality - clears input AND searches
-  clearSearchBtn.addEventListener('click', function(e) {
-    e.preventDefault(); // ✅ Prevent any form submission
-    e.stopPropagation(); // ✅ Stop event bubbling
-    
-    // Clear the input value
-    searchInput.value = '';
-    
-    // Update clear button visibility
-    toggleClearButton();
-    
-    // Perform search with empty value (shows all results)
-    performSearch();
-    
-    return false; // ✅ Extra prevention
-  });
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', function(e) {
+      e.preventDefault(); // ✅ Prevent any form submission
+      e.stopPropagation(); // ✅ Stop event bubbling
+      
+      // Clear the input value
+      searchInput.value = '';
+      
+      // Update clear button visibility
+      toggleClearButton();
+      
+      // Perform search with empty value (shows all results)
+      performSearch();
+      
+      return false; // ✅ Extra prevention
+    });
+  }
   
   // ✅ Show/hide clear button based on input value
   function toggleClearButton() {
-    if (searchInput.value.trim().length > 0) {
-      clearSearchBtn.style.display = 'flex';
-    } else {
-      clearSearchBtn.style.display = 'none';
+    if (searchInput && clearSearchBtn) {
+      if (searchInput.value.trim().length > 0) {
+        clearSearchBtn.style.display = 'flex';
+      } else {
+        clearSearchBtn.style.display = 'none';
+      }
     }
   }
   
   // ✅ Show/hide clear button on input (without triggering search)
-  searchInput.addEventListener('input', function(e) {
-    toggleClearButton();
-    // Don't trigger search automatically - only on submit
-  });
+  if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+      toggleClearButton();
+      // Don't trigger search automatically - only on submit
+    });
+  }
   
   // ✅ Initialize clear button visibility
   toggleClearButton();
   
   // ✅ Main search function
   function performSearch() {
+    if (!searchInput || !searchSubmitBtn) return;
+    
     const searchTerm = searchInput.value.trim();
     
     // Visual feedback
@@ -918,13 +1197,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // ✅ Auto-submit other filters (non-search) on change
-  const formElements = filterForm.querySelectorAll('select'); // Only selects, not search input
-  formElements.forEach(element => {
-    element.addEventListener('change', function() {
-      applyFilters(1); // Reset to page 1 when filters change
+  // ✅ Auto-submit filters on change
+  if (filterForm) {
+    const formElements = filterForm.querySelectorAll('select');
+    formElements.forEach(element => {
+      element.addEventListener('change', function() {
+        applyFilters(1); // Reset to page 1 when filters change
+      });
     });
-  });
+  }
 
   // Pagination click handler for the shared partial
   document.addEventListener('click', function(e) {
@@ -964,7 +1245,31 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
+
+  // ✅ Reset filters button with enhanced functionality
+  const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      resetFilters();
+      return false;
+    });
+  }
 });
+
+function getPaymentStatusColor(status) {
+  const colorMap = {
+    'Pending': 'warning',
+    'Completed': 'success',
+    'Failed': 'danger', 
+    'Refunded': 'info',
+    'Cancelled': 'secondary', // ✅ ADD THIS
+    'Partially Completed': 'primary',
+    'Partially Refunded': 'secondary'
+  };
+  return colorMap[status] || 'secondary';
+}
 
 // Function to apply filters using fetch
 async function applyFilters(page = 1) {
@@ -974,15 +1279,25 @@ async function applyFilters(page = 1) {
   showLoadingState();
   
   try {
+    // ✅ Handle both search input and filter form
+    const searchInput = document.getElementById('orderSearch');
     const filterForm = document.getElementById('filterForm');
-    const formData = new FormData(filterForm);
     
     const params = new URLSearchParams();
     params.append('page', page);
     
-    for (const [key, value] of formData.entries()) {
-      if (value.trim() !== '') {
-        params.append(key, value);
+    // Add search parameter
+    if (searchInput && searchInput.value.trim() !== '') {
+      params.append('search', searchInput.value.trim());
+    }
+    
+    // Add filter parameters if form exists
+    if (filterForm) {
+      const formData = new FormData(filterForm);
+      for (const [key, value] of formData.entries()) {
+        if (value.trim() !== '' && key !== 'search') { // Exclude search as we handle it separately
+          params.append(key, value);
+        }
       }
     }
     
@@ -1010,18 +1325,20 @@ async function applyFilters(page = 1) {
 // Function to show loading state
 function showLoadingState() {
   const tableBody = document.querySelector('.orders-table tbody');
-  tableBody.innerHTML = `
-    <tr>
-      <td colspan="8" class="text-center py-5">
-        <div class="loading-state">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
+  if (tableBody) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-5">
+          <div class="loading-state">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading orders...</p>
           </div>
-          <p class="mt-3 text-muted">Loading orders...</p>
-        </div>
-      </td>
-    </tr>
-  `;
+        </td>
+      </tr>
+    `;
+  }
 }
 
 // Function to hide loading state
@@ -1029,9 +1346,80 @@ function hideLoadingState() {
   // Loading state will be replaced by actual content
 }
 
+// ✅ ENHANCED: Reset all filters function with loading states
+function resetFilters() {
+  console.log('🔄 Resetting all filters...');
+  
+  const filterForm = document.getElementById('filterForm');
+  const resetBtn = document.getElementById('resetFiltersBtn');
+  
+  // Add loading state to reset button
+  if (resetBtn) {
+    const originalText = resetBtn.innerHTML;
+    resetBtn.disabled = true;
+    resetBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Resetting...';
+    
+    // Reset after a short delay to show the loading state
+    setTimeout(() => {
+      // Reset form if it exists
+      if (filterForm) {
+        filterForm.reset();
+      }
+      
+      // Clear search input
+      const searchInput = document.getElementById('orderSearch');
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      
+      // Hide the clear search button
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = 'none';
+      }
+      
+      // Reset the "Total Items" label styling if it was changed during filtering
+      const totalItemsLabel = document.querySelector('.col-xl-3:nth-child(3) h6');
+      const totalItemsCard = document.querySelector('.col-xl-3:nth-child(3) .card');
+      if (totalItemsLabel) {
+        totalItemsLabel.textContent = 'Total Items';
+        totalItemsLabel.style.color = '';
+      }
+      if (totalItemsCard) {
+        totalItemsCard.style.borderLeft = '';
+      }
+      
+      // Apply filters with cleared values
+      applyFilters(1).finally(() => {
+        // Remove loading state
+        if (resetBtn) {
+          resetBtn.disabled = false;
+          resetBtn.innerHTML = originalText;
+        }
+      });
+      
+      console.log('✅ Filters reset successfully');
+    }, 100);
+  } else {
+    // Fallback if no reset button found
+    if (filterForm) {
+      filterForm.reset();
+    }
+    
+    const searchInput = document.getElementById('orderSearch');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    
+    applyFilters(1);
+  }
+}
+
 // Function to update orders table
 function updateOrdersTable(data) {
   const tableBody = document.querySelector('.orders-table tbody');
+  
+  if (!tableBody) return;
   
   if (data.orderItems && data.orderItems.length > 0) {
     let tableHTML = '';
@@ -1115,15 +1503,15 @@ function generateOrderRowHTML(item) {
       </td>
       <td>
         <div class="payment-status">
-          <span class="status-badge payment-${item.paymentStatus.toLowerCase()}">
-            ${item.paymentStatus}
+          <span class="status-badge payment-${(item.paymentStatus || 'unknown').toLowerCase()}">
+            ${item.paymentStatus || 'Unknown'}
           </span>
         </div>
       </td>
       <td>
         <div class="item-status">
-          <span class="status-badge item-${item.status.toLowerCase()}">
-            ${item.status}
+          <span class="status-badge item-${(item.status || 'pending').toLowerCase()}">
+            ${item.status || 'Pending'}
           </span>
         </div>
       </td>
@@ -1145,10 +1533,14 @@ function updateStatistics(data) {
   
   // Optional: Update "Total Items" label to show it's filtered (if you want visual feedback)
   const searchInput = document.getElementById('orderSearch');
-  const hasFilters = searchInput.value.trim() !== '' || 
-                    document.querySelector('select[name="status"]').value !== '' ||
-                    document.querySelector('select[name="paymentMethod"]').value !== '' ||
-                    document.querySelector('select[name="paymentStatus"]').value !== '';
+  const statusSelect = document.querySelector('select[name="status"]');
+  const paymentMethodSelect = document.querySelector('select[name="paymentMethod"]');
+  const paymentStatusSelect = document.querySelector('select[name="paymentStatus"]');
+  
+  const hasFilters = (searchInput && searchInput.value.trim() !== '') || 
+                    (statusSelect && statusSelect.value !== '') ||
+                    (paymentMethodSelect && paymentMethodSelect.value !== '') ||
+                    (paymentStatusSelect && paymentStatusSelect.value !== '');
   
   // Update the "Total Items" label to show it's filtered
   const totalItemsCard = document.querySelector('.col-xl-3:nth-child(3) .card');
@@ -1241,7 +1633,7 @@ function attachDropdownEventListeners() {
   });
 }
 
-// Refresh orders
+// ✅ UPDATED: Refresh orders function (used by header button)
 function refreshOrders() {
   // Reload system statistics and refresh the current view
   loadSystemStatistics();
@@ -1267,6 +1659,7 @@ function showToast(type, message) {
   if (!toastContainer) {
     toastContainer = document.createElement('div');
     toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
     document.body.appendChild(toastContainer);
   }
   
@@ -1283,5 +1676,6 @@ function showToast(type, message) {
   });
 }
 </script>
+
 
 

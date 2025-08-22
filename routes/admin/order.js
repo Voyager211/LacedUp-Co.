@@ -26,6 +26,7 @@ router.patch('/:orderId', orderController.updateOrderStatus);
 
 // Cancel entire order
 router.patch('/:orderId/cancel', orderController.cancelOrder);
+router.patch('/orders/:orderId/fix-payment-status', orderController.fixCancelledOrderPaymentStatus);
 
 // Return entire order
 router.patch('/:orderId/return', orderController.returnOrder);

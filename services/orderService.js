@@ -168,6 +168,9 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
 
     const oldStatus = order.status;
     
+    console.log(`🔄 Updating order ${orderId}: ${oldStatus} → ${newStatus}`);
+    console.log(`📋 Order has ${order.items.length} items`);
+    
     // Update order status
     order.status = newStatus;
     order.statusHistory.push({
@@ -177,8 +180,16 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
     });
 
     // ✅ ENHANCED: Update all items to match order status and their payment statuses
-    order.items.forEach(item => {
+    let itemsUpdated = 0;
+    order.items.forEach((item, index) => {
       const oldItemStatus = item.status;
+      const oldPaymentStatus = item.paymentStatus;
+      
+      console.log(`🔄 Processing item ${index + 1}/${order.items.length}:`, {
+        itemId: item._id,
+        oldStatus: oldItemStatus,
+        oldPaymentStatus: oldPaymentStatus
+      });
       
       // Update item status to match order status
       item.status = newStatus;
@@ -190,28 +201,39 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
         notes: `Item status updated to match order status: ${newStatus}`
       });
 
-      // ✅ AUTOMATED: Update item payment status based on new status
-      updateAutomatedPaymentStatus(order, item, newStatus);
+      // ✅ CRITICAL: Update item payment status based on new status
+      const paymentChanged = updateAutomatedPaymentStatus(order, item, newStatus);
+      
+      console.log(`✅ Item ${index + 1} updated:`, {
+        status: `${oldItemStatus} → ${item.status}`,
+        payment: `${oldPaymentStatus} → ${item.paymentStatus}`,
+        paymentChanged: paymentChanged
+      });
+
+      itemsUpdated++;
     });
 
     // ✅ AUTOMATED: Recalculate order-level payment status
     order.paymentStatus = calculatePaymentStatus(order);
+
+    console.log(`💾 Saving order with ${itemsUpdated} items updated`);
+    console.log(`📊 Final order payment status: ${order.paymentStatus}`);
 
     await order.save();
 
     console.log(`✅ Order ${orderId} updated successfully:`);
     console.log(`   Order Status: ${oldStatus} → ${order.status}`);
     console.log(`   Order Payment: ${order.paymentStatus}`);
-    console.log(`   All items updated to: ${newStatus}`);
+    console.log(`   Items Updated: ${itemsUpdated}`);
 
     return {
       success: true,
-      message: 'Order status updated successfully. All items and payment statuses updated automatically.',
-      order: order // ✅ Return complete order with updated statuses
+      message: `Order status updated successfully. All ${itemsUpdated} items and payment statuses updated automatically.`,
+      order: order
     };
 
   } catch (error) {
-    console.error('Error updating order status:', error);
+    console.error('❌ Error updating order status:', error);
     throw error;
   }
 };
@@ -328,7 +350,12 @@ const calculatePaymentStatus = (order) => {
 // Comprehensive automated payment status update
 // ✅ FIXED: Separate logic for return request vs return approval
 const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
-  console.log('Updating payment status automatically for item:', item._id, 'Status:', newItemStatus);
+  console.log('🔄 Updating payment status automatically:', {
+    itemId: item._id,
+    newStatus: newItemStatus,
+    oldPaymentStatus: item.paymentStatus,
+    paymentMethod: order.paymentMethod
+  });
 
   const oldPaymentStatus = item.paymentStatus;
 
@@ -336,60 +363,71 @@ const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
     case ORDER_STATUS.DELIVERED:
       if (order.paymentMethod === 'cod') {
         item.paymentStatus = PAYMENT_STATUS.COMPLETED;
-        console.log(`COD item delivered - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+        console.log(`✅ COD item delivered - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
       }
       break;
 
     case ORDER_STATUS.CANCELLED:
+      // ✅ ENHANCED: Always set to CANCELLED for cancelled items
       if (order.paymentMethod === 'cod') {
         item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-        console.log(`COD item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+        console.log(`✅ COD item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
       } else {
-        if (item.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+        // Online payments
+        if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`Online paid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ Online paid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`Online unpaid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ Online unpaid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       }
       break;
 
-    // ✅ FIXED: Only return request - payment status should NOT change
     case ORDER_STATUS.PROCESSING_RETURN:
-      console.log(`Return request submitted - Payment status unchanged: ${item.paymentStatus}`);
-      // Payment status remains the same - just a return request, not approved yet
+      // Payment status unchanged during return request
+      console.log(`ℹ️ Return request - Payment status unchanged: ${item.paymentStatus}`);
       break;
 
-    // ✅ FIXED: Only when return is approved should payment status change
     case ORDER_STATUS.RETURNED:
+      // Only when return is approved should payment status change
       if (order.paymentMethod === 'cod') {
-        // COD: If delivered (paid), refund needed. If not delivered, no payment taken.
-        if (item.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+        if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`COD undelivered item return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       } else {
-        // Online payments: If paid, refund. If not paid, cancel.
-        if (item.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+        if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`Online unpaid item return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(`✅ Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       }
       break;
 
     default:
-      // Payment status remains unchanged for other statuses
+      // For other statuses, don't change payment status
+      console.log(`ℹ️ Status "${newItemStatus}" - Payment status unchanged: ${item.paymentStatus}`);
       break;
   }
 
-  return item.paymentStatus !== oldPaymentStatus;
+  // ✅ ENSURE: Payment status is never undefined
+  if (!item.paymentStatus) {
+    item.paymentStatus = PAYMENT_STATUS.PENDING;
+    console.log(`⚠️ Payment status was undefined, set to PENDING`);
+  }
+
+  const changed = item.paymentStatus !== oldPaymentStatus;
+  if (changed) {
+    console.log(`✅ Payment status changed: ${oldPaymentStatus} → ${item.paymentStatus}`);
+  }
+
+  return changed;
 };
 
 
