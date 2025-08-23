@@ -913,6 +913,20 @@ exports.cancelOrder = async (req, res) => {
     const { reason } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
+    // ✅ DEBUGGING - Log all received data
+    console.log('🔍 BACKEND DEBUG - Cancel Order:');
+    console.log('Request body:', req.body);
+    console.log('Reason received:', reason);
+    console.log('Reason type:', typeof reason);
+    
+    const validReasons = getCancellationReasonsArray();
+    console.log('Valid reasons array:', validReasons);
+    console.log('Valid reasons length:', validReasons.length);
+    console.log('Is reason in valid array:', validReasons.includes(reason));
+    console.log('First few valid reasons:', validReasons.slice(0, 3));
+    console.log('================================');
+
+    // Authentication check
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -920,7 +934,7 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // Cancel reason validations
+    // Reason validation
     if (!reason || reason.trim() === '') {
       return res.status(400).json({
         success: false,
@@ -928,8 +942,12 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    const validReasons = getCancellationReasonsArray();
+    // ✅ SINGLE validation block - no duplicates
     if (!validReasons.includes(reason)) {
+      console.log('❌ Reason validation failed:', {
+        received: reason,
+        validOptions: validReasons
+      });
       return res.status(400).json({
         success: false,
         message: 'Invalid cancellation reason selected'
@@ -945,7 +963,7 @@ exports.cancelOrder = async (req, res) => {
       });
     }
 
-    // ✅ STEP 1 DEBUG: Check status BEFORE cancellation
+    // ✅ DEBUG: Check status BEFORE cancellation
     console.log('🔍 BEFORE CANCEL ORDER:');
     console.log('Order ID:', orderId);
     console.log('Order status before:', order.status);
@@ -966,7 +984,7 @@ exports.cancelOrder = async (req, res) => {
     // Use OrderService to cancel order
     const result = await orderService.cancelOrder(orderId, reason, userId);
 
-    // ✅ STEP 1 DEBUG: Check status AFTER cancellation
+    // ✅ DEBUG: Check status AFTER cancellation
     console.log('🔍 AFTER CANCEL ORDER:');
     const orderAfter = await Order.findOne({ orderId: orderId });
     console.log('Order status after:', orderAfter.status);
@@ -985,17 +1003,20 @@ exports.cancelOrder = async (req, res) => {
 
     // Restore stock for cancelled items
     for (const item of result.order.items) {
-      if (item.status === 'Cancelled') {
+      if (item.status === ORDER_STATUS.CANCELLED) {
         const product = await Product.findById(item.productId);
         if (product) {
           const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
           if (variant) {
             variant.stock += item.quantity;
             await product.save();
+            console.log(`✅ Stock restored: ${item.quantity} units for ${item.size}`);
           }
         }
       }
     }
+
+    console.log('✅ Order cancellation completed successfully');
 
     res.json({
       success: true,
@@ -1003,13 +1024,14 @@ exports.cancelOrder = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error cancelling order:', error);
+    console.error('❌ Error cancelling order:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to cancel order'
     });
   }
 };
+
 
 // Cancel individual item
 exports.cancelItem = async (req, res) => {
@@ -1018,6 +1040,15 @@ exports.cancelItem = async (req, res) => {
     const { reason } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
+    // ✅ DEBUGGING - Log all received data
+    console.log('🔍 BACKEND DEBUG - Cancel Item:');
+    console.log('Request body:', req.body);
+    console.log('Reason received:', reason);
+    console.log('Reason type:', typeof reason);
+    console.log('Order ID:', orderId);
+    console.log('Item ID:', itemId);
+
+    // Authentication check
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -1025,7 +1056,7 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Cancel reason validations
+    // Reason validation
     if (!reason || reason.trim() === '') {
       return res.status(400).json({
         success: false,
@@ -1033,14 +1064,23 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
+    // ✅ SINGLE validation block - declare validReasons only once
     const validReasons = getCancellationReasonsArray();
+    console.log('Valid reasons array:', validReasons);
+    console.log('Valid reasons length:', validReasons.length);
+    console.log('Is reason in valid array:', validReasons.includes(reason));
+    console.log('================================');
+
     if (!validReasons.includes(reason)) {
+      console.log('❌ Item cancellation - Reason validation failed:', {
+        received: reason,
+        validOptions: validReasons
+      });
       return res.status(400).json({
         success: false,
         message: 'Invalid cancellation reason selected'
       });
     }
-
 
     // Find the order to verify ownership
     const order = await Order.findOne({ orderId: orderId, user: userId });
@@ -1060,7 +1100,7 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // ✅ STEP 1 DEBUG: Check status BEFORE item cancellation
+    // ✅ DEBUG: Check status BEFORE item cancellation
     console.log('🔍 BEFORE CANCEL ITEM:');
     console.log('Order ID:', orderId);
     console.log('Item ID:', itemId);
@@ -1078,9 +1118,9 @@ exports.cancelItem = async (req, res) => {
     console.log('------------------------');
 
     // Use OrderService to cancel item
-    const result = await orderService.cancelItem(orderId, itemId, reason, userId);
+    const result = await orderService.cancelItem(orderId, itemId, reason, '', userId);
 
-    // ✅ STEP 1 DEBUG: Check status AFTER item cancellation
+    // ✅ DEBUG: Check status AFTER item cancellation
     console.log('🔍 AFTER CANCEL ITEM:');
     const orderAfter = await Order.findOne({ orderId: orderId });
     const itemAfter = orderAfter.items.id(itemId);
@@ -1103,8 +1143,11 @@ exports.cancelItem = async (req, res) => {
       if (variant) {
         variant.stock += item.quantity;
         await product.save();
+        console.log(`✅ Stock restored: ${item.quantity} units for ${item.size}`);
       }
     }
+
+    console.log('✅ Item cancellation completed successfully');
 
     res.json({
       success: true,
@@ -1112,13 +1155,14 @@ exports.cancelItem = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error cancelling item:', error);
+    console.error('❌ Error cancelling item:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to cancel item'
     });
   }
 };
+
 
 
 // Return request for entire order

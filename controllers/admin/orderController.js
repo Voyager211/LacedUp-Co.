@@ -723,23 +723,6 @@ exports.cancelItem = async (req, res) => {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
 
-    // Validate cancel reason
-    if (!reason || reason.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a cancellation reason'
-      });
-    }
-
-    // Validate reason is from allowed enum values
-    const validReasons = getCancellationReasonsArray();
-    if (!validReasons.includes(reason)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid cancellation reason provided'
-      });
-    }
-    
     // Verify order exists first
     const order = await Order.findOne({ orderId });
     if (!order) {
@@ -758,8 +741,8 @@ exports.cancelItem = async (req, res) => {
       });
     }
 
-    // Use OrderService to cancel item
-    const result = await orderService.cancelItem(
+    // Use admin function (no reason validation required)
+    const result = await orderService.adminCancelItem(
       orderId,
       itemId,
       reason || 'Item cancelled by admin',
@@ -781,7 +764,13 @@ exports.cancelItem = async (req, res) => {
       message: result.message,
       order: {
         orderId: result.order.orderId,
-        status: result.order.status
+        status: result.order.status,
+        paymentStatus: result.order.paymentStatus,
+        items: result.order.items.map(item => ({
+          _id: item._id,
+          status: item.status,
+          paymentStatus: item.paymentStatus
+        }))
       }
     });
 
@@ -794,31 +783,14 @@ exports.cancelItem = async (req, res) => {
   }
 };
 
-// Cancel Entire Order
+// Cancel entire order using admin function
 exports.cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    // Validate cancel reason
-    if (!reason || reason.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a cancellation reason'
-      });
-    }
-
-    // Validate reason is from allowed enum values
-    const validReasons = getCancellationReasonsArray();
-    if (!validReasons.includes(reason)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid cancellation reason provided'
-      });
-    }
-
-    // Use OrderService to cancel order
-    const result = await orderService.cancelOrder(
+    // Use admin function (no reason validation required)
+    const result = await orderService.adminCancelOrder(
       orderId,
       reason || 'Order cancelled by admin',
       'admin'
@@ -843,7 +815,13 @@ exports.cancelOrder = async (req, res) => {
       message: result.message,
       order: {
         orderId: result.order.orderId,
-        status: result.order.status
+        status: result.order.status,
+        paymentStatus: result.order.paymentStatus,
+        items: result.order.items.map(item => ({
+          _id: item._id,
+          status: item.status,
+          paymentStatus: item.paymentStatus
+        }))
       }
     });
 
@@ -856,140 +834,80 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
-// Return individual item
-exports.returnItem = async (req, res) => {
-  try {
-    const { orderId, itemId } = req.params;
-    const { reason } = req.body;
-
-    // Return reason validation
-    if (!reason || reason.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a return reason'
-      });
-    }
-
-    // Validate reason is from allowed enum values
-    const validReasons = getReturnReasonsArray();
-    if (!validReasons.includes(reason)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid return reason provided'
-      });
-    }
-
-    //  Use validation helper
-    const { order } = await validateTransitionAndGetOrder(orderId, 'Processing Return', true, itemId);
-
-    // Use OrderService to process return (creates return request)
-    const result = await orderService.returnItem(
-      orderId,
-      itemId,
-      reason || 'Item returned by admin',
-      'admin'
-    );
-
-    // NO immediate stock restoration
-    // Stock will be restored only when return is approved via approveReturn function
-
-    res.json({
-      success: true,
-      message: result.message + ' (Stock will be restored when return is approved)',
-      order: {
-        orderId: result.order.orderId,
-        status: result.order.status,
-        returnRequestCreated: true
-      }
-    });
-
-  } catch (error) {
-    console.error('Error processing item return:', error);
-    
-    // Handle validation errors specifically
-    if (error.message.includes('Invalid status transition')) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-    
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Error processing item return'
-    });
-  }
-};
-
-// Return entire order
-exports.returnOrder = async (req, res) => {
+// Create return request for entire order using admin function
+exports.returnOrderRequest = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    // Return reason validation
-    if (!reason || reason.trim() === '') {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a return reason'
-      });
-    }
-
-    // Validate reason is from allowed enum values
-    const validReasons = getReturnReasonsArray();
-    if (!validReasons.includes(reason)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid return reason provided'
-      });
-    }
-
-    //  Use validation helper for order-level validation
-    const { order } = await validateTransitionAndGetOrder(orderId, 'Processing Return', false);
-
-    // Store eligible items count for response
-    const eligibleItems = order.items.filter(item => 
-      item.status === ORDER_STATUS.DELIVERED || 
-      item.status === ORDER_STATUS.SHIPPED
-    );
-
-    // Use OrderService to return entire order (creates return requests)
-    const result = await orderService.returnOrder(
+    // ✅ UPDATED: Use admin return request function (no reason validation required)
+    const result = await orderService.adminOrderReturnRequest(
       orderId,
-      reason || 'Order returned by admin'
+      reason || 'Return requested by admin'
     );
-
-    // NO immediate stock restoration
-    // Stock will be restored only when individual returns are approved
 
     res.json({
       success: true,
-      message: result.message + ' (Stock will be restored when returns are approved)',
+      message: result.message,
       order: {
         orderId: result.order.orderId,
         status: result.order.status,
-        itemsAffected: eligibleItems.length,
-        returnRequestsCreated: true
+        paymentStatus: result.order.paymentStatus,
+        itemsAffected: result.itemsAffected
+      },
+      returnRequests: result.returnRequests.map(req => ({
+        returnId: req.returnId,
+        status: req.status,
+        reason: req.reason
+      }))
+    });
+
+  } catch (error) {
+    console.error('Error creating order return request:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Error creating order return request'
+    });
+  }
+};
+
+// Create return request for individual item using admin function
+exports.returnItemRequest = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const { reason } = req.body;
+
+    // Use admin return request function (no reason validation required)
+    const result = await orderService.adminItemReturnRequest(
+      orderId,
+      itemId,
+      reason || 'Return requested by admin'
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        paymentStatus: result.order.paymentStatus
+      },
+      returnRequest: {
+        returnId: result.returnRequest.returnId,
+        status: result.returnRequest.status,
+        reason: result.returnRequest.reason
       }
     });
 
   } catch (error) {
-    console.error('Error returning order:', error);
-    
-    // Handle validation errors specifically
-    if (error.message.includes('Invalid status transition')) {
-      return res.status(400).json({
-        success: false,
-        message: error.message
-      });
-    }
-    
+    console.error('Error creating item return request:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Error returning order'
+      message: error.message || 'Error creating item return request'
     });
   }
 };
+
 
 
 

@@ -50,7 +50,6 @@
               <div class="col-lg-2 col-md-4">
                 <div class="text-center">
                   <h6 class="text-muted mb-2 fw-normal">Payment Status</h6>
-                  <!-- ✅ FIXED: Added missing closing span tag -->
                   <span class="status-badge payment-<%= (order.paymentStatus || 'unknown').toLowerCase() %>">
                     <%= order.paymentStatus || 'Unknown' %>
                   </span>
@@ -64,11 +63,32 @@
               </div>
               <div class="col-lg-6">
                 <div class="d-flex gap-2 justify-content-lg-end justify-content-center flex-wrap">
-                  <button class="btn btn-primary" onclick="updateOrderStatus('<%= order.orderId %>', '<%= order.status %>')">
-                    <i class="bi bi-pencil me-2"></i>Update Status
-                  </button>
+                  <% if (order.status !== 'Delivered' && order.status !== 'Cancelled' && order.status !== 'Returned') { %>
+                    <button class="btn btn-primary" onclick="updateOrderStatus('<%= order.orderId %>', '<%= order.status %>')">
+                      <i class="bi bi-pencil me-2"></i>Update Status
+                    </button>
+                  <% } else { %>
+                    <button class="btn btn-secondary" disabled title="No status updates available for <%= order.status.toLowerCase() %> orders">
+                      <i class="bi bi-lock me-2"></i>Status Final
+                    </button>
+                  <% } %>
+                  
+                  <!--Cancel Order Button with ID for dynamic visibility -->
+                  <% if (order.status === ORDER_STATUS.PENDING || order.status === ORDER_STATUS.PROCESSING) { %>
+                    <button id="cancelOrderBtn" class="btn btn-danger" onclick="showCancelOrderConfirm('<%= order.orderId %>')">
+                      <i class="bi bi-x-circle me-2"></i>Cancel Order
+                    </button>
+                  <% } %>
+                  
+                  <!-- Return Order Button with ID for dynamic visibility -->
+                  <% if (order.status === ORDER_STATUS.DELIVERED) { %>
+                    <button id="returnOrderBtn" class="btn btn-warning" onclick="showReturnOrderConfirm('<%= order.orderId %>')">
+                      <i class="bi bi-arrow-counterclockwise me-2"></i>Return Order
+                    </button>
+                  <% } %>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -193,7 +213,7 @@
                     <th class="border-0 py-3">Total</th>
                     <th class="border-0 py-3">Status</th>
                     <th class="border-0 py-3">Payment</th>
-                    <th class="border-0 py-3 text-center">Actions</th>
+                    <th class="border-0 py-3">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -235,20 +255,19 @@
                           <%= item.paymentStatus || 'Pending' %>
                         </span>
                       </td>
-                      <td class="py-3 text-center">
-                        <div class="btn-group" role="group">
-                          <% if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status || ORDER_STATUS.PENDING)) { %>
-                            <button class="btn btn-sm btn-outline-danger" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')" title="Cancel Item">
-                              <i class="bi bi-x-circle"></i>
-                            </button>
-                          <% } %>
+                      <td class="py-3">
+                        <div class="d-flex gap-2 justify-content-center">
+                          <!--  UPDATED: Return Item Button (Delivered only) -->
                           <% if (item.status === ORDER_STATUS.DELIVERED) { %>
-                            <button class="btn btn-sm btn-outline-warning" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')" title="Return Item">
-                              <i class="bi bi-arrow-return-left"></i>
+                            <button class="btn btn-outline-warning  d-flex align-items-center justify-content-center" 
+                                    onclick="showReturnItemConfirm('<%= order.orderId %>', '<%= item._id %>')"
+                                    title="Create return request for this item"
+                                    style="width: 38px; height: 38px; border-width: 2px;">
+                              <i class="bi bi-arrow-counterclockwise fs-5"></i>
                             </button>
-                          <% } %>
-                          <% if (![ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING, ORDER_STATUS.DELIVERED].includes(item.status || ORDER_STATUS.PENDING)) { %>
-                            <small class="text-muted">No actions</small>
+                          <% } else { %>
+                            <!--  SIMPLIFIED: Always show "No actions" when no return button -->
+                            <span class="text-muted small">No actions</span>
                           <% } %>
                         </div>
                       </td>
@@ -374,7 +393,7 @@
                 </div>
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="small text-muted">Status:</span>
-                  <!-- ✅ FIXED: Handle undefined paymentStatus -->
+                  <!--  FIXED: Handle undefined paymentStatus -->
                   <span class="status-badge payment-<%= (order.paymentStatus || 'unknown').toLowerCase() %>">
                     <%= order.paymentStatus || 'Unknown' %>
                   </span>
@@ -481,7 +500,7 @@
 
 
 <!-- Include existing modals -->
-<!-- ✅ ENHANCED: Update Order Status Modal -->
+<!--  ENHANCED: Update Order Status Modal -->
 <div class="modal fade" id="updateStatusModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
@@ -490,7 +509,6 @@
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <div class="modal-body">
-        <!-- ✅ Simple status info -->
         <div class="mb-3 p-3 bg-light border rounded">
           <div class="row">
             <div class="col-sm-6">
@@ -503,7 +521,6 @@
             </div>
           </div>
         </div>
-
         
         <form id="updateStatusForm">
           <input type="hidden" id="statusOrderId" name="orderId">
@@ -513,7 +530,7 @@
               <!-- Options populated dynamically by JavaScript -->
             </select>
             <small class="form-text text-muted">
-              Only valid status transitions are shown. 'Returned' status is set through return management.
+              Only valid status transitions are shown. Cancellations and returns are managed by users.
             </small>
           </div>
           <div class="mb-3">
@@ -1176,41 +1193,622 @@
   border: 1px solid #d6d8db;
 }
 
+/* ===== CANCELLATION BUTTON STYLES ===== */
+
+/* Cancel order button */
+.btn-danger {
+  background: linear-gradient(135deg, #dc3545, #c82333);
+  border: none;
+  transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+  background: linear-gradient(135deg, #c82333, #bd2130);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+/* Cancel item button (circular)
+.btn-outline-danger.rounded-circle {
+  transition: all 0.3s ease;
+  border: 2px solid #dc3545;
+}
+
+.btn-outline-danger.rounded-circle:hover {
+  background-color: #dc3545;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-outline-danger.rounded-circle:active {
+  transform: scale(0.95);
+}
+
+/* Actions column styling */
+.order-items-table th:last-child,
+.order-items-table td:last-child {
+  text-align: center;
+  width: 80px;
+} */
+
+/* ===== RETURN BUTTON STYLES ===== */
+
+/* Return order button */
+.btn-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  border: none;
+  color: #212529;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-warning:hover {
+  background: linear-gradient(135deg, #e0a800, #d39e00);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+  color: #212529;
+}
+
+/* Return item button (circular) */
+.btn-outline-warning.rounded-circle {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 2px solid #ffc107;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(4px);
+  box-shadow: 0 2px 4px rgba(255, 193, 7, 0.1);
+}
+
+.btn-outline-warning.rounded-circle:hover {
+  background: rgba(255, 193, 7, 0.1);
+  border-color: #ffc107;
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(255, 193, 7, 0.2);
+  color: #e0a800;
+}
+
+.btn-outline-warning.rounded-circle:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 6px rgba(255, 193, 7, 0.3);
+}
+
+.btn-outline-warning.rounded-circle i {
+  transition: all 0.3s ease;
+  color: #ffc107;
+}
+
+.btn-outline-warning.rounded-circle:hover i {
+  color: #e0a800;
+  filter: drop-shadow(0 0 2px rgba(255, 193, 7, 0.3));
+}
+
+/* Pulse animation on focus */
+.btn-outline-warning.rounded-circle:focus {
+  animation: pulse-orange 0.6s ease-in-out;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 193, 7, 0.2);
+}
+
+@keyframes pulse-orange {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Actions column button spacing */
+.btn + .btn {
+  margin-left: 0.5rem;
+}
+
+/* Smooth transitions for button visibility */
+#cancelOrderBtn,
+#returnOrderBtn {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+#cancelOrderBtn[style*="display: none"],
+#returnOrderBtn[style*="display: none"] {
+  opacity: 0;
+  transform: scale(0.95);
+}
+
 </style>
 
 <script>
-// ✅ Get valid transitions from template data
+//  Get valid transitions from template data
 let validTransitions = <%- JSON.stringify(validTransitions) %>;
 let currentOrderStatus = '<%= order.status %>';
 
-// ✅ NEW: Track updated item statuses dynamically
-const itemStatusTracker = {};
+// ===== DYNAMIC BUTTON VISIBILITY FUNCTIONS =====
 
-// ===== ORDER MANAGEMENT FUNCTIONS =====
+/**
+ * Update button visibility based on order status
+ * @param {string} newOrderStatus - The new order status
+ */
+function updateButtonVisibility(newOrderStatus) {
+  console.log('🔍 Updating button visibility for status:', newOrderStatus);
+  
+  const cancelOrderBtn = document.getElementById('cancelOrderBtn');
+  const returnOrderBtn = document.getElementById('returnOrderBtn');
+  
+  // Define status constants (matching your enums)
+  const ORDER_STATUS = {
+    PENDING: 'Pending',
+    PROCESSING: 'Processing', 
+    SHIPPED: 'Shipped',
+    DELIVERED: 'Delivered',
+    CANCELLED: 'Cancelled',
+    PARTIALLY_CANCELLED: 'Partially Cancelled',
+    RETURNED: 'Returned',
+    PARTIALLY_RETURNED: 'Partially Returned',
+    PARTIALLY_DELIVERED: 'Partially Delivered',
+    PROCESSING_RETURN: 'Processing Return'
+  };
+  
+  //  CANCEL BUTTON LOGIC: Show only for Pending/Processing
+  const showCancelButton = (newOrderStatus === ORDER_STATUS.PENDING || newOrderStatus === ORDER_STATUS.PROCESSING);
+  
+  if (showCancelButton) {
+    if (!cancelOrderBtn) {
+      // Create cancel button if it doesn't exist
+      createCancelOrderButton();
+    } else {
+      // Show existing cancel button
+      cancelOrderBtn.style.display = 'inline-block';
+      cancelOrderBtn.disabled = false;
+      console.log(' Cancel button shown');
+    }
+  } else {
+    if (cancelOrderBtn) {
+      // Hide cancel button
+      cancelOrderBtn.style.display = 'none';
+      console.log(' Cancel button hidden');
+    }
+  }
+  
+  //  RETURN BUTTON LOGIC: Show only for Delivered
+  const showReturnButton = (newOrderStatus === ORDER_STATUS.DELIVERED);
+  
+  if (showReturnButton) {
+    if (!returnOrderBtn) {
+      // Create return button if it doesn't exist
+      createReturnOrderButton();
+    } else {
+      // Show existing return button
+      returnOrderBtn.style.display = 'inline-block';
+      returnOrderBtn.disabled = false;
+      console.log(' Return button shown');
+    }
+  } else {
+    if (returnOrderBtn) {
+      // Hide return button
+      returnOrderBtn.style.display = 'none';
+      console.log(' Return button hidden');
+    }
+  }
+  
+  console.log(' Button visibility updated:', {
+    status: newOrderStatus,
+    cancelVisible: showCancelButton,
+    returnVisible: showReturnButton
+  });
+}
 
-// ✅ ENHANCED: Add debugging to modal opening
+/**
+ * Create cancel order button dynamically
+ */
+function createCancelOrderButton() {
+  const buttonsContainer = document.querySelector('.d-flex.gap-2.justify-content-lg-end');
+  if (buttonsContainer) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'cancelOrderBtn';
+    cancelBtn.className = 'btn btn-danger';
+    cancelBtn.onclick = () => showCancelOrderConfirm('<%= order.orderId %>');
+    cancelBtn.innerHTML = '<i class="bi bi-x-circle me-2"></i>Cancel Order';
+    
+    // Insert after the status update button
+    const statusButton = buttonsContainer.querySelector('.btn-primary, .btn-secondary');
+    if (statusButton) {
+      statusButton.insertAdjacentElement('afterend', cancelBtn);
+    } else {
+      buttonsContainer.appendChild(cancelBtn);
+    }
+    
+    console.log(' Cancel button created dynamically');
+  }
+}
+
+/**
+ * Create return order button dynamically
+ */
+function createReturnOrderButton() {
+  const buttonsContainer = document.querySelector('.d-flex.gap-2.justify-content-lg-end');
+  if (buttonsContainer) {
+    const returnBtn = document.createElement('button');
+    returnBtn.id = 'returnOrderBtn';
+    returnBtn.className = 'btn btn-warning';
+    returnBtn.onclick = () => showReturnOrderConfirm('<%= order.orderId %>');
+    returnBtn.innerHTML = '<i class="bi bi-arrow-counterclockwise me-2"></i>Return Order';
+    
+    // Add to the end of buttons container
+    buttonsContainer.appendChild(returnBtn);
+    
+    console.log(' Return button created dynamically');
+  }
+}
+
+
+// ===== Cancel ORDER MANAGEMENT FUNCTIONS =====
+
+function showCancelOrderConfirm(orderId) {
+  Swal.fire({
+    title: 'Cancel Entire Order?',
+    text: 'This will cancel ALL items in this order and cannot be undone. Stock will be restored.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Cancel Order',
+    cancelButtonText: 'Keep Order',
+    width: '500px'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading state
+      Swal.fire({
+        title: 'Cancelling Order...',
+        text: 'Please wait while we process the cancellation',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Make API call
+      fetch(`/admin/orders/${orderId}/cancel`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          reason: 'Order cancelled by admin'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        Swal.close();
+        
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Order Cancelled!',
+            text: data.message,
+            confirmButtonColor: '#000'
+          }).then(() => {
+            // Update UI dynamically
+            updateOrderStatusInUI('Cancelled');
+            updateOrderPaymentStatusInUI(data.order.paymentStatus);
+            
+            // Update all item statuses to cancelled
+            const itemRows = document.querySelectorAll('[data-item-id]');
+            itemRows.forEach(row => {
+              const itemId = row.getAttribute('data-item-id');
+              updateItemStatusInUI(itemId, 'Cancelled');
+              
+              // Hide cancel buttons since items are now cancelled
+              const cancelButton = row.querySelector('button[onclick*="showCancelItemConfirm"]');
+              if (cancelButton) {
+                cancelButton.style.display = 'none';
+              }
+            });
+            
+            // Hide the cancel order button
+            const cancelOrderBtn = document.querySelector('button[onclick*="showCancelOrderConfirm"]');
+            if (cancelOrderBtn) {
+              cancelOrderBtn.style.display = 'none';
+            }
+            
+            showToast('success', 'Order cancelled successfully. Stock restored.');
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Cancellation Failed',
+            text: data.message || 'Failed to cancel order',
+            confirmButtonColor: '#dc3545'
+          });
+        }
+      })
+      .catch(error => {
+        Swal.close();
+        console.error('Error cancelling order:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: 'Failed to cancel order. Please try again.',
+          confirmButtonColor: '#dc3545'
+        });
+      });
+    }
+  });
+}
+
+// function showCancelItemConfirm(orderId, itemId) {
+//   // Get item details for confirmation
+//   const itemRow = document.querySelector(`[data-item-id="${itemId}"]`);
+//   const productName = itemRow ? itemRow.querySelector('h6').textContent.trim() : 'this item';
+  
+//   Swal.fire({
+//     title: 'Cancel Item?',
+//     html: `
+//       <p>Do you want to cancel <strong>${productName}</strong>?</p>
+//       <p class="text-muted small">This action cannot be undone and stock will be restored.</p>
+//     `,
+//     icon: 'warning',
+//     showCancelButton: true,
+//     confirmButtonColor: '#dc3545',
+//     cancelButtonColor: '#6c757d',
+//     confirmButtonText: 'Yes, Cancel Item',
+//     cancelButtonText: 'Keep Item',
+//     width: '450px'
+//   }).then((result) => {
+//     if (result.isConfirmed) {
+//       // Show loading state
+//       Swal.fire({
+//         title: 'Cancelling Item...',
+//         text: 'Please wait while we process the cancellation',
+//         allowOutsideClick: false,
+//         allowEscapeKey: false,
+//         showConfirmButton: false,
+//         didOpen: () => {
+//           Swal.showLoading();
+//         }
+//       });
+
+//       // Make API call
+//       fetch(`/admin/orders/${orderId}/items/${itemId}/cancel`, {
+//         method: 'PATCH',
+//         headers: {
+//           'Content-Type': 'application/json',
+//         },
+//         body: JSON.stringify({ 
+//           reason: 'Item cancelled by admin'
+//         })
+//       })
+//       .then(response => response.json())
+//       .then(data => {
+//         Swal.close();
+        
+//         if (data.success) {
+//           Swal.fire({
+//             icon: 'success',
+//             title: 'Item Cancelled!',
+//             text: data.message,
+//             confirmButtonColor: '#000'
+//           }).then(() => {
+//             // Update UI dynamically
+//             updateItemStatusInUI(itemId, 'Cancelled');
+            
+//             // Update item payment status
+//             const cancelledItem = data.order.items.find(item => item._id.toString() === itemId);
+//             if (cancelledItem) {
+//               updateItemPaymentStatusInUI(itemId, cancelledItem.paymentStatus);
+//             }
+            
+//             // Update order-level statuses
+//             updateOrderStatusInUI(data.order.status);
+//             updateOrderPaymentStatusInUI(data.order.paymentStatus);
+            
+//             // Hide the cancel button for this item
+//             const cancelButton = itemRow.querySelector('button[onclick*="showCancelItemConfirm"]');
+//             if (cancelButton) {
+//               cancelButton.parentElement.innerHTML = '<span class="text-muted small">Cancelled</span>';
+//             }
+            
+//             showToast('success', `${productName} cancelled successfully. Stock restored.`);
+//           });
+//         } else {
+//           Swal.fire({
+//             icon: 'error',
+//             title: 'Cancellation Failed',
+//             text: data.message || 'Failed to cancel item',
+//             confirmButtonColor: '#dc3545'
+//           });
+//         }
+//       })
+//       .catch(error => {
+//         Swal.close();
+//         console.error('Error cancelling item:', error);
+//         Swal.fire({
+//           icon: 'error',
+//           title: 'Network Error',
+//           text: 'Failed to cancel item. Please try again.',
+//           confirmButtonColor: '#dc3545'
+//         });
+//       });
+//     }
+//   });
+// }
+
+// ===== RETURN ORDER FUNCTIONS =====
+
+// Return entire order with confirmation
+
+
+function showReturnOrderConfirm(orderId) {
+  Swal.fire({
+    title: 'Create Return Request for Order?',
+    text: 'This will create return requests for ALL delivered items in this order.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ffc107',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Create Return Requests',
+    cancelButtonText: 'Cancel',
+    width: '500px'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading state
+      Swal.fire({
+        title: 'Creating Return Requests...',
+        text: 'Please wait while we process the return requests',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Make API call
+      fetch(`/admin/orders/${orderId}/return`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          reason: 'Return requested by admin'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        Swal.close();
+        
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Return Requests Created!',
+            text: data.message,
+            confirmButtonColor: '#ffc107'
+          }).then(() => {
+            // Reload page to reflect changes
+            location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to Create Return Requests',
+            text: data.message || 'Failed to create return requests',
+            confirmButtonColor: '#dc3545'
+          });
+        }
+      })
+      .catch(error => {
+        Swal.close();
+        console.error('Error creating return requests:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: 'Failed to create return requests. Please try again.',
+          confirmButtonColor: '#dc3545'
+        });
+      });
+    }
+  });
+}
+
+// Return individual item with confirmation
+function showReturnItemConfirm(orderId, itemId) {
+  // Get item details for confirmation
+  const itemRow = document.querySelector(`[data-item-id="${itemId}"]`);
+  const productName = itemRow ? itemRow.querySelector('h6').textContent.trim() : 'this item';
+  
+  Swal.fire({
+    title: 'Create Return Request?',
+    html: `
+      <p>Do you want to create a return request for <strong>${productName}</strong>?</p>
+      <p class="text-muted small">This will create a return request that needs to be approved later.</p>
+    `,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ffc107',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Create Return Request',
+    cancelButtonText: 'Cancel',
+    width: '450px'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      // Show loading state
+      Swal.fire({
+        title: 'Creating Return Request...',
+        text: 'Please wait while we process the return request',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Make API call
+      fetch(`/admin/orders/${orderId}/items/${itemId}/return`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          reason: 'Return requested by admin'
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        Swal.close();
+        
+        if (data.success) {
+          Swal.fire({
+            icon: 'success',
+            title: 'Return Request Created!',
+            text: data.message,
+            confirmButtonColor: '#ffc107'
+          }).then(() => {
+            // Reload page to reflect changes
+            location.reload();
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Failed to Create Return Request',
+            text: data.message || 'Failed to create return request',
+            confirmButtonColor: '#dc3545'
+          });
+        }
+      })
+      .catch(error => {
+        Swal.close();
+        console.error('Error creating return request:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Network Error',
+          text: 'Failed to create return request. Please try again.',
+          confirmButtonColor: '#dc3545'
+        });
+      });
+    }
+  });
+}
+
+
+
+
+// Add debugging to modal opening
 function updateOrderStatus(orderId, currentStatus) {
   try {
     console.log('🔍 Opening modal - Initial parameters:', { orderId, currentStatus });
-    console.log('🔍 Opening modal - Global variables:', {
-      windowCurrentOrderStatus: window.currentOrderStatus,
-      windowValidTransitions: window.validTransitions,
-      originalValidTransitions: typeof validTransitions !== 'undefined' ? validTransitions : 'undefined'
-    });
     
-    // Use current data (updated after each status change)
     const actualCurrentStatus = window.currentOrderStatus || currentStatus;
     const currentValidTransitions = window.validTransitions || validTransitions;
     
-    console.log('🔍 Modal opening with:', { 
-      actualCurrentStatus, 
-      currentValidTransitions,
-      currentValidTransitionsLength: currentValidTransitions ? currentValidTransitions.length : 0
-    });
+    //  NEW: Filter out restricted statuses for admin
+    const restrictedStatuses = ['Cancelled', 'Processing Return', 'Returned'];
+    const adminAllowedTransitions = currentValidTransitions.filter(status => 
+      !restrictedStatuses.includes(status)
+    );
     
-    if (!currentValidTransitions || currentValidTransitions.length === 0) {
-      console.warn('⚠️ No valid transitions available');
-      showToast('info', `No status transitions available from '${actualCurrentStatus}'`);
+    console.log('🔍 Admin allowed transitions:', adminAllowedTransitions);
+    
+    if (!adminAllowedTransitions || adminAllowedTransitions.length === 0) {
+      console.warn('⚠️ No admin-allowed transitions available');
+      showToast('info', `No status transitions available from '${actualCurrentStatus}' for admin users`);
       return;
     }
 
@@ -1238,23 +1836,18 @@ function updateOrderStatus(orderId, currentStatus) {
     separatorOption.disabled = true;
     statusSelect.appendChild(separatorOption);
     
-    // Valid transitions
-    console.log('🔍 Adding transition options...');
-    currentValidTransitions.forEach((status, index) => {
-      console.log(`🔍 Processing transition ${index}: ${status} (current: ${actualCurrentStatus})`);
+    //  UPDATED: Add only admin-allowed transitions
+    adminAllowedTransitions.forEach((status, index) => {
       if (status !== actualCurrentStatus) {
         const option = document.createElement('option');
         option.value = status;
         option.textContent = status;
         statusSelect.appendChild(option);
-        console.log(`✅ Added option: ${status}`);
-      } else {
-        console.log(`⏭️ Skipped current status: ${status}`);
+        console.log(` Added admin option: ${status}`);
       }
     });
     
-    console.log('✅ Modal populated - Total options:', statusSelect.children.length);
-    console.log('✅ Modal populated - Selectable options:', statusSelect.children.length - 2);
+    console.log(' Modal populated with admin-allowed options');
     
     const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
     modal.show();
@@ -1276,17 +1869,19 @@ function submitStatusUpdate() {
     return;
   }
 
-  // ✅ FIXED: Use updated validTransitions, not the original one
+  //  UPDATED: Validate against admin-allowed transitions
+  const restrictedStatuses = ['Cancelled', 'Processing Return', 'Returned'];
   const currentValidTransitions = window.validTransitions || validTransitions;
+  const adminAllowedTransitions = currentValidTransitions.filter(status => 
+    !restrictedStatuses.includes(status)
+  );
   
-  if (!currentValidTransitions.includes(newStatus)) {
-    console.error('❌ Invalid transition:', {
+  if (!adminAllowedTransitions.includes(newStatus)) {
+    console.error('❌ Invalid admin transition:', {
       selectedStatus: newStatus,
-      availableTransitions: currentValidTransitions,
-      originalTransitions: validTransitions,
-      windowTransitions: window.validTransitions
+      adminAllowedTransitions: adminAllowedTransitions
     });
-    showToast('error', 'Invalid status transition selected');
+    showToast('error', 'Invalid status transition selected for admin users');
     return;
   }
 
@@ -1311,38 +1906,22 @@ function submitStatusUpdate() {
       showToast('success', data.message);
       bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
 
-      // ✅ ENHANCED DEBUG: Specific debug for payment status issues
-      console.log('🔍 DELIVERED ORDER DEBUG:', {
+      console.log('🔍 ORDER UPDATE DEBUG:', {
         orderStatus: data.order.status,
-        orderPaymentStatus: data.order.paymentStatus,
-        paymentMethod: data.order.paymentMethod,
-        items: data.order.items.map(item => ({
-          _id: item._id,
-          status: item.status,
-          paymentStatus: item.paymentStatus
-        }))
+        orderPaymentStatus: data.order.paymentStatus
       });
 
-      // ✅ ADD: Debug logging to see what data we received
-      console.log('🔍 COMPLETE SERVER RESPONSE:', data);
-      console.log('🔍 ORDER DATA:', data.order);
-      console.log('🔍 ITEMS DATA:', data.order.items);
-      
-      // Update UI first
+      // Update UI
       updateOrderStatusInUI(data.order.status);
       updateOrderPaymentStatusInUI(data.order.paymentStatus);
       
       // Update all item statuses and payment statuses
       if (data.order.items && data.order.items.length > 0) {
-        console.log('🔍 AJAX Response Data:', data.order);
-        console.log('🔍 Items Data:', data.order.items);
-
         data.order.items.forEach((item, index) => {
           console.log(`🔍 UPDATING ITEM ${index}:`, {
             itemId: item._id,
             itemStatus: item.status,
-            itemPaymentStatus: item.paymentStatus,
-            previousStatus: item.previousStatus
+            itemPaymentStatus: item.paymentStatus
           });
           
           updateItemStatusInUI(item._id, item.status);
@@ -1352,6 +1931,13 @@ function submitStatusUpdate() {
       
       // Update modal data for next time
       updateModalDataAfterStatusChange(orderId, data.order.status);
+      
+      //  NEW: Disable update button if order is now delivered
+      if (data.order.status === 'Delivered') {
+        setTimeout(() => {
+          location.reload(); // Reload to update the button state
+        }, 1500);
+      }
       
     } else {
       throw new Error(data.message || 'Failed to update order status');
@@ -1367,12 +1953,11 @@ function submitStatusUpdate() {
   });
 }
 
-
-// ✅ ENHANCED: Add debugging to see what's happening
+// Add debugging to see what's happening
 function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
   console.log('🔄 Updating modal data after status change to:', newCurrentStatus);
   
-  // ✅ Fetch new valid transitions for the updated status
+  //  Fetch new valid transitions for the updated status
   fetch(`/admin/orders/${orderId}/transitions`)
     .then(response => {
       console.log('🔍 Transitions fetch response status:', response.status);
@@ -1382,13 +1967,13 @@ function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
       console.log('🔍 Transitions fetch response data:', data);
       
       if (data.success && data.allowedTransitions) {
-        // ✅ Update global variables for next modal open
+        //  Update global variables for next modal open
         window.currentOrderStatus = newCurrentStatus;
         window.validTransitions = data.allowedTransitions;
 
         validTransitions = data.allowedTransitions;
         
-        console.log('✅ Modal data updated successfully:', {
+        console.log(' Modal data updated successfully:', {
           currentStatus: window.currentOrderStatus,
           validTransitions: window.validTransitions,
           validTransitionsLength: window.validTransitions.length
@@ -1404,7 +1989,7 @@ function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
 }
 
 
-// ✅ NEW: Update order-level payment status badges via fetch
+// Update order-level payment status badges via fetch
 function updateOrderPaymentStatusInUI(newPaymentStatus) {
   console.log('🔍 Updating order payment status in UI:', newPaymentStatus);
   
@@ -1441,10 +2026,10 @@ function updateOrderPaymentStatusInUI(newPaymentStatus) {
       badge.classList.add(newPaymentClass);
       badge.classList.add(`bg-${getPaymentStatusColor(newPaymentStatus)}`);
       
-      console.log(`✅ Order payment badge updated from "${originalText}" to "${newPaymentStatus}"`);
+      console.log(` Order payment badge updated from "${originalText}" to "${newPaymentStatus}"`);
     });
     
-    console.log('✅ Order payment status updated in UI via fetch');
+    console.log(' Order payment status updated in UI via fetch');
     
   } catch (error) {
     console.error('❌ Error updating order payment status UI:', error);
@@ -1452,12 +2037,12 @@ function updateOrderPaymentStatusInUI(newPaymentStatus) {
 }
 
 
-// ✅ FIXED: More precise order status badge update (excludes item badges)
+// More precise order status badge update (excludes item badges)
 function updateOrderStatusInUI(newStatus) {
   console.log('🔍 Starting updateOrderStatusInUI with status:', newStatus);
   
   try {
-    // ✅ FIXED: More specific selector that EXCLUDES payment badges
+    // FIXED: More specific selector that EXCLUDES payment badges
     const allElements = document.querySelectorAll('.status-badge, .badge');
     const orderBadges = [];
     
@@ -1469,7 +2054,7 @@ function updateOrderStatusInUI(newStatus) {
       const isStatusBadge = element.classList.contains('status-badge') && 
                            !isPaymentBadge;
       
-      // ✅ ONLY include order status badges, NOT payment badges
+      // ONLY include order status badges, NOT payment badges
       if (!isInItemRow && isStatusBadge) {
         orderBadges.push(element);
         console.log('✅ Found ORDER status badge:', element);
@@ -1480,7 +2065,7 @@ function updateOrderStatusInUI(newStatus) {
     
     console.log(`🔍 Found ${orderBadges.length} ORDER status badges to update`);
     
-    // ✅ FIXED: Only update order status badges
+    // FIXED: Only update order status badges
     orderBadges.forEach((badge, index) => {
       console.log(`Updating ORDER status badge ${index}:`, badge);
       
@@ -1499,19 +2084,21 @@ function updateOrderStatusInUI(newStatus) {
       console.log(`✅ ORDER status badge updated from "${originalText}" to "${newStatus}"`);
     });
     
-    console.log('✅ updateOrderStatusInUI completed - updated ORDER status badges only');
+    // NEW: Update button visibility based on new status
+    updateButtonVisibility(newStatus);
+    
+    console.log('✅ updateOrderStatusInUI completed - updated ORDER status badges and button visibility');
     
   } catch (error) {
     console.error('❌ Error updating order status UI:', error);
   }
 }
 
-
 // ===== INDIVIDUAL ITEM MANAGEMENT FUNCTIONS =====
 
-// ✅ STEP 4: ENHANCED - Use dynamic valid transitions
+// Use dynamic valid transitions
 
-// ✅ ENHANCED: Update populateItemStatusModal to include payment status
+// Update populateItemStatusModal to include payment status
 // update Item Payment Status in UI
 function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
   console.log('🔍 Updating payment status in UI:', { itemId, newPaymentStatus });
@@ -1520,23 +2107,23 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
     let targetElement = null;
     let paymentBadge = null;
     
-    // ✅ STRATEGY 1: Find by data-item-id
+    //  STRATEGY 1: Find by data-item-id
     targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
     if (targetElement) {
-      console.log('✅ Found item row:', targetElement);
+      console.log(' Found item row:', targetElement);
       
-      // ✅ ENHANCED: Multiple selector strategies for payment badge
+      //  ENHANCED: Multiple selector strategies for payment badge
       paymentBadge = targetElement.querySelector('.payment-badge') ||
                     targetElement.querySelector('[data-payment-status]') ||
                     targetElement.querySelector('.badge[class*="payment-"]') ||
                     targetElement.querySelector('td:nth-last-child(2) .badge'); // Payment column badge
       
       if (paymentBadge) {
-        console.log('✅ Found payment badge via data-item-id:', paymentBadge);
+        console.log(' Found payment badge via data-item-id:', paymentBadge);
       }
     }
     
-    // ✅ STRATEGY 2: Fallback search if not found
+    //  STRATEGY 2: Fallback search if not found
     if (!paymentBadge) {
       console.log('🔍 Payment badge not found via data-item-id, searching fallback...');
       const allRows = document.querySelectorAll('tr, .item-row, .order-item');
@@ -1546,24 +2133,24 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
         buttons.forEach(button => {
           const onclickAttr = button.getAttribute('onclick');
           if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
-            console.log('✅ Found matching row via button onclick');
+            console.log(' Found matching row via button onclick');
             targetElement = row;
             
-            // ✅ ENHANCED: Multiple strategies for payment badge in this row
+            //  ENHANCED: Multiple strategies for payment badge in this row
             paymentBadge = row.querySelector('.payment-badge') ||
                           row.querySelector('[data-payment-status]') ||
                           row.querySelector('.badge[class*="payment-"]') ||
                           row.querySelector('td:nth-last-child(2) .badge');
                           
             if (paymentBadge) {
-              console.log('✅ Found payment badge via fallback:', paymentBadge);
+              console.log(' Found payment badge via fallback:', paymentBadge);
             }
           }
         });
       });
     }
     
-    // ✅ STRATEGY 3: Create payment badge if still not found
+    //  STRATEGY 3: Create payment badge if still not found
     if (!paymentBadge && targetElement) {
       console.log('⚠️ Payment badge not found, attempting to create/find...');
       
@@ -1575,20 +2162,20 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
           console.log('🔧 Found existing badge in payment column, will update:', existingBadge);
           paymentBadge = existingBadge;
           
-          // ✅ RESTORE: Add missing payment badge class
+          //  RESTORE: Add missing payment badge class
           paymentBadge.classList.add('payment-badge');
         }
       }
     }
     
-    // ✅ UPDATE: Payment badge found
+    //  UPDATE: Payment badge found
     if (paymentBadge && targetElement) {
-      console.log('✅ Updating payment badge:', paymentBadge);
+      console.log(' Updating payment badge:', paymentBadge);
       
       const originalText = paymentBadge.textContent.trim();
       paymentBadge.textContent = newPaymentStatus;
       
-      // ✅ ENHANCED: Ensure payment badge class exists
+      //  ENHANCED: Ensure payment badge class exists
       if (!paymentBadge.classList.contains('payment-badge')) {
         paymentBadge.classList.add('payment-badge');
       }
@@ -1618,7 +2205,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
       // Update data attribute
       paymentBadge.setAttribute('data-payment-status', newPaymentStatus);
       
-      console.log(`✅ Payment status updated from "${originalText}" to "${newPaymentStatus}"`);
+      console.log(` Payment status updated from "${originalText}" to "${newPaymentStatus}"`);
       
       // Visual feedback
       const targetRow = paymentBadge.closest('tr, .item-row, .card');
@@ -1639,7 +2226,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
         newPaymentStatus: newPaymentStatus
       });
       
-      // ✅ LAST RESORT: Log the actual HTML for debugging
+      //  LAST RESORT: Log the actual HTML for debugging
       if (targetElement) {
         console.log('🔍 Target element HTML:', targetElement.outerHTML);
       }
@@ -1651,7 +2238,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
 }
 
 
-// ✅ ENHANCED: Fetch order status AND update valid transitions
+// Fetch order status AND update valid transitions
 function fetchAndUpdateOrderStatus(orderId) {
   console.log('🔍 Fetching updated order status for:', orderId);
   
@@ -1679,14 +2266,14 @@ function fetchAndUpdateOrderStatus(orderId) {
       const updatedOrderStatus = data.order.status;
       console.log('🔍 Updated order status from backend:', updatedOrderStatus);
       
-      // ✅ NEW: Update valid transitions if provided
+      //  NEW: Update valid transitions if provided
       if (data.validTransitions && Array.isArray(data.validTransitions)) {
         window.validTransitions = data.validTransitions;
         console.log('🔍 Updated valid transitions for', updatedOrderStatus, ':', data.validTransitions);
       }
       
       if (updatedOrderStatus !== window.currentOrderStatus && updatedOrderStatus !== currentOrderStatus) {
-        console.log('✅ Order status changed, updating UI:', updatedOrderStatus);
+        console.log(' Order status changed, updating UI:', updatedOrderStatus);
         updateOrderStatusInUI(updatedOrderStatus);
       } else {
         console.log('ℹ️ Order status unchanged:', updatedOrderStatus);
@@ -1704,7 +2291,7 @@ function fetchAndUpdateOrderStatus(orderId) {
   });
 }
 
-// ✅ FIXED: More precise item status UI update
+//  More precise item status UI update
 function updateItemStatusInUI(itemId, newStatus) {
   console.log('🔍 Starting updateItemStatusInUI:', { itemId, newStatus });
   
@@ -1715,7 +2302,7 @@ function updateItemStatusInUI(itemId, newStatus) {
     // Find the target row using data-item-id
     targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
     if (targetElement) {
-      console.log('✅ Found item row by data-item-id:', targetElement);
+      console.log(' Found item row by data-item-id:', targetElement);
       statusBadge = targetElement.querySelector('.status-badge');
     }
     
@@ -1729,7 +2316,7 @@ function updateItemStatusInUI(itemId, newStatus) {
         buttons.forEach(button => {
           const onclickAttr = button.getAttribute('onclick');
           if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
-            console.log(`✅ Found matching row ${index} for itemId:`, itemId);
+            console.log(` Found matching row ${index} for itemId:`, itemId);
             targetElement = row;
             statusBadge = row.querySelector('.status-badge');
             return;
@@ -1740,9 +2327,9 @@ function updateItemStatusInUI(itemId, newStatus) {
     }
     
     if (statusBadge && targetElement) {
-      console.log('✅ Found status badge and target row, updating...', statusBadge);
+      console.log(' Found status badge and target row, updating...', statusBadge);
       
-      // ✅ UPDATE STATUS BADGE
+      //  UPDATE STATUS BADGE
       const originalText = statusBadge.textContent;
       statusBadge.textContent = newStatus;
       
@@ -1751,9 +2338,9 @@ function updateItemStatusInUI(itemId, newStatus) {
       backgroundClasses.forEach(cls => statusBadge.classList.remove(cls));
       statusBadge.classList.add(`bg-${getStatusColor(newStatus)}`);
       
-      console.log(`✅ Status badge updated from "${originalText}" to "${newStatus}"`);
+      console.log(` Status badge updated from "${originalText}" to "${newStatus}"`);
       
-      // ✅ UPDATE ACTION BUTTONS
+      //  UPDATE ACTION BUTTONS
       updateItemActionButtonsInRow(targetElement, newStatus, itemId);
       
       // Visual feedback
@@ -1763,7 +2350,7 @@ function updateItemStatusInUI(itemId, newStatus) {
         targetElement.style.backgroundColor = '';
       }, 2000);
       
-      console.log('✅ Successfully updated item status and actions:', { itemId, newStatus });
+      console.log(' Successfully updated item status and actions:', { itemId, newStatus });
       
     } else {
       console.warn('⚠️ Could not find status badge for item:', itemId);
@@ -1774,58 +2361,6 @@ function updateItemStatusInUI(itemId, newStatus) {
   }
 }
 
-// ✅ NEW: Function to update action buttons based on status
-function updateItemActionButtonsInRow(rowElement, newStatus, itemId) {
-  console.log('🔍 Updating action buttons for status:', newStatus);
-  
-  try {
-    // Find the button group container
-    const buttonGroup = rowElement.querySelector('.btn-group');
-    if (!buttonGroup) {
-      console.warn('⚠️ Could not find button group in row');
-      return;
-    }
-    
-    // Clear existing buttons
-    buttonGroup.innerHTML = '';
-    
-    // Get orderId from the page URL or from existing buttons
-    const orderId = window.location.pathname.split('/').pop();
-    
-    // ✅ CREATE BUTTONS BASED ON STATUS (matching EJS logic)
-    if (['Pending', 'Processing'].includes(newStatus)) {
-      // Show Cancel button
-      const cancelButton = document.createElement('button');
-      cancelButton.className = 'btn btn-sm btn-outline-danger';
-      cancelButton.title = 'Cancel Item';
-      cancelButton.onclick = () => cancelItem(orderId, itemId);
-      cancelButton.innerHTML = '<i class="bi bi-x-circle"></i>';
-      buttonGroup.appendChild(cancelButton);
-      console.log('✅ Added Cancel button for status:', newStatus);
-      
-    } else if (newStatus === 'Delivered') {
-      // Show Return button
-      const returnButton = document.createElement('button');
-      returnButton.className = 'btn btn-sm btn-outline-warning';
-      returnButton.title = 'Return Item';
-      returnButton.onclick = () => returnItem(orderId, itemId);
-      returnButton.innerHTML = '<i class="bi bi-arrow-return-left"></i>';
-      buttonGroup.appendChild(returnButton);
-      console.log('✅ Added Return button for status:', newStatus);
-      
-    } else {
-      // Show "No actions" text
-      const noActionText = document.createElement('small');
-      noActionText.className = 'text-muted';
-      noActionText.textContent = 'No actions';
-      buttonGroup.appendChild(noActionText);
-      console.log('✅ Added "No actions" text for status:', newStatus);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error updating action buttons:', error);
-  }
-}
 
 
 function getStatusColor(status) {
@@ -1845,203 +2380,14 @@ function getStatusColor(status) {
 }
 
 
-function updateItemActionButtonsInRow(rowElement, newStatus, itemId) {
-  console.log('🔍 Updating action buttons for status:', newStatus);
-  
-  try {
-    // Find the button group container
-    const buttonGroup = rowElement.querySelector('.btn-group');
-    if (!buttonGroup) {
-      console.warn('⚠️ Could not find button group in row');
-      return;
-    }
-    
-    // Clear existing buttons
-    buttonGroup.innerHTML = '';
-    
-    // Get orderId from the page URL or from existing buttons
-    const orderId = window.location.pathname.split('/').pop();
-    
-    // ✅ CREATE BUTTONS BASED ON STATUS (matching EJS logic)
-    if (['Pending', 'Processing'].includes(newStatus)) {
-      // Show Cancel button
-      const cancelButton = document.createElement('button');
-      cancelButton.className = 'btn btn-sm btn-outline-danger';
-      cancelButton.title = 'Cancel Item';
-      cancelButton.onclick = () => cancelItem(orderId, itemId);
-      cancelButton.innerHTML = '<i class="bi bi-x-circle"></i>';
-      buttonGroup.appendChild(cancelButton);
-      console.log('✅ Added Cancel button for status:', newStatus);
-      
-    } else if (newStatus === 'Delivered') {
-      // Show Return button
-      const returnButton = document.createElement('button');
-      returnButton.className = 'btn btn-sm btn-outline-warning';
-      returnButton.title = 'Return Item';
-      returnButton.onclick = () => returnItem(orderId, itemId);
-      returnButton.innerHTML = '<i class="bi bi-arrow-return-left"></i>';
-      buttonGroup.appendChild(returnButton);
-      console.log('✅ Added Return button for status:', newStatus);
-      
-    } else {
-      // Show "No actions" text
-      const noActionText = document.createElement('small');
-      noActionText.className = 'text-muted';
-      noActionText.textContent = 'No actions';
-      buttonGroup.appendChild(noActionText);
-      console.log('✅ Added "No actions" text for status:', newStatus);
-    }
-    
-  } catch (error) {
-    console.error('❌ Error updating action buttons:', error);
-  }
-}
-
-// ===== CANCEL FUNCTIONS =====
-
-function cancelItem(orderId, itemId) {
-  document.getElementById('cancelOrderId').value = orderId;
-  document.getElementById('cancelItemId').value = itemId;
-  document.getElementById('cancelReason').value = '';
-  
-  const modal = new bootstrap.Modal(document.getElementById('cancelItemModal'));
-  modal.show();
-}
-
-function submitItemCancellation() {
-  const form = document.getElementById('cancelItemForm');
-  const formData = new FormData(form);
-  const orderId = formData.get('orderId');
-  const itemId = formData.get('itemId');
-  
-  const submitBtn = document.querySelector('#cancelItemModal .btn-danger');
-  const originalText = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Cancelling...';
-  
-  fetch(`/admin/orders/${orderId}/items/${itemId}/cancel`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      reason: formData.get('reason')
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      
-      bootstrap.Modal.getInstance(document.getElementById('cancelItemModal')).hide();
-      
-      itemStatusTracker[itemId] = 'Cancelled';
-      updateItemStatusInUI(itemId, 'Cancelled');
-      
-      fetchAndUpdateOrderStatus(orderId);
-      
-    } else {
-      throw new Error(data.message || 'Failed to cancel item');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', error.message || 'Error cancelling item');
-  })
-  .finally(() => {
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-  });
-}
-
-// ===== RETURN FUNCTIONS =====
-
-function returnItem(orderId, itemId) {
-  console.log('🔍 Opening return modal for:', { orderId, itemId });
-  
-  try {
-    document.getElementById('returnOrderId').value = orderId;
-    document.getElementById('returnItemId').value = itemId;
-    
-    document.getElementById('returnReason').value = '';
-    
-    const notesField = document.getElementById('returnNotes');
-    if (notesField) {
-      notesField.value = '';
-    }
-    
-    const modal = new bootstrap.Modal(document.getElementById('returnItemModal'));
-    modal.show();
-    
-    console.log('✅ Return modal opened successfully');
-    
-  } catch (error) {
-    console.error('❌ Error in returnItem:', error);
-    showToast('error', 'Error opening return modal: ' + error.message);
-  }
-}
-
-function submitItemReturn() {
-  const form = document.getElementById('returnItemForm');
-  const formData = new FormData(form);
-  const orderId = formData.get('orderId');
-  const itemId = formData.get('itemId');
-  const reason = formData.get('reason');
-
-  if (!reason || reason === '') {
-    showToast('error', 'Please select a return reason');
-    return;
-  }
-  
-  const submitBtn = document.querySelector('#returnItemModal .btn-warning');
-  const originalText = submitBtn.textContent;
-  submitBtn.disabled = true;
-  submitBtn.textContent = 'Processing...';
-  
-  fetch(`/admin/orders/${orderId}/items/${itemId}/return`, {
-    method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      reason: reason,
-      notes: formData.get('notes') || ''
-    })
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.success) {
-      showToast('success', data.message);
-      
-      bootstrap.Modal.getInstance(document.getElementById('returnItemModal')).hide();
-      
-      itemStatusTracker[itemId] = 'Processing Return';
-      updateItemStatusInUI(itemId, 'Processing Return');
-      
-      fetchAndUpdateOrderStatus(orderId);
-      
-    } else {
-      throw new Error(data.message || 'Failed to process return');
-    }
-  })
-  .catch(error => {
-    console.error('Error:', error);
-    showToast('error', error.message || 'Error processing item return');
-  })
-  .finally(() => {
-    submitBtn.disabled = false;
-    submitBtn.textContent = originalText;
-  });
-}
-
 // ===== PAYMENT STATUS FUNCTIONS =====
 
-// ✅ ENHANCED: Improved Payment Status UI Update for Order-Level Changes
+//  ENHANCED: Improved Payment Status UI Update for Order-Level Changes
 function updatePaymentStatusInUI(newPaymentStatus) {
   console.log('🔍 Starting updatePaymentStatusInUI with status:', newPaymentStatus);
   
   try {
-    // ✅ FIXED: More specific selectors that match actual payment badge classes
+    //  FIXED: More specific selectors that match actual payment badge classes
     const paymentElements = document.querySelectorAll(
       '.status-badge[class*="payment-"], ' +
       '.payment-badge, ' +
@@ -2095,7 +2441,7 @@ function updatePaymentStatusInUI(newPaymentStatus) {
             element.classList.add('payment-badge');
           }
           
-          console.log(`✅ Updated payment element ${index}:`, {
+          console.log(` Updated payment element ${index}:`, {
             originalText: originalText,
             newText: element.textContent,
             newClasses: element.className
@@ -2107,7 +2453,7 @@ function updatePaymentStatusInUI(newPaymentStatus) {
     });
     
     if (updated) {
-      console.log('✅ Payment status updated in UI:', newPaymentStatus);
+      console.log(' Payment status updated in UI:', newPaymentStatus);
       
       // Visual feedback
       const orderSection = document.querySelector('body');
@@ -2129,7 +2475,7 @@ function updatePaymentStatusInUI(newPaymentStatus) {
   }
 }
 
-// ✅ ENHANCED: Payment Status Color Function
+//  ENHANCED: Payment Status Color Function
 function getPaymentStatusColor(status) {
   const colorMap = {
     'Pending': 'warning',

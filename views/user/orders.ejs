@@ -300,8 +300,15 @@
 </style>
 
 <script>
+  console.log('Raw cancellation reasons from server:', <%- JSON.stringify(cancellationReasons) %>);
+
   const cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
   const returnReasons = <%- JSON.stringify(returnReasons) %>;
+
+   // ✅ DEBUG: Log what we received
+  console.log('Processed cancellation reasons:', cancellationReasons);
+  console.log('Type of cancellation reasons:', typeof cancellationReasons);
+  console.log('Is cancellation reasons array:', Array.isArray(cancellationReasons));
 </script>
 
 <script>
@@ -633,18 +640,18 @@ function clearFilter() {
 
 // Order action functions
 function cancelItem(orderId, itemId) {
-  //  Convert array to object for SweetAlert inputOptions
-  const reasonOptions = cancellationReasons.reduce((options, reason, index) => {
-    options[reason] = reason;
-    return options;
-  }, {});
+  // ✅ FIXED: Ensure we send string values, not indices
+  const reasonOptions = {};
+  cancellationReasons.forEach(reason => {
+    reasonOptions[reason] = reason; // key = value = reason string
+  });
 
   Swal.fire({
     title: 'Cancel Item?',
     text: 'Please select a reason for cancelling this item.',
     icon: 'warning',
     input: 'select',
-    inputOptions: reasonOptions,  
+    inputOptions: reasonOptions,
     inputPlaceholder: 'Select a reason for cancellation',
     inputValidator: (value) => {
       return new Promise((resolve) => {
@@ -662,6 +669,10 @@ function cancelItem(orderId, itemId) {
     cancelButtonText: 'Keep Item'
   }).then((result) => {
     if (result.isConfirmed) {
+      // ✅ DEBUG: Log the selected value
+      console.log('Selected Reason:', result.value);
+      console.log('Type of Reason:', typeof result.value);
+
       // Show loading
       Swal.fire({
         title: 'Cancelling Item...',
@@ -669,13 +680,9 @@ function cancelItem(orderId, itemId) {
         allowOutsideClick: false,
         allowEscapeKey: false,
         showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
+        didOpen: () => Swal.showLoading()
       });
 
-      console.log('Selected Reason:', result.value);  
-      console.log('Type of Reason:', typeof result.value);  
       fetch(`/orders/${orderId}/items/${itemId}`, {
         method: 'PATCH',
         headers: {
@@ -683,7 +690,7 @@ function cancelItem(orderId, itemId) {
         },
         body: JSON.stringify({
           action: 'cancel',
-          reason: result.value  
+          reason: result.value // ✅ This should now be the string value
         })
       })
       .then(response => response.json())

@@ -15,41 +15,39 @@ router.get('/', orderController.getAllOrders);
 router.get('/api/filtered', orderController.getFilteredOrders);
 router.get('/api/statistics', orderController.getSystemStatistics);
 
+// ===== ORDER DETAILS =====
 // Get specific order details (HTML)
 router.get('/:orderId', orderController.getOrderDetails);
 
+// Get order details as JSON (for AJAX calls)
+router.get('/api/:orderId', orderController.getOrderDetailsJSON);
+
+// ===== ORDER STATUS MANAGEMENT =====
 // Update order status
 router.patch('/:orderId', orderController.updateOrderStatus);
-
-// Update payment status
-// router.patch('/:orderId/payment', orderController.updatePaymentStatus);
-
-// Cancel entire order
-router.patch('/:orderId/cancel', orderController.cancelOrder);
-router.patch('/orders/:orderId/fix-payment-status', orderController.fixCancelledOrderPaymentStatus);
-
-// Return entire order
-router.patch('/:orderId/return', orderController.returnOrder);
 
 // Get allowed status transitions
 router.get('/:orderId/transitions', orderController.getAllowedTransitions);
 
-// ===== ORDER ITEMS =====
+// ===== ORDER-LEVEL ACTIONS =====
+// Cancel entire order
+router.patch('/:orderId/cancel', orderController.cancelOrder);
 
+// Create return request for entire order
+router.patch('/:orderId/return', orderController.returnOrderRequest);
 
+// ===== ITEM-LEVEL ACTIONS =====
 // Cancel individual item
 router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);
 
-// Return individual item
-router.patch('/:orderId/items/:itemId/return', orderController.returnItem);
+// Create return request for individual item
+router.patch('/:orderId/items/:itemId/return', orderController.returnItemRequest);
 
+// ===== UTILITY FUNCTIONS =====
+// Fix payment status for cancelled orders
+router.patch('/orders/:orderId/fix-payment-status', orderController.fixCancelledOrderPaymentStatus);
 
-
-// ===== JSON API ENDPOINTS =====
-// ✅ FIXED: Get order details as JSON (for AJAX calls)
-router.get('/api/:orderId', orderController.getOrderDetailsJSON);
-
-
+// ===== REPORTING & EXPORT =====
 // Get order statistics
 router.get('/statistics', orderController.getOrderStatistics);
 

@@ -88,6 +88,49 @@ function updateCartCounter(count) {
   }
 }
 
+// Update order summary section
+function updateOrderSummary(cartSummary) {
+  // Update cart title
+  const cartTitle = document.querySelector('.cart-title');
+  if (cartTitle) {
+    cartTitle.textContent = `Cart (${cartSummary.totalItemCount})`;
+  }
+
+  // Update subtotal
+  const subtotalValue = document.querySelector('.price-breakdown .price-row:first-child .price-value');
+  if (subtotalValue) {
+    subtotalValue.textContent = `₹${cartSummary.subtotal}`;
+  }
+
+  // Update subtotal label with item count
+  const subtotalLabel = document.querySelector('.price-breakdown .price-row:first-child .price-label');
+  if (subtotalLabel) {
+    subtotalLabel.textContent = `Subtotal (${cartSummary.totalItemCount} items)`;
+  }
+
+  // Update discount if exists
+  const discountValue = document.querySelector('.discount-row .price-value');
+  if (discountValue && cartSummary.totalDiscount > 0) {
+    discountValue.textContent = `₹${cartSummary.totalDiscount}`;
+  }
+
+  // Update shipping
+  const shippingValue = document.querySelector('.price-breakdown .price-row:nth-last-child(2) .price-value');
+  if (shippingValue) {
+    if (cartSummary.shipping === 0) {
+      shippingValue.innerHTML = '<span class="text-success fw-bold">FREE</span>';
+    } else {
+      shippingValue.textContent = `₹${cartSummary.shipping}`;
+    }
+  }
+
+  // Update total
+  const totalValue = document.querySelector('.total-row .price-value');
+  if (totalValue) {
+    totalValue.textContent = `₹${cartSummary.total}`;
+  }
+}
+
 // Update cart item quantity
 async function updateQuantity(productId, variantId, newQuantity) {
   console.log('updateQuantity called:', { productId, variantId, newQuantity });
@@ -157,6 +200,11 @@ async function updateQuantity(productId, variantId, newQuantity) {
       }
       updateButtonStates(productId, variantId);
 
+      // ✅ ADD THIS HERE - Update order summary dynamically
+      if (result.cartSummary) {
+        updateOrderSummary(result.cartSummary);
+      }
+
       safeToast('success', 'Quantity updated successfully');
     } else {
       if (result.code === 'OUT_OF_STOCK') {
@@ -190,8 +238,14 @@ async function updateQuantity(productId, variantId, newQuantity) {
     qtyButtons[1].innerHTML = '<i class="bi bi-plus"></i>';
 
     updateButtonStates(productId, variantId);
+
+    // ❌ REMOVED - This was causing ReferenceError since 'result' doesn't exist in finally block
+    // if (result.cartSummary) {
+    //   updateOrderSummary(result.cartSummary);
+    // }
   }
 }
+
 
 // Remove item from cart
 async function removeFromCart(productId, variantId) {
@@ -313,19 +367,26 @@ async function resetCartItemQuantity(productId, variantId) {
     const result = await response.json();
     
     if (result.success) {
-      // Update the UI
+      // ✅ FIND THE CART ITEM FIRST
       const cartItem = document.querySelector(`[data-product-id="${productId}"][data-variant-id="${variantId}"]`);
       if (cartItem) {
         const qtyInput = cartItem.querySelector('.qty-input');
         const itemTotal = cartItem.querySelector('.item-total');
         
+        // ✅ RESET TO 1, NOT newQuantity
         qtyInput.value = 1;
         itemTotal.textContent = `₹${Math.round(result.itemTotal)}`;
         
         updateButtonStates(productId, variantId);
         updateCartCounter(result.cartCount);
+        
+        // ✅ UPDATE ORDER SUMMARY (this part is correct)
+        if (result.cartSummary) {
+          updateOrderSummary(result.cartSummary);
+        }
       }
       
+      // ✅ CORRECT SUCCESS MESSAGE
       safeToast('success', 'Item quantity reset to 1');
       return true;
     } else {
@@ -335,9 +396,10 @@ async function resetCartItemQuantity(productId, variantId) {
   } catch (error) {
     console.error('Error resetting cart item quantity:', error);
     safeToast('error', 'Failed to reset quantity. Please try again');
-    return false;
+    return false; // ✅ ADD THIS
   }
 }
+
 
 // Show stock validation error with SweetAlert
 function showStockValidationError(validation) {
@@ -807,10 +869,73 @@ function initializeCartPage() {
       e.preventDefault();
       e.stopPropagation();
       console.log('Clear cart button clicked');
-      clearCart();
+      
+      // ✅ Enhanced SweetAlert confirmation with loading states
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          title: 'Clear Cart?',
+          text: 'Are you sure you want to remove all items from your cart?',
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#dc3545',
+          cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Yes, Clear Cart',
+          cancelButtonText: 'Cancel'
+        }).then((result) => {
+          if (result.isConfirmed) {
+            // ✅ Show loading state on button
+            this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Clearing...';
+            this.disabled = true;
+            
+            // ✅ Make API call to clear cart
+            fetch('/cart/clear', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                // ✅ Success SweetAlert
+                Swal.fire({
+                  icon: 'success',
+                  title: 'Cart Cleared!',
+                  text: 'All items have been removed from your cart.',
+                  confirmButtonColor: '#000'
+                }).then(() => {
+                  window.location.reload();
+                });
+              } else {
+                throw new Error(data.message || 'Failed to clear cart');
+              }
+            })
+            .catch(error => {
+              console.error('Error clearing cart:', error);
+              // ✅ Error SweetAlert
+              Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to clear cart. Please try again.',
+                confirmButtonColor: '#000'
+              });
+              // ✅ Restore button state on error
+              this.innerHTML = '<i class="bi bi-trash me-1"></i>Clear Cart';
+              this.disabled = false;
+            });
+          }
+        });
+      } else {
+        // ✅ Fallback for browsers without SweetAlert
+        if (confirm('Are you sure you want to clear your cart?')) {
+          clearCart(); // Your existing clearCart function
+        }
+      }
+      
       return false;
     });
   }
+
 
   // Add event listener to checkout button
   const checkoutButton = document.querySelector('.checkout-btn');
@@ -826,7 +951,7 @@ function initializeCartPage() {
   }
 
   // Add event listener to remove all out of stock button
-  const removeOutOfStockButtons = document.querySelectorAll('.remove-all-out-of-stock-btn');
+  const removeOutOfStockButtons = document.querySelectorAll('.remove-all-unavailable-btn');
   console.log('Found remove out of stock buttons:', removeOutOfStockButtons.length);
   removeOutOfStockButtons.forEach((button, index) => {
     console.log(`Attaching event to remove out of stock button ${index + 1}`);

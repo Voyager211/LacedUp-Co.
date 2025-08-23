@@ -238,6 +238,18 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
   }
 };
 
+
+/**
+ * Check if order can be cancelled
+ * @param {Object} order - Order object
+ * @returns {Boolean} - Can cancel or not
+ */
+const canCancelOrder = (order) => {
+  // Order can be cancelled if it's in Pending or Processing status
+  const cancellableStatuses = [ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING];
+  return cancellableStatuses.includes(order.status);
+};
+
 /**
  * Cancel entire order
  * @param {String} orderId - Order ID
@@ -431,8 +443,23 @@ const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
 };
 
 
+/**
+ * Check if item can be cancelled
+ * @param {Object} order - Order object
+ * @param {String} itemId - Item ID
+ * @returns {Boolean} - Can cancel or not
+ */
+const canCancelItem = (order, itemId) => {
+  const item = order.items.id(itemId);
+  if (!item) {
+    return false;
+  }
 
-
+// Item can be cancelled if it's in Pending or Processing status
+const cancellableStatuses = [ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING];
+  return cancellableStatuses.includes(item.status);
+};
+  
 /**
  * Cancel individual item
  * @param {String} orderId - Order ID
@@ -512,13 +539,14 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
 
 
 /**
- * Update individual item status
- * @param {String} orderId - Order ID
- * @param {String} itemId - Item ID
- * @param {String} newStatus - New status
- * @param {String} notes - Optional notes
- * @returns {Object} - Result object
+ * Check if order can be returned
+ * @param {Object} order - Order object
+ * @returns {Boolean} - Can return or not
  */
+const canReturnOrder = (order) => {
+  // Order can be returned if it's delivered
+  return order.status === ORDER_STATUS.DELIVERED;
+};
 
 
 /**
@@ -1259,6 +1287,347 @@ const isValidStatusTransition = (currentStatus, newStatus) => {
   return validTransitions.includes(newStatus);
 };
 
+// Admin only functions
+/**
+ * Admin-specific cancel entire order (no reason validation required)
+ * @param {String} orderId - Order ID
+ * @param {String} reason - Cancellation reason (optional, any text allowed)
+ * @param {String} cancelledBy - Who cancelled the order
+ * @returns {Object} - Result object
+ */
+const adminCancelOrder = async (orderId, reason = 'Cancelled by admin', cancelledBy = 'admin') => {
+  try {
+    const order = await Order.findOne({ orderId: orderId });
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Check if order can be cancelled
+    if (!canCancelOrder(order)) {
+      throw new Error('Order cannot be cancelled in current status');
+    }
+
+    // ✅ ENHANCED: COD Cancellation Payment Status Logic
+    let newPaymentStatus = order.paymentStatus;
+    
+    if (order.paymentMethod === 'cod') {
+      newPaymentStatus = PAYMENT_STATUS.CANCELLED;
+      console.log(`🔄 COD order cancelled - Payment status set to 'Cancelled' for order: ${orderId}`);
+    } else if (order.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+      newPaymentStatus = PAYMENT_STATUS.REFUNDED;
+      console.log(`🔄 Online payment order cancelled - Payment status set to 'Refunded' for order: ${orderId}`);
+    } else {
+      newPaymentStatus = PAYMENT_STATUS.CANCELLED;
+      console.log(`🔄 Unpaid order cancelled - Payment status set to 'Cancelled' for order: ${orderId}`);
+    }
+
+    // Update order status
+    order.status = ORDER_STATUS.CANCELLED;
+    order.paymentStatus = newPaymentStatus;
+    order.statusHistory.push({
+      status: ORDER_STATUS.CANCELLED,
+      notes: reason ? `Order cancelled by admin. Reason: ${reason}` : 'Order cancelled by admin',
+      updatedAt: new Date()
+    });
+
+    // Update all cancellable items
+    let updatedItemsCount = 0;
+    order.items.forEach(item => {
+      if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status)) {
+        item.status = ORDER_STATUS.CANCELLED;
+        item.paymentStatus = newPaymentStatus;
+        item.cancellationReason = 'Other';
+        item.cancellationDate = new Date();
+        item.statusHistory.push({
+          status: ORDER_STATUS.CANCELLED,
+          notes: reason ? `Item cancelled by admin. Reason: ${reason}` : 'Item cancelled by admin',
+          updatedAt: new Date()
+        });
+        updatedItemsCount++;
+      }
+    });
+
+    await order.save();
+
+    console.log(`Admin cancelled order ${orderId}. Items affected: ${updatedItemsCount}, Payment status: ${newPaymentStatus}`);
+
+    return { 
+      success: true, 
+      order, 
+      itemsAffected: updatedItemsCount,
+      message: `Order cancelled successfully by admin. ${updatedItemsCount} items affected.`
+    };
+  } catch (error) {
+    console.error('Error in admin cancel order:', error);
+    throw error;
+  }
+};
+
+/**
+ * Admin-specific cancel individual item (no reason validation required)
+ * @param {String} orderId - Order ID
+ * @param {String} itemId - Item ID
+ * @param {String} reason - Cancellation reason (optional, any text allowed)
+ * @param {String} cancelledBy - Who cancelled the item
+ * @returns {Object} - Result object
+ */
+const adminCancelItem = async (orderId, itemId, reason = 'Cancelled by admin', cancelledBy = 'admin') => {
+  try {
+    const order = await Order.findOne({ orderId }).populate('user');
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      throw new Error('Item not found');
+    }
+
+    // Check if item can be cancelled
+    if (!canCancelItem(order, itemId)) {
+      throw new Error('Item cannot be cancelled in current status');
+    }
+
+    const oldStatus = item.status;
+    const oldPaymentStatus = item.paymentStatus;
+
+    // Update item status
+    item.status = ORDER_STATUS.CANCELLED;
+    item.cancellationReason = 'Other';
+    item.cancellationDate = new Date();
+
+    // AUTOMATED: Update payment status using automated logic
+    updateAutomatedPaymentStatus(order, item, ORDER_STATUS.CANCELLED);
+
+    // Add to status history
+    item.statusHistory.push({
+      status: ORDER_STATUS.CANCELLED,
+      updatedAt: new Date(),
+      notes: `Cancelled by admin: ${reason}`
+    });
+
+    // AUTOMATED: Recalculate order status
+    const newOrderStatus = calculateOrderStatus(order.items);
+    if (newOrderStatus !== order.status) {
+      order.status = newOrderStatus;
+      order.statusHistory.push({
+        status: newOrderStatus,
+        notes: newOrderStatus === ORDER_STATUS.CANCELLED ? 'All items cancelled by admin' : 'Order status updated due to admin item cancellation',
+        updatedAt: new Date()
+      });
+    }
+
+    // AUTOMATED: Recalculate order payment status
+    order.paymentStatus = calculatePaymentStatus(order);
+
+    await order.save();
+
+    console.log(`✅ Admin cancelled item ${itemId} successfully:`);
+    console.log(`   Status: ${oldStatus} → ${item.status}`);
+    console.log(`   Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+    console.log(`   Order Status: ${order.status}`);
+    console.log(`   Order Payment: ${order.paymentStatus}`);
+
+    return { 
+      success: true, 
+      order, 
+      newOrderStatus,
+      message: 'Item cancelled successfully by admin. Payment status updated automatically.'
+    };
+  } catch (error) {
+    console.error('Error in admin cancel item:', error);
+    throw error;
+  }
+};
+
+/**
+ * Admin-specific create return request for entire order (no reason validation required)
+ * @param {String} orderId - Order ID
+ * @param {String} reason - Return reason (optional, any text allowed)
+ * @param {String} requestedBy - Who requested the return
+ * @returns {Object} - Result object
+ */
+const adminOrderReturnRequest = async (orderId, reason = 'Return requested by admin', requestedBy = 'admin') => {
+  try {
+    const order = await Order.findOne({ orderId: orderId })
+      .populate('user')
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage'
+      });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Check if order can be returned (only delivered orders)
+    if (order.status !== ORDER_STATUS.DELIVERED) {
+      throw new Error('Only delivered orders can be returned');
+    }
+
+    // Get all delivered items
+    const deliveredItems = order.items.filter(item => item.status === ORDER_STATUS.DELIVERED);
+    
+    if (deliveredItems.length === 0) {
+      throw new Error('No delivered items found to return');
+    }
+
+    // ADMIN: Skip checking for existing return requests - admin can override
+
+    // Create return requests for all delivered items
+    const returnRequests = [];
+    for (const item of deliveredItems) {
+      const returnRequest = new Return({
+        orderId: orderId,
+        itemId: item._id,
+        userId: order.user._id,
+        productId: item.productId ? item.productId._id : item.productId,
+        productName: item.productId ? item.productId.productName : 'Product Name',
+        productImage: item.productId ? item.productId.mainImage : null,
+        sku: item.sku,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice,
+        reason: 'Other', 
+        status: 'Pending',
+        requestedBy: requestedBy 
+      });
+
+      await returnRequest.save();
+      returnRequests.push(returnRequest);
+
+      // Update item status to 'Processing Return'
+      item.status = ORDER_STATUS.PROCESSING_RETURN;
+      item.returnReason = 'Other'; 
+      item.returnRequestDate = new Date();
+      item.statusHistory.push({
+        status: ORDER_STATUS.PROCESSING_RETURN,
+        notes: `Return requested by admin. Reason: ${reason}`, 
+        updatedAt: new Date()
+      });
+    }
+
+    // Update order status to 'Processing Return'
+    order.status = ORDER_STATUS.PROCESSING_RETURN;
+    order.statusHistory.push({
+      status: ORDER_STATUS.PROCESSING_RETURN,
+      notes: `Return requested by admin for entire order. Reason: ${reason}`, 
+      updatedAt: new Date()
+    });
+
+    await order.save();
+
+    console.log(`Admin created return requests for order ${orderId}. Items affected: ${returnRequests.length}`);
+
+    return { 
+      success: true, 
+      order, 
+      returnRequests,
+      itemsAffected: returnRequests.length,
+      message: `Return requests created by admin for ${returnRequests.length} items`
+    };
+
+  } catch (error) {
+    console.error('Error creating admin order return request:', error);
+    throw error;
+  }
+};
+
+/**
+ * Admin-specific create return request for individual item (no reason validation required)
+ * @param {String} orderId - Order ID
+ * @param {String} itemId - Item ID
+ * @param {String} reason - Return reason (optional, any text allowed)
+ * @param {String} requestedBy - Who requested the return
+ * @returns {Object} - Result object
+ */
+const adminItemReturnRequest = async (orderId, itemId, reason = 'Return requested by admin', requestedBy = 'admin') => {
+  try {
+    const order = await Order.findOne({ orderId: orderId })
+      .populate('user')
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage'
+      });
+
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      throw new Error('Item not found');
+    }
+
+    // Check if item can be returned (only delivered items)
+    if (item.status !== ORDER_STATUS.DELIVERED) {
+      throw new Error('Item can only be returned when delivered');
+    }
+
+    // ADMIN: Skip checking for existing return request - admin can override
+
+    // Create return request
+    const returnRequest = new Return({
+      orderId: orderId,
+      itemId: itemId,
+      userId: order.user._id,
+      productId: item.productId ? item.productId._id : item.productId,
+      productName: item.productId ? item.productId.productName : 'Product Name',
+      productImage: item.productId ? item.productId.mainImage : null,
+      sku: item.sku,
+      size: item.size,
+      quantity: item.quantity,
+      price: item.price,
+      totalPrice: item.totalPrice,
+      reason: 'Other', 
+      status: 'Pending',
+      requestedBy: requestedBy
+    });
+
+    await returnRequest.save();
+
+    // Update item status to 'Processing Return'
+    item.status = ORDER_STATUS.PROCESSING_RETURN;
+    item.returnReason = 'Other'; // 
+    item.returnRequestDate = new Date();
+    item.statusHistory.push({
+      status: ORDER_STATUS.PROCESSING_RETURN,
+      notes: `Return requested by admin. Reason: ${reason}`, 
+      updatedAt: new Date()
+    });
+
+    // Recalculate order status based on all item statuses
+    const newOrderStatus = calculateOrderStatus(order.items);
+    if (newOrderStatus !== order.status) {
+      order.status = newOrderStatus;
+      order.statusHistory.push({
+        status: newOrderStatus,
+        notes: 'Order status updated due to admin return request',
+        updatedAt: new Date()
+      });
+    }
+
+    await order.save();
+
+    console.log(`Admin created return request for item ${itemId} in order ${orderId}. Return ID: ${returnRequest.returnId}`);
+
+    return { 
+      success: true, 
+      order, 
+      returnRequest,
+      newOrderStatus,
+      message: 'Return request created successfully by admin'
+    };
+
+  } catch (error) {
+    console.error('Error creating admin item return request:', error);
+    throw error;
+  }
+};
+
+
+
 
 module.exports = {
   // Status Management Functions
@@ -1271,12 +1640,23 @@ module.exports = {
   // Cancellation Functions  
   cancelOrder,
   cancelItem,
+  canCancelOrder,
+  canCancelItem,
+
+  // Admin Cancellation Functions (no reason validation)
+  adminCancelOrder,
+  adminCancelItem,
 
   // Return Functions
+  canReturnOrder,      
+  canReturnItem,   
   returnOrder,
   returnItem,
   requestOrderReturn,
   requestItemReturn,
+
+  adminOrderReturnRequest,
+  adminItemReturnRequest,
 
   // Return Management (Admin Functions)
   approveItemReturn,

@@ -10,7 +10,7 @@
           <p class="text-black mb-0">Manage and process customer return requests</p>
         </div>
         <div class="d-flex gap-2">
-          <button class="btn btn-dark" onclick="refreshReturns()">
+          <button class="btn btn-dark" id="headerRefreshBtn">
             <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
           </button>
         </div>
@@ -94,56 +94,53 @@
   </div>
 
   <!-- Filters and Search -->
-  <div class="row mb-4">
-    <div class="col-12">
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-0"> <!-- ✅ CHANGED: Added p-0 like the table -->
-          <div class="filters-content p-3"> <!-- ✅ NEW: Custom padding container -->
-            <form id="filterForm" class="row g-3">
-              <div class="col-md-4">
-                <label class="form-label text-black">Search Returns</label>
-                <input type="text" class="form-control" name="search"
-                      value="<%= filters.search || '' %>">
-              </div>
-              <div class="col-md-2">
-                <label class="form-label text-black">Return Status</label>
-                <select class="form-select" name="status">
-                  <option value="">All Status</option>
-                  <% returnStatuses.forEach(status => { %>
-                    <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
-                  <% }); %>
-                </select>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label text-black">Date Range</label>
-                <select class="form-select" name="dateRange">
-                  <option value="">All Time</option>
-                  <option value="today" <%= filters.dateRange === 'today' ? 'selected' : '' %>>Today</option>
-                  <option value="week" <%= filters.dateRange === 'week' ? 'selected' : '' %>>This Week</option>
-                  <option value="month" <%= filters.dateRange === 'month' ? 'selected' : '' %>>This Month</option>
-                </select>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label text-black">Sort By</label>
-                <select class="form-select" name="sortBy">
-                  <option value="requestDate" <%= filters.sortBy === 'requestDate' ? 'selected' : '' %>>Request Date</option>
-                  <option value="totalPrice" <%= filters.sortBy === 'totalPrice' ? 'selected' : '' %>>Amount</option>
-                  <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
-                </select>
-              </div>
-              <div class="col-md-2">
-                <label class="form-label text-black">Order</label>
-                <select class="form-select" name="sortOrder">
-                  <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
-                  <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
-                </select>
-              </div>
-            </form>
-          </div> <!-- ✅ END: Custom padding container -->
-        </div>
-      </div>
-    </div>
-  </div>
+  <%- include('partials/filters-bar', {
+    searchPlaceholder: 'Return ID, Order ID, Customer name, Product name...',
+    searchLabel: 'Search Returns',
+    formId: 'returnFilterForm',
+    apiEndpoint: '/admin/returns/api/filtered',
+    tableSelector: '.returns-table tbody',
+    updateTableCallback: 'updateReturnsTable',
+    updateStatsCallback: 'updateStatistics',
+    filterValues: filters,
+    filters: [
+      {
+        name: 'status',
+        label: 'Return Status',
+        type: 'select',
+        colSize: 2,
+        allOption: 'All Status',
+        options: returnStatuses.map(status => ({ value: status, label: status }))
+      },
+      {
+        name: 'dateRange',
+        label: 'Date Range',
+        type: 'daterange',
+        colSize: 2
+      },
+      {
+        name: 'sortBy',
+        label: 'Sort By',
+        type: 'select',
+        colSize: 2,
+        options: [
+          { value: 'requestDate', label: 'Request Date' },
+          { value: 'totalPrice', label: 'Amount' },
+          { value: 'status', label: 'Status' }
+        ]
+      },
+      {
+        name: 'sortOrder',
+        label: 'Order',
+        type: 'select',
+        colSize: 2,
+        options: [
+          { value: 'desc', label: 'Desc' },
+          { value: 'asc', label: 'Asc' }
+        ]
+      }
+    ]
+  }) %>
 
 
   <!-- Returns Table -->
@@ -403,10 +400,6 @@
 
 
 <style>
-/* General Styles */
-.card {
-  border-radius: 12px;
-}
 
 .btn {
   border-radius: 6px;
@@ -415,8 +408,19 @@
 
 /* Returns Table Design */
 .returns-table {
-  font-size: 0.95rem;
+  position: relative;
+  z-index: 1;
 }
+
+.returns-table tbody tr {
+  position: relative;
+  z-index: 2;
+}
+
+.returns-table tbody tr:hover {
+  z-index: 10 !important;
+}
+
 
 .returns-table th {
   font-weight: 600;
@@ -436,13 +440,13 @@
 }
 
 .return-row {
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
+  transform: none !important;
 }
 
 .return-row:hover {
   background-color: #f8f9fa;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: none !important;
 }
 
 /* Return ID Styling */
@@ -611,25 +615,29 @@
 
 /* Action Button Styling */
 .action-btn {
-  border: 1px solid #000000 !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  padding: 0.75rem;
-  width: 45px;
-  height: 45px;
+  position: relative;
+  z-index: 10;
+  border: 1px solid #dee2e6 !important;
+  background: #ffffff !important;
+  color: #6c757d !important;
+  padding: 0.5rem;
+  width: 38px;
+  height: 38px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px !important;
+  border-radius: 6px !important;
   transition: all 0.2s ease;
-  color: #000000 !important;
 }
 
-.action-btn:hover {
+.action-btn:hover,
+.action-btn:focus,
+.action-btn.show {
   background-color: #f8f9fa !important;
-  color: #000000 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+  border-color: #adb5bd !important;
+  color: #495057 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  z-index: 100 !important;
 }
 
 .action-btn:focus {
@@ -644,61 +652,86 @@
 
 /* Dropdown Menu Styling */
 .dropdown-menu {
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-  border: 0;
-  padding: 0.75rem 0;
-  min-width: 220px;
-  z-index: 9999 !important;
   position: absolute !important;
-  background-color: #ffffff !important;
+  top: 100% !important;
+  left: auto !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  min-width: 200px;
+  max-width: 250px;
+  padding: 0.5rem 0;
+  margin: 0.125rem 0 0;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(0) !important;
+  will-change: transform;
+}
+
+.dropdown-menu.show {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
 }
 
 .actions-dropdown {
   position: relative;
-  z-index: 1000;
+  z-index: 100;
+}
+
+.actions-dropdown .dropdown {
+  position: relative;
+  z-index: 100;
 }
 
 .actions-dropdown .dropdown.show {
   z-index: 9999 !important;
 }
 
-.dropdown.show .dropdown-menu {
+.actions-dropdown .dropdown.show .dropdown-menu {
   z-index: 9999 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
 
 .dropdown-item {
-  padding: 0.75rem 1.25rem;
+  display: flex !important;
+  align-items: center;
+  padding: 0.5rem 1rem;
   font-size: 0.875rem;
   font-weight: 500;
+  color: #495057 !important;
+  background: transparent;
   border: none;
-  background: none;
   width: 100%;
   text-align: left;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  color: #000000 !important;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
 }
 
-.dropdown-item:hover {
-  background-color: #f8f9fa;
-  color: #000000 !important;
-  transform: translateX(4px);
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: #f8f9fa !important;
+  color: #16181b !important;
 }
 
 .dropdown-item i {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 /* Table wrapper */
 .table-wrapper {
-  overflow: visible;
+  overflow: visible !important;
   width: 100%;
+  position: relative;
+  z-index: 1;
 }
 
 /* Fix for dropdown z-index issues */
@@ -808,6 +841,11 @@
   border: none !important;
   box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
   border-radius: 12px !important;
+  overflow: visible !important;
+}
+
+.card-body {
+  overflow: visible !important;
 }
 
 /* Remove any margin differences that could cause width variations */
@@ -831,164 +869,13 @@
 </style>
 
 <script>
-// Global variables for pagination and filtering
-let currentPage = 1;
-let isLoading = false;
+// Global variables
+let currentPage = <%= currentPage %>;
 
-// Set up pagination callback for the shared partial
-window.applyFilters = applyFilters; // Make it globally accessible
-
-// Filter management without page refresh
-document.addEventListener('DOMContentLoaded', function() {
-  // ✅ ADD: Define callback functions for pagination partial compatibility
-  window.fetchCallback = applyFilters;
-  window.paginationCallback = applyFilters;
-
-  const filterForm = document.getElementById('filterForm');
-  const formElements = filterForm.querySelectorAll('input, select');
-  
-  // Remove the old submit event listeners
-  formElements.forEach(element => {
-    element.addEventListener('change', function() {
-      applyFilters(1); // Reset to page 1 when filters change
-    });
-  });
-  
-  // Search input with debounce
-  const searchInput = filterForm.querySelector('input[name="search"]');
-  let searchTimeout;
-  
-  searchInput.addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-      applyFilters(1); // Reset to page 1 when search changes
-    }, 500);
-  });
-
-  // ✅ UPDATED: Pagination click handlers for shared partial
-  document.addEventListener('click', function(e) {
-    const paginationLink = e.target.closest('.pagination .page-link');
-    if (!paginationLink || paginationLink.classList.contains('disabled-btn')) return;
-    
-    e.preventDefault();
-    const page = parseInt(paginationLink.dataset.page);
-    
-    if (!isNaN(page) && page >= 1) {
-      applyFilters(page);
-    }
-  });
-
-  // Handle dropdown z-index issues (keep existing code)
-  const dropdownButtons = document.querySelectorAll('.action-btn');
-  
-  dropdownButtons.forEach(button => {
-    button.addEventListener('click', function() {
-      document.querySelectorAll('.return-row').forEach(row => {
-        row.classList.remove('dropdown-open');
-      });
-      
-      const currentRow = this.closest('.return-row');
-      if (currentRow) {
-        currentRow.classList.add('dropdown-open');
-      }
-    });
-  });
-
-  document.addEventListener('click', function(event) {
-    if (!event.target.closest('.actions-dropdown')) {
-      document.querySelectorAll('.return-row').forEach(row => {
-        row.classList.remove('dropdown-open');
-      });
-    }
-  });
-
-  document.querySelectorAll('.dropdown').forEach(dropdown => {
-    dropdown.addEventListener('shown.bs.dropdown', function() {
-      const row = this.closest('.return-row');
-      if (row) {
-        row.classList.add('dropdown-open');
-      }
-    });
-
-    dropdown.addEventListener('hidden.bs.dropdown', function() {
-      const row = this.closest('.return-row');
-      if (row) {
-        row.classList.remove('dropdown-open');
-      }
-    });
-  });
-});
-
-// ✅ UPDATED: Apply filters using fetch API
-async function applyFilters(page = 1) {
-  if (isLoading) return;
-  
-  isLoading = true;
-  showLoadingState();
-  
-  try {
-    // Get form data
-    const filterForm = document.getElementById('filterForm');
-    const formData = new FormData(filterForm);
-    
-    // Build query parameters
-    const params = new URLSearchParams();
-    params.append('page', page);
-    
-    for (const [key, value] of formData.entries()) {
-      if (value.trim() !== '') {
-        params.append(key, value);
-      }
-    }
-    
-    // ✅ FIXED: Use correct API endpoint to match orders pattern
-    const response = await fetch(`/admin/returns/api/filtered?${params.toString()}`);
-    const result = await response.json();
-    
-    if (result.success) {
-      // Update the page content with the corrected data structure
-      updateReturnsTable(result.data.returns);
-      updateStatistics(result.data);
-      // No need to manually update pagination - shared partial handles it
-      currentPage = result.data.currentPage;
-      
-    } else {
-      throw new Error(result.message || 'Failed to fetch returns');
-    }
-  } catch (error) {
-    console.error('Error applying filters:', error);
-    showToast('error', 'Error loading returns. Please try again.');
-  } finally {
-    isLoading = false;
-    hideLoadingState();
-  }
-}
-
-// Show loading state
-function showLoadingState() {
+// ✅ Callback functions for the filters bar
+function updateReturnsTable(data) {
   const tbody = document.querySelector('.returns-table tbody');
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="8" class="text-center py-5">
-        <div class="loading-state">
-          <div class="spinner-border text-primary" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          <p class="mt-3 text-muted">Loading returns...</p>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
-// Hide loading state
-function hideLoadingState() {
-  // Loading state will be replaced by updateReturnsTable
-}
-
-// Update returns table
-function updateReturnsTable(returns) {
-  const tbody = document.querySelector('.returns-table tbody');
+  const returns = data.returns || [];
   
   if (!returns || returns.length === 0) {
     tbody.innerHTML = `
@@ -1002,9 +889,6 @@ function updateReturnsTable(returns) {
         </td>
       </tr>
     `;
-    
-    // Re-attach event listeners for new dropdown buttons
-    attachDropdownEventListeners();
     return;
   }
   
@@ -1107,47 +991,22 @@ function updateReturnsTable(returns) {
   `).join('');
   
   tbody.innerHTML = rowsHtml;
-  
-  // Re-attach event listeners for new dropdown buttons
-  attachDropdownEventListeners();
 }
 
-
-// ✅ FIXED: Update statistics cards with correct data structure
 function updateStatistics(data) {
-  const pendingReturnsElement = document.querySelector('.col-xl-3:nth-child(1) h3');
-  const approvedReturnsElement = document.querySelector('.col-xl-3:nth-child(2) h3');
-  const totalReturnsElement = document.querySelector('.col-xl-3:nth-child(3) h3');
-  const refundAmountElement = document.querySelector('.col-xl-3:nth-child(4) h3');
+  const pendingElement = document.querySelector('.col-xl-3:nth-child(1) h3');
+  const approvedElement = document.querySelector('.col-xl-3:nth-child(2) h3');
+  const totalElement = document.querySelector('.col-xl-3:nth-child(3) h3');
+  const refundElement = document.querySelector('.col-xl-3:nth-child(4) h3');
   
-  if (pendingReturnsElement) pendingReturnsElement.textContent = data.pendingReturns || 0;
-  if (approvedReturnsElement) approvedReturnsElement.textContent = data.approvedReturns || 0;
-  if (totalReturnsElement) totalReturnsElement.textContent = data.totalReturns || 0;
-  if (refundAmountElement) refundAmountElement.textContent = `₹${(data.totalRefundAmount || 0).toLocaleString('en-IN')}`;
+  if (pendingElement) pendingElement.textContent = data.pendingReturns || 0;
+  if (approvedElement) approvedElement.textContent = data.approvedReturns || 0;
+  if (totalElement) totalElement.textContent = data.totalReturns || 0;
+  if (refundElement) refundElement.textContent = `₹${(data.totalRefundAmount || 0).toLocaleString('en-IN')}`;
 }
 
-// ✅ ADD: Missing function for dropdown events
-function attachDropdownEventListeners() {
-  document.querySelectorAll('.dropdown').forEach(dropdown => {
-    dropdown.addEventListener('shown.bs.dropdown', function() {
-      const row = this.closest('.return-row');
-      if (row) {
-        row.classList.add('dropdown-open');
-      }
-    });
-
-    dropdown.addEventListener('hidden.bs.dropdown', function() {
-      const row = this.closest('.return-row');
-      if (row) {
-        row.classList.remove('dropdown-open');
-      }
-    });
-  });
-}
-
-// Keep all your existing functions (approveReturn, rejectReturn, etc.)
+// ✅ Keep all your existing return-specific functions (no changes needed)
 function approveReturn(returnId) {
-  // Your existing approveReturn function code
   const returnRow = document.querySelector(`button[onclick*="${returnId}"]`).closest('.return-row');
   const amountElement = returnRow.querySelector('.return-amount');
   const amountText = amountElement.textContent.replace('₹', '').replace(/,/g, '');
@@ -1169,9 +1028,7 @@ function submitApproveReturn() {
   
   fetch(`/admin/returns/${returnId}/approve`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       refundAmount: parseFloat(formData.get('refundAmount')),
       notes: formData.get('notes')
@@ -1181,10 +1038,7 @@ function submitApproveReturn() {
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
-      // ✅ UPDATED: Refresh data without page reload
-      setTimeout(() => {
-        applyFilters(currentPage);
-      }, 1000);
+      setTimeout(() => applyFilters(currentPage), 1000);
     } else {
       showToast('error', data.message);
     }
@@ -1212,21 +1066,14 @@ function submitRejectReturn() {
   
   fetch(`/admin/returns/${returnId}/reject`, {
     method: 'PATCH',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      rejectionReason: formData.get('reason')
-    })
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rejectionReason: formData.get('reason') })
   })
   .then(response => response.json())
   .then(data => {
     if (data.success) {
       showToast('success', data.message);
-      // ✅ UPDATED: Refresh data without page reload
-      setTimeout(() => {
-        applyFilters(currentPage);
-      }, 1000);
+      setTimeout(() => applyFilters(currentPage), 1000);
     } else {
       showToast('error', data.message);
     }
@@ -1239,16 +1086,12 @@ function submitRejectReturn() {
   bootstrap.Modal.getInstance(document.getElementById('rejectReturnModal')).hide();
 }
 
-function refreshReturns() {
-  applyFilters(currentPage); // ✅ UPDATED: Use fetch instead of location.reload()
-}
-
 function showToast(type, message) {
   const toastHtml = `
-    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
       <div class="d-flex">
         <div class="toast-body">${message}</div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
       </div>
     </div>
   `;
@@ -1266,10 +1109,102 @@ function showToast(type, message) {
   const toast = new bootstrap.Toast(toastElement);
   toast.show();
   
-  toastElement.addEventListener('hidden.bs.toast', () => {
-    toastElement.remove();
-  });
+  toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
 }
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix dropdown positioning and z-index issues
+  const dropdowns = document.querySelectorAll('.actions-dropdown .dropdown');
+  
+  dropdowns.forEach(dropdown => {
+    const button = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    
+    if (button && menu) {
+      // ✅ Handle dropdown show event
+      button.addEventListener('show.bs.dropdown', function() {
+        console.log('🔍 Dropdown showing...');
+        
+        // Boost z-index when showing
+        dropdown.style.zIndex = '9999';
+        menu.style.zIndex = '9999';
+        menu.style.position = 'absolute';
+        
+        // Ensure the parent row has higher z-index
+        const parentRow = button.closest('tr');
+        if (parentRow) {
+          parentRow.style.zIndex = '10000';
+          parentRow.classList.add('dropdown-open');
+        }
+      });
+      
+      // ✅ Handle dropdown hide event  
+      button.addEventListener('hide.bs.dropdown', function() {
+        console.log('🔍 Dropdown hiding...');
+        
+        const parentRow = button.closest('tr');
+        if (parentRow) {
+          // Reset z-index after a delay
+          setTimeout(() => {
+            parentRow.style.zIndex = '';
+            parentRow.classList.remove('dropdown-open');
+          }, 150);
+        }
+      });
+      
+      // ✅ Handle dropdown shown event
+      button.addEventListener('shown.bs.dropdown', function() {
+        console.log('✅ Dropdown shown successfully');
+        
+        // Force display and positioning
+        menu.style.display = 'block';
+        menu.style.visibility = 'visible';
+        menu.style.opacity = '1';
+        
+        // Check if menu is visible
+        const rect = menu.getBoundingClientRect();
+        console.log('🔍 Dropdown menu position:', {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width > 0 && rect.height > 0
+        });
+      });
+    }
+  });
+  
+  // ✅ Debug: Click handler to test dropdown
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.action-btn')) {
+      console.log('🔍 Action button clicked');
+      const button = e.target.closest('.action-btn');
+      const dropdown = button.closest('.dropdown');
+      const menu = dropdown?.querySelector('.dropdown-menu');
+      
+      if (menu) {
+        console.log('🔍 Dropdown menu found:', {
+          display: getComputedStyle(menu).display,
+          visibility: getComputedStyle(menu).visibility,
+          zIndex: getComputedStyle(menu).zIndex,
+          position: getComputedStyle(menu).position
+        });
+      }
+    }
+  });
+});
+
+// ✅ Additional fix for Bootstrap 5 dropdown issues
+document.addEventListener('DOMContentLoaded', function() {
+  // Ensure Bootstrap dropdowns are properly initialized
+  const dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
+  const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+    return new bootstrap.Dropdown(dropdownToggleEl);
+  });
+  
+  console.log('✅ Initialized', dropdownList.length, 'dropdowns');
+});
 </script>
+
 
 

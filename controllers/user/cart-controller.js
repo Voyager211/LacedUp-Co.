@@ -643,11 +643,60 @@ exports.updateCartQuantity = async (req, res) => {
     // Get updated cart count
     const cartCount = cart.items.reduce((total, item) => total + item.quantity, 0);
 
+    // ✅ Calculate updated cart summary
+    let totalItemCount = 0;
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let availableItemsCount = 0;
+    let availableQuantity = 0;
+
+    // Calculate totals from all cart items
+    for (const cartItem of cart.items) {
+      totalItemCount += cartItem.quantity;
+      
+      // Get product for price calculation
+      const itemProduct = await Product.findById(cartItem.productId).populate(['category', 'brand']);
+      if (itemProduct) {
+        const regularPrice = itemProduct.regularPrice || cartItem.price;
+        subtotal += regularPrice * cartItem.quantity;
+        
+        // Calculate discount (regular price - sale price)
+        const itemDiscount = (regularPrice - cartItem.price) * cartItem.quantity;
+        totalDiscount += Math.max(0, itemDiscount);
+        
+        // Count available items (not out of stock)
+        if (cartItem.variantId) {
+          const itemVariant = itemProduct.variants.find(v => v._id.toString() === cartItem.variantId.toString());
+          if (itemVariant && itemVariant.stock > 0) {
+            availableItemsCount++;
+            availableQuantity += cartItem.quantity;
+          }
+        } else {
+          availableItemsCount++;
+          availableQuantity += cartItem.quantity;
+        }
+      }
+    }
+
+    const shipping = subtotal > 500 ? 0 : 50;
+    const total = subtotal - totalDiscount + shipping;
+
+    const updatedCartSummary = {
+      totalItemCount,
+      subtotal: Math.round(subtotal),
+      totalDiscount: Math.round(totalDiscount),
+      shipping,
+      total: Math.round(total),
+      availableItemsCount,
+      availableQuantity
+    };
+
     res.json({
       success: true,
       message: 'Cart updated successfully',
       cartCount,
-      itemTotal: cart.items[itemIndex].totalPrice
+      itemTotal: cart.items[itemIndex].totalPrice,
+      cartSummary: updatedCartSummary  // ✅ Add cart summary
     });
 
   } catch (error) {
@@ -658,6 +707,7 @@ exports.updateCartQuantity = async (req, res) => {
     });
   }
 };
+
 
 // Clear entire cart
 exports.clearCart = async (req, res) => {
