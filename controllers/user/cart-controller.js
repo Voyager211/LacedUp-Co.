@@ -2,6 +2,7 @@ const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
 const Wishlist = require('../../models/Wishlist');
+const walletService = require('../../services/walletService');
 
 // Helper function to calculate final price with offers
 const calculateFinalPrice = async (product) => {
@@ -1040,7 +1041,8 @@ exports.loadCheckout = async (req, res) => {
       total: Math.round(total),
       title: 'Checkout',
       layout: 'user/layouts/user-layout',
-      active: 'checkout'
+      active: 'checkout',
+      paypalClientId: process.env.PAYPAL_CLIENT_ID,
     });
   } catch (error) {
     console.error('Error loading checkout:', error);
@@ -1513,6 +1515,44 @@ exports.saveForLater = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Unable to save item for later'
+    });
+  }
+};
+
+exports.getWalletBalanceForCheckout = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        balance: 0
+      });
+    }
+
+    const walletBalance = await walletService.getWalletBalance(userId);
+    
+    if (!walletBalance.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to get wallet balance',
+        balance: 0
+      });
+    }
+
+    res.json({
+      success: true,
+      balance: walletBalance.balance || 0,
+      formatted: `₹${(walletBalance.balance || 0).toLocaleString('en-IN')}`
+    });
+
+  } catch (error) {
+    console.error('Error getting wallet balance for checkout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting wallet balance',
+      balance: 0
     });
   }
 };

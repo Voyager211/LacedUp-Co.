@@ -1,0 +1,74 @@
+<% var title = "Payment Failed" %>
+
+<div class="order-failure-container py-5">
+  <div class="order-failure-section">
+    <!-- Failure Animation -->
+    <div class="failure-animation-container text-center">
+      <div class="failure-icon">
+        <i class="bi bi-x-circle text-danger" style="font-size: 5rem;"></i>
+      </div>
+      
+      <div class="failure-content">
+        <h1 class="failure-title text-danger">Payment Failed</h1>
+        <p class="failure-subtitle">We couldn't process your payment. Please try again.</p>
+        <div class="order-number">
+          <strong>Order ID: #<%= orderId || 'N/A' %></strong>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons text-center mt-4">
+      <a href="/checkout" class="btn btn-primary">
+        <i class="bi bi-arrow-clockwise"></i> Retry Payment
+      </a>
+      <a href="/orders/<%= orderId || '' %>" class="btn btn-outline-secondary">
+        <i class="bi bi-eye"></i> View Order Details
+      </a>
+      <a href="/shop" class="btn btn-outline-primary">
+        <i class="bi bi-arrow-left"></i> Continue Shopping
+      </a>
+    </div>
+  </div>
+</div>
+
+<style>
+.order-failure-container {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.order-failure-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+}
+
+.failure-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.failure-subtitle {
+  font-size: 1.1rem;
+  color: #6c757d;
+  margin-bottom: 1rem;
+}
+
+.order-number {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  display: inline-block;
+  font-size: 1rem;
+}
+
+.action-buttons .btn {
+  margin: 0.5rem;
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+}
+</style>

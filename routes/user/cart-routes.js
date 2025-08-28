@@ -58,6 +58,7 @@ router.get('/validate-stock', requireAuthAPI, cartController.validateCartStock);
 router.post('/reset-quantity', requireAuthAPI, cartController.resetCartItemQuantity);
 
 // Checkout route
+router.get('/wallet-balance', requireAuthAPI, cartController.getWalletBalanceForCheckout);
 router.get('/checkout', requireAuth, cartController.loadCheckout);
 
 // Checkout validation route

@@ -129,9 +129,23 @@
                         <p>Payment processed successfully</p>
                         <span class="payment-status paid">Payment Completed</span>
                     </div>
-                <% } else { %>
+                <% } else if (orderData.paymentMethod === 'wallet') { %>
+                    <!-- ✅ NEW: Add wallet payment condition -->
+                    <div class="payment-details">
+                        <p><strong><i class="bi bi-wallet2"></i> Wallet Payment</strong></p>
+                        <p>Payment deducted from your wallet successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'netbanking') { %>
                     <div class="payment-details">
                         <p><strong>Net Banking</strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else { %>
+                    <!-- Fallback for unknown payment methods -->
+                    <div class="payment-details">
+                        <p><strong>Payment Method: <%= orderData.paymentMethod %></strong></p>
                         <p>Payment processed successfully</p>
                         <span class="payment-status paid">Payment Completed</span>
                     </div>

@@ -139,6 +139,10 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     required: true
   },
+  paypalCaptureId: {
+    type: String,
+    default: null
+  },
   status: {
     type: String,
     enum: getOrderStatusArray(),  // ✅ Using constants

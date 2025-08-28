@@ -5,6 +5,9 @@ const Address = require('../../models/Address');
 const User = require('../../models/User');
 const Return = require('../../models/Return');
 const orderService = require('../../services/orderService');
+const walletService = require('../../services/walletService');
+const { paypalClient } = require('../../services/paypal');
+const paypal = require('@paypal/checkout-server-sdk');
 
 const {
   ORDER_STATUS,
@@ -235,6 +238,42 @@ exports.placeOrder = async (req, res) => {
     const shipping = amountAfterDiscount > 500 ? 0 : 50;
     const total = amountAfterDiscount + shipping;
 
+    // ✅ NEW: Wallet payment validation and processing
+    if (paymentMethod === 'wallet') {
+      console.log(`🔄 Processing wallet payment for order. Total: ₹${total}`);
+      
+      // Check wallet balance
+      try {
+        const walletBalance = await walletService.getWalletBalance(userId);
+        console.log(`💰 User wallet balance: ₹${walletBalance.balance}`);
+        
+        if (!walletBalance.success) {
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to check wallet balance'
+          });
+        }
+        
+        if (walletBalance.balance < total) {
+          return res.status(400).json({
+            success: false,
+            message: `Insufficient wallet balance. Required: ₹${total}, Available: ₹${walletBalance.balance}`,
+            code: 'INSUFFICIENT_WALLET_BALANCE',
+            requiredAmount: total,
+            availableBalance: walletBalance.balance
+          });
+        }
+        
+        console.log(`✅ Wallet balance sufficient for payment: ₹${walletBalance.balance} >= ₹${total}`);
+      } catch (walletError) {
+        console.error('❌ Wallet balance check error:', walletError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to verify wallet balance'
+        });
+      }
+    }
+
     // Generate order ID
     const orderId = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
 
@@ -250,8 +289,9 @@ exports.placeOrder = async (req, res) => {
         quantity: item.quantity,
         price: item.price,
         totalPrice: item.totalPrice,
-        status: ORDER_STATUS.PENDING,                    
-        paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
+        status: ORDER_STATUS.PENDING,
+        // ✅ NEW: Set payment status based on payment method
+        paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
       })),
       deliveryAddress: {
         addressId: userAddresses._id,
@@ -264,28 +304,106 @@ exports.placeOrder = async (req, res) => {
       shipping: shipping,
       totalAmount: Math.round(total),
       totalItemCount: totalItemCount,
-      status: ORDER_STATUS.PENDING,                
+      status: ORDER_STATUS.PENDING,
       statusHistory: [{
-        status: ORDER_STATUS.PENDING,                    
+        status: ORDER_STATUS.PENDING,
         updatedAt: new Date(),
         notes: 'Order placed'
       }],
-      paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED 
+      // ✅ NEW: Set payment status based on payment method  
+      paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
     });
 
     await newOrder.save();
+    console.log(`✅ Order created successfully: ${orderId}`);
+
+    // ✅ NEW: Process wallet payment if selected
+    if (paymentMethod === 'wallet') {
+      try {
+        console.log(`🔄 Deducting ₹${total} from wallet for order ${orderId}`);
+        
+        const walletResult = await walletService.debitAmount(
+          userId.toString(),
+          total,
+          `Payment for order ${orderId}`,
+          orderId
+        );
+        
+        if (!walletResult.success) {
+          // Rollback: Delete the created order
+          await Order.findOneAndDelete({ orderId: orderId });
+          console.error('❌ Wallet deduction failed, order rolled back');
+          
+          return res.status(400).json({
+            success: false,
+            message: 'Wallet payment failed. Order has been cancelled.',
+            error: walletResult.message || 'Wallet deduction failed'
+          });
+        }
+        
+        console.log(`✅ Wallet payment successful: ₹${total} deducted, new balance: ₹${walletResult.newBalance}`);
+        
+      } catch (walletError) {
+        console.error('❌ Wallet payment error:', walletError);
+        
+        // Rollback: Delete the created order and restore stock
+        await Order.findOneAndDelete({ orderId: orderId });
+        
+        // Restore stock for all items
+        for (const item of validItems) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+            if (variant) {
+              variant.stock += item.quantity;
+              await product.save();
+            }
+          }
+        }
+        
+        return res.status(500).json({
+          success: false,
+          message: 'Wallet payment processing failed. Order has been cancelled.',
+          error: walletError.message
+        });
+      }
+    }
 
     // Clear cart
     cart.items = [];
     await cart.save();
 
-    // For COD, redirect to success page
+    console.log(`🎉 Order placement completed successfully: ${orderId}, Payment: ${paymentMethod}`);
+
+    // ✅ NEW: Enhanced response based on payment method
     if (paymentMethod === 'cod') {
       return res.json({
         success: true,
         message: 'Order placed successfully',
         orderId: orderId,
-        redirectUrl: `/order-success/${orderId}`
+        redirectUrl: `/order-success/${orderId}`,
+        paymentMethod: paymentMethod
+      });
+    }
+
+    if (paymentMethod === 'wallet') {
+      return res.json({
+        success: true,
+        message: 'Order placed successfully! Payment completed via wallet.',
+        orderId: orderId,
+        redirectUrl: `/order-success/${orderId}`,
+        paymentMethod: paymentMethod,
+        totalAmount: total
+      });
+    }
+
+    if (paymentMethod === 'upi') {
+      return res.json({
+        success: true,
+        message: 'Order placed successfully - awaiting PayPal payment',
+        orderId: orderId,
+        paymentMethod: paymentMethod,
+        totalAmount: total
       });
     }
 
@@ -295,11 +413,12 @@ exports.placeOrder = async (req, res) => {
       success: true,
       message: 'Order placed successfully',
       orderId: orderId,
-      redirectUrl: `/order-success/${orderId}`
+      redirectUrl: `/order-success/${orderId}`,
+      paymentMethod: paymentMethod
     });
 
   } catch (error) {
-    console.error('Error placing order:', error);
+    console.error('❌ Error placing order:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to place order'
@@ -405,6 +524,20 @@ exports.loadOrderSuccess = async (req, res) => {
     res.status(500).send('Error loading order success page: ' + error.message);
   }
 };
+
+// Load order failure page
+exports.loadOrderFailure = async (req, res) => {
+  const userId = req.user ? req.user._id : req.session.userId;
+  const user = req.user || { name: 'User' };
+  
+  res.render('user/order-failure', {
+    user,
+    orderId: req.params.orderId,
+    title: 'Payment Failed',
+    layout: 'user/layouts/user-layout',
+    active: 'orders'
+  });
+}
 
 // Get all orders for user
 exports.getUserOrders = async (req, res) => {
@@ -1562,3 +1695,210 @@ function generateInvoiceHTML(order) {
     </body</html>
   `;
 }
+
+// ===== PAYPAL PAYMENT FUNCTIONS =====
+
+// Create PayPal order
+exports.createPayPalOrder = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    
+    // ✅ DEBUG: Log the request body
+    console.log('🔍 PayPal create-order request body:', req.body);
+    console.log('🔍 PayPal create-order user:', userId);
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // ✅ IMPROVED: Better validation of required data
+    if (!req.body || !req.body.deliveryAddressId) {
+      console.error('❌ Missing deliveryAddressId in request body:', req.body);
+      return res.status(400).json({
+        success: false,
+        message: 'Missing delivery address. Please select a delivery address first.'
+      });
+    }
+    
+    // Create internal order first using existing logic but with 'upi' method
+    const orderReq = {
+      ...req,
+      body: { 
+        deliveryAddressId: req.body.deliveryAddressId,
+        paymentMethod: 'upi'  // Set as UPI for internal tracking
+      }
+    };
+
+    // ✅ IMPROVED: Better response interception
+    const originalJson = res.json;
+    const originalStatus = res.status;
+    let internalOrderData = null;
+    let statusCode = 200;
+
+    res.json = function(data) {
+      internalOrderData = data;
+      return res;
+    };
+    
+    res.status = function(code) {
+      statusCode = code;
+      return { json: (data) => { internalOrderData = data; return res; }};
+    };
+
+    await exports.placeOrderWithValidation(orderReq, res);
+
+    // Restore original functions
+    res.json = originalJson;
+    res.status = originalStatus;
+
+    // ✅ IMPROVED: Better error handling
+    if (!internalOrderData || !internalOrderData.success || statusCode !== 200) {
+      console.error('❌ Internal order creation failed:', internalOrderData);
+      return res.status(400).json({
+        success: false,
+        message: internalOrderData?.message || 'Failed to create internal order'
+      });
+    }
+
+    // Create PayPal order
+    const request = new paypal.orders.OrdersCreateRequest();
+    request.prefer('return=representation');
+    request.requestBody({
+      intent: 'CAPTURE',
+      purchase_units: [{
+        reference_id: internalOrderData.orderId,
+        amount: {
+          currency_code: 'USD',  // PayPal sandbox requires USD
+          value: internalOrderData.totalAmount ? 
+                  (internalOrderData.totalAmount / 80).toFixed(2) : 
+                  '10.00' // Rough INR to USD conversion
+        },
+        description: `LacedUp Order ${internalOrderData.orderId}`
+      }],
+      application_context: {
+        brand_name: 'LacedUp',
+        landing_page: 'NO_PREFERENCE',
+        user_action: 'PAY_NOW',
+        return_url: `${req.protocol}://${req.get('host')}/order-success/${internalOrderData.orderId}`,
+        cancel_url: `${req.protocol}://${req.get('host')}/order-failure/${internalOrderData.orderId}`
+      }
+    });
+
+    const paypalOrder = await paypalClient.execute(request);
+
+    console.log(`✅ PayPal order created: ${paypalOrder.result.id} for internal order: ${internalOrderData.orderId}`);
+
+    res.json({
+      success: true,
+      orderID: paypalOrder.result.id,           // PayPal order ID
+      internalOrderId: internalOrderData.orderId // Internal order ID
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating PayPal order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create PayPal order: ' + error.message
+    });
+  }
+};
+
+// Capture PayPal payment
+exports.capturePayPalOrder = async (req, res) => {
+  try {
+    const { paypalOrderId } = req.params;
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    // Capture the PayPal payment
+    const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    request.requestBody({});
+
+    const capture = await paypalClient.execute(request);
+    
+    if (capture.result.status === 'COMPLETED') {
+      // Find and update internal order
+      const internalOrderId = capture.result.purchase_units[0].reference_id;
+      const order = await Order.findOne({ orderId: internalOrderId, user: userId });
+      
+      if (order) {
+        // Update payment status to completed
+        order.paymentStatus = PAYMENT_STATUS.COMPLETED;
+        order.paypalCaptureId = capture.result.purchase_units[0].payments.captures[0].id;
+        
+        // Update all items payment status
+        order.items.forEach(item => {
+          item.paymentStatus = PAYMENT_STATUS.COMPLETED;
+        });
+        
+        // Add to status history
+        order.statusHistory.push({
+          status: order.status,
+          notes: 'PayPal payment captured successfully',
+          updatedAt: new Date()
+        });
+
+        await order.save();
+
+        console.log(`✅ PayPal payment captured for order ${internalOrderId}`);
+
+        res.json({
+          success: true,
+          message: 'Payment captured successfully',
+          redirectUrl: `/order-success/${internalOrderId}`
+        });
+      } else {
+        res.status(404).json({
+          success: false,
+          message: 'Order not found'
+        });
+      }
+    } else {
+      res.status(400).json({
+        success: false,
+        message: 'Payment capture failed'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error capturing PayPal payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to capture payment'
+    });
+  }
+};
+
+// Refund PayPal payment
+exports.refundPayPalCapture = async (req, res) => {
+  try {
+    const { captureId } = req.params;
+    const { amount, currency = 'USD' } = req.body;
+
+    const request = new paypal.payments.CapturesRefundRequest(captureId);
+    request.requestBody({
+      amount: {
+        value: amount,
+        currency_code: currency
+      }
+    });
+
+    const refund = await paypalClient.execute(request);
+
+    console.log(`✅ PayPal refund processed: ${refund.result.id}`);
+
+    res.json({
+      success: true,
+      refund: refund.result
+    });
+
+  } catch (error) {
+    console.error('❌ Error refunding PayPal payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process refund'
+    });
+  }
+};

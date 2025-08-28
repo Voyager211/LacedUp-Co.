@@ -374,6 +374,25 @@ exports.getOrderDetails = async (req, res) => {
       }
     }
 
+    // ✅ NEW: Pre-calculate valid transitions for each item
+    const { getValidTransitions } = require('../../services/orderService');
+    
+    order.items = order.items.map(item => {
+      const itemStatus = item.status || 'Pending';
+      const itemTransitions = getValidTransitions(itemStatus);
+      
+      // Filter out restricted transitions for UI (same logic as template)
+      const allowedItemTransitions = itemTransitions.filter(transition => 
+        transition !== itemStatus && 
+        !['Cancelled', 'Returned', 'Processing Return'].includes(transition)
+      );
+      
+      return {
+        ...item,
+        validTransitions: allowedItemTransitions // ✅ Add valid transitions to each item
+      };
+    });
+
     // Create comprehensive status history combining order and item level changes
     const comprehensiveStatusHistory = [];
     
@@ -383,7 +402,7 @@ exports.getOrderDetails = async (req, res) => {
           type: 'order',
           status: statusEntry.status,
           updatedAt: statusEntry.updatedAt,
-          notes: statusEntry.notes || `Order status changed to ${statusEntry.status}`, // ✅ Fixed
+          notes: statusEntry.notes || `Order status changed to ${statusEntry.status}`,
           itemName: null,
           itemId: null
         });
@@ -399,9 +418,9 @@ exports.getOrderDetails = async (req, res) => {
               type: 'item',
               status: statusEntry.status,
               updatedAt: statusEntry.updatedAt,
-              notes: statusEntry.notes || `${productName} (Size: ${item.size}) status changed to ${statusEntry.status}`, // ✅ Fixed
-              itemName: `${productName} (Size: ${item.size})`, // ✅ Fixed
-              itemId: item._id // ✅ Fixed
+              notes: statusEntry.notes || `${productName} (Size: ${item.size}) status changed to ${statusEntry.status}`,
+              itemName: `${productName} (Size: ${item.size})`,
+              itemId: item._id
             });
           });
         }
@@ -412,27 +431,20 @@ exports.getOrderDetails = async (req, res) => {
     order.comprehensiveStatusHistory = comprehensiveStatusHistory;
 
     // Get valid status transitions for current order
-    const { getValidTransitions } = require('../../services/orderService');
     const allValidTransitions = getValidTransitions(order.status);
     
     // Filter out 'Returned' status - only available through return management
     const validTransitions = allValidTransitions.filter(status => status !== 'Returned');
 
-    // ✅ ENHANCED: Add item-level transition debugging
-    order.items.forEach((item, index) => {
-      const itemTransitions = getValidTransitions(item.status);
-      console.log(`🔍 DEBUG - Item ${index} (${item.status}) transitions:`, itemTransitions); // ✅ Fixed
-    });
-
     res.render('admin/order-details', {
-      title: `Order Details - ${orderId}`, // ✅ Fixed
+      title: `Order Details - ${orderId}`,
       order,
       orderStatuses: getOrderStatusArray(),
       paymentStatuses: getPaymentStatusArray(),
       cancellationReasons: getCancellationReasonsArray(),
       returnReasons: getReturnReasonsArray(),
-      ORDER_STATUS: ORDER_STATUS, // ✅ Fixed
-      PAYMENT_STATUS: PAYMENT_STATUS, // ✅ Fixed
+      ORDER_STATUS: ORDER_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
       validTransitions: validTransitions,
       getStatusColor,
       getPaymentStatusColor,
@@ -660,6 +672,135 @@ exports.updateOrderStatus = async (req, res) => {
       // ✅ ENHANCED: Error context for debugging
       context: {
         orderId: req.params.orderId,
+        requestedStatus: req.body.status,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+};
+
+// update item status
+exports.updateItemStatus = async (req, res) => {
+  try {
+    const { orderId, itemId } = req.params;
+    const { status, notes } = req.body;
+
+    console.log('🔍 ITEM STATUS UPDATE REQUEST:', {
+      orderId,
+      itemId,
+      newStatus: status,
+      notes
+    });
+
+    // Validate required parameters
+    if (!status || status.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Status parameter is required'
+      });
+    }
+
+    if (!itemId || itemId.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Item ID is required'
+      });
+    }
+
+    // Get current order to validate item and transition
+    const currentOrder = await Order.findOne({ orderId });
+    if (!currentOrder) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Verify item exists
+    const currentItem = currentOrder.items.id(itemId);
+    if (!currentItem) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item not found in order'
+      });
+    }
+
+    // Validate status transition using OrderService
+    const { isValidStatusTransition, getValidTransitions } = require('../../services/orderService');
+    
+    if (!isValidStatusTransition(currentItem.status, status)) {
+      const validTransitions = getValidTransitions(currentItem.status);
+      
+      console.log('❌ Invalid item transition:', {
+        currentStatus: currentItem.status,
+        requestedStatus: status,
+        validTransitions: validTransitions
+      });
+      
+      return res.status(400).json({
+        success: false,
+        message: `Invalid item status transition from '${currentItem.status}' to '${status}'. Valid transitions: ${validTransitions.join(', ')}`
+      });
+    }
+
+    // Call OrderService to update item status
+    const result = await orderService.updateItemStatus(
+      orderId,
+      itemId,
+      status,
+      notes || `Item status updated to ${status} by admin`,
+      'admin'
+    );
+
+    // ✅ ENHANCED: Comprehensive response with all information needed for UI updates
+    res.json({
+      success: true,
+      message: result.message,
+      order: {
+        orderId: result.order.orderId,
+        status: result.order.status,
+        paymentStatus: result.order.paymentStatus,
+        paymentMethod: result.order.paymentMethod,
+        totalAmount: result.order.totalAmount,
+        // ✅ ENHANCED: Complete item information for real-time badge updates
+        items: result.order.items.map(item => ({
+          _id: item._id,
+          productName: item.productId ? item.productId.productName : 'Product',
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          status: item.status,
+          paymentStatus: item.paymentStatus,
+          // ✅ Mark which item was updated
+          wasUpdated: item._id.toString() === itemId
+        })),
+        // ✅ ENHANCED: Update summary for frontend
+        changes: {
+          updatedItemId: itemId,
+          previousItemStatus: result.itemUpdated.previousStatus,
+          newItemStatus: result.itemUpdated.newStatus,
+          previousItemPaymentStatus: result.itemUpdated.previousPaymentStatus,
+          newItemPaymentStatus: result.itemUpdated.newPaymentStatus,
+          orderStatus: result.order.status,
+          orderPaymentStatus: result.order.paymentStatus
+        },
+        // ✅ ENHANCED: Metadata for frontend processing
+        updatedAt: result.order.updatedAt,
+        updatedBy: 'admin'
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error updating item status:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to update item status',
+      // ✅ ENHANCED: Error context for debugging
+      context: {
+        orderId: req.params.orderId,
+        itemId: req.params.itemId,
         requestedStatus: req.body.status,
         timestamp: new Date().toISOString()
       }

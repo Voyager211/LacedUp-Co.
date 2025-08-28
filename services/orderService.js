@@ -59,94 +59,59 @@ const completePaymentOnDelivery = async (orderId) => {
 };
 
 // Calculate order status based on item statuses 
-// ✅ FIXED: Only count actually processed returns, not requests
 function calculateOrderStatus(items) {
-    const pendingItems = items.filter(item => item.status === ORDER_STATUS.PENDING);
-    const processingItems = items.filter(item => item.status === ORDER_STATUS.PROCESSING);
-    const shippedItems = items.filter(item => item.status === ORDER_STATUS.SHIPPED);
-    const deliveredItems = items.filter(item => item.status === ORDER_STATUS.DELIVERED);
-    const cancelledItems = items.filter(item => item.status === ORDER_STATUS.CANCELLED);
-    
-    // ✅ FIXED: Only count items with actual "Returned" status, not return requests
-    const returnedItems = items.filter(item => item.status === ORDER_STATUS.RETURNED);
-    
-    // ✅ FIXED: Don't consider items with pending return requests as returned
-    const processingReturnItems = items.filter(item => item.status === ORDER_STATUS.PROCESSING_RETURN);
+  // Counters (all start at 0)
+  let pending = 0,
+      processing = 0,
+      shipped = 0,
+      delivered = 0,
+      cancelled = 0,
+      processingReturn = 0,
+      returned = 0;
 
-    const totalItems = items.length;
-
-    // All items cancelled
-    if (cancelledItems.length === totalItems) {
-        return ORDER_STATUS.CANCELLED;
+  // Single scan O(n)
+  for (const { status } of items) {
+    switch (status) {
+      case ORDER_STATUS.PENDING:            pending++;            break;
+      case ORDER_STATUS.PROCESSING:         processing++;         break;
+      case ORDER_STATUS.SHIPPED:            shipped++;            break;
+      case ORDER_STATUS.DELIVERED:          delivered++;          break;
+      case ORDER_STATUS.CANCELLED:          cancelled++;          break;
+      case ORDER_STATUS.PROCESSING_RETURN:  processingReturn++;   break;
+      case ORDER_STATUS.RETURNED:           returned++;           break;
     }
+  }
 
-    // All items returned (actually processed, not just requested)
-    if (returnedItems.length === totalItems) {
-        return ORDER_STATUS.RETURNED;
-    }
+  const total        = items.length;
+  const activeItems  = total - cancelled; // “active” = not cancelled
 
-    // ✅ ENHANCED: Handle processing return status
-    if (processingReturnItems.length > 0) {
-        if (processingReturnItems.length === totalItems) {
-            return ORDER_STATUS.PROCESSING_RETURN; // All items processing return
-        } else {
-            // Some items processing return, others delivered/shipped
-            if (deliveredItems.length > 0) {
-                return ORDER_STATUS.DELIVERED; // ✅ Stay "Delivered" during return processing
-            }
-            if (shippedItems.length > 0) {
-                return ORDER_STATUS.SHIPPED;
-            }
-        }
-    }
+  // 1. All cancelled
+  if (cancelled === total) return ORDER_STATUS.CANCELLED;
 
-    // Mixed returns and other statuses (only actual returns, not requests)
-    if (returnedItems.length > 0) {
-        if (deliveredItems.length > 0) {
-            return ORDER_STATUS.PARTIALLY_RETURNED; // ✅ Only when actually returned
-        }
-        if (shippedItems.length > 0) {
-            return ORDER_STATUS.PARTIALLY_RETURNED;
-        }
-    }
+  // 2. All processing-return
+  if (processingReturn === total) return ORDER_STATUS.PROCESSING_RETURN;
 
-    // Mixed cancellations
-    if (cancelledItems.length > 0) {
-        if (deliveredItems.length > 0) {
-            return ORDER_STATUS.PARTIALLY_DELIVERED;
-        }
-        if (shippedItems.length > 0) {
-            return ORDER_STATUS.PARTIALLY_CANCELLED;
-        }
-        return ORDER_STATUS.PARTIALLY_CANCELLED;
-    }
+  // 3. Returned outranks everything
+  if (returned > 0) {
+    return returned === total
+      ? ORDER_STATUS.RETURNED
+      : ORDER_STATUS.PARTIALLY_RETURNED;
+  }
 
-    // All items delivered
-    if (deliveredItems.length === totalItems) {
-        return ORDER_STATUS.DELIVERED;
-    }
+  // 4. Delivered family
+  if (delivered > 0) {
+    return delivered === total
+      ? ORDER_STATUS.DELIVERED
+      : ORDER_STATUS.PARTIALLY_DELIVERED; // only when ≥1 Delivered and 0 Returned
+  }
 
-    // All items shipped
-    if (shippedItems.length === totalItems) {
-        return ORDER_STATUS.SHIPPED;
-    }
+  // 5. Shipped vs Processing
+  if (activeItems > 0 && shipped === activeItems) return ORDER_STATUS.SHIPPED;
 
-    // Mixed statuses
-    if (deliveredItems.length > 0) {
-        return ORDER_STATUS.PARTIALLY_DELIVERED;
-    }
-    
-    if (shippedItems.length > 0) {
-        return ORDER_STATUS.PARTIALLY_DELIVERED;
-    }
+  if (shipped > 0 || processing > 0) return ORDER_STATUS.PROCESSING;
 
-    // All processing
-    if (processingItems.length === totalItems) {
-        return ORDER_STATUS.PROCESSING;
-    }
-
-    // Default
-    return ORDER_STATUS.PENDING;
+  // 6. Default = Pending (every remaining item is still pending)
+  return ORDER_STATUS.PENDING;
 }
 
 
@@ -240,6 +205,96 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
 
 
 /**
+ * Update individual item status within an order
+ * @param {String} orderId - Order ID
+ * @param {String} itemId - Item ID within the order
+ * @param {String} newStatus - New status to set
+ * @param {String} notes - Optional notes
+ * @param {String} updatedBy - Who updated the status
+ * @returns {Object} - Result object with updated order
+ */
+const updateItemStatus = async (orderId, itemId, newStatus, notes = '', updatedBy = null) => {
+  try {
+    const order = await Order.findOne({ orderId }).populate('user');
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    const item = order.items.id(itemId);
+    if (!item) {
+      throw new Error('Item not found in order');
+    }
+
+    const oldStatus = item.status;
+    const oldPaymentStatus = item.paymentStatus;
+    
+    console.log(`🔄 Updating item ${itemId} status: ${oldStatus} → ${newStatus}`);
+
+    // Validate status transition using existing validation
+    if (!isValidStatusTransition(oldStatus, newStatus)) {
+      const validTransitions = getValidTransitions(oldStatus);
+      throw new Error(`Invalid item status transition from '${oldStatus}' to '${newStatus}'. Valid transitions: ${validTransitions.join(', ')}`);
+    }
+
+    // Update item status
+    item.status = newStatus;
+    
+    // Add to item status history
+    item.statusHistory.push({
+      status: newStatus,
+      updatedAt: new Date(),
+      notes: notes || `Item status updated from ${oldStatus} to ${newStatus}`,
+      updatedBy: updatedBy
+    });
+
+    // ✅ AUTOMATED: Update item payment status using existing logic
+    updateAutomatedPaymentStatus(order, item, newStatus);
+
+    // ✅ AUTOMATED: Recalculate order-level status based on all items
+    const newOrderStatus = calculateOrderStatus(order.items);
+    if (newOrderStatus !== order.status) {
+      order.status = newOrderStatus;
+      order.statusHistory.push({
+        status: newOrderStatus,
+        notes: `Order status updated due to item status change: ${oldStatus} → ${newStatus}`,
+        updatedAt: new Date(),
+        updatedBy: updatedBy
+      });
+    }
+
+    // ✅ AUTOMATED: Recalculate order-level payment status
+    order.paymentStatus = calculatePaymentStatus(order);
+
+    await order.save();
+
+    console.log(`✅ Item ${itemId} status updated successfully:`);
+    console.log(`   Item Status: ${oldStatus} → ${item.status}`);
+    console.log(`   Item Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+    console.log(`   Order Status: ${order.status}`);
+    console.log(`   Order Payment: ${order.paymentStatus}`);
+
+    return {
+      success: true,
+      message: `Item status updated successfully. Order status recalculated automatically.`,
+      order: order,
+      itemUpdated: {
+        itemId: itemId,
+        previousStatus: oldStatus,
+        newStatus: item.status,
+        previousPaymentStatus: oldPaymentStatus,
+        newPaymentStatus: item.paymentStatus
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Error updating item status:', error);
+    throw error;
+  }
+};
+
+
+
+/**
  * Check if order can be cancelled
  * @param {Object} order - Order object
  * @returns {Boolean} - Can cancel or not
@@ -269,13 +324,77 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
       throw new Error('Order cannot be cancelled in current status');
     }
 
+    // Store original payment status BEFORE modification
+    const originalPaymentStatus = order.paymentStatus;
+    const originalPaymentMethod = order.paymentMethod;
+
+    // Process wallet refund BEFORE changing payment status
+    if (originalPaymentMethod === 'wallet' && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
+      try {
+        console.log(`🔄 Processing wallet refund for cancelled order ${orderId}`);
+        
+        const refundAmount = order.totalAmount;
+        const refundResult = await walletService.addCredit(
+          order.user.toString(),
+          refundAmount,
+          `Refund for cancelled order ${orderId}`,
+          orderId
+        );
+        
+        if (!refundResult.success) {
+          console.error('❌ Wallet refund failed:', refundResult);
+          throw new Error('Failed to process wallet refund');
+        }
+        
+        console.log(`✅ Wallet refund successful: ₹${refundAmount} credited for order ${orderId}`);
+        
+      } catch (refundError) {
+        console.error('❌ Error processing wallet refund:', refundError);
+        throw new Error('Order cancellation failed: Unable to process wallet refund. Please contact support.');
+      }
+    }
+
+    // PayPal refund logic 
+    if (originalPaymentMethod === 'upi' && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
+      try {
+        console.log(`🔄 Processing PayPal refund for cancelled order ${orderId}`);
+        
+        const captureId = order.paypalCaptureId;
+        if (captureId) {
+          // Calculate refund amount in USD (rough conversion)
+          const refundAmountUSD = (order.totalAmount / 80).toFixed(2);
+          
+          // Process refund via PayPal
+          const paypal = require('@paypal/checkout-server-sdk');
+          const { paypalClient } = require('../services/paypal');
+          
+          const request = new paypal.payments.CapturesRefundRequest(captureId);
+          request.requestBody({
+            amount: {
+              value: refundAmountUSD,
+              currency_code: 'USD'
+            }
+          });
+
+          const refund = await paypalClient.execute(request);
+          console.log(`✅ PayPal refund successful for order ${orderId}: ${refund.result.id}`);
+          
+          newPaymentStatus = PAYMENT_STATUS.REFUNDED;
+        }
+        
+      } catch (refundError) {
+        console.error('❌ Error processing PayPal refund:', refundError);
+        // Don't throw - allow order cancellation to proceed
+      }
+    }
+
     // ✅ ENHANCED: COD Cancellation Payment Status Logic
-    let newPaymentStatus = order.paymentStatus;
+    let newPaymentStatus = originalPaymentStatus;
     
-    if (order.paymentMethod === 'cod') {
-      newPaymentStatus = PAYMENT_STATUS.CANCELLED; // ✅ NEW: Set to 'Cancelled' for COD
+    if (originalPaymentMethod === 'cod') {
+      newPaymentStatus = PAYMENT_STATUS.CANCELLED;
       console.log(`🔄 COD order cancelled - Payment status set to 'Cancelled' for order: ${orderId}`);
-    } else if (order.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+    } else if (originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       newPaymentStatus = PAYMENT_STATUS.REFUNDED;
       console.log(`🔄 Online payment order cancelled - Payment status set to 'Refunded' for order: ${orderId}`);
     } else {
@@ -297,7 +416,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
     order.items.forEach(item => {
       if ([ORDER_STATUS.PENDING, ORDER_STATUS.PROCESSING].includes(item.status)) {
         item.status = ORDER_STATUS.CANCELLED;
-        item.paymentStatus = newPaymentStatus; // ✅ NEW: Apply same payment status logic to items
+        item.paymentStatus = newPaymentStatus;
         item.cancellationReason = reason;
         item.cancellationDate = new Date();
         item.statusHistory.push({
@@ -324,6 +443,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
     throw error;
   }
 };
+
 
 // ✅ NEW: Add Payment Status Calculation Method
 const calculatePaymentStatus = (order) => {
@@ -503,7 +623,68 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
       notes: `Cancelled: ${reason}${notes ? ` - ${notes}` : ''}`
     });
 
-    // ✅ AUTOMATED: Recalculate order status
+    // Process partial wallet refund for cancelled wallet item
+    if (order.paymentMethod === 'wallet' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
+      try {
+        console.log(`🔄 Processing wallet refund for cancelled item ${itemId} in order ${orderId}`);
+        
+        const refundAmount = item.totalPrice;
+        const refundResult = await walletService.addCredit(
+          order.user._id.toString(),
+          refundAmount,
+          `Refund for cancelled item in order ${orderId}`,
+          orderId
+        );
+        
+        if (!refundResult.success) {
+          console.error('❌ Item wallet refund failed:', refundResult);
+          throw new Error('Failed to process item wallet refund');
+        }
+        
+        console.log(`✅ Item wallet refund successful: ₹${refundAmount} credited for item ${itemId}`);
+        
+      } catch (refundError) {
+        console.error('❌ Error processing item wallet refund:', refundError);
+        throw new Error('Item cancellation failed: Unable to process wallet refund. Please contact support.');
+      }
+    }
+
+    // PayPal refund logic
+    if (order.paymentMethod === 'upi' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
+      try {
+        console.log(`🔄 Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
+        
+        const captureId = order.paypalCaptureId;
+        if (captureId) {
+          // Calculate partial refund amount in USD for this specific item
+          const itemRefundAmountUSD = (item.totalPrice / 80).toFixed(2);
+          
+          // Process partial refund via PayPal
+          const paypal = require('@paypal/checkout-server-sdk');
+          const { paypalClient } = require('../services/paypal');
+          
+          const request = new paypal.payments.CapturesRefundRequest(captureId);
+          request.requestBody({
+            amount: {
+              value: itemRefundAmountUSD,
+              currency_code: 'USD'
+            }
+          });
+
+          const refund = await paypalClient.execute(request);
+          console.log(`✅ PayPal partial refund successful for item ${itemId}: ${refund.result.id}`);
+          
+        } else {
+          console.warn(`⚠️ No PayPal captureId found for order ${orderId}, skipping PayPal refund`);
+        }
+        
+      } catch (refundError) {
+        console.error('❌ Error processing PayPal item refund:', refundError);
+        // Don't throw - allow item cancellation to proceed even if refund fails
+      }
+    }
+
+    //  Recalculate order status
     const newOrderStatus = calculateOrderStatus(order.items);
     if (newOrderStatus !== order.status) {
       order.status = newOrderStatus;
@@ -1636,6 +1817,7 @@ module.exports = {
   calculatePaymentStatus,
   completePaymentOnDelivery,
   updateOrderStatus,
+  updateItemStatus,
 
   // Cancellation Functions  
   cancelOrder,

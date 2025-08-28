@@ -19,6 +19,16 @@ const requireAuth = (req, res, next) => {
   res.redirect('/login');
 };
 
+// ===== PAYPAL PAYMENT ROUTES =====
+// Create PayPal order
+router.post('/paypal/create-order', requireAuth, orderController.createPayPalOrder);
+
+// Capture PayPal payment
+router.post('/paypal/capture/:paypalOrderId', requireAuth, orderController.capturePayPalOrder);
+
+// Refund PayPal payment (used by cancel logic)
+router.post('/paypal/refund/:captureId', requireAuth, orderController.refundPayPalCapture);
+
 
 // Create new order
 router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
@@ -49,7 +59,15 @@ router.post('/orders/:orderId/items/:itemId/returns', requireAuth, orderControll
 // Order success page (UI-specific)
 router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSuccess);
 
+// Order failure page (UI-specific)
+// Order failure page without orderId
+router.get('/order-failure', requireAuth, orderController.loadOrderFailure);
+
+// Order failure page with orderId  
+router.get('/order-failure/:orderId', requireAuth, orderController.loadOrderFailure);
+
 // Download invoice (action on resource)
 router.get('/orders/:orderId/invoice', requireAuth, orderController.downloadInvoice);
+
 
 module.exports = router;
