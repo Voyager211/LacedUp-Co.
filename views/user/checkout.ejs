@@ -60,8 +60,6 @@
                     </div>
                 </div>
 
-
-
                 <!-- Credit/Debit Card -->
                 <div class="payment-option">
                     <label class="d-flex align-items-center">
@@ -76,7 +74,7 @@
                     </label>
                 </div>
 
-                <!-- UPI Payment -->
+                <!-- ✅ UPI Payment (Razorpay) -->
                 <div class="payment-option">
                     <label class="d-flex align-items-center">
                         <input type="radio" name="paymentMethod" value="upi" onclick="selectPayment(this)">
@@ -85,7 +83,21 @@
                         </div>
                         <div class="payment-info">
                             <h6>UPI Payment</h6>
-                            <p>Pay using Google Pay, PhonePe, Paytm</p>
+                            <p>Pay using Google Pay, PhonePe, Paytm & more</p>
+                        </div>
+                    </label>
+                </div>
+
+                <!-- ✅ NEW: PayPal Payment (Separate) -->
+                <div class="payment-option">
+                    <label class="d-flex align-items-center">
+                        <input type="radio" name="paymentMethod" value="paypal" onclick="selectPayment(this)">
+                        <div class="payment-icon">
+                            <i class="bi bi-paypal"></i>
+                        </div>
+                        <div class="payment-info">
+                            <h6>PayPal</h6>
+                            <p>Pay with your PayPal account or cards</p>
                         </div>
                     </label>
                 </div>
@@ -116,7 +128,6 @@
                             <p id="wallet-balance-text">Loading balance...</p>
                         </div>
                     </label>
-                    <!-- Insufficient balance warning (hidden by default) -->
                     <div id="insufficient-balance-warning" class="mt-2 alert alert-warning d-none">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <span id="insufficient-balance-message">Insufficient wallet balance.</span>
@@ -136,11 +147,6 @@
                             <p>Pay when your order is delivered</p>
                         </div>
                     </label>
-                    <div class="mt-3">
-                        <small class="text-muted">
-                            <i class="bi bi-info-circle"></i> You can pay in cash when your order arrives at your doorstep.
-                        </small>
-                    </div>
                 </div>
 
                 <!-- Continue Button -->
@@ -148,6 +154,10 @@
                     <i class="bi bi-check-circle"></i> PLACE ORDER
                 </button>
             </div>
+
+            <!-- ✅ Containers for payment gateways -->
+            <div id="paypal-btn-container-left" class="mt-3 d-none"></div>
+            <div id="razorpay-btn-container-left" class="mt-3 d-none"></div>
             <!-- Back to Cart -->
             <a href="/cart" class="btn-back">
                 <i class="bi bi-arrow-left"></i> Back to Cart
@@ -272,7 +282,7 @@
                     </button>
 
                     <!-- ⬇ NEW: PayPal buttons appear here for UPI/PayPal -->
-                    <div id="paypal-btn-container" class="mt-3 d-none"></div>
+                    <div id="paypal-btn-container-main" class="mt-3 d-none"></div>
 
                     <!-- Back to Cart -->
                     <div class="text-center mt-3">
@@ -319,6 +329,9 @@
 window.geoapifyApiKey = '<%= geoapifyApiKey %>';
 window.orderTotal = <%= total || 0 %>;
 </script>
+
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
 /* ========= PayPal JS-SDK lazy loader ========= */

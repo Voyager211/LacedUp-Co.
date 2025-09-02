@@ -11,14 +11,23 @@ const noCacheMiddleware = (req, res, next) => {
   next();
 };
 
+// ✅ WALLET PAGE ROUTES
 // Wallet page - with cache disabled
 router.get('/profile/wallet', ensureAuthenticated, noCacheMiddleware, walletController.getWallet);
 
-// API endpoints
+// ✅ EXISTING WALLET API ENDPOINTS
 router.get('/api/wallet/balance', ensureAuthenticated, walletController.getWalletBalance);
 router.get('/api/wallet/transactions', ensureAuthenticated, walletController.getTransactions);
 router.get('/api/wallet/transactions/paginated', ensureAuthenticated, walletController.getTransactionsPaginated);
 router.post('/api/wallet/add-money', ensureAuthenticated, walletController.addMoney);
 router.post('/api/wallet/use', ensureAuthenticated, walletController.useWallet);
+
+// ✅ NEW: Enhanced wallet routes with unified transaction integration
+router.get('/api/wallet/reconciliation', ensureAuthenticated, walletController.getWalletReconciliation);
+
+// ✅ NEW: Wallet top-up payment gateway routes
+router.post('/api/wallet/topup/create-order', ensureAuthenticated, walletController.createWalletTopUpOrder);
+router.post('/api/wallet/topup/verify-razorpay', ensureAuthenticated, walletController.verifyWalletTopUpPayment);
+router.post('/api/wallet/topup/capture-paypal', ensureAuthenticated, walletController.captureWalletTopUpPayment);
 
 module.exports = router;

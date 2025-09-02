@@ -932,3 +932,22 @@ p {
     font-size: 15px;
   }
 }
+
+/* PayPal Button Container Styling */
+#paypal-btn-container-main {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+#paypal-btn-container-main .paypal-button {
+  border-radius: 8px !important;
+  height: 48px !important;
+}
+
+/* Hide PayPal warnings in console (cosmetic) */
+.paypal-checkout-sandbox .paypal-checkout-logo {
+  display: none;
+}
+

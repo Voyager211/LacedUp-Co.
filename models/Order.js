@@ -143,6 +143,14 @@ const orderSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  razorpayOrderId: {
+    type: String,
+    default: null
+  },
+  razorpayPaymentId: {
+    type: String,
+    default: null
+  },
   status: {
     type: String,
     enum: getOrderStatusArray(),  // ✅ Using constants

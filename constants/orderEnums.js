@@ -54,6 +54,7 @@ const PAYMENT_METHODS = {
   COD: 'cod',
   CARD: 'card',
   UPI: 'upi',
+  PAYPAL: 'paypal',
   NETBANKING: 'netbanking',
   WALLET: 'wallet'
 };

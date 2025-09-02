@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../../controllers/user/cart-controller');
+const addressController = require('../../controllers/user/addressController');
+
 
 // Custom authentication middleware for cart routes
 const requireAuth = (req, res, next) => {
@@ -64,6 +66,8 @@ router.get('/checkout', requireAuth, cartController.loadCheckout);
 // Checkout validation route
 router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
 
+// alias so checkout page can read addresses without leaving /cart scope
+router.get('/api/addresses', requireAuthAPI, addressController.getAddresses);
 
 
 module.exports = router;

@@ -2,6 +2,7 @@
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
 const mongoose = require('mongoose');
+const { session } = require('passport');
 
 /**
  * Validate user exists and is not blocked
@@ -31,7 +32,7 @@ const getOrCreateWallet = async (userId) => {
   try {
     await validateUser(userId);
 
-    // ✅ CRITICAL FIX: Convert to ObjectId
+    
     const userObjectId = new mongoose.Types.ObjectId(userId);
     let wallet = await Wallet.findOne({ userId: userObjectId });
     
@@ -63,7 +64,7 @@ const getOrCreateWallet = async (userId) => {
  * @param {String} returnId - Optional return ID
  * @returns {Object} - Result object
  */
-const addCredit = async (userId, amount, description, orderId = null, returnId = null) => {
+const addCredit = async (userId, amount, description, orderId = null, returnId = null, metadata = {}) => {
   try {
     if (amount <= 0) {
       throw new Error('Credit amount must be greater than 0');
@@ -72,35 +73,81 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
     const wallet = await getOrCreateWallet(userId);
     const newBalance = wallet.balance + amount;
 
+    let unifiedTransactionId = null;
+    try{
+      const transactionService = require('./transactionService');
+      const unifiedTxResult = await transactionService.createWalletTransaction({
+        userId: userId,
+        type: 'WALLET_CREDIT',
+        amount: amount,
+        description: description,
+        orderId: orderId,
+        returnId: returnId,
+        metadata: {
+          walletBalanceBefore: wallet.balance,
+          walletBalanceAfter: newBalance,
+          operation: 'credit',
+          ...metadata
+        }
+      });
+
+      if (unifiedTxResult.success) {
+        unifiedTransactionId = unifiedTxResult.transactionId;
+        console.log(`Unified transaction created: ${unifiedTransactionId}`);
+      } 
+    } catch (unifiedTxError) {
+      console.warn('Failed to create unified transaction, proceeding with wallet-only transaction: ', unifiedTxError.message);
+    }
+
     // generate unique transaction ID
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    const walletTransactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     wallet.transactions.push({
-      transactionId: transactionId,
+      transactionId: walletTransactionId,
       type: 'credit',
       amount: amount,
       description: description,
       orderId: orderId,
       returnId: returnId,
+      unifiedTransactionId: unifiedTransactionId,
       balanceAfter: newBalance,
       status: 'completed'
     });
     
     wallet.balance = newBalance;
-    await wallet.save();
+    await wallet.save({session});
 
-    console.log(`Added ₹${amount} credit to wallet for user ${userId}`);
+    // Mark unified transaction as completed
+    if (unifiedTransactionId) {
+      try {
+        const transactionService = require('./transactionService');
+        await transactionService.completeTransaction(
+          unifiedTransactionId,
+          orderId || returnId || 'WALLET_CREDIT',
+          {walletTransactionId}
+        );
+      } catch (completeError) {
+        console.warn ('Failed to complete unified transaction:', completeError.message);
+      }
+    }
+
+    await session.commitTransaction();
+
+    console.log(`Wallet Credit: ₹${amount} for user ${userId}, Unified TX: ${unifiedTransactionId || 'N/A'}`);
 
     return {
       success: true,
       newBalance: wallet.balance,
-      transactionId: transactionId,
+      transactionId: walletTransactionId,
       transaction: wallet.transactions[wallet.transactions.length - 1],
       message: `₹${amount} credited to wallet successfully`
     };
   } catch (error) {
+    await session.abortTransaction();
     console.error('Error adding credit to wallet:', error);
     throw error;
+  } finally {
+    session.endSession();
   }
 };
 
@@ -112,7 +159,10 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
  * @param {String} orderId - Optional order ID
  * @returns {Object} - Result object
  */
-const debitAmount = async (userId, amount, description, orderId = null) => {
+const debitAmount = async (userId, amount, description, orderId = null, metadata = {}) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
     if (amount <= 0) {
       throw new Error('Debit amount must be greater than 0');
@@ -121,37 +171,203 @@ const debitAmount = async (userId, amount, description, orderId = null) => {
     const wallet = await getOrCreateWallet(userId);
     
     if (wallet.balance < amount) {
-      throw new Error('Insufficient wallet balance');
+      throw new Error(`Insufficient wallet balance. Required: ₹${amount}, Available: ₹${wallet.balance}`);
     }
     
     const newBalance = wallet.balance - amount;
 
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    // Create unified transaction record
+    let unifiedTransactionId = null;
+    try {
+      const transactionService = require('./transactionService');
+      const unifiedTxResult = await transactionService.createWalletTransaction({
+        userId: userId,
+        type: 'WALLET_DEBIT',
+        amount: amount,
+        description: description,
+        orderId: orderId,
+        metadata: {
+          walletBalanceBefore: wallet.balance,
+          walletBalanceAfter: newBalance,
+          operation: 'debit',
+          ...metadata
+        }
+      });
+
+      if (unifiedTxResult.success) {
+        unifiedTransactionId = unifiedTxResult.transaction.transactionId;
+        console.log(`✅ Unified transaction created: ${unifiedTransactionId}`);
+      }
+    } catch (unifiedTxError) {
+      console.warn('⚠️ Failed to create unified transaction, proceeding with wallet-only transaction:', unifiedTxError.message);
+    }
+
+    const walletTransactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
     
     wallet.transactions.push({
       type: 'debit',
-      transactionId: transactionId,
+      transactionId: walletTransactionId,
       amount: amount,
       description: description,
       orderId: orderId,
+      unifiedTransactionId: unifiedTransactionId,
       balanceAfter: newBalance,
       status: 'completed'
     });
     
     wallet.balance = newBalance;
-    await wallet.save();
+    await wallet.save({session});
 
     console.log(`Debited ₹${amount} from wallet for user ${userId}`);
+
+    // Mark unified transaction as completed
+    if (unifiedTransactionId) {
+      try {
+        const transactionService = require('./transactionService');
+        await transactionService.completeTransaction(
+          unifiedTransactionId,
+          orderId || 'WALLET_DEBIT',
+          { walletTransactionId }
+        );
+      } catch (completeError) {
+        console.warn('⚠️ Failed to complete unified transaction:', completeError.message);
+      }
+    }
+
+    await session.commitTransaction();
+
+    console.log(`✅ Enhanced wallet debit: ₹${amount} for user ${userId}, Unified TX: ${unifiedTransactionId || 'N/A'}`);
 
     return {
       success: true,
       newBalance: wallet.balance,
-      transactionId: transactionId,
+      transactionId: walletTransactionId,
+      unifiedTransactionId: unifiedTransactionId,
       transaction: wallet.transactions[wallet.transactions.length - 1],
       message: `₹${amount} debited from wallet successfully`
     };
   } catch (error) {
+    await session.abortTransaction();
     console.error('Error debiting from wallet:', error);
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+// Handle wallet payment failure with proper rollback
+const handleWalletPaymentFailure = async (walletTransactionId, userId, amount, reason, unifiedTransactionId = null) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    console.log(`🔄 Handling wallet payment failure for wallet TX: ${walletTransactionId}`);
+
+    // STEP 1: Mark unified transaction as failed if exists
+    if (unifiedTransactionId) {
+      try {
+        const transactionService = require('./transactionService');
+        await transactionService.failTransaction(unifiedTransactionId, reason, 'WALLET_PAYMENT_FAILED');
+      } catch (failError) {
+        console.warn('⚠️ Failed to mark unified transaction as failed:', failError.message);
+      }
+    }
+
+    // STEP 2: Restore wallet balance if debit occurred
+    if (walletTransactionId) {
+      const wallet = await getOrCreateWallet(userId);
+      
+      // Find and reverse the debit transaction
+      const failedTransaction = wallet.transactions.find(t => t.transactionId === walletTransactionId);
+      if (failedTransaction && failedTransaction.type === 'debit') {
+        
+        // Add reversal credit transaction
+        const reversalId = `REV${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        wallet.balance += amount; // Restore the amount
+        
+        wallet.transactions.push({
+          transactionId: reversalId,
+          type: 'credit',
+          amount: amount,
+          description: `Reversal: ${reason}`,
+          unifiedTransactionId: unifiedTransactionId,
+          balanceAfter: wallet.balance,
+          status: 'completed'
+        });
+        
+        // Mark original transaction as failed
+        failedTransaction.status = 'failed';
+        
+        await wallet.save({ session });
+        console.log(`✅ Wallet balance restored: +₹${amount}, New balance: ₹${wallet.balance}`);
+      }
+    }
+
+    await session.commitTransaction();
+
+    return {
+      success: true,
+      message: 'Wallet payment failure handled successfully',
+      balanceRestored: amount
+    };
+
+  } catch (error) {
+    await session.abortTransaction();
+    console.error('❌ Error handling wallet payment failure:', error);
+    throw error;
+  } finally {
+    session.endSession();
+  }
+};
+
+// Get wallet reconciliation report
+const getWalletReconciliation = async (userId) => {
+  try {
+    const wallet = await getOrCreateWallet(userId);
+    
+    // Get all unified transactions for this user
+    let unifiedTransactions = [];
+    try {
+      const transactionService = require('./transactionService');
+      const txHistory = await transactionService.getUserTransactionHistory(userId, {
+        type: ['WALLET_DEBIT', 'WALLET_CREDIT', 'ORDER_PAYMENT', 'COD_PAYMENT_COMPLETED']
+      });
+      unifiedTransactions = txHistory.transactions || [];
+    } catch (unifiedError) {
+      console.warn('⚠️ Failed to get unified transactions for reconciliation:', unifiedError.message);
+    }
+
+    // Calculate expected balance from wallet transactions
+    let calculatedBalance = 0;
+    const walletTransactions = wallet.transactions.filter(t => t.status === 'completed');
+    
+    walletTransactions.forEach(transaction => {
+      if (transaction.type === 'credit') {
+        calculatedBalance += transaction.amount;
+      } else if (transaction.type === 'debit') {
+        calculatedBalance -= transaction.amount;
+      }
+    });
+
+    const isBalanceMatch = Math.abs(wallet.balance - calculatedBalance) < 0.01;
+
+    return {
+      success: true,
+      reconciliation: {
+        currentBalance: wallet.balance,
+        calculatedBalance: calculatedBalance,
+        isBalanceMatch: isBalanceMatch,
+        difference: wallet.balance - calculatedBalance,
+        totalTransactions: wallet.transactions.length,
+        completedTransactions: walletTransactions.length,
+        unifiedTransactionCount: unifiedTransactions.length,
+        lastTransactionDate: walletTransactions.length > 0 ? 
+          walletTransactions[walletTransactions.length - 1].date : null
+      }
+    };
+
+  } catch (error) {
+    console.error('❌ Error getting wallet reconciliation:', error);
     throw error;
   }
 };
@@ -167,7 +383,10 @@ const debitAmount = async (userId, amount, description, orderId = null) => {
 const addReturnRefund = async (userId, amount, orderId, returnId) => {
   try {
     const description = `Return refund for order ${orderId}`;
-    const result = await addCredit(userId, amount, description, orderId, returnId);
+    const result = await addCredit(userId, amount, description, orderId, returnId, {
+      refundType: 'return',
+      originalOrderId: orderId
+    });
     
     console.log(`Processed return refund of ₹${amount} for user ${userId}, order ${orderId}`);
     
@@ -466,5 +685,7 @@ module.exports = {
   transferMoney,
   getWalletStats,
   hasSufficientBalance,
-  getReturnRefundTransactions
+  getReturnRefundTransactions,
+  handleWalletPaymentFailure,
+  getWalletReconciliation
 };

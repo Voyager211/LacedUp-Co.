@@ -8,6 +8,7 @@ const orderService = require('../../services/orderService');
 const walletService = require('../../services/walletService');
 const { paypalClient } = require('../../services/paypal');
 const paypal = require('@paypal/checkout-server-sdk');
+const razorpayService = require('../../services/razorpay');
 
 const {
   ORDER_STATUS,
@@ -19,6 +20,284 @@ const {
   getCancellationReasonsArray,
   getReturnReasonsArray
 } = require('../../constants/orderEnums');
+
+// ✅ NEW: Enhanced cart restoration with stock validation
+async function restoreCartAfterPaymentFailure(userId, transactionId) {
+  try {
+    console.log('🔄 Starting enhanced cart restoration for user:', userId);
+
+    // Get transaction details to find cart items
+    const transactionService = require('../../services/transactionService');
+    const transactionResult = await transactionService.getTransaction(transactionId);
+    
+    if (!transactionResult.success) {
+      console.log('⚠️ Transaction not found, skipping cart restoration');
+      return { success: true, message: 'No transaction found to restore from' };
+    }
+
+    const transaction = transactionResult.transaction;
+    if (!transaction.orderData || !transaction.orderData.items) {
+      console.log('⚠️ No cart items found in transaction, skipping restoration');
+      return { success: true, message: 'No items to restore' };
+    }
+
+    // ✅ ENHANCED: Validate stock availability before restoration
+    const Cart = require('../../models/Cart');
+    const Product = require('../../models/Product');
+    
+    let cart = await Cart.findOne({ userId });
+    if (!cart) {
+      cart = new Cart({ userId, items: [] });
+    }
+
+    let restoredItems = 0;
+    let skippedItems = 0;
+    const restorationLog = [];
+
+    for (const originalItem of transaction.orderData.items) {
+      try {
+        // Check if product still exists and is available
+        const product = await Product.findById(originalItem.productId)
+          .populate(['category', 'brand']);
+
+        if (!product || !product.isListed || product.isDeleted) {
+          skippedItems++;
+          restorationLog.push({
+            productId: originalItem.productId,
+            status: 'skipped',
+            reason: 'Product no longer available'
+          });
+          continue;
+        }
+
+        // Check category and brand availability
+        if ((product.category && (!product.category.isListed || product.category.isDeleted)) ||
+            (product.brand && (!product.brand.isActive || product.brand.isDeleted))) {
+          skippedItems++;
+          restorationLog.push({
+            productId: originalItem.productId,
+            status: 'skipped',
+            reason: 'Product category/brand unavailable'
+          });
+          continue;
+        }
+
+        // Check variant stock
+        const variant = product.variants.find(v => v._id.toString() === originalItem.variantId.toString());
+        if (!variant) {
+          skippedItems++;
+          restorationLog.push({
+            productId: originalItem.productId,
+            status: 'skipped',
+            reason: 'Product variant not found'
+          });
+          continue;
+        }
+
+        // Check if item is already in cart
+        const existingItemIndex = cart.items.findIndex(
+          item => item.productId.toString() === originalItem.productId.toString() &&
+                  item.variantId.toString() === originalItem.variantId.toString()
+        );
+
+        if (existingItemIndex > -1) {
+          // Update existing item quantity (up to stock limit)
+          const currentQty = cart.items[existingItemIndex].quantity;
+          const desiredQty = Math.min(originalItem.quantity, variant.stock, 5);
+          const newQty = Math.min(currentQty + desiredQty, variant.stock, 5);
+          
+          if (newQty > currentQty) {
+            cart.items[existingItemIndex].quantity = newQty;
+            cart.items[existingItemIndex].totalPrice = cart.items[existingItemIndex].price * newQty;
+            restoredItems++;
+            restorationLog.push({
+              productId: originalItem.productId,
+              status: 'updated',
+              reason: `Quantity updated from ${currentQty} to ${newQty}`
+            });
+          } else {
+            restorationLog.push({
+              productId: originalItem.productId,
+              status: 'unchanged',
+              reason: 'Item already at maximum quantity in cart'
+            });
+          }
+        } else {
+          // Add new item (up to stock limit)
+          const quantityToAdd = Math.min(originalItem.quantity, variant.stock, 5);
+          
+          if (quantityToAdd > 0) {
+            // Calculate current price
+            const calculateVariantFinalPrice = (product, variant) => {
+              try {
+                if (typeof product.calculateVariantFinalPrice === 'function') {
+                  return product.calculateVariantFinalPrice(variant);
+                }
+                return variant.basePrice || product.regularPrice || 0;
+              } catch (error) {
+                return variant.basePrice || product.regularPrice || 0;
+              }
+            };
+
+            const currentPrice = calculateVariantFinalPrice(product, variant);
+            
+            cart.items.push({
+              productId: originalItem.productId,
+              variantId: originalItem.variantId,
+              sku: originalItem.sku,
+              size: originalItem.size,
+              quantity: quantityToAdd,
+              price: currentPrice,
+              totalPrice: currentPrice * quantityToAdd
+            });
+            
+            restoredItems++;
+            restorationLog.push({
+              productId: originalItem.productId,
+              status: 'restored',
+              reason: `Added ${quantityToAdd} items to cart`
+            });
+          } else {
+            skippedItems++;
+            restorationLog.push({
+              productId: originalItem.productId,
+              status: 'skipped',
+              reason: 'Out of stock'
+            });
+          }
+        }
+
+      } catch (itemError) {
+        console.error('❌ Error processing item restoration:', itemError);
+        skippedItems++;
+        restorationLog.push({
+          productId: originalItem.productId,
+          status: 'error',
+          reason: `Restoration error: ${itemError.message}`
+        });
+      }
+    }
+
+    // Save cart if any items were restored
+    if (restoredItems > 0) {
+      await cart.save();
+    }
+
+    console.log('✅ Cart restoration completed:', {
+      restoredItems,
+      skippedItems,
+      totalOriginalItems: transaction.orderData.items.length
+    });
+
+    return {
+      success: true,
+      restoredItems,
+      skippedItems,
+      totalItems: transaction.orderData.items.length,
+      restorationLog,
+      message: `${restoredItems} items restored to cart${skippedItems > 0 ? `, ${skippedItems} items skipped` : ''}`
+    };
+
+  } catch (error) {
+    console.error('❌ Cart restoration failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: 'Failed to restore cart items'
+    };
+  }
+}
+
+// ✅ NEW: Generate smart failure response
+function generateFailureResponse(reason, failureType, retryCount = 0, cartResult) {
+  const maxRetries = 3;
+  const baseRetryDelay = 2000; // 2 seconds
+
+  // Determine if retry is possible
+  const canRetry = retryCount < maxRetries && 
+                   !['insufficient_funds', 'card_declined', 'cancelled'].includes(failureType);
+
+  // Calculate retry delay (exponential backoff)
+  const retryDelay = baseRetryDelay * Math.pow(2, retryCount);
+
+  // Generate suggested actions based on failure type
+  let suggestedActions = [];
+  let redirectUrl = '/cart';
+
+  switch (failureType) {
+    case 'network_error':
+    case 'timeout':
+      suggestedActions = [
+        'Check your internet connection',
+        'Try again in a few moments',
+        'Use a different payment method if the issue persists'
+      ];
+      if (canRetry) redirectUrl = '/checkout';
+      break;
+
+    case 'insufficient_funds':
+      suggestedActions = [
+        'Check your account balance',
+        'Try a different payment method',
+        'Use wallet payment if you have sufficient balance'
+      ];
+      break;
+
+    case 'card_declined':
+      suggestedActions = [
+        'Contact your bank to ensure the card is active',
+        'Try a different card',
+        'Use UPI or wallet payment instead'
+      ];
+      break;
+
+    case 'cancelled':
+      suggestedActions = [
+        'Your cart items have been restored',
+        'Continue with your purchase when ready',
+        'Try a different payment method if needed'
+      ];
+      redirectUrl = '/checkout';
+      break;
+
+    case 'technical_error':
+    default:
+      suggestedActions = [
+        'This appears to be a temporary technical issue',
+        'Please try again in a moment',
+        'Contact support if the problem continues'
+      ];
+      if (canRetry) redirectUrl = '/checkout';
+      break;
+  }
+
+  return {
+    canRetry,
+    retryDelay,
+    suggestedActions,
+    redirectUrl,
+    maxRetriesReached: retryCount >= maxRetries
+  };
+}
+
+// ✅ NEW: Log payment failures for analytics
+async function logPaymentFailure(userId, transactionId, reason, failureType, retryCount) {
+  try {
+    // You can implement this to log to your analytics service
+    // or store in a separate collection for failure analysis
+    console.log('📊 Payment failure logged:', {
+      userId,
+      transactionId,
+      reason,
+      failureType,
+      retryCount,
+      timestamp: new Date()
+    });
+
+  } catch (error) {
+    console.error('❌ Error logging payment failure:', error);
+  }
+}
 
 // Helper function to calculate variant-specific final price
 const calculateVariantFinalPrice = (product, variant) => {
@@ -41,6 +320,11 @@ exports.placeOrder = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { deliveryAddressId, paymentMethod } = req.body;
+
+    // Redirect UPI and PayPal to transaction-based flow
+    if (paymentMethod === 'upi' || paymentMethod === 'paypal') {
+      return exports.createTransactionForPayment(req, res);
+    }
 
     // Validate input
     if (!deliveryAddressId || !paymentMethod) {
@@ -238,12 +522,13 @@ exports.placeOrder = async (req, res) => {
     const shipping = amountAfterDiscount > 500 ? 0 : 50;
     const total = amountAfterDiscount + shipping;
 
-    // ✅ NEW: Wallet payment validation and processing
+    // ✅ Wallet payment validation and processing
     if (paymentMethod === 'wallet') {
-      console.log(`🔄 Processing wallet payment for order. Total: ₹${total}`);
+      console.log(`🔄 Processing enhanced wallet payment for order. Total: ₹${total}`);
       
-      // Check wallet balance
       try {
+        // Check wallet balance using enhanced service
+        const walletService = require('../../services/walletService');
         const walletBalance = await walletService.getWalletBalance(userId);
         console.log(`💰 User wallet balance: ₹${walletBalance.balance}`);
         
@@ -265,19 +550,86 @@ exports.placeOrder = async (req, res) => {
         }
         
         console.log(`✅ Wallet balance sufficient for payment: ₹${walletBalance.balance} >= ₹${total}`);
+
+        // ✅ ENHANCED: Use integrated wallet service with unified transaction logging
+        const walletDebitResult = await walletService.debitAmount(
+          userId,
+          total,
+          `Payment for order ${orderId}`,
+          orderId,
+          {
+            orderItems: validItems.map(item => ({
+              productId: item.productId,
+              size: item.size,
+              quantity: item.quantity,
+              price: item.price
+            })),
+            userAgent: req.headers['user-agent'],
+            ipAddress: req.ip,
+            sessionId: req.sessionID
+          }
+        );
+        
+        if (!walletDebitResult.success) {
+          // Rollback: Delete the created order
+          await Order.findOneAndDelete({ orderId: orderId });
+          console.error('❌ Enhanced wallet deduction failed, order rolled back');
+          
+          return res.status(400).json({
+            success: false,
+            message: 'Wallet payment failed. Order has been cancelled.',
+            error: walletDebitResult.message || 'Wallet deduction failed'
+          });
+        }
+        
+        console.log(`✅ Enhanced wallet payment successful: ₹${total} deducted, Unified TX: ${walletDebitResult.unifiedTransactionId || 'N/A'}`);
+        
       } catch (walletError) {
-        console.error('❌ Wallet balance check error:', walletError);
+        console.error('❌ Enhanced wallet payment error:', walletError);
+        
+        // Enhanced rollback with failure handling
+        await Order.findOneAndDelete({ orderId: orderId });
+        
+        // Restore stock for all items
+        for (const item of validItems) {
+          const product = await Product.findById(item.productId);
+          if (product) {
+            const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+            if (variant) {
+              variant.stock += item.quantity;
+              await product.save();
+            }
+          }
+        }
+
+        // Handle wallet payment failure if we have transaction IDs
+        if (walletDebitResult && walletDebitResult.walletTransactionId) {
+          try {
+            await walletService.handleWalletPaymentFailure(
+              walletDebitResult.walletTransactionId,
+              userId,
+              total,
+              'Order creation failed after wallet debit',
+              walletDebitResult.unifiedTransactionId
+            );
+          } catch (rollbackError) {
+            console.error('❌ Wallet payment failure rollback error:', rollbackError);
+          }
+        }
+        
         return res.status(500).json({
           success: false,
-          message: 'Failed to verify wallet balance'
+          message: 'Enhanced wallet payment processing failed. Order has been cancelled and wallet balance restored.',
+          error: walletError.message
         });
       }
     }
 
+
     // Generate order ID
     const orderId = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
 
-    // Create order with new address reference structure and statusHistory
+    // ✅ FIXED: Create order using original paymentMethod (no mapping)
     const newOrder = new Order({
       orderId: orderId,
       user: userId,
@@ -290,14 +642,14 @@ exports.placeOrder = async (req, res) => {
         price: item.price,
         totalPrice: item.totalPrice,
         status: ORDER_STATUS.PENDING,
-        // ✅ NEW: Set payment status based on payment method
-        paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
+        // ✅ FIXED: Set payment status based on original paymentMethod
+        paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi' || paymentMethod === 'paypal') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
       })),
       deliveryAddress: {
         addressId: userAddresses._id,
         addressIndex: addressIndex
       },
-      paymentMethod: paymentMethod,
+      paymentMethod: paymentMethod, // ✅ FIXED: Store original value ('upi', not 'razorpay')
       subtotal: Math.round(subtotal),
       totalDiscount: Math.round(totalDiscount),
       amountAfterDiscount: Math.round(amountAfterDiscount),
@@ -310,14 +662,14 @@ exports.placeOrder = async (req, res) => {
         updatedAt: new Date(),
         notes: 'Order placed'
       }],
-      // ✅ NEW: Set payment status based on payment method  
-      paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
+      // ✅ FIXED: Set payment status based on original paymentMethod
+      paymentStatus: (paymentMethod === 'cod' || paymentMethod === 'upi' || paymentMethod === 'paypal') ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
     });
 
     await newOrder.save();
     console.log(`✅ Order created successfully: ${orderId}`);
 
-    // ✅ NEW: Process wallet payment if selected
+    // ✅ Process wallet payment if selected
     if (paymentMethod === 'wallet') {
       try {
         console.log(`🔄 Deducting ₹${total} from wallet for order ${orderId}`);
@@ -375,7 +727,7 @@ exports.placeOrder = async (req, res) => {
 
     console.log(`🎉 Order placement completed successfully: ${orderId}, Payment: ${paymentMethod}`);
 
-    // ✅ NEW: Enhanced response based on payment method
+    // ✅ FIXED: Update response logic
     if (paymentMethod === 'cod') {
       return res.json({
         success: true,
@@ -397,18 +749,29 @@ exports.placeOrder = async (req, res) => {
       });
     }
 
+    // ✅ FIXED: UPI (Razorpay) response
     if (paymentMethod === 'upi') {
       return res.json({
         success: true,
-        message: 'Order placed successfully - awaiting PayPal payment',
+        message: 'Order placed successfully - awaiting UPI payment',
         orderId: orderId,
-        paymentMethod: paymentMethod,
+        paymentMethod: 'upi', // ✅ Keep as 'upi'
         totalAmount: total
       });
     }
 
-    // For other payment methods, handle payment processing here
-    // For now, just redirect to success page
+    // ✅ FIXED: PayPal response
+    if (paymentMethod === 'paypal') {
+      return res.json({
+        success: true,
+        message: 'Order placed successfully - awaiting PayPal payment',
+        orderId: orderId,
+        paymentMethod: 'paypal',
+        totalAmount: total
+      });
+    }
+
+    // For other payment methods
     res.json({
       success: true,
       message: 'Order placed successfully',
@@ -425,6 +788,8 @@ exports.placeOrder = async (req, res) => {
     });
   }
 };
+
+
 
 // Load order success page
 exports.loadOrderSuccess = async (req, res) => {
@@ -1696,6 +2061,218 @@ function generateInvoiceHTML(order) {
   `;
 }
 
+
+
+// Create transaction for order of UPI/PayPal payments
+exports.createTransactionForPayment = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const { deliveryAddressId, paymentMethod } = req.body;
+
+    console.log('🔄 Creating transaction for payment:', { paymentMethod, deliveryAddressId });
+
+    // Validate input
+    if (!deliveryAddressId || !paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address and payment method are required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    // Get user's cart with populated product data
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: [
+          {
+            path: 'category',
+            select: 'name isActive isDeleted categoryOffer'
+          },
+          {
+            path: 'brand',
+            select: 'name isActive isDeleted brandOffer'
+          }
+        ]
+      });
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cart is empty'
+      });
+    }
+
+    // Validate cart items and calculate totals
+    let validItems = [];
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalItemCount = 0;
+    let stockIssues = [];
+
+    for (const item of cart.items) {
+      // Check if product exists and is available
+      if (!item.productId ||
+          !item.productId.isListed ||
+          item.productId.isDeleted) {
+        stockIssues.push({
+          productName: item.productId ? item.productId.productName : 'Unknown Product',
+          size: item.size,
+          quantity: item.quantity,
+          error: 'Product is no longer available'
+        });
+        continue;
+      }
+
+      // Check variant availability
+      if (item.variantId) {
+        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (!variant) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            error: 'Product variant not found'
+          });
+          continue;
+        }
+
+        if (variant.stock === 0) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            availableStock: 0,
+            error: `Size ${item.size} is out of stock`
+          });
+          continue;
+        }
+
+        if (variant.stock < item.quantity) {
+          stockIssues.push({
+            productName: item.productId.productName,
+            size: item.size,
+            quantity: item.quantity,
+            availableStock: variant.stock,
+            error: `Only ${variant.stock} items available for size ${item.size}`
+          });
+          continue;
+        }
+
+        // Calculate prices
+        const regularPrice = item.productId.regularPrice;
+        const salePrice = calculateVariantFinalPrice(item.productId, variant);
+        const quantity = item.quantity;
+        
+        subtotal += regularPrice * quantity;
+        totalItemCount += quantity;
+        
+        const itemDiscount = (regularPrice - salePrice) * quantity;
+        totalDiscount += itemDiscount;
+
+        validItems.push({
+          productId: item.productId._id,
+          variantId: item.variantId,
+          sku: item.sku,
+          size: item.size,
+          quantity: quantity,
+          price: salePrice,
+          totalPrice: salePrice * quantity,
+          regularPrice: regularPrice
+        });
+      }
+    }
+
+    // If there are any stock issues, return error
+    if (stockIssues.length > 0) {
+      let errorMessage = 'Some items in your cart have stock issues and cannot be ordered:\n\n';
+      stockIssues.forEach((item, index) => {
+        errorMessage += `${index + 1}. ${item.productName}`;
+        if (item.size) {
+          errorMessage += ` (Size: ${item.size})`;
+        }
+        errorMessage += `\n   ${item.error}\n\n`;
+      });
+      errorMessage += 'Please return to your cart to fix these issues before placing your order.';
+
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+        code: 'STOCK_VALIDATION_FAILED',
+        invalidItems: stockIssues
+      });
+    }
+
+    if (validItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid items found in cart',
+        code: 'NO_VALID_ITEMS'
+      });
+    }
+
+    // Calculate final amounts
+    const amountAfterDiscount = subtotal - totalDiscount;
+    const shipping = amountAfterDiscount > 500 ? 0 : 50;
+    const total = amountAfterDiscount + shipping;
+
+    // ✅ FIXED: Safe request data extraction with fallbacks
+    const transactionService = require('../../services/transactionService');
+    
+    const transactionResult = await transactionService.createOrderTransaction({
+      userId: userId,
+      paymentMethod: paymentMethod,
+      deliveryAddressId: deliveryAddressId,
+      amount: total,
+      cartItems: validItems,
+      pricing: {
+        subtotal: Math.round(subtotal),
+        totalDiscount: Math.round(totalDiscount),
+        amountAfterDiscount: Math.round(amountAfterDiscount),
+        shipping: shipping,
+        total: Math.round(total),
+        totalItemCount: totalItemCount
+      },
+      // ✅ FIXED: Safe access with fallbacks
+      userAgent: (req.headers && req.headers['user-agent']) || req.get('User-Agent') || 'Unknown',
+      ipAddress: req.ip || req.connection?.remoteAddress || req.socket?.remoteAddress || 'Unknown',
+      sessionId: req.sessionID || req.session?.id || 'Unknown'
+    });
+
+    if (!transactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create payment transaction'
+      });
+    }
+
+    console.log(`✅ Transaction created: ${transactionResult.transactionId}`);
+
+    res.json({
+      success: true,
+      transactionId: transactionResult.transactionId,
+      amount: total,
+      message: 'Transaction created successfully'
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating transaction:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create payment transaction'
+    });
+  }
+};
+
+
+
+
 // ===== PAYPAL PAYMENT FUNCTIONS =====
 
 // Create PayPal order
@@ -1703,7 +2280,6 @@ exports.createPayPalOrder = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
-    // ✅ DEBUG: Log the request body
     console.log('🔍 PayPal create-order request body:', req.body);
     console.log('🔍 PayPal create-order user:', userId);
     
@@ -1714,7 +2290,6 @@ exports.createPayPalOrder = async (req, res) => {
       });
     }
 
-    // ✅ IMPROVED: Better validation of required data
     if (!req.body || !req.body.deliveryAddressId) {
       console.error('❌ Missing deliveryAddressId in request body:', req.body);
       return res.status(400).json({
@@ -1723,78 +2298,123 @@ exports.createPayPalOrder = async (req, res) => {
       });
     }
     
-    // Create internal order first using existing logic but with 'upi' method
-    const orderReq = {
-      ...req,
-      body: { 
-        deliveryAddressId: req.body.deliveryAddressId,
-        paymentMethod: 'upi'  // Set as UPI for internal tracking
-      }
-    };
-
-    // ✅ IMPROVED: Better response interception
-    const originalJson = res.json;
-    const originalStatus = res.status;
-    let internalOrderData = null;
-    let statusCode = 200;
-
-    res.json = function(data) {
-      internalOrderData = data;
-      return res;
-    };
+    // ✅ FIXED: Direct transaction creation without request interception
+    console.log('🔄 Creating transaction directly for PayPal...');
     
-    res.status = function(code) {
-      statusCode = code;
-      return { json: (data) => { internalOrderData = data; return res; }};
-    };
+    const transactionService = require('../../services/transactionService');
+    
+    // Get user's cart and validate
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: ['category', 'brand']
+      });
 
-    await exports.placeOrderWithValidation(orderReq, res);
-
-    // Restore original functions
-    res.json = originalJson;
-    res.status = originalStatus;
-
-    // ✅ IMPROVED: Better error handling
-    if (!internalOrderData || !internalOrderData.success || statusCode !== 200) {
-      console.error('❌ Internal order creation failed:', internalOrderData);
+    if (!cart || !cart.items || cart.items.length === 0) {
       return res.status(400).json({
         success: false,
-        message: internalOrderData?.message || 'Failed to create internal order'
+        message: 'Cart is empty'
       });
     }
 
-    // Create PayPal order
+    // Calculate totals (simplified version)
+    let validItems = [];
+    let total = 0;
+    
+    for (const item of cart.items) {
+      if (item.productId && item.productId.isListed && !item.productId.isDeleted) {
+        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (variant && variant.stock >= item.quantity) {
+          const salePrice = calculateVariantFinalPrice(item.productId, variant);
+          validItems.push({
+            productId: item.productId._id,
+            variantId: item.variantId,
+            sku: item.sku,
+            size: item.size,
+            quantity: item.quantity,
+            price: salePrice,
+            totalPrice: salePrice * item.quantity,
+            regularPrice: item.productId.regularPrice
+          });
+          total += salePrice * item.quantity;
+        }
+      }
+    }
+
+    if (validItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid items found in cart'
+      });
+    }
+
+    // Add shipping
+    const shipping = total > 500 ? 0 : 50;
+    total += shipping;
+
+    // ✅ Create transaction directly
+    const transactionResult = await transactionService.createOrderTransaction({
+      userId: userId,
+      paymentMethod: 'paypal',
+      deliveryAddressId: req.body.deliveryAddressId,
+      amount: total,
+      cartItems: validItems,
+      pricing: {
+        subtotal: total - shipping,
+        totalDiscount: 0,
+        amountAfterDiscount: total - shipping,
+        shipping: shipping,
+        total: total,
+        totalItemCount: validItems.reduce((sum, item) => sum + item.quantity, 0)
+      },
+      userAgent: req.get('User-Agent') || 'Unknown',
+      ipAddress: req.ip || 'Unknown',
+      sessionId: req.sessionID || 'Unknown'
+    });
+
+    if (!transactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create payment transaction'
+      });
+    }
+
+    // ✅ Create PayPal order
     const request = new paypal.orders.OrdersCreateRequest();
     request.prefer('return=representation');
     request.requestBody({
       intent: 'CAPTURE',
       purchase_units: [{
-        reference_id: internalOrderData.orderId,
+        reference_id: transactionResult.transactionId,
         amount: {
-          currency_code: 'USD',  // PayPal sandbox requires USD
-          value: internalOrderData.totalAmount ? 
-                  (internalOrderData.totalAmount / 80).toFixed(2) : 
-                  '10.00' // Rough INR to USD conversion
+          currency_code: 'USD',
+          value: (total / 80).toFixed(2) // Rough INR to USD conversion
         },
-        description: `LacedUp Order ${internalOrderData.orderId}`
+        description: `LacedUp Transaction ${transactionResult.transactionId}`
       }],
       application_context: {
         brand_name: 'LacedUp',
         landing_page: 'NO_PREFERENCE',
         user_action: 'PAY_NOW',
-        return_url: `${req.protocol}://${req.get('host')}/order-success/${internalOrderData.orderId}`,
-        cancel_url: `${req.protocol}://${req.get('host')}/order-failure/${internalOrderData.orderId}`
+        return_url: `${req.protocol}://${req.get('host')}/order-success`,
+        cancel_url: `${req.protocol}://${req.get('host')}/order-failure`
       }
     });
 
     const paypalOrder = await paypalClient.execute(request);
 
-    console.log(`✅ PayPal order created: ${paypalOrder.result.id} for internal order: ${internalOrderData.orderId}`);
+    // ✅ Update transaction with gateway details
+    await transactionService.updateTransactionGatewayDetails(transactionResult.transactionId, {
+      paypalOrderId: paypalOrder.result.id,
+      gatewayResponse: paypalOrder.result
+    });
+
+    console.log(`✅ PayPal order created: ${paypalOrder.result.id} for transaction: ${transactionResult.transactionId}`);
 
     res.json({
       success: true,
-      orderID: paypalOrder.result.id,           // PayPal order ID
-      internalOrderId: internalOrderData.orderId // Internal order ID
+      orderID: paypalOrder.result.id,
+      transactionId: transactionResult.transactionId
     });
 
   } catch (error) {
@@ -1806,61 +2426,111 @@ exports.createPayPalOrder = async (req, res) => {
   }
 };
 
+
 // Capture PayPal payment
 exports.capturePayPalOrder = async (req, res) => {
   try {
     const { paypalOrderId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Capture the PayPal payment
+    // ✅ STEP 1: Capture the PayPal payment
     const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
     request.requestBody({});
 
     const capture = await paypalClient.execute(request);
     
-    if (capture.result.status === 'COMPLETED') {
-      // Find and update internal order
-      const internalOrderId = capture.result.purchase_units[0].reference_id;
-      const order = await Order.findOne({ orderId: internalOrderId, user: userId });
-      
-      if (order) {
-        // Update payment status to completed
-        order.paymentStatus = PAYMENT_STATUS.COMPLETED;
-        order.paypalCaptureId = capture.result.purchase_units[0].payments.captures[0].id;
-        
-        // Update all items payment status
-        order.items.forEach(item => {
-          item.paymentStatus = PAYMENT_STATUS.COMPLETED;
-        });
-        
-        // Add to status history
-        order.statusHistory.push({
-          status: order.status,
-          notes: 'PayPal payment captured successfully',
-          updatedAt: new Date()
-        });
-
-        await order.save();
-
-        console.log(`✅ PayPal payment captured for order ${internalOrderId}`);
-
-        res.json({
-          success: true,
-          message: 'Payment captured successfully',
-          redirectUrl: `/order-success/${internalOrderId}`
-        });
-      } else {
-        res.status(404).json({
-          success: false,
-          message: 'Order not found'
-        });
-      }
-    } else {
-      res.status(400).json({
+    if (capture.result.status !== 'COMPLETED') {
+      return res.status(400).json({
         success: false,
-        message: 'Payment capture failed'
+        message: 'PayPal payment capture failed'
       });
     }
+
+    // ✅ STEP 2: Get transaction ID from PayPal reference_id
+    const transactionId = capture.result.purchase_units[0].reference_id;
+    const transactionService = require('../../services/transactionService');
+    const transactionResult = await transactionService.getTransaction(transactionId);
+    
+    if (!transactionResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    const transaction = transactionResult.transaction;
+
+    // ✅ STEP 3: Create order (payment captured)
+    const orderId = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
+    
+    const newOrder = new Order({
+      orderId: orderId,
+      user: userId,
+      items: transaction.orderData.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        sku: item.sku,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice,
+        status: ORDER_STATUS.PENDING,
+        paymentStatus: PAYMENT_STATUS.COMPLETED
+      })),
+      deliveryAddress: {
+        addressId: transaction.orderData.deliveryAddressId,
+        addressIndex: 0
+      },
+      paymentMethod: 'paypal',
+      subtotal: Math.round(transaction.orderData.pricing.subtotal),
+      totalDiscount: Math.round(transaction.orderData.pricing.totalDiscount),
+      amountAfterDiscount: Math.round(transaction.orderData.pricing.amountAfterDiscount),
+      shipping: transaction.orderData.pricing.shipping,
+      totalAmount: Math.round(transaction.orderData.pricing.total),
+      totalItemCount: transaction.orderData.pricing.totalItemCount,
+      status: ORDER_STATUS.PENDING,
+      statusHistory: [{
+        status: ORDER_STATUS.PENDING,
+        updatedAt: new Date(),
+        notes: 'Order placed with PayPal payment'
+      }],
+      paymentStatus: PAYMENT_STATUS.COMPLETED,
+      paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id
+    });
+
+    await newOrder.save();
+
+    // ✅ STEP 4: Update stock and clear cart (same as Razorpay)
+    for (const item of transaction.orderData.items) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (variant) {
+          variant.stock -= item.quantity;
+          await product.save();
+        }
+      }
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (cart) {
+      cart.items = [];
+      await cart.save();
+    }
+
+    // ✅ STEP 5: Complete transaction
+    await transactionService.completeTransaction(transactionId, orderId, {
+      paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id
+    });
+
+    console.log(`✅ PayPal payment captured and order created: ${orderId}`);
+
+    res.json({
+      success: true,
+      message: 'Payment captured successfully',
+      orderId: orderId,
+      redirectUrl: `/order-success/${orderId}`
+    });
 
   } catch (error) {
     console.error('❌ Error capturing PayPal payment:', error);
@@ -1900,5 +2570,415 @@ exports.refundPayPalCapture = async (req, res) => {
       success: false,
       message: 'Failed to process refund'
     });
+  }
+};
+
+// RAZORPAY INTEGRATION
+// Create Razorpay order
+exports.createRazorpayOrder = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    
+    console.log('🔍 Razorpay create-order request body:', req.body);
+    console.log('🔍 Razorpay create-order user:', userId);
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User authentication required'
+      });
+    }
+
+    if (!req.body || !req.body.deliveryAddressId) {
+      console.error('❌ Missing deliveryAddressId in request body:', req.body);
+      return res.status(400).json({
+        success: false,
+        message: 'Missing delivery address. Please select a delivery address first.'
+      });
+    }
+
+    // ✅ STEP 1: Create transaction first (no order yet)
+    const transactionReq = {
+      ...req,
+      body: { 
+        deliveryAddressId: req.body.deliveryAddressId,
+        paymentMethod: 'upi'
+      }
+    };
+
+    // Intercept response to get transaction data
+    const originalJson = res.json;
+    let transactionData = null;
+    let statusCode = 200;
+
+    res.json = function(data) {
+      transactionData = data;
+      return res;
+    };
+    
+    const originalStatus = res.status;
+    res.status = function(code) {
+      statusCode = code;
+      return { json: (data) => { transactionData = data; return res; }};
+    };
+
+    await exports.createTransactionForPayment(transactionReq, res);
+
+    // Restore original functions
+    res.json = originalJson;
+    res.status = originalStatus;
+
+    if (!transactionData || !transactionData.success || statusCode !== 200) {
+      console.error('❌ Transaction creation failed:', transactionData);
+      return res.status(statusCode || 400).json({
+        success: false,
+        message: transactionData?.message || 'Failed to create payment transaction'
+      });
+    }
+
+    // ✅ STEP 2: Create Razorpay order
+    const razorpayOrderResult = await razorpayService.createOrder(
+      transactionData.amount,
+      'INR',
+      transactionData.transactionId
+    );
+
+    if (!razorpayOrderResult.success) {
+      console.error('❌ Razorpay order creation failed:', razorpayOrderResult);
+      
+      // Cancel the transaction
+      const transactionService = require('../../services/transactionService');
+      await transactionService.cancelTransaction(transactionData.transactionId, 'Razorpay order creation failed');
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create Razorpay order: ' + razorpayOrderResult.error
+      });
+    }
+
+    // ✅ STEP 3: Update transaction with gateway details
+    const transactionService = require('../../services/transactionService');
+    await transactionService.updateTransactionGatewayDetails(transactionData.transactionId, {
+      razorpayOrderId: razorpayOrderResult.order.id,
+      gatewayResponse: razorpayOrderResult
+    });
+
+    console.log(`✅ Razorpay order created: ${razorpayOrderResult.order.id} for transaction: ${transactionData.transactionId}`);
+
+    res.json({
+      success: true,
+      razorpayOrderId: razorpayOrderResult.order.id,
+      transactionId: transactionData.transactionId,
+      amount: razorpayOrderResult.order.amount,
+      currency: razorpayOrderResult.order.currency,
+      keyId: process.env.RAZORPAY_KEY_ID
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating Razorpay order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create Razorpay order: ' + error.message
+    });
+  }
+};
+
+
+// Verify Razorpay payment
+exports.verifyRazorpayPayment = async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, transactionId } = req.body;
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing payment verification data'
+      });
+    }
+
+    // ✅ STEP 1: Verify payment signature
+    const isValidSignature = razorpayService.verifyPaymentSignature(
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature
+    );
+
+    if (!isValidSignature) {
+      // Mark transaction as failed
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(transactionId, 'Invalid payment signature', 'SIGNATURE_MISMATCH');
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment signature'
+      });
+    }
+
+    // ✅ STEP 2: Get payment details
+    const paymentResult = await razorpayService.getPaymentDetails(razorpay_payment_id);
+    
+    if (!paymentResult.success) {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(transactionId, 'Failed to fetch payment details', 'PAYMENT_FETCH_ERROR');
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch payment details'
+      });
+    }
+
+    // ✅ STEP 3: Get transaction data
+    const transactionService = require('../../services/transactionService');
+    const transactionResult = await transactionService.getTransaction(transactionId);
+    
+    if (!transactionResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    const transaction = transactionResult.transaction;
+
+    // ✅ STEP 4: Now create the order (payment verified)
+    const orderId = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
+    
+    const newOrder = new Order({
+      orderId: orderId,
+      user: userId,
+      items: transaction.orderData.items.map(item => ({
+        productId: item.productId,
+        variantId: item.variantId,
+        sku: item.sku,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice,
+        status: ORDER_STATUS.PENDING,
+        paymentStatus: PAYMENT_STATUS.COMPLETED // ✅ Payment already completed
+      })),
+      deliveryAddress: {
+        addressId: transaction.orderData.deliveryAddressId,
+        addressIndex: 0 // Will be updated with correct index
+      },
+      paymentMethod: 'upi', // ✅ Store as 'upi'
+      subtotal: Math.round(transaction.orderData.pricing.subtotal),
+      totalDiscount: Math.round(transaction.orderData.pricing.totalDiscount),
+      amountAfterDiscount: Math.round(transaction.orderData.pricing.amountAfterDiscount),
+      shipping: transaction.orderData.pricing.shipping,
+      totalAmount: Math.round(transaction.orderData.pricing.total),
+      totalItemCount: transaction.orderData.pricing.totalItemCount,
+      status: ORDER_STATUS.PENDING,
+      statusHistory: [{
+        status: ORDER_STATUS.PENDING,
+        updatedAt: new Date(),
+        notes: 'Order placed with UPI payment'
+      }],
+      paymentStatus: PAYMENT_STATUS.COMPLETED,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id
+    });
+
+    await newOrder.save();
+
+    // ✅ STEP 5: Update stock for ordered items
+    for (const item of transaction.orderData.items) {
+      const product = await Product.findById(item.productId);
+      if (product) {
+        const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
+        if (variant) {
+          variant.stock -= item.quantity;
+          await product.save();
+        }
+      }
+    }
+
+    // ✅ STEP 6: Clear cart
+    const cart = await Cart.findOne({ userId });
+    if (cart) {
+      cart.items = [];
+      await cart.save();
+    }
+
+    // ✅ STEP 7: Complete transaction
+    await transactionService.completeTransaction(transactionId, orderId, {
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature
+    });
+
+    console.log(`✅ Razorpay payment verified and order created: ${orderId}`);
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully',
+      orderId: orderId,
+      redirectUrl: `/order-success/${orderId}`
+    });
+
+  } catch (error) {
+    console.error('❌ Error verifying Razorpay payment:', error);
+    
+    // Mark transaction as failed if transactionId exists
+    if (req.body.transactionId) {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(req.body.transactionId, 'Payment verification failed', 'VERIFICATION_ERROR');
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify payment'
+    });
+  }
+};
+
+// Create Razorpay refund
+exports.createRazorpayRefund = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+    const { amount } = req.body; // Optional partial refund amount
+
+    const refundResult = await razorpayService.createRefund(paymentId, amount);
+
+    if (!refundResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create refund: ' + refundResult.error
+      });
+    }
+
+    console.log(`✅ Razorpay refund processed: ${refundResult.refund.id}`);
+
+    res.json({
+      success: true,
+      refund: refundResult.refund
+    });
+
+  } catch (error) {
+    console.error('❌ Error creating Razorpay refund:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process refund'
+    });
+  }
+};
+
+// Handle payment failure and restore cart
+exports.handlePaymentFailure = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const { transactionId, reason, failureType, retryCount } = req.body;
+
+    console.log('🚨 Handling payment failure:', { 
+      transactionId, 
+      reason, 
+      failureType: failureType || 'unknown',
+      retryCount: retryCount || 0,
+      userId 
+    });
+
+    // ✅ STEP 1: Cancel/fail the transaction
+    let transactionResult = null;
+    if (transactionId) {
+      try {
+        const transactionService = require('../../services/transactionService');
+        
+        if (reason === 'cancelled') {
+          transactionResult = await transactionService.cancelTransaction(transactionId, 'User cancelled payment');
+        } else {
+          transactionResult = await transactionService.failTransaction(transactionId, reason || 'Payment failed');
+        }
+        
+        console.log('✅ Transaction updated successfully:', transactionResult?.success);
+      } catch (txError) {
+        console.error('❌ Error updating transaction:', txError);
+      }
+    }
+
+    // ✅ STEP 2: Enhanced cart restoration with stock validation
+    let cartRestorationResult = null;
+    try {
+      cartRestorationResult = await restoreCartAfterPaymentFailure(userId, transactionId);
+      console.log('✅ Cart restoration result:', cartRestorationResult?.success);
+    } catch (cartError) {
+      console.error('❌ Cart restoration failed:', cartError);
+    }
+
+    // ✅ STEP 3: Log failure for analytics
+    await logPaymentFailure(userId, transactionId, reason, failureType, retryCount);
+
+    // ✅ STEP 4: Determine failure response based on type
+    const failureResponse = generateFailureResponse(reason, failureType, retryCount, cartRestorationResult);
+
+    res.json({
+      success: true,
+      message: 'Payment failure processed',
+      failureType: failureType || 'payment_error',
+      cartRestored: cartRestorationResult?.success || false,
+      canRetry: failureResponse.canRetry,
+      retryDelay: failureResponse.retryDelay,
+      suggestedActions: failureResponse.suggestedActions,
+      redirectUrl: failureResponse.redirectUrl
+    });
+
+  } catch (error) {
+    console.error('❌ Error handling payment failure:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process payment failure',
+      canRetry: false,
+      redirectUrl: '/cart'
+    });
+  }
+};
+
+// Restore cart from transaction data
+exports.restoreCartFromTransaction = async (userId, transaction) => {
+  try {
+    console.log(`🔄 Restoring cart for user ${userId} from transaction ${transaction.transactionId}`);
+
+    // Get user's current cart
+    let cart = await Cart.findOne({ userId });
+    
+    if (!cart) {
+      cart = new Cart({ userId, items: [] });
+    }
+
+    // Add transaction items back to cart
+    const itemsToRestore = transaction.orderData.items;
+    
+    for (const item of itemsToRestore) {
+      // Check if item already exists in cart
+      const existingItemIndex = cart.items.findIndex(cartItem => 
+        cartItem.productId.toString() === item.productId.toString() && 
+        cartItem.variantId.toString() === item.variantId.toString()
+      );
+
+      if (existingItemIndex >= 0) {
+        // Update quantity if item exists
+        cart.items[existingItemIndex].quantity = item.quantity;
+        cart.items[existingItemIndex].price = item.price;
+        cart.items[existingItemIndex].totalPrice = item.totalPrice;
+      } else {
+        // Add new item
+        cart.items.push({
+          productId: item.productId,
+          variantId: item.variantId,
+          sku: item.sku,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice,
+          status: 'active'
+        });
+      }
+    }
+
+    await cart.save();
+    console.log(`✅ Cart restored with ${itemsToRestore.length} items`);
+
+  } catch (error) {
+    console.error('❌ Error restoring cart:', error);
+    throw error;
   }
 };

@@ -1,74 +1,378 @@
 <% var title = "Payment Failed" %>
 
-<div class="order-failure-container py-5">
-  <div class="order-failure-section">
-    <!-- Failure Animation -->
-    <div class="failure-animation-container text-center">
-      <div class="failure-icon">
-        <i class="bi bi-x-circle text-danger" style="font-size: 5rem;"></i>
-      </div>
-      
-      <div class="failure-content">
-        <h1 class="failure-title text-danger">Payment Failed</h1>
-        <p class="failure-subtitle">We couldn't process your payment. Please try again.</p>
-        <div class="order-number">
-          <strong>Order ID: #<%= orderId || 'N/A' %></strong>
-        </div>
+<!-- Enhanced failure page styles -->
+<style>
+.failure-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.failure-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  padding: 3rem 2rem;
+  text-align: center;
+}
+
+.failure-icon {
+  font-size: 4rem;
+  margin-bottom: 1.5rem;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.failure-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #dc3545;
+}
+
+.failure-subtitle {
+  font-size: 1.2rem;
+  color: #6c757d;
+  margin-bottom: 2rem;
+}
+
+.failure-details {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin: 2rem 0;
+  text-align: left;
+}
+
+.failure-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.failure-actions .btn {
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.3s ease;
+}
+
+.retry-info {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #856404;
+}
+
+.cart-restoration {
+  background: #d1ecf1;
+  border: 1px solid #b8daff;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+  color: #0c5460;
+}
+
+.suggestions-list {
+  text-align: left;
+  margin: 1rem 0;
+}
+
+.suggestions-list li {
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
+}
+
+.suggestions-list li:last-child {
+  border-bottom: none;
+}
+
+.countdown-timer {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #007bff;
+}
+
+@media (max-width: 768px) {
+  .failure-actions {
+    flex-direction: column;
+  }
+  
+  .failure-actions .btn {
+    width: 100%;
+  }
+}
+</style>
+
+<div class="failure-container">
+  <div class="failure-card">
+    <!-- Failure Icon and Header -->
+    <div class="failure-icon">
+      <i class="bi bi-exclamation-triangle text-warning" id="failure-icon"></i>
+    </div>
+    
+    <h1 class="failure-title" id="failure-title">Payment Failed</h1>
+    <p class="failure-subtitle" id="failure-subtitle">
+      We encountered an issue processing your payment. Don't worry, no charges were made.
+    </p>
+
+    <!-- Transaction Details -->
+    <% if (locals.orderId) { %>
+    <div class="failure-details">
+      <strong>Transaction ID:</strong> #<%= orderId %>
+      <br>
+      <strong>Time:</strong> <%= new Date().toLocaleString('en-IN') %>
+    </div>
+    <% } %>
+
+    <!-- Dynamic Failure Information -->
+    <div id="failure-info"></div>
+
+    <!-- Cart Restoration Status -->
+    <div id="cart-restoration" class="cart-restoration d-none">
+      <i class="bi bi-check-circle text-success me-2"></i>
+      <strong>Good News!</strong> Your cart items have been restored and are waiting for you.
+    </div>
+
+    <!-- Retry Information -->
+    <div id="retry-info" class="retry-info d-none">
+      <i class="bi bi-info-circle me-2"></i>
+      <span id="retry-message">You can retry this payment.</span>
+      <div id="countdown-container" class="mt-2 d-none">
+        <span>Retrying in: </span>
+        <span class="countdown-timer" id="countdown-timer">5</span>
+        <span> seconds</span>
       </div>
     </div>
 
+    <!-- Suggested Actions -->
+    <div id="suggestions-container" class="d-none">
+      <h5>What you can do:</h5>
+      <ul class="suggestions-list" id="suggestions-list"></ul>
+    </div>
+
     <!-- Action Buttons -->
-    <div class="action-buttons text-center mt-4">
-      <a href="/checkout" class="btn btn-primary">
-        <i class="bi bi-arrow-clockwise"></i> Retry Payment
+    <div class="failure-actions" id="action-buttons">
+      <a href="/cart" class="btn btn-primary" id="cart-btn">
+        <i class="bi bi-cart me-2"></i>Return to Cart
       </a>
-      <a href="/orders/<%= orderId || '' %>" class="btn btn-outline-secondary">
-        <i class="bi bi-eye"></i> View Order Details
+      <a href="/checkout" class="btn btn-outline-success" id="retry-btn">
+        <i class="bi bi-arrow-clockwise me-2"></i>Try Again
       </a>
-      <a href="/shop" class="btn btn-outline-primary">
-        <i class="bi bi-arrow-left"></i> Continue Shopping
+      <a href="/shop" class="btn btn-outline-secondary">
+        <i class="bi bi-shop me-2"></i>Continue Shopping
       </a>
+    </div>
+
+    <!-- Help Section -->
+    <div class="mt-4 pt-3 border-top">
+      <p class="text-muted mb-2">Need help?</p>
+      <div class="d-flex justify-content-center gap-3">
+        <a href="/contact" class="text-decoration-none">
+          <i class="bi bi-envelope me-1"></i>Contact Support
+        </a>
+        <a href="/help/payment-issues" class="text-decoration-none">
+          <i class="bi bi-question-circle me-1"></i>Payment Help
+        </a>
+      </div>
     </div>
   </div>
 </div>
 
-<style>
-.order-failure-container {
-  max-width: 600px;
-  margin: 0 auto;
+<!-- Enhanced JavaScript for Dynamic Failure Handling -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Get failure details from URL parameters or localStorage
+  const urlParams = new URLSearchParams(window.location.search);
+  const failureType = urlParams.get('type') || localStorage.getItem('failureType') || 'unknown';
+  const canRetry = urlParams.get('canRetry') === 'true' || localStorage.getItem('canRetry') === 'true';
+  const cartRestored = urlParams.get('cartRestored') === 'true' || localStorage.getItem('cartRestored') === 'true';
+  const retryDelay = parseInt(urlParams.get('retryDelay') || localStorage.getItem('retryDelay') || '0');
+  const suggestedActions = JSON.parse(urlParams.get('actions') || localStorage.getItem('suggestedActions') || '[]');
+
+  console.log('🚨 Failure page loaded with:', {
+    failureType,
+    canRetry,
+    cartRestored,
+    retryDelay,
+    suggestedActions
+  });
+
+  // Clear localStorage to prevent stale data
+  ['failureType', 'canRetry', 'cartRestored', 'retryDelay', 'suggestedActions'].forEach(key => {
+    localStorage.removeItem(key);
+  });
+
+  // ✅ Update UI based on failure type
+  updateFailureUI(failureType, canRetry, cartRestored, suggestedActions);
+
+  // ✅ Handle auto-retry with countdown
+  if (canRetry && retryDelay > 0) {
+    showRetryCountdown(retryDelay);
+  }
+
+  // ✅ Add retry button functionality
+  const retryBtn = document.getElementById('retry-btn');
+  if (retryBtn && canRetry) {
+    retryBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Show loading state
+      this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Preparing...';
+      this.disabled = true;
+      
+      // Validate cart before retry
+      validateCartAndRetry();
+    });
+  }
+});
+
+function updateFailureUI(failureType, canRetry, cartRestored, suggestedActions) {
+  const failureIcon = document.getElementById('failure-icon');
+  const failureTitle = document.getElementById('failure-title');
+  const failureSubtitle = document.getElementById('failure-subtitle');
+  const retryBtn = document.getElementById('retry-btn');
+  const cartRestorationDiv = document.getElementById('cart-restoration');
+  const retryInfoDiv = document.getElementById('retry-info');
+  const suggestionsContainer = document.getElementById('suggestions-container');
+  const suggestionsList = document.getElementById('suggestions-list');
+
+  // Update based on failure type
+  switch (failureType) {
+    case 'cancelled':
+      failureIcon.className = 'bi bi-info-circle text-primary';
+      failureTitle.textContent = 'Payment Cancelled';
+      failureTitle.className = 'failure-title text-primary';
+      failureSubtitle.textContent = 'You cancelled the payment. Your cart items are safe and ready when you are.';
+      break;
+
+    case 'network_error':
+    case 'timeout':
+      failureIcon.className = 'bi bi-wifi-off text-warning';
+      failureTitle.textContent = 'Connection Issue';
+      failureTitle.className = 'failure-title text-warning';
+      failureSubtitle.textContent = 'We had trouble connecting to process your payment. Please check your connection and try again.';
+      break;
+
+    case 'insufficient_funds':
+      failureIcon.className = 'bi bi-credit-card text-danger';
+      failureTitle.textContent = 'Insufficient Funds';
+      failureTitle.className = 'failure-title text-danger';
+      failureSubtitle.textContent = 'Your payment method doesn\'t have sufficient funds for this transaction.';
+      break;
+
+    case 'card_declined':
+      failureIcon.className = 'bi bi-credit-card-2-front text-danger';
+      failureTitle.textContent = 'Card Declined';
+      failureTitle.className = 'failure-title text-danger';
+      failureSubtitle.textContent = 'Your card was declined. Please contact your bank or try a different payment method.';
+      break;
+
+    case 'technical_error':
+    default:
+      failureIcon.className = 'bi bi-exclamation-triangle text-warning';
+      failureTitle.textContent = 'Payment Failed';
+      failureTitle.className = 'failure-title text-danger';
+      failureSubtitle.textContent = 'We encountered a technical issue processing your payment. Please try again.';
+      break;
+  }
+
+  // Show/hide retry button
+  if (!canRetry) {
+    retryBtn.style.display = 'none';
+  }
+
+  // Show cart restoration status
+  if (cartRestored) {
+    cartRestorationDiv.classList.remove('d-none');
+  }
+
+  // Show retry information
+  if (canRetry) {
+    retryInfoDiv.classList.remove('d-none');
+    document.getElementById('retry-message').textContent = 'You can retry this payment.';
+  }
+
+  // Show suggested actions
+  if (suggestedActions && suggestedActions.length > 0) {
+    suggestionsContainer.classList.remove('d-none');
+    suggestionsList.innerHTML = '';
+    
+    suggestedActions.forEach(action => {
+      const li = document.createElement('li');
+      li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${action}`;
+      suggestionsList.appendChild(li);
+    });
+  }
 }
 
-.order-failure-section {
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  padding: 2rem;
+function showRetryCountdown(delay) {
+  const countdownContainer = document.getElementById('countdown-container');
+  const countdownTimer = document.getElementById('countdown-timer');
+  
+  if (!countdownContainer || !countdownTimer) return;
+  
+  let seconds = Math.floor(delay / 1000);
+  countdownContainer.classList.remove('d-none');
+  countdownTimer.textContent = seconds;
+  
+  const interval = setInterval(() => {
+    seconds--;
+    countdownTimer.textContent = seconds;
+    
+    if (seconds <= 0) {
+      clearInterval(interval);
+      countdownContainer.classList.add('d-none');
+      
+      // Auto-retry
+      validateCartAndRetry();
+    }
+  }, 1000);
 }
 
-.failure-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
+async function validateCartAndRetry() {
+  try {
+    console.log('🔄 Validating cart before retry...');
+    
+    // Check cart stock before allowing retry
+    const response = await fetch('/cart/validate-checkout-stock');
+    const validation = await response.json();
+    
+    if (!validation.success || validation.checkoutEligibleItems === 0) {
+      // Cart validation failed
+      Swal.fire({
+        icon: 'warning',
+        title: 'Cart Issues Detected',
+        html: 'Some items in your cart are no longer available. Please review your cart before trying again.',
+        confirmButtonText: 'Review Cart',
+        confirmButtonColor: '#007bff'
+      }).then(() => {
+        window.location.href = '/cart';
+      });
+      return;
+    }
+    
+    // Cart is valid, proceed to checkout
+    window.location.href = '/checkout';
+    
+  } catch (error) {
+    console.error('❌ Error validating cart for retry:', error);
+    
+    // Fallback to cart page
+    window.location.href = '/cart';
+  }
 }
+</script>
 
-.failure-subtitle {
-  font-size: 1.1rem;
-  color: #6c757d;
-  margin-bottom: 1rem;
-}
-
-.order-number {
-  background: #f8d7da;
-  color: #721c24;
-  padding: 0.75rem 1.5rem;
-  border-radius: 25px;
-  display: inline-block;
-  font-size: 1rem;
-}
-
-.action-buttons .btn {
-  margin: 0.5rem;
-  padding: 0.75rem 2rem;
-  border-radius: 25px;
-}
-</style>
+<!-- SweetAlert2 for enhanced notifications -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

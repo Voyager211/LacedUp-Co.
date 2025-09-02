@@ -16,7 +16,6 @@ const {
 } = require('../constants/orderEnums');
 
 
-
 const completePaymentOnDelivery = async (orderId) => {
   try {
     const order = await Order.findOne({ orderId: orderId });
@@ -144,7 +143,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
       notes: notes || `Status updated from ${oldStatus} to ${newStatus}`
     });
 
-    // ✅ ENHANCED: Update all items to match order status and their payment statuses
+    // Update all items to match order status and their payment statuses
     let itemsUpdated = 0;
     order.items.forEach((item, index) => {
       const oldItemStatus = item.status;
@@ -185,6 +184,49 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
     console.log(`📊 Final order payment status: ${order.paymentStatus}`);
 
     await order.save();
+
+    // ✅ NEW: COD Transaction Creation - Only when COD order is delivered
+    if (newStatus === ORDER_STATUS.DELIVERED && 
+        order.paymentMethod === 'cod' && 
+        order.paymentStatus === PAYMENT_STATUS.COMPLETED) {
+      
+      try {
+        console.log(`🔄 Creating COD completion transaction for delivered order ${orderId}`);
+        
+        const transactionService = require('./transactionService');
+        const codTransactionResult = await transactionService.createCODCompletionTransaction({
+          userId: order.user._id,
+          orderId: orderId,
+          amount: order.totalAmount,
+          itemDetails: order.items.map(item => ({
+            productId: item.productId,
+            size: item.size,
+            quantity: item.quantity,
+            price: item.price,
+            totalPrice: item.totalPrice
+          }))
+        });
+
+        if (codTransactionResult.success) {
+          console.log(`✅ COD completion transaction created: ${codTransactionResult.transactionId}`);
+          
+          // Add transaction reference to order status history
+          order.statusHistory.push({
+            status: newStatus,
+            updatedAt: new Date(),
+            notes: `COD payment completed. Transaction ID: ${codTransactionResult.transactionId}`
+          });
+          
+          await order.save(); // Save again with transaction reference
+        } else {
+          console.warn('⚠️ Failed to create COD completion transaction:', codTransactionResult.error);
+        }
+        
+      } catch (codTxError) {
+        console.error('❌ Error creating COD completion transaction:', codTxError.message);
+        // Don't throw - allow order status update to succeed even if transaction creation fails
+      }
+    }
 
     console.log(`✅ Order ${orderId} updated successfully:`);
     console.log(`   Order Status: ${oldStatus} → ${order.status}`);
@@ -355,7 +397,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
     }
 
     // PayPal refund logic 
-    if (originalPaymentMethod === 'upi' && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
+    if (originalPaymentMethod === 'paypal' && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       try {
         console.log(`🔄 Processing PayPal refund for cancelled order ${orderId}`);
         
@@ -378,12 +420,33 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
 
           const refund = await paypalClient.execute(request);
           console.log(`✅ PayPal refund successful for order ${orderId}: ${refund.result.id}`);
-          
-          newPaymentStatus = PAYMENT_STATUS.REFUNDED;
         }
         
       } catch (refundError) {
         console.error('❌ Error processing PayPal refund:', refundError);
+        // Don't throw - allow order cancellation to proceed
+      }
+    }
+
+    // ✅ FIXED: Razorpay refund logic - changed from 'razorpay' to 'upi'
+    if (originalPaymentMethod === 'upi' && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
+      try {
+        console.log(`🔄 Processing Razorpay refund for cancelled order ${orderId}`);
+        
+        const paymentId = order.razorpayPaymentId;
+        if (paymentId) {
+          const razorpayService = require('./razorpay');
+          const refundResult = await razorpayService.createRefund(paymentId, order.totalAmount);
+          
+          if (refundResult.success) {
+            console.log(`✅ Razorpay refund successful for order ${orderId}: ${refundResult.refund.id}`);
+          } else {
+            console.error('❌ Razorpay refund failed:', refundResult.error);
+          }
+        }
+        
+      } catch (refundError) {
+        console.error('❌ Error processing Razorpay refund:', refundError);
         // Don't throw - allow order cancellation to proceed
       }
     }
@@ -445,7 +508,8 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
 };
 
 
-// ✅ NEW: Add Payment Status Calculation Method
+
+// Add Payment Status Calculation Method
 const calculatePaymentStatus = (order) => {
   const itemPaymentStatuses = order.items.map(item => item.paymentStatus);
   
@@ -650,7 +714,7 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
     }
 
     // PayPal refund logic
-    if (order.paymentMethod === 'upi' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
+    if (order.paymentMethod === 'paypal' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
       try {
         console.log(`🔄 Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
         
@@ -681,6 +745,28 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
       } catch (refundError) {
         console.error('❌ Error processing PayPal item refund:', refundError);
         // Don't throw - allow item cancellation to proceed even if refund fails
+      }
+    }
+
+    // ✅ FIXED: Razorpay refund logic - changed from 'razorpay' to 'upi'
+    if (order.paymentMethod === 'upi' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
+      try {
+        console.log(`🔄 Processing Razorpay refund for cancelled item ${itemId} in order ${orderId}`);
+        
+        const paymentId = order.razorpayPaymentId;
+        if (paymentId) {
+          const razorpayService = require('./razorpay');
+          const refundResult = await razorpayService.createRefund(paymentId, item.totalPrice);
+          
+          if (refundResult.success) {
+            console.log(`✅ Razorpay partial refund successful for item ${itemId}: ${refundResult.refund.id}`);
+          } else {
+            console.error('❌ Razorpay item refund failed:', refundResult.error);
+          }
+        }
+        
+      } catch (refundError) {
+        console.error('❌ Error processing Razorpay item refund:', refundError);
       }
     }
 
@@ -717,6 +803,7 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
     throw error;
   }
 };
+
 
 
 /**
@@ -1808,6 +1895,85 @@ const adminItemReturnRequest = async (orderId, itemId, reason = 'Return requeste
 };
 
 
+//  Complete COD payment with unified transaction logging
+const completeCODPaymentWithTransaction = async (orderId, deliveredBy = 'admin') => {
+  try {
+    const order = await Order.findOne({ orderId: orderId }).populate('user');
+    if (!order) {
+      throw new Error('Order not found');
+    }
+
+    // Only process COD orders
+    if (order.paymentMethod !== 'cod') {
+      return { success: false, message: 'Not a COD order' };
+    }
+
+    // Only process if order is being delivered
+    if (order.status !== ORDER_STATUS.DELIVERED) {
+      return { success: false, message: 'Order not in delivered status' };
+    }
+
+    // ✅ Create COD completion transaction using enhanced transaction service
+    let codTransactionId = null;
+    try {
+      const transactionService = require('./transactionService');
+      const codTransactionResult = await transactionService.createCODCompletionTransaction({
+        userId: order.user._id,
+        orderId: orderId,
+        amount: order.totalAmount,
+        itemDetails: order.items.map(item => ({
+          productId: item.productId,
+          size: item.size,
+          quantity: item.quantity,
+          price: item.price,
+          totalPrice: item.totalPrice
+        }))
+      });
+
+      if (codTransactionResult.success) {
+        codTransactionId = codTransactionResult.transactionId;
+        console.log(`✅ COD completion transaction created: ${codTransactionId}`);
+      } else {
+        console.warn('⚠️ Failed to create COD completion transaction:', codTransactionResult.error);
+      }
+    } catch (codTxError) {
+      console.warn('⚠️ COD transaction creation failed:', codTxError.message);
+    }
+
+    // Update payment status to completed (cash collected)
+    order.paymentStatus = PAYMENT_STATUS.COMPLETED;
+    
+    // Update all items payment status
+    order.items.forEach(item => {
+      if (item.status === ORDER_STATUS.DELIVERED) {
+        item.paymentStatus = PAYMENT_STATUS.COMPLETED;
+      }
+    });
+
+    // Add to order status history
+    order.statusHistory.push({
+      status: order.status,
+      notes: `COD payment completed by ${deliveredBy}. ${codTransactionId ? `Transaction: ${codTransactionId}` : 'No unified transaction created'}`,
+      updatedAt: new Date()
+    });
+
+    await order.save();
+
+    console.log(`✅ Enhanced COD payment completed for order ${orderId}, Transaction: ${codTransactionId || 'N/A'}`);
+
+    return {
+      success: true,
+      message: 'COD payment marked as completed with enhanced transaction logging',
+      order: order,
+      transactionId: codTransactionId
+    };
+
+  } catch (error) {
+    console.error('❌ Error completing enhanced COD payment:', error);
+    throw error;
+  }
+};
+
 
 
 module.exports = {
@@ -1847,5 +2013,8 @@ module.exports = {
   rejectOrderReturn,
 
   getValidTransitions,
-  isValidStatusTransition
+  isValidStatusTransition,
+
+  completeCODPaymentWithTransaction,
+  completePaymentOnDelivery: completeCODPaymentWithTransaction
 };

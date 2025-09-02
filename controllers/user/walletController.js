@@ -361,3 +361,371 @@ exports.getTransactionsPaginated = async (req, res) => {
     });
   }
 };
+
+exports.getWalletReconciliation = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const walletService = require('../../services/walletService');
+    const reconciliation = await walletService.getWalletReconciliation(userId);
+
+    res.json(reconciliation);
+
+  } catch (error) {
+    console.error('❌ Error getting wallet reconciliation:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get wallet reconciliation'
+    });
+  }
+};
+
+// Topup wallet using upi/paypal
+exports.createWalletTopUpOrder = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const { amount, paymentMethod, description } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    // Validate amount
+    const numAmount = parseFloat(amount);
+    if (!numAmount || numAmount <= 0 || numAmount > 50000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount. Must be between ₹1 and ₹50,000'
+      });
+    }
+
+    // Validate payment method
+    if (!['upi', 'paypal'].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment method for wallet top-up'
+      });
+    }
+
+    // ✅ Create wallet top-up transaction using unified transaction service
+    const walletTransactionService = require('../../services/walletTransactionService');
+    const transactionService = require('../../services/transactionService');
+    
+    const transactionResult = await transactionService.createWalletTransaction({
+      userId: userId,
+      type: 'WALLET_TOPUP',
+      amount: numAmount,
+      description: description || `Wallet top-up via ${paymentMethod.toUpperCase()}`,
+      paymentMethod: paymentMethod,
+      metadata: {
+        topUpMethod: paymentMethod,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+        sessionId: req.sessionID
+      }
+    });
+
+    if (!transactionResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create wallet top-up transaction'
+      });
+    }
+
+    let gatewayResult;
+
+    // ✅ Create payment gateway order based on method
+    if (paymentMethod === 'upi') {
+      // Create Razorpay order for UPI payment
+      const razorpayService = require('../../services/razorpay');
+      gatewayResult = await razorpayService.createOrder(
+        numAmount,
+        'INR',
+        transactionResult.transactionId
+      );
+
+      if (!gatewayResult.success) {
+        await transactionService.cancelTransaction(transactionResult.transactionId, 'Razorpay order creation failed');
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to create UPI payment order'
+        });
+      }
+
+      // Update transaction with gateway details
+      await transactionService.updateTransactionGatewayDetails(transactionResult.transactionId, {
+        razorpayOrderId: gatewayResult.order.id,
+        gatewayResponse: gatewayResult
+      });
+
+      return res.json({
+        success: true,
+        transactionId: transactionResult.transactionId,
+        paymentMethod: 'upi',
+        razorpayOrderId: gatewayResult.order.id,
+        amount: gatewayResult.order.amount,
+        currency: gatewayResult.order.currency,
+        keyId: process.env.RAZORPAY_KEY_ID
+      });
+
+    } else if (paymentMethod === 'paypal') {
+      // Create PayPal order for wallet top-up
+      const { paypalClient } = require('../../services/paypal');
+      const paypal = require('@paypal/checkout-server-sdk');
+
+      const request = new paypal.orders.OrdersCreateRequest();
+      request.prefer('return=representation');
+      request.requestBody({
+        intent: 'CAPTURE',
+        purchase_units: [{
+          reference_id: transactionResult.transactionId,
+          amount: {
+            currency_code: 'USD',
+            value: (numAmount / 80).toFixed(2) // Convert INR to USD
+          },
+          description: `Wallet Top-up - ${description || 'Add money to wallet'}`
+        }],
+        application_context: {
+          brand_name: 'LacedUp Wallet',
+          landing_page: 'NO_PREFERENCE',
+          user_action: 'PAY_NOW',
+          return_url: `${req.protocol}://${req.get('host')}/profile/wallet?topup=success`,
+          cancel_url: `${req.protocol}://${req.get('host')}/profile/wallet?topup=cancelled`
+        }
+      });
+
+      const paypalOrder = await paypalClient.execute(request);
+
+      // Update transaction with gateway details
+      await transactionService.updateTransactionGatewayDetails(transactionResult.transactionId, {
+        paypalOrderId: paypalOrder.result.id,
+        gatewayResponse: paypalOrder.result
+      });
+
+      return res.json({
+        success: true,
+        transactionId: transactionResult.transactionId,
+        paymentMethod: 'paypal',
+        orderID: paypalOrder.result.id
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error creating wallet top-up order:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create wallet top-up order'
+    });
+  }
+};
+
+exports.verifyWalletTopUpPayment = async (req, res) => {
+  try {
+    const { razorpay_payment_id, razorpay_order_id, razorpay_signature, transactionId } = req.body;
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    if (!razorpay_payment_id || !razorpay_order_id || !razorpay_signature || !transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing payment verification data'
+      });
+    }
+
+    // Verify payment signature
+    const razorpayService = require('../../services/razorpay');
+    const isValidSignature = razorpayService.verifyPaymentSignature(
+      razorpay_payment_id,
+      razorpay_order_id,
+      razorpay_signature
+    );
+
+    if (!isValidSignature) {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(transactionId, 'Invalid payment signature', 'SIGNATURE_MISMATCH');
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment signature'
+      });
+    }
+
+    // Get payment details
+    const paymentResult = await razorpayService.getPaymentDetails(razorpay_payment_id);
+    
+    if (!paymentResult.success) {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(transactionId, 'Failed to fetch payment details', 'PAYMENT_FETCH_ERROR');
+      
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch payment details'
+      });
+    }
+
+    // Get transaction data
+    const transactionService = require('../../services/transactionService');
+    const transactionResult = await transactionService.getTransaction(transactionId);
+    
+    if (!transactionResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    const transaction = transactionResult.transaction;
+
+    // ✅ Credit wallet with verified payment
+    const walletTransactionService = require('../../services/walletTransactionService');
+    const creditResult = await walletTransactionService.creditWithTransaction(
+      userId,
+      transaction.amount,
+      transaction.description,
+      null, // no orderId for wallet top-up
+      null, // no returnId
+      {
+        paymentMethod: 'upi',
+        razorpayPaymentId: razorpay_payment_id,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+        sessionId: req.sessionID
+      }
+    );
+
+    if (!creditResult.success) {
+      await transactionService.failTransaction(transactionId, 'Wallet credit failed', 'WALLET_CREDIT_FAILED');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to credit wallet'
+      });
+    }
+
+    // Complete unified transaction
+    await transactionService.completeTransaction(transactionId, 'WALLET_TOPUP', {
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      walletTransactionId: creditResult.walletTransactionId
+    });
+
+    console.log(`✅ Wallet top-up successful: ₹${transaction.amount} via UPI for user ${userId}`);
+
+    res.json({
+      success: true,
+      message: 'Wallet top-up successful',
+      newBalance: creditResult.newBalance,
+      amountAdded: transaction.amount,
+      transactionId: creditResult.transactionId
+    });
+
+  } catch (error) {
+    console.error('❌ Error verifying wallet top-up payment:', error);
+    
+    if (req.body.transactionId) {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(req.body.transactionId, 'Payment verification failed', 'VERIFICATION_ERROR');
+    }
+    
+    res.status(500).json({
+      success: false,
+      message: 'Failed to verify wallet top-up payment'
+    });
+  }
+};
+
+// Capture wallet top-up payment (PayPal)
+exports.captureWalletTopUpPayment = async (req, res) => {
+  try {
+    const { paypalOrderId, transactionId } = req.body;
+    const userId = req.user ? req.user._id : req.session.userId;
+
+    // Capture PayPal payment
+    const { paypalClient } = require('../../services/paypal');
+    const paypal = require('@paypal/checkout-server-sdk');
+    
+    const request = new paypal.orders.OrdersCaptureRequest(paypalOrderId);
+    request.requestBody({});
+
+    const capture = await paypalClient.execute(request);
+    
+    if (capture.result.status !== 'COMPLETED') {
+      const transactionService = require('../../services/transactionService');
+      await transactionService.failTransaction(transactionId, 'PayPal payment capture failed', 'PAYPAL_CAPTURE_FAILED');
+      
+      return res.status(400).json({
+        success: false,
+        message: 'PayPal payment capture failed'
+      });
+    }
+
+    // Get transaction data
+    const transactionService = require('../../services/transactionService');
+    const transactionResult = await transactionService.getTransaction(transactionId);
+    
+    if (!transactionResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'Transaction not found'
+      });
+    }
+
+    const transaction = transactionResult.transaction;
+
+    // Credit wallet with verified PayPal payment
+    const walletTransactionService = require('../../services/walletTransactionService');
+    const creditResult = await walletTransactionService.creditWithTransaction(
+      userId,
+      transaction.amount,
+      transaction.description,
+      null, // no orderId for wallet top-up
+      null, // no returnId
+      {
+        paymentMethod: 'paypal',
+        paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id,
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+        sessionId: req.sessionID
+      }
+    );
+
+    if (!creditResult.success) {
+      await transactionService.failTransaction(transactionId, 'Wallet credit failed', 'WALLET_CREDIT_FAILED');
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to credit wallet'
+      });
+    }
+
+    // Complete unified transaction
+    await transactionService.completeTransaction(transactionId, 'WALLET_TOPUP', {
+      paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id,
+      walletTransactionId: creditResult.walletTransactionId
+    });
+
+    console.log(`✅ Wallet top-up successful: ₹${transaction.amount} via PayPal for user ${userId}`);
+
+    res.json({
+      success: true,
+      message: 'Wallet top-up successful',
+      newBalance: creditResult.newBalance,
+      amountAdded: transaction.amount,
+      transactionId: creditResult.transactionId
+    });
+
+  } catch (error) {
+    console.error('❌ Error capturing wallet top-up payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to capture wallet top-up payment'
+    });
+  }
+};

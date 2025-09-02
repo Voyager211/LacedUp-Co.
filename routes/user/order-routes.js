@@ -29,6 +29,18 @@ router.post('/paypal/capture/:paypalOrderId', requireAuth, orderController.captu
 // Refund PayPal payment (used by cancel logic)
 router.post('/paypal/refund/:captureId', requireAuth, orderController.refundPayPalCapture);
 
+// ===== RAZORPAY PAYMENT ROUTES =====
+// Create Razorpay order
+router.post('/razorpay/create-order', requireAuth, orderController.createRazorpayOrder);
+
+// Verify Razorpay payment
+router.post('/razorpay/verify-payment', requireAuth, orderController.verifyRazorpayPayment);
+
+// Create Razorpay refund (used by cancel logic)
+router.post('/razorpay/refund/:paymentId', requireAuth, orderController.createRazorpayRefund);
+
+// Handle Payment failure
+router.post('/handle-payment-failure', requireAuth, orderController.handlePaymentFailure);
 
 // Create new order
 router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
