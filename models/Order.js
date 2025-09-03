@@ -105,6 +105,15 @@ const orderSchema = new mongoose.Schema({
       required: true
     }
   },
+  couponApplied: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Coupon',
+    default: null
+  },
+  couponDiscount: {
+    type: Number,
+    default: 0
+  },
   paymentMethod: {
     type: String,
     enum: getPaymentMethodsArray(),  // ✅ Using constants

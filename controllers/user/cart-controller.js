@@ -23,7 +23,6 @@ const calculateFinalPrice = async (product) => {
 // Helper function to calculate variant-specific final price
 const calculateVariantFinalPrice = (product, variant) => {
   try {
-    // Try to use product's calculateVariantFinalPrice method if it exists
     if (typeof product.calculateVariantFinalPrice === 'function') {
       return product.calculateVariantFinalPrice(variant);
     }

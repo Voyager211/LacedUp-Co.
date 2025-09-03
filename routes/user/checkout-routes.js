@@ -45,6 +45,10 @@ router.get('/validate-checkout-stock', requireAuthAPI, checkoutController.valida
 // Address API for checkout
 router.get('/api/addresses', requireAuthAPI, addressController.getAddresses);
 
+// Coupon management routes
+router.post('/apply-coupon', checkoutController.applyCoupon);
+router.post('/remove-coupon', checkoutController.removeCoupon);
+
 // ===== ORDER PLACEMENT =====
 router.post('/place-order', requireAuthAPI, checkoutController.placeOrderWithValidation);
 router.post('/create-transaction', requireAuthAPI, checkoutController.createTransactionForPayment);
@@ -60,9 +64,15 @@ router.post('/razorpay/verify-payment', requireAuthAPI, checkoutController.verif
 // ===== PAYMENT FAILURE HANDLING =====
 router.post('/handle-payment-failure', requireAuthAPI, checkoutController.handlePaymentFailure);
 
+// ===== PAYMENT RETRY ROUTES =====
+router.post('/retry-payment/:transactionId', requireAuthAPI, checkoutController.retryPayment);
+router.post('/retry-wallet-payment', requireAuthAPI, checkoutController.retryWalletPayment);
+
 // ===== ORDER RESULT PAGES =====
 router.get('/order-success/:orderId', requireAuth, checkoutController.loadOrderSuccess);
-router.get('/order-failure', requireAuth, checkoutController.loadOrderFailure);
-router.get('/order-failure/:orderId', requireAuth, checkoutController.loadOrderFailure);
+
+// ✅ ENHANCED: Updated order failure routes to handle both orderId and transactionId
+router.get('/order-failure', requireAuth, checkoutController.loadOrderFailure);  
+router.get('/order-failure/:transactionId', requireAuth, checkoutController.loadOrderFailure);
 
 module.exports = router;

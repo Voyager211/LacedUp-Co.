@@ -27,6 +27,7 @@ const adminBrandRoutes = require('./routes/admin/brand');
 const adminProductRoutes = require('./routes/admin/product');
 const adminOrderRoutes = require('./routes/admin/order');
 const adminReturnRoutes = require('./routes/admin/returns');
+const adminCouponRoutes = require('./routes/admin/coupon');
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
@@ -134,6 +135,7 @@ app.use('/admin/brands', adminBrandRoutes);
 app.use('/admin/products', adminProductRoutes);
 app.use('/admin/orders', adminOrderRoutes);
 app.use('/admin/returns', adminReturnRoutes);
+app.use('/admin/coupons', adminCouponRoutes);
 
 // Start server
 const PORT = process.env.PORT || 3000;

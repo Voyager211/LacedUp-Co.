@@ -416,25 +416,28 @@ let isProcessing = false;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
-  // ✅ SET UP: Pagination callbacks for the pagination partial
+  // Pagination callbacks
   window.fetchCallback = loadTransactions;
   window.paginationCallback = loadTransactions;
   
-  // Load first page of transactions
   loadTransactions(1);
   
-  // Setup filter
   const filterSelect = document.getElementById('transactionFilter');
   filterSelect.addEventListener('change', function() {
     currentFilter = this.value;
-    loadTransactions(1); // Reset to page 1 when filter changes
+    loadTransactions(1);
   });
 
-  // ✅ NEW: Load PayPal SDK for wallet top-up
-  loadPayPalSDK().catch(console.error);
+  // Load both PayPal AND Razorpay SDKs
+  Promise.all([
+    loadPayPalSDK().catch(console.error),
+    loadRazorpaySDK().catch(console.error)  // ✅ ADD THIS LINE
+  ]).then(() => {
+    console.log('✅ Payment SDKs loaded successfully');
+  });
 });
 
-// ✅ EXISTING: Transaction loading functionality
+// Transaction loading functionality
 async function loadTransactions(page = 1) {
   if (isLoading) return;
   
@@ -757,11 +760,17 @@ async function initiateWalletTopUp() {
   }
 }
 
-// ✅ NEW: UPI wallet top-up processing
+// UPI wallet top-up processing
 async function processUPIWalletTopUp(amount, description) {
   showLoading('Setting up UPI Payment', 'Please wait while we prepare your payment...');
   
   try {
+    // ✅ FIXED: Ensure Razorpay SDK is loaded
+    if (typeof Razorpay === 'undefined') {
+      console.log('⚠️ Razorpay SDK not loaded, attempting to load...');
+      await loadRazorpaySDK();
+    }
+
     // Create wallet top-up order
     const response = await fetch('/api/wallet/topup/create-order', {
       method: 'POST',
@@ -778,6 +787,11 @@ async function processUPIWalletTopUp(amount, description) {
 
     if (!data.success) {
       throw new Error(data.message || 'Failed to create payment order');
+    }
+
+    // ✅ FIXED: Final check before initializing Razorpay
+    if (typeof Razorpay === 'undefined') {
+      throw new Error('Failed to load Razorpay SDK. Please refresh the page and try again.');
     }
 
     // Initialize Razorpay checkout
@@ -813,10 +827,6 @@ async function processUPIWalletTopUp(amount, description) {
       }
     };
 
-    if (typeof Razorpay === 'undefined') {
-      throw new Error('Razorpay SDK not loaded. Please refresh the page and try again.');
-    }
-
     const razorpay = new Razorpay(options);
     razorpay.on('payment.failed', function(response) {
       console.error('❌ UPI wallet top-up payment failed:', response);
@@ -831,7 +841,7 @@ async function processUPIWalletTopUp(amount, description) {
   }
 }
 
-// ✅ NEW: PayPal wallet top-up processing
+// PayPal wallet top-up processing
 async function processPayPalWalletTopUp(amount, description) {
   showLoading('Setting up PayPal Payment', 'Please wait while we prepare your payment...');
   
@@ -870,6 +880,7 @@ async function verifyUPIWalletTopUp(paymentData, amount) {
   showLoading('Verifying Payment', 'Please wait while we verify your payment...');
   
   try {
+    // ✅ FIXED: Use correct endpoint name
     const response = await fetch('/api/wallet/topup/verify-razorpay', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -880,16 +891,9 @@ async function verifyUPIWalletTopUp(paymentData, amount) {
     Swal.close();
 
     if (data.success) {
-      // Update balance immediately
       updateBalance(data.newBalance);
-      
-      // Reload transactions to show new transaction
       await loadTransactions(1);
-
-      // Success message
       showAlert('success', 'Success!', `₹${amount.toLocaleString('en-IN')} added to wallet successfully`);
-      
-      // Close modal and reset form
       bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
       document.getElementById('addMoneyForm').reset();
     } else {
@@ -992,7 +996,7 @@ function renderPayPalButtonsInSwal(paypalOrderId, transactionId, amount) {
   }).render('#paypal-swal-container');
 }
 
-// ✅ NEW: Load PayPal SDK dynamically
+// Load PayPal SDK dynamically
 function loadPayPalSDK() {
   return new Promise((resolve, reject) => {
     if (window.paypal) {
@@ -1002,6 +1006,22 @@ function loadPayPalSDK() {
 
     const script = document.createElement('script');
     script.src = 'https://www.paypal.com/sdk/js?client-id=<%= process.env.PAYPAL_CLIENT_ID %>&currency=USD&intent=capture&disable-funding=credit,card';
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+// Load Razorpay SDK dynamically
+function loadRazorpaySDK() {
+  return new Promise((resolve, reject) => {
+    if (window.Razorpay) {
+      resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
     script.onload = resolve;
     script.onerror = reject;
     document.head.appendChild(script);

@@ -70,6 +70,17 @@ const verifyPaymentSignature = (paymentId, orderId, signature) => {
   }
 };
 
+
+/**
+ * Verify payment (wrapper function for easier usage)
+ * @param {Object} paymentData - Payment data object
+ * @returns {Boolean} - True if signature is valid
+ */
+const verifyPayment = (paymentData) => {
+  const { razorpay_payment_id, razorpay_order_id, razorpay_signature } = paymentData;
+  return verifyPaymentSignature(razorpay_payment_id, razorpay_order_id, razorpay_signature);
+};
+
 /**
  * Fetch payment details
  * @param {String} paymentId - Razorpay payment ID
@@ -151,6 +162,7 @@ module.exports = {
   razorpayClient,
   createOrder,
   verifyPaymentSignature,
+  verifyPayment,
   getPaymentDetails,
   createRefund,
   getOrderDetails

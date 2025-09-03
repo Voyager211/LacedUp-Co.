@@ -1,4 +1,3 @@
-// services/walletService.js
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
 const mongoose = require('mongoose');

@@ -2,6 +2,9 @@ const User = require('../../models/User');
 const crypto = require('crypto');
 const sendOtp = require('../../utils/sendOtp');
 const passport = require('passport');
+const { generateReferralCode } = require('../../utils/referralCodeGenerator');
+const Referral = require('../../models/Referral');
+const Wallet = require('../../models/Wallet');
 
 exports.getSignup = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
@@ -12,7 +15,7 @@ exports.getSignup = (req, res) => {
 };
 
 exports.postSignup = async (req, res) => {
-  const { name, email, phone, password, confirmPassword } = req.body;
+  const { name, email, phone, password, confirmPassword, referralCode } = req.body;
 
   try {
     if (!name || !email || !password || !confirmPassword) {
@@ -28,26 +31,45 @@ exports.postSignup = async (req, res) => {
       return res.status(409).json({ error: 'Email already in use.' });
     }
 
+    // Handle referral code validation BEFORE storing in session
+    let referrer = null;
+    if (referralCode) {
+      referrer = await User.findOne({ 
+        referralCode: referralCode.toUpperCase() 
+      });
+      
+      if (!referrer) {
+        return res.status(400).json({ 
+          error: 'Invalid referral code. Please check and try again.' 
+        });
+      }
+    }
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
     const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
-    // Store user data temporarily in session instead of creating user immediately
+    // Store user data temporarily in session with referral info
     req.session.pendingUser = {
       name,
       email,
       phone,
       password,
       otpHash,
-      otpExpiresAt
+      otpExpiresAt,
+      referralCode: referralCode ? referralCode.toUpperCase() : null,
+      referrerId: referrer ? referrer._id : null
     };
 
     // Create a temporary user object for sending email (without saving to DB)
     const tempUser = { name, email };
     await sendOtp(tempUser, otp);
 
-    return res.status(200).json({ success: true, redirect: `/verify-otp?email=${encodeURIComponent(email)}` });
+    return res.status(200).json({ 
+      success: true, 
+      redirect: `/verify-otp?email=${encodeURIComponent(email)}` 
+    });
 
   } catch (err) {
     console.error('Signup Error:', err);
@@ -66,6 +88,7 @@ exports.postSignup = async (req, res) => {
     }
   }
 };
+
 
 exports.getLogin = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
@@ -145,7 +168,7 @@ exports.postOtpVerification = async (req, res) => {
         return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
       }
 
-      // OTP is valid, now create the user in database
+      // Create the new user
       const newUser = new User({
         name: pendingUser.name,
         email: pendingUser.email,
@@ -153,7 +176,61 @@ exports.postOtpVerification = async (req, res) => {
         password: pendingUser.password
       });
 
+      // Generate unique referral code for new user
+      newUser.referralCode = await generateReferralCode(newUser._id);
+
+      // Set referral relationship if referrer exists
+      if (pendingUser.referrerId) {
+        newUser.referredBy = pendingUser.referrerId;
+      }
+
       await newUser.save();
+
+      // Process referral reward if there was a referrer
+      if (pendingUser.referrerId) {
+        try {
+          // Create referral record
+          const referral = new Referral({
+            referrer: pendingUser.referrerId,
+            referee: newUser._id,
+            referralCode: pendingUser.referralCode,
+            status: 'completed',
+            rewardGivenAt: new Date()
+          });
+          
+          // Add wallet credit to referrer
+          let referrerWallet = await Wallet.findOne({ user: pendingUser.referrerId });
+          if (!referrerWallet) {
+            referrerWallet = new Wallet({ 
+              user: pendingUser.referrerId, 
+              balance: 0,
+              transactions: []
+            });
+          }
+          
+          referrerWallet.balance += 100; // ₹100 referral reward
+          referrerWallet.transactions.push({
+            type: 'credit',
+            amount: 100,
+            description: `Referral reward for ${newUser.name}`,
+            date: new Date()
+          });
+          
+          await referrerWallet.save();
+          
+          // Update referrer's referral count
+          await User.findByIdAndUpdate(pendingUser.referrerId, {
+            $inc: { referralCount: 1 }
+          });
+          
+          await referral.save();
+          
+          console.log(`✅ Referral reward processed: ₹100 credited to referrer ${pendingUser.referrerId}`);
+        } catch (referralError) {
+          console.error('❌ Error processing referral reward:', referralError);
+          // Don't fail the registration if referral processing fails
+        }
+      }
 
       // Clear pending user data from session
       delete req.session.pendingUser;
@@ -200,6 +277,7 @@ exports.postOtpVerification = async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 };
+
 
 exports.resendOtp = async (req, res) => {
   const { email } = req.body;

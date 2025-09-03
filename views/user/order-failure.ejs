@@ -7,7 +7,6 @@
   margin: 0 auto;
   padding: 2rem 1rem;
 }
-
 .failure-card {
   background: white;
   border-radius: 16px;
@@ -15,32 +14,27 @@
   padding: 3rem 2rem;
   text-align: center;
 }
-
 .failure-icon {
   font-size: 4rem;
   margin-bottom: 1.5rem;
   animation: pulse 2s infinite;
 }
-
 @keyframes pulse {
   0% { opacity: 1; }
   50% { opacity: 0.7; }
   100% { opacity: 1; }
 }
-
 .failure-title {
   font-size: 2.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
   color: #dc3545;
 }
-
 .failure-subtitle {
   font-size: 1.2rem;
   color: #6c757d;
   margin-bottom: 2rem;
 }
-
 .failure-details {
   background: #f8f9fa;
   border-radius: 12px;
@@ -48,7 +42,6 @@
   margin: 2rem 0;
   text-align: left;
 }
-
 .failure-actions {
   display: flex;
   flex-wrap: wrap;
@@ -56,7 +49,6 @@
   justify-content: center;
   margin-top: 2rem;
 }
-
 .failure-actions .btn {
   padding: 0.75rem 2rem;
   border-radius: 25px;
@@ -64,7 +56,6 @@
   text-decoration: none;
   transition: all 0.3s ease;
 }
-
 .retry-info {
   background: #fff3cd;
   border: 1px solid #ffeaa7;
@@ -73,7 +64,6 @@
   margin: 1rem 0;
   color: #856404;
 }
-
 .cart-restoration {
   background: #d1ecf1;
   border: 1px solid #b8daff;
@@ -82,35 +72,57 @@
   margin: 1rem 0;
   color: #0c5460;
 }
-
 .suggestions-list {
   text-align: left;
   margin: 1rem 0;
 }
-
 .suggestions-list li {
   padding: 0.5rem 0;
   border-bottom: 1px solid #eee;
 }
-
 .suggestions-list li:last-child {
   border-bottom: none;
 }
-
 .countdown-timer {
   font-size: 1.1rem;
   font-weight: bold;
   color: #007bff;
 }
-
 @media (max-width: 768px) {
   .failure-actions {
     flex-direction: column;
   }
-  
   .failure-actions .btn {
     width: 100%;
   }
+}
+.retry-payment-btn {
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+  border: none;
+  color: white;
+  padding: 0.75rem 2rem;
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+.retry-payment-btn:hover {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+.retry-payment-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+.payment-method-info {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 1rem;
+  margin: 1rem 0;
+  border-radius: 8px;
 }
 </style>
 
@@ -126,10 +138,10 @@
       We encountered an issue processing your payment. Don't worry, no charges were made.
     </p>
 
-    <!-- Transaction Details -->
-    <% if (locals.orderId) { %>
+    <!-- ✅ FIXED: Transaction Details with transactionId -->
+    <% if (locals.transactionId) { %>
     <div class="failure-details">
-      <strong>Transaction ID:</strong> #<%= orderId %>
+      <strong>Transaction ID:</strong> #<%= transactionId %>
       <br>
       <strong>Time:</strong> <%= new Date().toLocaleString('en-IN') %>
     </div>
@@ -147,7 +159,7 @@
     <!-- Retry Information -->
     <div id="retry-info" class="retry-info d-none">
       <i class="bi bi-info-circle me-2"></i>
-      <span id="retry-message">You can retry this payment.</span>
+      <span id="retry-message">Click the retry button below to attempt payment again.</span>
       <div id="countdown-container" class="mt-2 d-none">
         <span>Retrying in: </span>
         <span class="countdown-timer" id="countdown-timer">5</span>
@@ -163,10 +175,14 @@
 
     <!-- Action Buttons -->
     <div class="failure-actions" id="action-buttons">
+      <button id="retry-payment-btn" class="retry-payment-btn d-none">
+        <i class="bi bi-arrow-clockwise me-2"></i>Retry Payment
+      </button>
+      
       <a href="/cart" class="btn btn-primary" id="cart-btn">
         <i class="bi bi-cart me-2"></i>Return to Cart
       </a>
-      <a href="/checkout" class="btn btn-outline-success" id="retry-btn">
+      <a href="/checkout" class="btn btn-outline-success" id="checkout-btn">
         <i class="bi bi-arrow-clockwise me-2"></i>Try Again
       </a>
       <a href="/shop" class="btn btn-outline-secondary">
@@ -189,59 +205,58 @@
   </div>
 </div>
 
-<!-- Enhanced JavaScript for Dynamic Failure Handling -->
+
+<!--  Load Razorpay SDK for UPI retries -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!--  Load PayPal SDK for PayPal retries -->
+<% if (locals.paypalClientId) { %>
+<script src="https://www.paypal.com/sdk/js?client-id=<%= paypalClientId %>&disable-funding=credit,card"></script>
+<% } %>
+
+<!-- SweetAlert2 for enhanced notifications -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!--  Enhanced JavaScript for Dynamic Failure Handling -->
 <script>
+let failureData = null;
+
 document.addEventListener('DOMContentLoaded', function() {
-  // Get failure details from URL parameters or localStorage
+  // Get failure details from URL parameters and sessionStorage
   const urlParams = new URLSearchParams(window.location.search);
-  const failureType = urlParams.get('type') || localStorage.getItem('failureType') || 'unknown';
-  const canRetry = urlParams.get('canRetry') === 'true' || localStorage.getItem('canRetry') === 'true';
-  const cartRestored = urlParams.get('cartRestored') === 'true' || localStorage.getItem('cartRestored') === 'true';
-  const retryDelay = parseInt(urlParams.get('retryDelay') || localStorage.getItem('retryDelay') || '0');
-  const suggestedActions = JSON.parse(urlParams.get('actions') || localStorage.getItem('suggestedActions') || '[]');
+  const sessionData = JSON.parse(sessionStorage.getItem('paymentFailureData') || '{}');
+  
+  failureData = {
+    transactionId: urlParams.get('transactionId') || sessionData.transactionId,
+    failureType: urlParams.get('type') || sessionData.failureType || 'unknown',
+    reason: urlParams.get('reason') || sessionData.reason,
+    canRetry: urlParams.get('canRetry') === 'true' || sessionData.canRetry === true,
+    cartRestored: urlParams.get('cartRestored') === 'true' || sessionData.cartRestored === true,
+    retryDelay: parseInt(urlParams.get('retryDelay') || sessionData.retryDelay || '0'),
+    suggestedActions: JSON.parse(urlParams.get('actions') || JSON.stringify(sessionData.suggestedActions || []))
+  };
 
-  console.log('🚨 Failure page loaded with:', {
-    failureType,
-    canRetry,
-    cartRestored,
-    retryDelay,
-    suggestedActions
-  });
+  console.log('🚨 Failure page loaded with:', failureData);
 
-  // Clear localStorage to prevent stale data
-  ['failureType', 'canRetry', 'cartRestored', 'retryDelay', 'suggestedActions'].forEach(key => {
-    localStorage.removeItem(key);
-  });
+  // Clear sessionStorage to prevent stale data
+  sessionStorage.removeItem('paymentFailureData');
 
-  // ✅ Update UI based on failure type
-  updateFailureUI(failureType, canRetry, cartRestored, suggestedActions);
+  // Update UI based on failure type
+  updateFailureUI(failureData);
 
-  // ✅ Handle auto-retry with countdown
-  if (canRetry && retryDelay > 0) {
-    showRetryCountdown(retryDelay);
-  }
 
-  // ✅ Add retry button functionality
-  const retryBtn = document.getElementById('retry-btn');
-  if (retryBtn && canRetry) {
-    retryBtn.addEventListener('click', function(e) {
-      e.preventDefault();
-      
-      // Show loading state
-      this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Preparing...';
-      this.disabled = true;
-      
-      // Validate cart before retry
-      validateCartAndRetry();
-    });
-  }
+  // Add retry button functionality
+  setupRetryButton();
 });
 
-function updateFailureUI(failureType, canRetry, cartRestored, suggestedActions) {
+function updateFailureUI(data) {
+  const { failureType, canRetry, cartRestored, suggestedActions, transactionId } = data;
+  
   const failureIcon = document.getElementById('failure-icon');
   const failureTitle = document.getElementById('failure-title');
   const failureSubtitle = document.getElementById('failure-subtitle');
-  const retryBtn = document.getElementById('retry-btn');
+  const retryBtn = document.getElementById('retry-payment-btn'); 
+  const checkoutBtn = document.getElementById('checkout-btn');
   const cartRestorationDiv = document.getElementById('cart-restoration');
   const retryInfoDiv = document.getElementById('retry-info');
   const suggestionsContainer = document.getElementById('suggestions-container');
@@ -287,8 +302,11 @@ function updateFailureUI(failureType, canRetry, cartRestored, suggestedActions) 
       break;
   }
 
-  // Show/hide retry button
-  if (!canRetry) {
+  // Show/hide retry button based on capability
+  if (canRetry && transactionId) {
+    retryBtn.classList.remove('d-none');
+    if (checkoutBtn) checkoutBtn.style.display = 'none';
+  } else {
     retryBtn.style.display = 'none';
   }
 
@@ -300,7 +318,7 @@ function updateFailureUI(failureType, canRetry, cartRestored, suggestedActions) 
   // Show retry information
   if (canRetry) {
     retryInfoDiv.classList.remove('d-none');
-    document.getElementById('retry-message').textContent = 'You can retry this payment.';
+    document.getElementById('retry-message').textContent = 'Click the retry button below to attempt payment again.'; 
   }
 
   // Show suggested actions
@@ -316,63 +334,282 @@ function updateFailureUI(failureType, canRetry, cartRestored, suggestedActions) 
   }
 }
 
-function showRetryCountdown(delay) {
-  const countdownContainer = document.getElementById('countdown-container');
-  const countdownTimer = document.getElementById('countdown-timer');
-  
-  if (!countdownContainer || !countdownTimer) return;
-  
-  let seconds = Math.floor(delay / 1000);
-  countdownContainer.classList.remove('d-none');
-  countdownTimer.textContent = seconds;
-  
-  const interval = setInterval(() => {
-    seconds--;
-    countdownTimer.textContent = seconds;
+function setupRetryButton() {
+  const retryBtn = document.getElementById('retry-payment-btn'); 
+  if (!retryBtn || !failureData.canRetry || !failureData.transactionId) return;
+
+  retryBtn.addEventListener('click', async function() {
+    console.log('🔄 Retrying payment for transaction:', failureData.transactionId);
     
-    if (seconds <= 0) {
-      clearInterval(interval);
-      countdownContainer.classList.add('d-none');
+    // Show loading state
+    this.disabled = true;
+    const originalText = this.innerHTML;
+    this.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Preparing Retry...';
+    
+    try {
+      await retryPayment(failureData.transactionId);
+    } catch (error) {
+      console.error('❌ Error during payment retry:', error);
       
-      // Auto-retry
-      validateCartAndRetry();
+      // Restore button state
+      this.disabled = false;
+      this.innerHTML = originalText;
+      
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'error',
+          title: 'Retry Failed',
+          text: 'Unable to retry payment. Please return to checkout.',
+          confirmButtonColor: '#007bff'
+        });
+      }
     }
-  }, 1000);
+  });
 }
 
-async function validateCartAndRetry() {
+async function retryPayment(transactionId) {
   try {
-    console.log('🔄 Validating cart before retry...');
+    console.log('🔍 Making retry request for:', transactionId);
     
-    // Check cart stock before allowing retry
-    const response = await fetch('/cart/validate-checkout-stock');
-    const validation = await response.json();
+    const response = await fetch(`/checkout/retry-payment/${transactionId}`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      credentials: 'same-origin'
+    });
     
-    if (!validation.success || validation.checkoutEligibleItems === 0) {
-      // Cart validation failed
-      Swal.fire({
-        icon: 'warning',
-        title: 'Cart Issues Detected',
-        html: 'Some items in your cart are no longer available. Please review your cart before trying again.',
-        confirmButtonText: 'Review Cart',
-        confirmButtonColor: '#007bff'
-      }).then(() => {
-        window.location.href = '/cart';
-      });
-      return;
+    console.log('🔍 Retry response status:', response.status);
+    
+    if (!response.ok) {
+      if (response.status === 403) {
+        throw new Error('Authentication failed. Please refresh the page and try again.');
+      }
+      throw new Error(`Request failed with status ${response.status}`);
     }
     
-    // Cart is valid, proceed to checkout
-    window.location.href = '/checkout';
+    const data = await response.json();
+    console.log('🔍 Retry response data:', data);
+    
+    if (!data.success) {
+      throw new Error(data.message || 'Retry initiation failed');
+    }
+    
+    //Handle different payment methods for retry
+    switch (data.paymentMethod) {
+      case 'upi':
+        await retryRazorpayPayment(data);
+        break;
+      case 'paypal':
+        await retryPayPalPayment(data);
+        break;
+      case 'wallet':
+        await retryWalletPayment(data);
+        break;
+      default:
+        window.location.href = '/checkout';
+        break;
+    }
     
   } catch (error) {
-    console.error('❌ Error validating cart for retry:', error);
-    
-    // Fallback to cart page
-    window.location.href = '/cart';
+    console.error('❌ Error in retryPayment:', error);
+    throw error;
   }
 }
-</script>
 
-<!-- SweetAlert2 for enhanced notifications -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+async function retryRazorpayPayment(data) {
+  console.log('🔄 Opening Razorpay with data:', data);
+  
+  const options = {
+    key: data.keyId,
+    amount: data.amount,
+    currency: data.currency || 'INR',
+    name: 'LacedUp',
+    description: `Retry Transaction ${data.transactionId}`,
+    order_id: data.razorpayOrderId,
+    handler: function(response) {
+      console.log('✅ Razorpay retry payment successful:', response);
+      
+      fetch('/checkout/razorpay/verify-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_signature: response.razorpay_signature,
+          transactionId: data.transactionId
+        })
+      })
+      .then(r => r.json())
+      .then(result => {
+        if (result.success) {
+          window.location.href = result.redirectUrl;
+        } else {
+          throw new Error(result.message || 'Payment verification failed');
+        }
+      })
+      .catch(err => {
+        console.error('Payment verification error:', err);
+        window.location.reload();
+      });
+    },
+    modal: {
+      ondismiss: function() {
+        console.log('⚠️ Razorpay retry payment dismissed');
+        window.location.reload();
+      }
+    }
+  };
+
+  if (typeof Razorpay === 'undefined') {
+    throw new Error('Razorpay SDK not loaded');
+  }
+
+  const razorpay = new Razorpay(options);
+  razorpay.on('payment.failed', function(response) {
+    console.error('❌ Razorpay retry payment failed:', response);
+    window.location.reload();
+  });
+
+  razorpay.open();
+}
+
+async function retryPayPalPayment(data) {
+  console.log('🔄 Initiating PayPal retry with data:', data);
+  
+  // Check if PayPal SDK is loaded
+  if (typeof paypal === 'undefined') {
+    throw new Error('PayPal SDK not loaded');
+  }
+  
+  try {
+    // Create PayPal buttons for retry
+    const retryContainer = document.createElement('div');
+    retryContainer.id = 'paypal-retry-container';
+    retryContainer.style.position = 'fixed';
+    retryContainer.style.top = '-1000px'; // Hide it off-screen
+    retryContainer.style.left = '-1000px';
+    document.body.appendChild(retryContainer);
+    
+    // Initialize PayPal buttons for retry
+    await paypal.Buttons({
+      createOrder: async () => {
+        console.log('🔄 Creating PayPal retry order...');
+        
+        // Call your backend to create a new PayPal order for retry
+        const response = await fetch('/checkout/paypal/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ 
+            transactionId: data.transactionId,
+            isRetry: true 
+          })
+        });
+        
+        const orderData = await response.json();
+        
+        if (!orderData.success) {
+          throw new Error(orderData.message || 'Failed to create PayPal retry order');
+        }
+        
+        return orderData.orderID;
+      },
+      
+      onApprove: async (approvalData) => {
+        console.log('✅ PayPal retry approved:', approvalData);
+        
+        // Capture the retry payment
+        const response = await fetch(`/checkout/paypal/capture/${approvalData.orderID}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ 
+            transactionId: data.transactionId,
+            isRetry: true 
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          window.location.href = result.redirectUrl;
+        } else {
+          throw new Error(result.message || 'PayPal retry capture failed');
+        }
+      },
+      
+      onError: (err) => {
+        console.error('❌ PayPal retry error:', err);
+        window.location.reload(); // Reload failure page
+      },
+      
+      onCancel: () => {
+        console.log('⚠️ PayPal retry cancelled');
+        window.location.reload(); // Reload failure page
+      }
+      
+    }).render('#' + retryContainer.id);
+    
+    // ✅ IMPROVED: Better button finding and clicking logic
+    setTimeout(() => {
+      // Try multiple strategies to find and click PayPal button
+      const strategies = [
+        () => retryContainer.querySelector('[data-funding-source="paypal"]'),
+        () => retryContainer.querySelector('div[role="button"]'),
+        () => retryContainer.querySelector('button'),
+        () => retryContainer.querySelector('[tabindex="0"]'),
+        () => retryContainer.querySelector('div[data-testid*="paypal"]')
+      ];
+      
+      let clicked = false;
+      for (const strategy of strategies) {
+        const element = strategy();
+        if (element && !clicked) {
+          console.log('🔄 Found PayPal button, clicking...');
+          element.click();
+          clicked = true;
+          break;
+        }
+      }
+      
+      if (!clicked) {
+        throw new Error('No PayPal button found to click');
+      }
+    }, 1000); // Give it time to render
+    
+  } catch (error) {
+    console.error('❌ PayPal retry setup failed:', error);
+    
+    // Clean up the container
+    const container = document.getElementById('paypal-retry-container');
+    if (container) {
+      container.remove();
+    }
+    
+    // Fallback to redirect
+    window.location.href = `/checkout?retry=paypal&transactionId=${data.transactionId}`;
+  }
+}
+
+
+async function retryWalletPayment(data) {
+  const response = await fetch('/checkout/retry-wallet-payment', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ transactionId: data.transactionId })
+  });
+  
+  const result = await response.json();
+  
+  if (result.success) {
+    window.location.href = result.redirectUrl;
+  } else {
+    throw new Error(result.message || 'Wallet payment retry failed');
+  }
+}
+
+</script>

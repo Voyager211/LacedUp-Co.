@@ -20,7 +20,8 @@ const transactionSchema = new mongoose.Schema({
     enum: [
       'ORDER_PAYMENT',    // Payment for placing an order
       'WALLET_CREDIT',    // Adding money to wallet
-      'WALLET_DEBIT',     // Wallet payment for order
+      'WALLET_DEBIT',
+      'WALLET_TOPUP',     // Wallet payment for order
       'REFUND',          // Refund to wallet/original source
       'CANCELLATION_REFUND' // Refund due to order cancellation
     ],

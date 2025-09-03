@@ -7,7 +7,26 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phone: { type: String },
   password: { type: String, required: true },
-  profilePhoto: { type: String }, // Profile photo filename
+  profilePhoto: { type: String },
+
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true // Allows null values while maintaining uniqueness
+  },
+  referredBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null
+  },
+  referralRewardClaimed: {
+      type: Boolean,
+      default: false
+  },
+  referralCount: {
+      type: Number,
+      default: 0
+  },
 
   // Auth
   role: { type: String, default: 'user', enum: ['user', 'admin'] },

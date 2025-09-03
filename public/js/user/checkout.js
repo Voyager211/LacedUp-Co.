@@ -93,11 +93,28 @@ async function handlePaymentFailure(transactionId, reason, failureType = 'paymen
     Swal.close();
 
     if (data.success) {
-      // Store failure details for failure page
-      storeFailureDetails(data);
+      // ✅ NEW: Redirect to failure page instead of showing Swal
+      const failureUrl = new URL('/checkout/order-failure', window.location.origin);
+      failureUrl.searchParams.set('transactionId', transactionId);
+      failureUrl.searchParams.set('type', failureType);
+      failureUrl.searchParams.set('reason', encodeURIComponent(reason));
+      failureUrl.searchParams.set('canRetry', data.canRetry);
+      failureUrl.searchParams.set('cartRestored', data.cartRestored);
+      failureUrl.searchParams.set('retryDelay', data.retryDelay || 0);
+      failureUrl.searchParams.set('actions', JSON.stringify(data.suggestedActions || []));
       
-      // Show appropriate failure handling based on type
-      await showSmartFailureDialog(data, reason, failureType);
+      // Store additional data in sessionStorage for the failure page
+      sessionStorage.setItem('paymentFailureData', JSON.stringify({
+        transactionId,
+        reason,
+        failureType,
+        canRetry: data.canRetry,
+        cartRestored: data.cartRestored,
+        suggestedActions: data.suggestedActions,
+        retryDelay: data.retryDelay
+      }));
+      
+      window.location.href = failureUrl.toString();
       
     } else {
       // Fallback error handling
@@ -337,7 +354,7 @@ function showFallbackFailureDialog(reason) {
 async function handlePaymentCancellation(transactionId, reason = 'User cancelled payment') {
   console.log(`⚠️ Enhanced payment cancellation handler:`, { transactionId, reason });
   
-  // Process as a special type of failure
+  //  Handle cancellation as redirect instead of Swal
   await handlePaymentFailure(transactionId, reason, 'cancelled');
 }
 
@@ -1276,6 +1293,7 @@ function showAddressError(message) {
     }
 }
 
+
 /* ========= DOM READY & INITIALIZATION ========= */
 document.addEventListener('DOMContentLoaded', () => {
   console.log('🛒 Checkout DOM ready');
@@ -1336,3 +1354,118 @@ window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
 
 console.log('✅ Global functions exposed for onclick handlers');
+
+/* ========= COUPON FUNCTIONALITY ========= */
+document.addEventListener('DOMContentLoaded', function() {
+  // Apply coupon functionality
+  const applyCouponBtn = document.getElementById('applyCouponBtn');
+  const removeCouponBtn = document.getElementById('removeCouponBtn');
+  
+  if (applyCouponBtn) {
+    applyCouponBtn.addEventListener('click', async function() {
+      const couponCode = document.getElementById('couponCode').value.trim();
+      
+      if (!couponCode) {
+        showAlert('Please enter a coupon code', 'error');
+        return;
+      }
+      
+      try {
+        this.disabled = true;
+        this.textContent = 'Applying...';
+        
+        const response = await fetch('/checkout/apply-coupon', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ couponCode })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Update UI with applied coupon
+          document.getElementById('coupon-name').textContent = data.discount.couponName;
+          document.getElementById('coupon-code').textContent = data.discount.couponCode;
+          document.getElementById('coupon-discount').textContent = data.discount.discountAmount;
+          document.getElementById('discount-amount').textContent = data.discount.discountAmount;
+          document.getElementById('final-total').textContent = data.discount.finalTotal;
+          
+          // Show applied coupon section
+          document.getElementById('coupon-form').style.display = 'none';
+          document.getElementById('applied-coupon').style.display = 'block';
+          document.getElementById('coupon-discount-row').style.display = 'flex';
+          
+          showAlert('Coupon applied successfully!', 'success');
+        } else {
+          showAlert(data.message, 'error');
+        }
+        
+      } catch (error) {
+        console.error('Error applying coupon:', error);
+        showAlert('Error applying coupon. Please try again.', 'error');
+      } finally {
+        this.disabled = false;
+        this.textContent = 'Apply Coupon';
+      }
+    });
+  }
+
+  // Remove coupon functionality
+  if (removeCouponBtn) {
+    removeCouponBtn.addEventListener('click', async function() {
+      try {
+        const response = await fetch('/checkout/remove-coupon', {
+          method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Reset UI
+          document.getElementById('couponCode').value = '';
+          document.getElementById('final-total').textContent = data.cartTotal;
+          
+          // Hide applied coupon section
+          document.getElementById('coupon-form').style.display = 'block';
+          document.getElementById('applied-coupon').style.display = 'none';
+          document.getElementById('coupon-discount-row').style.display = 'none';
+          
+          showAlert('Coupon removed successfully', 'info');
+        } else {
+          showAlert(data.message, 'error');
+        }
+        
+      } catch (error) {
+        console.error('Error removing coupon:', error);
+        showAlert('Error removing coupon. Please try again.', 'error');
+      }
+    });
+  }
+});
+
+function showAlert(message, type) {
+  // Implement your alert/notification system
+  const alertClass = type === 'success' ? 'alert-success' : 
+                    type === 'error' ? 'alert-danger' : 'alert-info';
+  
+  const alertDiv = document.createElement('div');
+  alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
+  alertDiv.innerHTML = `
+    ${message}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  `;
+  
+  const couponSection = document.querySelector('.section-card');
+  if (couponSection) {
+    couponSection.appendChild(alertDiv);
+    
+    // Auto remove after 3 seconds
+    setTimeout(() => {
+      if (alertDiv.parentNode) {
+        alertDiv.parentNode.removeChild(alertDiv);
+      }
+    }, 3000);
+  }
+}

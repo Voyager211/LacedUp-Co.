@@ -2,6 +2,7 @@ const Wallet = require('../../models/Wallet');
 const User = require('../../models/User');
 const mongoose = require('mongoose');
 const walletService = require('../../services/walletService'); 
+const transactionService = require('../../services/transactionService');
 
 
 /**
@@ -417,21 +418,20 @@ exports.createWalletTopUpOrder = async (req, res) => {
       });
     }
 
-    // ✅ Create wallet top-up transaction using unified transaction service
-    const walletTransactionService = require('../../services/walletTransactionService');
+    // ✅ FIXED: Use existing transactionService only
     const transactionService = require('../../services/transactionService');
     
     const transactionResult = await transactionService.createWalletTransaction({
       userId: userId,
       type: 'WALLET_TOPUP',
       amount: numAmount,
-      description: description || `Wallet top-up via ${paymentMethod.toUpperCase()}`,
       paymentMethod: paymentMethod,
+      description: description || `Wallet top-up via ${paymentMethod.toUpperCase()}`,
+      userAgent: req.get('User-Agent'),
+      ipAddress: req.ip,
+      sessionId: req.sessionID,
       metadata: {
-        topUpMethod: paymentMethod,
-        userAgent: req.headers['user-agent'],
-        ipAddress: req.ip,
-        sessionId: req.sessionID
+        topUpMethod: paymentMethod
       }
     });
 
@@ -444,18 +444,19 @@ exports.createWalletTopUpOrder = async (req, res) => {
 
     let gatewayResult;
 
-    // ✅ Create payment gateway order based on method
+    // Create payment gateway order based on method
     if (paymentMethod === 'upi') {
       // Create Razorpay order for UPI payment
       const razorpayService = require('../../services/razorpay');
       gatewayResult = await razorpayService.createOrder(
         numAmount,
         'INR',
-        transactionResult.transactionId
+        transactionResult.transactionId,
+        `Wallet Top-up ${transactionResult.transactionId}`
       );
 
       if (!gatewayResult.success) {
-        await transactionService.cancelTransaction(transactionResult.transactionId, 'Razorpay order creation failed');
+        await transactionService.updateTransactionStatus(transactionResult.transactionId, 'FAILED', 'Razorpay order creation failed');
         return res.status(500).json({
           success: false,
           message: 'Failed to create UPI payment order'
@@ -551,24 +552,11 @@ exports.verifyWalletTopUpPayment = async (req, res) => {
 
     if (!isValidSignature) {
       const transactionService = require('../../services/transactionService');
-      await transactionService.failTransaction(transactionId, 'Invalid payment signature', 'SIGNATURE_MISMATCH');
+      await transactionService.updateTransactionStatus(transactionId, 'FAILED', 'Invalid payment signature');
       
       return res.status(400).json({
         success: false,
         message: 'Invalid payment signature'
-      });
-    }
-
-    // Get payment details
-    const paymentResult = await razorpayService.getPaymentDetails(razorpay_payment_id);
-    
-    if (!paymentResult.success) {
-      const transactionService = require('../../services/transactionService');
-      await transactionService.failTransaction(transactionId, 'Failed to fetch payment details', 'PAYMENT_FETCH_ERROR');
-      
-      return res.status(500).json({
-        success: false,
-        message: 'Failed to fetch payment details'
       });
     }
 
@@ -585,36 +573,34 @@ exports.verifyWalletTopUpPayment = async (req, res) => {
 
     const transaction = transactionResult.transaction;
 
-    // ✅ Credit wallet with verified payment
-    const walletTransactionService = require('../../services/walletTransactionService');
-    const creditResult = await walletTransactionService.creditWithTransaction(
+    // ✅ FIXED: Credit wallet using walletService
+    const walletService = require('../../services/walletService');
+    const creditResult = await walletService.addCredit(
       userId,
       transaction.amount,
-      transaction.description,
+      transaction.description || `Wallet top-up via UPI - ${transactionId}`,
       null, // no orderId for wallet top-up
       null, // no returnId
       {
         paymentMethod: 'upi',
         razorpayPaymentId: razorpay_payment_id,
-        userAgent: req.headers['user-agent'],
-        ipAddress: req.ip,
-        sessionId: req.sessionID
+        transactionId: transactionId
       }
     );
 
     if (!creditResult.success) {
-      await transactionService.failTransaction(transactionId, 'Wallet credit failed', 'WALLET_CREDIT_FAILED');
+      await transactionService.updateTransactionStatus(transactionId, 'FAILED', 'Wallet credit failed');
       return res.status(500).json({
         success: false,
         message: 'Failed to credit wallet'
       });
     }
 
-    // Complete unified transaction
+    // Complete transaction
     await transactionService.completeTransaction(transactionId, 'WALLET_TOPUP', {
       razorpayPaymentId: razorpay_payment_id,
       razorpaySignature: razorpay_signature,
-      walletTransactionId: creditResult.walletTransactionId
+      walletTransactionId: creditResult.transactionId
     });
 
     console.log(`✅ Wallet top-up successful: ₹${transaction.amount} via UPI for user ${userId}`);
@@ -632,7 +618,7 @@ exports.verifyWalletTopUpPayment = async (req, res) => {
     
     if (req.body.transactionId) {
       const transactionService = require('../../services/transactionService');
-      await transactionService.failTransaction(req.body.transactionId, 'Payment verification failed', 'VERIFICATION_ERROR');
+      await transactionService.updateTransactionStatus(req.body.transactionId, 'FAILED', 'Payment verification failed');
     }
     
     res.status(500).json({
@@ -641,6 +627,7 @@ exports.verifyWalletTopUpPayment = async (req, res) => {
     });
   }
 };
+
 
 // Capture wallet top-up payment (PayPal)
 exports.captureWalletTopUpPayment = async (req, res) => {
@@ -659,7 +646,7 @@ exports.captureWalletTopUpPayment = async (req, res) => {
     
     if (capture.result.status !== 'COMPLETED') {
       const transactionService = require('../../services/transactionService');
-      await transactionService.failTransaction(transactionId, 'PayPal payment capture failed', 'PAYPAL_CAPTURE_FAILED');
+      await transactionService.updateTransactionStatus(transactionId, 'FAILED', 'PayPal payment capture failed');
       
       return res.status(400).json({
         success: false,
@@ -680,35 +667,33 @@ exports.captureWalletTopUpPayment = async (req, res) => {
 
     const transaction = transactionResult.transaction;
 
-    // Credit wallet with verified PayPal payment
-    const walletTransactionService = require('../../services/walletTransactionService');
-    const creditResult = await walletTransactionService.creditWithTransaction(
+    // ✅ FIXED: Credit wallet using walletService
+    const walletService = require('../../services/walletService');
+    const creditResult = await walletService.addCredit(
       userId,
       transaction.amount,
-      transaction.description,
+      transaction.description || `Wallet top-up via PayPal - ${transactionId}`,
       null, // no orderId for wallet top-up
       null, // no returnId
       {
         paymentMethod: 'paypal',
         paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id,
-        userAgent: req.headers['user-agent'],
-        ipAddress: req.ip,
-        sessionId: req.sessionID
+        transactionId: transactionId
       }
     );
 
     if (!creditResult.success) {
-      await transactionService.failTransaction(transactionId, 'Wallet credit failed', 'WALLET_CREDIT_FAILED');
+      await transactionService.updateTransactionStatus(transactionId, 'FAILED', 'Wallet credit failed');
       return res.status(500).json({
         success: false,
         message: 'Failed to credit wallet'
       });
     }
 
-    // Complete unified transaction
+    // Complete transaction
     await transactionService.completeTransaction(transactionId, 'WALLET_TOPUP', {
       paypalCaptureId: capture.result.purchase_units[0].payments.captures[0].id,
-      walletTransactionId: creditResult.walletTransactionId
+      walletTransactionId: creditResult.transactionId
     });
 
     console.log(`✅ Wallet top-up successful: ₹${transaction.amount} via PayPal for user ${userId}`);

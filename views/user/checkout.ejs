@@ -77,7 +77,44 @@
                         </div>
                     <% } %>
                 </div>
-            </div> 
+            </div>
+            
+            <!-- Coupon Section - Add this after delivery address section -->
+            <div class="section-card">
+            <div class="section-title">
+                <div>
+                <i class="bi bi-tag"></i>
+                Apply Coupon
+                </div>
+            </div>
+
+            <div id="coupon-form" style="<%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? 'display: none;' : '' %>">
+                <div class="input-group mb-3">
+                <input type="text" id="couponCode" class="form-control" 
+                        placeholder="Enter coupon code" maxlength="20" 
+                        style="text-transform: uppercase;">
+                <button type="button" id="applyCouponBtn" class="btn btn-primary">
+                    Apply Coupon
+                </button>
+                </div>
+            </div>
+            
+            <div id="applied-coupon" style="<%= typeof appliedCoupon === 'undefined' || !appliedCoupon ? 'display: none;' : '' %>">
+                <div class="alert alert-success d-flex justify-content-between align-items-center">
+                    <div>
+                        <strong id="coupon-name"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.name : '' %></strong>
+                        <br>
+                        <small>Code: <span id="coupon-code"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.code : '' %></span></small>
+                        <br>
+                        <small>Discount: ₹<span id="coupon-discount"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.discountAmount : '0' %></span></small>
+                    </div>
+                    <button type="button" id="removeCouponBtn" class="btn btn-sm btn-outline-danger">
+                        Remove
+                    </button>
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Payment Method Section -->
             <div class="section-card">
@@ -275,29 +312,40 @@
                     <% } %>
 
                     <!-- Price Breakdown -->
-                    <div class="price-breakdown">
+                        <div class="price-breakdown">
                         <div class="summary-row">
                             <span class="price-label">Subtotal (<%= totalItemCount || 0 %> items)</span>
                             <span class="price-value">₹<%= subtotal || 0 %></span>
                         </div>
+                        
                         <% if (totalDiscount && totalDiscount > 0) { %>
                             <div class="summary-row discount-row">
-                                <span class="price-label">
-                                    <i class="bi bi-tag me-1"></i>Discount
-                                </span>
-                                <span class="price-value text-success">-₹<%= totalDiscount %></span>
+                            <span class="price-label">
+                                <i class="bi bi-tag me-1"></i>Product Discount
+                            </span>
+                            <span class="price-value text-success">-₹<%= totalDiscount %></span>
                             </div>
                         <% } %>
+                        
+                        <!-- Coupon Discount Row -->
+                        <div id="coupon-discount-row" class="summary-row discount-row" 
+                            style="<%= typeof appliedCoupon === 'undefined' || !appliedCoupon ? 'display: none;' : '' %>">
+                            <span class="price-label">
+                            <i class="bi bi-percent me-1"></i>Coupon Discount
+                            </span>
+                            <span class="price-value text-success">-₹<span id="discount-amount"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.discountAmount : '0' %></span></span>
+                        </div>
+                        
                         <div class="summary-row">
                             <span class="price-label">
-                                <i class="bi bi-truck me-1"></i>Shipping
+                            <i class="bi bi-truck me-1"></i>Shipping
                             </span>
                             <span class="price-value">
-                                <% if (shipping && shipping > 0) { %>
-                                    ₹<%= shipping %>
-                                <% } else { %>
-                                    <span class="text-success fw-bold">FREE</span>
-                                <% } %>
+                            <% if (shipping && shipping > 0) { %>
+                                ₹<%= shipping %>
+                            <% } else { %>
+                                <span class="text-success fw-bold">FREE</span>
+                            <% } %>
                             </span>
                         </div>
 
@@ -305,9 +353,9 @@
 
                         <div class="summary-row total">
                             <span class="price-label">Total</span>
-                            <span class="price-value">₹<%= total || 0 %></span>
+                            <span class="price-value">₹<span id="final-total"><%= total || 0 %></span></span>
                         </div>
-                    </div>
+                        </div>
 
                     <!-- Place Order Button -->
                     <button class="btn-continue" onclick="proceedToPayment()">
