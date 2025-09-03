@@ -521,7 +521,7 @@ async function proceedToCheckout() {
     }
 
     // Additional checkout-specific validation
-    const checkoutValidation = await fetch('/cart/validate-checkout-stock');
+    const checkoutValidation = await fetch('/checkout/validate-checkout-stock');
     const checkoutData = await checkoutValidation.json();
     
     if (!checkoutData.success || checkoutData.checkoutEligibleItems === 0) {

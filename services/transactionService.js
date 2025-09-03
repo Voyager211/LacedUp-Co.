@@ -320,8 +320,8 @@ const createWalletTransaction = async (data) => {
     // Generate transaction ID
     const transactionId = `TX${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Create transaction record
-    const transaction = new Transaction({
+    // ✅ FIXED: Create transaction without orderData for wallet transactions
+    const transactionData = {
       transactionId: transactionId,
       userId: userId,
       type: type, // 'WALLET_CREDIT', 'WALLET_DEBIT', 'WALLET_TOPUP'
@@ -330,8 +330,6 @@ const createWalletTransaction = async (data) => {
       currency: 'INR',
       status: 'PENDING',
       description: description,
-      orderId: orderId,
-      returnId: returnId,
       metadata: {
         walletOperation: true,
         description: description,
@@ -340,8 +338,20 @@ const createWalletTransaction = async (data) => {
         sessionId: data.sessionId,
         ...metadata
       }
-    });
+    };
 
+    // ✅ FIXED: Only add orderId if it exists (for order-related wallet transactions)
+    if (orderId) {
+      transactionData.orderId = orderId;
+    }
+
+    // ✅ FIXED: Only add returnId if it exists (for refund-related wallet transactions)
+    if (returnId) {
+      transactionData.returnId = returnId;
+    }
+
+    // ✅ FIXED: Don't include orderData for wallet transactions
+    const transaction = new Transaction(transactionData);
     await transaction.save();
 
     console.log(`✅ Wallet transaction created: ${transactionId}, Type: ${type}, Amount: ₹${amount}`);
@@ -507,6 +517,74 @@ const cleanupExpiredTransactions = async () => {
   }
 };
 
+/**
+ * Update transaction status
+ * @param {String} transactionId - Transaction ID
+ * @param {String} status - New status
+ * @param {String} notes - Status notes
+ * @returns {Object} - Update result
+ */
+const updateTransactionStatus = async (transactionId, status, notes = '') => {
+  try {
+    const transaction = await Transaction.findByTransactionId(transactionId);
+    
+    if (!transaction) {
+      return {
+        success: false,
+        message: 'Transaction not found'
+      };
+    }
+    
+    await transaction.updateStatus(status, notes);
+    
+    return {
+      success: true,
+      transaction: transaction
+    };
+  } catch (error) {
+    console.error('Error updating transaction status:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+/**
+ * Get transaction by gateway order ID  
+ * @param {String} gatewayOrderId - PayPal/Razorpay order ID
+ * @returns {Object} - Transaction data
+ */
+const getTransactionByGatewayOrderId = async (gatewayOrderId) => {
+  try {
+    const transaction = await Transaction.findOne({
+      $or: [
+        { 'gatewayDetails.paypalOrderId': gatewayOrderId },
+        { 'gatewayDetails.razorpayOrderId': gatewayOrderId }
+      ]
+    });
+    
+    if (!transaction) {
+      return {
+        success: false,
+        message: 'Transaction not found'
+      };
+    }
+    
+    return {
+      success: true,
+      transaction: transaction
+    };
+  } catch (error) {
+    console.error('Error getting transaction by gateway order ID:', error);
+    return {
+      success: false,
+      message: error.message
+    };
+  }
+};
+
+
 module.exports = {
   createOrderTransaction,
   updateTransactionGatewayDetails,
@@ -519,5 +597,7 @@ module.exports = {
   cleanupExpiredTransactions,
   createCODCompletionTransaction,
   getUserTransactions,
-  getUserTransactionAnalytics
+  getUserTransactionAnalytics,
+  updateTransactionStatus,
+  getTransactionByGatewayOrderId
 };

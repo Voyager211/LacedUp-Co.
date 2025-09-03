@@ -35,7 +35,7 @@ function renderPayPalButtons(transactionId, containerId = 'paypal-btn-container-
         },
         onApprove: (data, actions) => {
           console.log('✅ PayPal payment approved:', data);
-          return fetch(`/paypal/capture/${paypalOrderId}`, { method: 'POST' })
+          return fetch(`/checkout/paypal/capture/${paypalOrderId}`, { method: 'POST' })
             .then(r => r.json())
             .then(result => {
               console.log('✅ PayPal capture result:', result);
@@ -78,7 +78,7 @@ async function handlePaymentFailure(transactionId, reason, failureType = 'paymen
     showPaymentFailureLoading(reason);
     
     // Process failure on backend with cart restoration
-    const response = await fetch('/handle-payment-failure', {
+    const response = await fetch('/checkout/handle-payment-failure', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ 
@@ -266,7 +266,8 @@ async function validateCartAndRetry(fallbackUrl = '/cart') {
       didOpen: () => Swal.showLoading()
     });
     
-    const response = await fetch('/cart/validate-checkout-stock');
+    const response = await fetch('/checkout/validate-checkout-stock');
+
     const validation = await response.json();
     
     Swal.close();
@@ -375,8 +376,8 @@ function storeFailureDetails(data) {
 /* ========= WALLET PAYMENT FUNCTIONALITY ========= */
 class WalletPaymentManager {
   constructor() {
-    this.walletBalance = 0;
-    this.orderTotal = 0;
+    this.walletBalance = window.walletBalance || 0; // ✅ Use server-passed balance
+    this.orderTotal = window.orderTotal || 0;
     this.init();
   }
 
@@ -388,11 +389,16 @@ class WalletPaymentManager {
       console.log(`💰 Order total detected: ₹${this.orderTotal}`);
     }
 
-    // Load wallet balance immediately
-    this.loadWalletBalance();
+    // ✅ UPDATED: Use server-passed balance instead of API call
+    if (this.walletBalance > 0) {
+      console.log(`✅ Wallet balance loaded from server: ₹${this.walletBalance}`);
+      this.updateWalletDisplay(this.walletBalance);
+      window.walletBalance = this.walletBalance; // Store globally
+    } else {
+      // Fallback to API call only if server didn't provide balance
+      this.loadWalletBalance();
+    }
   }
-
-
 
   parseAmount(text) {
     return parseFloat(text.replace(/[₹,]/g, '')) || 0;
@@ -402,17 +408,19 @@ class WalletPaymentManager {
     return `₹${amount.toLocaleString('en-IN')}`;
   }
 
+  // ✅ UPDATED: Keep this method for fallback/refresh scenarios
   async loadWalletBalance() {
     try {
-      console.log('🔄 Loading wallet balance for checkout...');
+      console.log('🔄 Loading wallet balance via API (fallback)...');
       
-      const response = await fetch('/cart/wallet-balance');
+      const response = await fetch('/checkout/wallet-balance');
       const data = await response.json();
       
       if (data.success) {
         this.walletBalance = data.balance || 0;
         this.updateWalletDisplay(data.balance);
-        console.log(`✅ Wallet balance loaded: ₹${data.balance}`);
+        console.log(`✅ Wallet balance updated via API: ₹${data.balance}`);
+        window.walletBalance = data.balance;
       } else {
         console.error('❌ Failed to load wallet balance:', data.message);
         this.updateWalletDisplay(0, 'Failed to load balance');
@@ -445,7 +453,7 @@ class WalletPaymentManager {
 
     // Update balance display
     balanceText.innerHTML = `Available: <strong>${this.formatAmount(balance)}</strong>`;
-    balanceText.className = 'text-success';
+    balanceText.className = balance >= this.orderTotal ? 'text-success' : 'text-warning';
 
     // Check if balance is sufficient
     const isBalanceSufficient = balance >= this.orderTotal;
@@ -491,11 +499,12 @@ class WalletPaymentManager {
   }
 }
 
+
 /* ========= CHECKOUT VALIDATION FUNCTIONALITY ========= */
 async function validateCheckoutStock() {
   try {
     console.log('🔍 Validating checkout stock…');
-    const res = await fetch('/cart/validate-checkout-stock');
+    const res = await fetch('/checkout/validate-checkout-stock');
     console.log('Checkout validation status:', res.status);
     const json = await res.json();
     console.log('Checkout validation response:', json);
@@ -669,7 +678,7 @@ function initializeRazorpayCheckout(orderData) {
 }
 
 function verifyRazorpayPayment(paymentData) {
-  fetch('/razorpay/verify-payment', {
+  fetch('/checkout/razorpay/verify-payment', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(paymentData) // ✅ Now includes transactionId
@@ -872,7 +881,7 @@ async function handleRazorpayPayment(deliveryAddressId) {
     const requestPayload = { deliveryAddressId };
     console.log('📤 Razorpay request payload:', requestPayload);
 
-    const response = await fetch('/razorpay/create-order', { 
+    const response = await fetch('/checkout/razorpay/create-order', { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestPayload)
@@ -972,7 +981,7 @@ async function handlePayPalPayment(deliveryAddressId) {
     const requestPayload = { deliveryAddressId };
     console.log('📤 PayPal request payload:', requestPayload);
 
-    const response = await fetch('/paypal/create-order', { 
+    const response = await fetch('/checkout/paypal/create-order', { 
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(requestPayload)
@@ -1017,8 +1026,53 @@ async function handlePayPalPayment(deliveryAddressId) {
 
 // ✅ EXISTING: Handle standard payments (COD, Wallet, etc.)
 async function handleStandardPayment(deliveryAddressId, paymentMethod) {
-  // Your existing payment processing logic for COD, Wallet, etc.
-  // ... (keep existing validation and processing code)
+  try {
+    // Show loading
+    const loadingSwal = Swal.fire({
+      title: 'Processing Order',
+      html: 'Please wait while we process your order...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    console.log('🔄 Processing standard payment...');
+    
+    const requestPayload = { deliveryAddressId, paymentMethod };
+    console.log('📤 Standard payment request payload:', requestPayload);
+
+    const response = await fetch('/checkout/place-order', { 
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestPayload)
+    });
+
+    const data = await response.json();
+    console.log('📥 Standard payment response:', data);
+
+    Swal.close();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Failed to place order');
+    }
+
+    console.log('✅ Order placed successfully');
+    
+    // Redirect to success page
+    if (data.redirectUrl) {
+      window.location.href = data.redirectUrl;
+    } else {
+      window.location.href = `/checkout/order-success/${data.orderId}`;
+    }
+
+  } catch (error) {
+    console.error('❌ Standard payment error:', error);
+    Swal.fire({ 
+      icon: 'error', 
+      title: 'Order Processing Error', 
+      text: error.message,
+      confirmButtonColor: '#dc3545'
+    });
+  }
 }
 
 
@@ -1151,13 +1205,9 @@ async function loadCheckoutAddresses() {
     } catch (error) {
         console.error('❌ Error loading addresses:', error);
         showAddressError(`Failed to load addresses: ${error.message}`);
-    } finally {
-        const loadingState = document.getElementById('addressLoadingState');
-        if (loadingState) {
-            loadingState.style.display = 'none';
-        }
     }
 }
+
 
 function renderCheckoutAddresses() {
     const container = document.getElementById('addressContainer');
@@ -1241,8 +1291,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize wallet payment manager
   const walletManager = new WalletPaymentManager();
   
-  // Load addresses on page load
-  loadCheckoutAddresses();
+  // Only load addresses if container is empty
+  const addressContainer = document.getElementById('addressContainer');
+  const hasAddresses = addressContainer && addressContainer.children.length > 0 &&  !addressContainer.querySelector('.text-center'); // Not empty state
+  
+  if (!hasAddresses) {
+    loadCheckoutAddresses();
+  } else {
+    console.log('✅ Addresses already rendered server-side');
+  }
   
   // Validate checkout after a short delay
   setTimeout(validateCheckoutOnLoad, 500);
@@ -1271,3 +1328,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   console.log('✅ Checkout initialization complete');
 });
+
+window.selectPayment = selectPayment;
+window.proceedToPayment = proceedToPayment;
+window.showAddAddressModal = showAddAddressModal;
+window.editAddress = editAddress;
+window.deleteAddress = deleteAddress;
+
+console.log('✅ Global functions exposed for onclick handlers');

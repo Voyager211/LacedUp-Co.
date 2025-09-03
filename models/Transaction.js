@@ -86,17 +86,26 @@ const transactionSchema = new mongoose.Schema({
   orderData: {
     deliveryAddressId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true
+      required: function() {
+        // Only require for ORDER_PAYMENT transactions
+        return this.type === 'ORDER_PAYMENT';
+      }
     },
     items: [{
       productId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Product',
-        required: true
+        required: function() {
+          // Only require for ORDER_PAYMENT transactions
+          return this.parent().parent().type === 'ORDER_PAYMENT';
+        }
       },
       variantId: {
         type: mongoose.Schema.Types.ObjectId,
-        required: true
+        required: function() {
+          // Only require for ORDER_PAYMENT transactions
+          return this.parent().parent().type === 'ORDER_PAYMENT';
+        }
       },
       sku: String,
       size: String,

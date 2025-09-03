@@ -19,31 +19,6 @@ const requireAuth = (req, res, next) => {
   res.redirect('/login');
 };
 
-// ===== PAYPAL PAYMENT ROUTES =====
-// Create PayPal order
-router.post('/paypal/create-order', requireAuth, orderController.createPayPalOrder);
-
-// Capture PayPal payment
-router.post('/paypal/capture/:paypalOrderId', requireAuth, orderController.capturePayPalOrder);
-
-// Refund PayPal payment (used by cancel logic)
-router.post('/paypal/refund/:captureId', requireAuth, orderController.refundPayPalCapture);
-
-// ===== RAZORPAY PAYMENT ROUTES =====
-// Create Razorpay order
-router.post('/razorpay/create-order', requireAuth, orderController.createRazorpayOrder);
-
-// Verify Razorpay payment
-router.post('/razorpay/verify-payment', requireAuth, orderController.verifyRazorpayPayment);
-
-// Create Razorpay refund (used by cancel logic)
-router.post('/razorpay/refund/:paymentId', requireAuth, orderController.createRazorpayRefund);
-
-// Handle Payment failure
-router.post('/handle-payment-failure', requireAuth, orderController.handlePaymentFailure);
-
-// Create new order
-router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
 
 // Get all orders for user (api)
 router.get('/orders/api/filtered', requireAuth, orderController.getUserOrdersPaginated);
@@ -68,16 +43,6 @@ router.post('/orders/:orderId/returns', requireAuth, orderController.requestOrde
 router.post('/orders/:orderId/items/:itemId/returns', requireAuth, orderController.requestItemReturn);
 
 // ===== UTILITY ROUTES =====
-// Order success page (UI-specific)
-router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSuccess);
-
-// Order failure page (UI-specific)
-// Order failure page without orderId
-router.get('/order-failure', requireAuth, orderController.loadOrderFailure);
-
-// Order failure page with orderId  
-router.get('/order-failure/:orderId', requireAuth, orderController.loadOrderFailure);
-
 // Download invoice (action on resource)
 router.get('/orders/:orderId/invoice', requireAuth, orderController.downloadInvoice);
 

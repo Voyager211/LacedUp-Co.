@@ -59,15 +59,8 @@ router.get('/count', cartController.getCartCount);
 router.get('/validate-stock', requireAuthAPI, cartController.validateCartStock);
 router.post('/reset-quantity', requireAuthAPI, cartController.resetCartItemQuantity);
 
-// Checkout route
-router.get('/wallet-balance', requireAuthAPI, cartController.getWalletBalanceForCheckout);
-router.get('/checkout', requireAuth, cartController.loadCheckout);
-
-// Checkout validation route
-router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
-
-// alias so checkout page can read addresses without leaving /cart scope
-router.get('/api/addresses', requireAuthAPI, addressController.getAddresses);
+// redirect for checkout
+router.get('/checkout', (req, res) => res.redirect('/checkout'));
 
 
 module.exports = router;

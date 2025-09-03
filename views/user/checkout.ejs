@@ -39,16 +39,44 @@
                   </button>
               </div>
 
-              <!-- Address Container - Will be populated by JavaScript -->
-              <div id="addressContainer">
-                  <!-- Loading state -->
-                  <div class="loading-state" id="addressLoadingState">
-                      <div class="spinner-border" role="status">
-                          <span class="visually-hidden">Loading...</span>
-                      </div>
-                      <p>Loading addresses...</p>
-                  </div>
-              </div>
+              <!-- Address Container -->
+                <div id="addressContainer">
+                    <% if (addresses && addresses.length > 0) { %>
+                        <% addresses.forEach((address, index) => { %>
+                            <div class="address-card <%= index === 0 ? 'selected' : '' %>" id="address-card-<%= address._id %>">
+                                <label class="d-flex align-items-start">
+                                    <input type="radio" name="deliveryAddress" value="<%= address._id %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
+                                    <div class="address-info flex-grow-1">
+                                        <h6><%= address.name %></h6>
+                                        <p><%= address.addressType %></p>
+                                        <p><%= address.landMark %></p>
+                                        <p><%= address.city %>, <%= address.state %></p>
+                                        <p>PIN: <%= address.pincode %></p>
+                                        <p><i class="bi bi-telephone"></i> <%= address.phone %></p>
+                                        <% if (address.altPhone) { %>
+                                            <p><i class="bi bi-telephone"></i> <%= address.altPhone %> (Alt)</p>
+                                        <% } %>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-sm btn-outline-secondary" onclick="editAddress('<%= address._id %>')">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="deleteAddress('<%= address._id %>')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </label>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="text-center py-4">
+                            <p class="text-muted">No addresses found. Please add a delivery address to continue.</p>
+                            <button class="btn btn-primary" onclick="showAddAddressModal()">
+                                <i class="bi bi-plus-circle"></i> Add Your First Address
+                            </button>
+                        </div>
+                    <% } %>
+                </div>
             </div> 
 
             <!-- Payment Method Section -->
@@ -119,18 +147,23 @@
                 <!-- Wallet Payment -->
                 <div class="payment-option" id="wallet-payment-option">
                     <label class="d-flex align-items-center">
-                        <input type="radio" name="paymentMethod" value="wallet" onclick="selectPayment(this)">
+                        <input type="radio" name="paymentMethod" value="wallet" onclick="selectPayment(this)" 
+                            <%= walletBalance < total ? 'disabled' : '' %>>
                         <div class="payment-icon">
                             <i class="bi bi-wallet2"></i>
                         </div>
                         <div class="payment-info">
                             <h6>Wallet Payment</h6>
-                            <p id="wallet-balance-text">Loading balance...</p>
+                            <p id="wallet-balance-text" class="<%= walletBalance >= total ? 'text-success' : 'text-warning' %>">
+                                Available: <strong>₹<%= walletBalance.toLocaleString('en-IN') %></strong>
+                            </p>
                         </div>
                     </label>
-                    <div id="insufficient-balance-warning" class="mt-2 alert alert-warning d-none">
+                    <div id="insufficient-balance-warning" class="mt-2 alert alert-warning <%= walletBalance >= total ? 'd-none' : '' %>">
                         <i class="bi bi-exclamation-triangle me-2"></i>
-                        <span id="insufficient-balance-message">Insufficient wallet balance.</span>
+                        <span id="insufficient-balance-message">
+                            Insufficient wallet balance. Need ₹<%= (total - walletBalance).toLocaleString('en-IN') %> more.
+                        </span>
                         <a href="/profile/wallet" class="alert-link ms-2">Add money to wallet</a>
                     </div>
                 </div>
@@ -328,6 +361,7 @@
 // Pass server-side data to client-side JavaScript
 window.geoapifyApiKey = '<%= geoapifyApiKey %>';
 window.orderTotal = <%= total || 0 %>;
+window.walletBalance = <%= walletBalance || 0 %>;
 </script>
 
 <!-- Razorpay Checkout Script -->

@@ -2,7 +2,7 @@
 const Wallet = require('../models/Wallet');
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const { session } = require('passport');
+// const { session } = require('passport');
 
 /**
  * Validate user exists and is not blocked
@@ -115,7 +115,9 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
     });
     
     wallet.balance = newBalance;
-    await wallet.save({session});
+    
+    // ✅ FIXED: Save without session (no MongoDB transactions)
+    await wallet.save();
 
     // Mark unified transaction as completed
     if (unifiedTransactionId) {
@@ -131,8 +133,6 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
       }
     }
 
-    await session.commitTransaction();
-
     console.log(`Wallet Credit: ₹${amount} for user ${userId}, Unified TX: ${unifiedTransactionId || 'N/A'}`);
 
     return {
@@ -143,11 +143,8 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
       message: `₹${amount} credited to wallet successfully`
     };
   } catch (error) {
-    await session.abortTransaction();
     console.error('Error adding credit to wallet:', error);
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 
@@ -160,9 +157,6 @@ const addCredit = async (userId, amount, description, orderId = null, returnId =
  * @returns {Object} - Result object
  */
 const debitAmount = async (userId, amount, description, orderId = null, metadata = {}) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-
   try {
     if (amount <= 0) {
       throw new Error('Debit amount must be greater than 0');
@@ -216,7 +210,9 @@ const debitAmount = async (userId, amount, description, orderId = null, metadata
     });
     
     wallet.balance = newBalance;
-    await wallet.save({session});
+    
+    // ✅ FIXED: Save without session (no MongoDB transactions)
+    await wallet.save();
 
     console.log(`Debited ₹${amount} from wallet for user ${userId}`);
 
@@ -234,8 +230,6 @@ const debitAmount = async (userId, amount, description, orderId = null, metadata
       }
     }
 
-    await session.commitTransaction();
-
     console.log(`✅ Enhanced wallet debit: ₹${amount} for user ${userId}, Unified TX: ${unifiedTransactionId || 'N/A'}`);
 
     return {
@@ -247,19 +241,13 @@ const debitAmount = async (userId, amount, description, orderId = null, metadata
       message: `₹${amount} debited from wallet successfully`
     };
   } catch (error) {
-    await session.abortTransaction();
     console.error('Error debiting from wallet:', error);
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 
 // Handle wallet payment failure with proper rollback
 const handleWalletPaymentFailure = async (walletTransactionId, userId, amount, reason, unifiedTransactionId = null) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
   try {
     console.log(`🔄 Handling wallet payment failure for wallet TX: ${walletTransactionId}`);
 
@@ -298,12 +286,11 @@ const handleWalletPaymentFailure = async (walletTransactionId, userId, amount, r
         // Mark original transaction as failed
         failedTransaction.status = 'failed';
         
-        await wallet.save({ session });
+        // ✅ FIXED: Save without session
+        await wallet.save();
         console.log(`✅ Wallet balance restored: +₹${amount}, New balance: ₹${wallet.balance}`);
       }
     }
-
-    await session.commitTransaction();
 
     return {
       success: true,
@@ -312,11 +299,8 @@ const handleWalletPaymentFailure = async (walletTransactionId, userId, amount, r
     };
 
   } catch (error) {
-    await session.abortTransaction();
     console.error('❌ Error handling wallet payment failure:', error);
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 
@@ -547,9 +531,6 @@ const getWalletWithUserDetails = async (userId) => {
  * @returns {Object} - Result object
  */
 const transferMoney = async (fromUserId, toUserId, amount, description) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
   try {
     if (amount <= 0) {
       throw new Error('Transfer amount must be greater than 0');
@@ -563,35 +544,46 @@ const transferMoney = async (fromUserId, toUserId, amount, description) => {
     const fromUser = await validateUser(fromUserId);
     const toUser = await validateUser(toUserId);
     
-    const fromWallet = await getOrCreateWallet(fromUserId);
-    
-    if (fromWallet.balance < amount) {
+    // Check sender has sufficient balance
+    const hasSufficient = await hasSufficientBalance(fromUserId, amount);
+    if (!hasSufficient) {
       throw new Error('Insufficient balance for transfer');
     }
     
-    // Debit from sender
-    await debitAmount(fromUserId, amount, `Transfer to ${toUser.name}: ${description}`);
-    
-    // Credit to receiver
-    await addCredit(toUserId, amount, `Transfer from ${fromUser.name}: ${description}`);
-    
-    await session.commitTransaction();
-    
-    console.log(`Transferred ₹${amount} from user ${fromUserId} to user ${toUserId}`);
-    
-    return { 
-      success: true, 
-      message: 'Transfer completed successfully',
-      amount: amount,
-      fromUserId: fromUserId,
-      toUserId: toUserId
-    };
+    // ✅ FIXED: Perform operations sequentially without MongoDB transactions
+    try {
+      // Debit from sender
+      await debitAmount(fromUserId, amount, `Transfer to ${toUser.name}: ${description}`);
+      
+      // Credit to receiver
+      await addCredit(toUserId, amount, `Transfer from ${fromUser.name}: ${description}`);
+      
+      console.log(`Transferred ₹${amount} from user ${fromUserId} to user ${toUserId}`);
+      
+      return { 
+        success: true, 
+        message: 'Transfer completed successfully',
+        amount: amount,
+        fromUserId: fromUserId,
+        toUserId: toUserId
+      };
+    } catch (transferError) {
+      // ✅ ENHANCED: If credit fails after debit, attempt to reverse the debit
+      console.error('❌ Transfer operation failed, attempting reversal:', transferError);
+      
+      try {
+        await addCredit(fromUserId, amount, `Reversal: Failed transfer to ${toUser.name}`);
+        console.log(`✅ Debit amount restored to sender after transfer failure`);
+      } catch (reversalError) {
+        console.error('❌ CRITICAL: Failed to reverse debit after transfer failure:', reversalError);
+        // This would require manual intervention
+      }
+      
+      throw new Error(`Transfer failed: ${transferError.message}`);
+    }
   } catch (error) {
-    await session.abortTransaction();
     console.error('Error transferring money:', error);
     throw error;
-  } finally {
-    session.endSession();
   }
 };
 

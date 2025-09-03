@@ -36,6 +36,7 @@ const userProfileRoutes = require('./routes/user/profile-routes');
 const userAddressRoutes = require('./routes/user/address-routes');
 const userCartRoutes = require('./routes/user/cart-routes');
 const userWishlistRoutes = require('./routes/user/wishlist-routes');
+const checkoutRoutes = require('./routes/user/checkout-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
 const userWalletRoutes = require('./routes/user/wallet-routes');
 
@@ -119,6 +120,7 @@ app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
 app.use('/cart', userCartRoutes);
 app.use('/wishlist', userWishlistRoutes);
+app.use('/checkout', checkoutRoutes);
 app.use('/', userOrderRoutes);
 
 
