@@ -951,3 +951,39 @@ p {
   display: none;
 }
 
+/* COUPON SECTION */
+/* Container for the View Available Coupons link */
+.view-coupons-container {
+  display: block !important;
+  width: 100% !important;
+  margin-top: 8px !important;
+  clear: both;
+}
+
+/* View Available Coupons styling to match payment method descriptions */
+.view-available-coupons {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500; /* Increased from normal to 500 (medium) */
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  display: inline-block;
+}
+
+.view-available-coupons:hover {
+  color: #dc3545; /* Bootstrap danger red */
+  text-decoration: none;
+}
+
+/* Ensure input group doesn't have bottom margin that conflicts */
+.section-card .input-group {
+  margin-bottom: 0 !important;
+}
+
+/* Applied coupon styling adjustments */
+#applied-coupon .alert {
+  margin-bottom: 0;
+}
+
+

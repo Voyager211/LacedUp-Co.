@@ -16,21 +16,26 @@ const mongoose = require('mongoose');
  */
 const createOrderTransaction = async (data) => {
   try {
-    const { userId, paymentMethod, deliveryAddressId, amount, cartItems, pricing } = data;
+    const { userId, paymentMethod, deliveryAddressId, amount, cartItems, pricing, orderId, orderDocumentId } = data;
 
     // Validate required data
-    if (!userId || !paymentMethod || !deliveryAddressId || !amount) {
+    if (!userId || !paymentMethod || !amount) {
       throw new Error('Missing required transaction data');
     }
 
+    const transactionId = `TX${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
     // Create transaction
     const transaction = new Transaction({
+      transactionId: transactionId,
       userId: userId,
       type: 'ORDER_PAYMENT',
       paymentMethod: paymentMethod,
       amount: amount,
       currency: 'INR',
       status: 'INITIATED',
+      orderId: orderId,   
+      orderDocumentId: orderDocumentId,
       orderData: {
         deliveryAddressId: deliveryAddressId,
         items: cartItems,
@@ -45,7 +50,7 @@ const createOrderTransaction = async (data) => {
 
     await transaction.save();
 
-    console.log(`✅ Transaction created: ${transaction.transactionId} for user ${userId}`);
+    console.log(`✅ Transaction created and linked to order: ${transaction.transactionId} → ${orderId}`);
 
     return {
       success: true,
@@ -124,7 +129,7 @@ const completeTransaction = async (transactionId, orderId, paymentDetails = {}) 
     }
 
     if (transaction.status === 'COMPLETED') {
-      console.log(`⚠️ Transaction ${transactionId} already completed`);
+      console.log(` Transaction ${transactionId} already completed`);
       return {
         success: true,
         transaction: transaction,
@@ -149,7 +154,7 @@ const completeTransaction = async (transactionId, orderId, paymentDetails = {}) 
     // Mark as completed
     await transaction.markAsCompleted(orderId, 'Payment verified and order created successfully');
 
-    console.log(`✅ Transaction ${transactionId} completed for order ${orderId}`);
+    console.log(` Transaction ${transactionId} completed for order ${orderId}`);
 
     return {
       success: true,

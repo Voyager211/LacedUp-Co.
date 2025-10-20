@@ -79,41 +79,51 @@
                 </div>
             </div>
             
-            <!-- Coupon Section - Add this after delivery address section -->
+            <!-- Coupon Section -->
+            <!-- Apply Coupon Section -->
             <div class="section-card">
-            <div class="section-title">
-                <div>
-                <i class="bi bi-tag"></i>
-                Apply Coupon
+                <div class="section-title">
+                    <div><i class="bi bi-tag"></i> Apply Coupon</div>
+                </div>
+                
+                <!-- Coupon Input Form -->
+                <div id="coupon-form" style="<%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? 'display: none;' : '' %>">
+                    <!-- Input group with no margin-bottom to control spacing -->
+                    <div class="input-group">
+                        <input type="text" id="couponCode" class="form-control" placeholder="Enter coupon code" maxlength="20" style="text-transform: uppercase;">
+                        <button type="button" id="applyCouponBtn" class="btn btn-primary">Apply Coupon</button>
+                    </div>
+                    
+                    <!-- View Available Coupons Link - On separate line -->
+                    <div class="view-coupons-container">
+                        <span class="view-available-coupons" id="viewAvailableCouponsBtn">
+                            View Available Coupons
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Applied Coupon Display -->
+                <div id="applied-coupon" style="<%= typeof appliedCoupon === 'undefined' || !appliedCoupon ? 'display: none;' : '' %>">
+                    <div class="alert alert-success d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong id="coupon-name"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.name : '' %></strong>
+                            <br>
+                            <small>Code: <span id="coupon-code"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.code : '' %></span></small>
+                            <br>
+                            <small>Discount: ₹<span id="coupon-discount"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.discountAmount : '0' %></span></small>
+                        </div>
+                        <button type="button" id="removeCouponBtn" class="btn btn-sm btn-outline-danger">
+                            Remove
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <div id="coupon-form" style="<%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? 'display: none;' : '' %>">
-                <div class="input-group mb-3">
-                <input type="text" id="couponCode" class="form-control" 
-                        placeholder="Enter coupon code" maxlength="20" 
-                        style="text-transform: uppercase;">
-                <button type="button" id="applyCouponBtn" class="btn btn-primary">
-                    Apply Coupon
-                </button>
-                </div>
-            </div>
+
+
+
             
-            <div id="applied-coupon" style="<%= typeof appliedCoupon === 'undefined' || !appliedCoupon ? 'display: none;' : '' %>">
-                <div class="alert alert-success d-flex justify-content-between align-items-center">
-                    <div>
-                        <strong id="coupon-name"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.name : '' %></strong>
-                        <br>
-                        <small>Code: <span id="coupon-code"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.code : '' %></span></small>
-                        <br>
-                        <small>Discount: ₹<span id="coupon-discount"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.discountAmount : '0' %></span></small>
-                    </div>
-                    <button type="button" id="removeCouponBtn" class="btn btn-sm btn-outline-danger">
-                        Remove
-                    </button>
-                    </div>
-                </div>
-            </div>
+
 
 
             <!-- Payment Method Section -->
@@ -393,6 +403,10 @@
     </div>
   </div>
 </div>
+
+<!-- Coupons modal -->
+<%- include('partials/checkout-coupons-modal') %>
+
 
 <!-- Geoapify Autocomplete Script -->
 <script src="https://api.geoapify.com/v1/api.js?apiKey=<%= geoapifyApiKey %>"></script>

@@ -49,33 +49,50 @@
           <!-- Order Actions -->
           <div class="order-actions-bar mb-4">
             <div class="d-flex gap-2 flex-wrap">
+              
+              <!-- ✅ NEW: Retry Payment Button for PENDING orders -->
+              <% if (order.status === 'Pending' && order.paymentStatus === 'Pending' && order.transactionId) { %>
+                <a href="/checkout/retry-payment/<%= order.transactionId %>" class="btn btn-warning">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
+                </a>
+              <% } %>
+              
+              <!-- Cancel Order Button -->
               <% if (order.status === 'Pending' || order.status === 'Processing') { %>
                 <button class="btn btn-outline-danger" onclick="cancelOrder('<%= order.orderId %>')">
                   <i class="bi bi-x-circle me-1"></i>Cancel Order
                 </button>
               <% } %>
               
+              <!-- Track Order Button -->
               <% if (order.status === 'Shipped') { %>
                 <button class="btn btn-outline-info" onclick="trackOrder('<%= order.orderId %>')">
                   <i class="bi bi-truck me-1"></i>Track Order
                 </button>
               <% } %>
               
+              <!-- Return Order Button -->
               <% if (order.status === 'Delivered') { %>
                 <button class="btn btn-outline-warning" onclick="returnOrder('<%= order.orderId %>')">
                   <i class="bi bi-arrow-return-left me-1"></i>Return Order
                 </button>
               <% } %>
               
-              <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
-                <i class="bi bi-download me-1"></i>Download Invoice
-              </button>
+              <!-- ✅ UPDATED: Download Invoice Button - Only for DELIVERED orders -->
+              <% if (order.status === 'Delivered') { %>
+                <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
+                  <i class="bi bi-download me-1"></i>Download Invoice
+                </button>
+              <% } %>
               
+              <!-- Back to Orders Button -->
               <a href="/orders" class="btn btn-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Back to Orders
               </a>
             </div>
           </div>
+
+
 
           <!-- Order Items Section -->
           <div class="order-section mb-4">

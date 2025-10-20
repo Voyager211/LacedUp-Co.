@@ -15,6 +15,12 @@ const orderSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  orderDocumentId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    default: null,
+    index: true
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',

@@ -24,15 +24,18 @@ const requireAuth = (req, res, next) => {
  */
 
 // Get user transaction history
-router.get('/transactions', requireAuth, transactionController.getUserTransactions);
+router.get('/', requireAuth, transactionController.getUserTransactions);
 
 // Get specific transaction details
-router.get('/transactions/:transactionId', requireAuth, transactionController.getTransactionDetails);
+router.get('/:transactionId', requireAuth, transactionController.getTransactionDetails);
 
 // Cancel pending transaction
-router.patch('/transactions/:transactionId/cancel', requireAuth, transactionController.cancelTransaction);
+router.patch('/:transactionId/cancel', requireAuth, transactionController.cancelTransaction);
 
 // Get user transaction statistics
-router.get('/transactions/stats/summary', requireAuth, transactionController.getTransactionStats);
+router.get('/stats/summary', requireAuth, transactionController.getTransactionStats);
+
+router.post('/create-order-transaction', requireAuth, transactionController.createOrderTransaction);
+
 
 module.exports = router;

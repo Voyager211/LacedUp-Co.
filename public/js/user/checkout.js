@@ -1,18 +1,18 @@
-/* ========= CHECKOUT PAGE JAVASCRIPT ========= */
+
 console.log('🛒 Checkout JavaScript loaded');
 
-/* ========= GLOBAL VARIABLES ========= */
+// global variables
 window.currentEditingId = null;
 let checkoutAddresses = [];
 let walletBalance = 0;
 let orderTotal = 0;
 
-/* ========= PayPal helpers ========= */
+// paypal helpers
 let paypalOrderId = null;
 function renderPayPalButtons(transactionId, containerId = 'paypal-btn-container-main') {
   const btnContainer = document.getElementById(containerId);
   if (!btnContainer) {
-    console.error(`❌ PayPal container '${containerId}' not found`);
+    console.error(` PayPal container '${containerId}' not found`);
     return;
   }
   
@@ -34,11 +34,11 @@ function renderPayPalButtons(transactionId, containerId = 'paypal-btn-container-
           return paypalOrderId;
         },
         onApprove: (data, actions) => {
-          console.log('✅ PayPal payment approved:', data);
+          console.log(' PayPal payment approved:', data);
           return fetch(`/checkout/paypal/capture/${paypalOrderId}`, { method: 'POST' })
             .then(r => r.json())
             .then(result => {
-              console.log('✅ PayPal capture result:', result);
+              console.log(' PayPal capture result:', result);
               if (result.success) {
                 window.location.href = result.redirectUrl;
               } else {
@@ -49,13 +49,13 @@ function renderPayPalButtons(transactionId, containerId = 'paypal-btn-container-
         onCancel: () => {
           console.log('⚠️ PayPal payment cancelled');
           
-          // ✅ Handle payment cancellation
+          //  Handle payment cancellation
           handlePaymentCancellation(transactionId, 'User cancelled PayPal payment');
         },
         onError: (err) => {
           console.error('❌ PayPal button error:', err);
           
-          // ✅ Handle payment error
+          //  Handle payment error
           handlePaymentFailure(transactionId, 'PayPal payment error');
         }
       })
@@ -72,12 +72,8 @@ function renderPayPalButtons(transactionId, containerId = 'paypal-btn-container-
 
 async function handlePaymentFailure(transactionId, reason, failureType = 'payment_error') {
   try {
-    console.log(`🚨 Enhanced payment failure handler:`, { transactionId, reason, failureType });
+    console.log(`🚨 Payment failure handler:`, { transactionId, reason, failureType });
     
-    // Show immediate user feedback
-    showPaymentFailureLoading(reason);
-    
-    // Process failure on backend with cart restoration
     const response = await fetch('/checkout/handle-payment-failure', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -90,44 +86,42 @@ async function handlePaymentFailure(transactionId, reason, failureType = 'paymen
     });
 
     const data = await response.json();
-    Swal.close();
 
     if (data.success) {
-      // ✅ NEW: Redirect to failure page instead of showing Swal
-      const failureUrl = new URL('/checkout/order-failure', window.location.origin);
-      failureUrl.searchParams.set('transactionId', transactionId);
-      failureUrl.searchParams.set('type', failureType);
-      failureUrl.searchParams.set('reason', encodeURIComponent(reason));
-      failureUrl.searchParams.set('canRetry', data.canRetry);
-      failureUrl.searchParams.set('cartRestored', data.cartRestored);
-      failureUrl.searchParams.set('retryDelay', data.retryDelay || 0);
-      failureUrl.searchParams.set('actions', JSON.stringify(data.suggestedActions || []));
-      
-      // Store additional data in sessionStorage for the failure page
-      sessionStorage.setItem('paymentFailureData', JSON.stringify({
-        transactionId,
-        reason,
-        failureType,
-        canRetry: data.canRetry,
-        cartRestored: data.cartRestored,
-        suggestedActions: data.suggestedActions,
-        retryDelay: data.retryDelay
-      }));
-      
-      window.location.href = failureUrl.toString();
-      
+      Swal.fire({
+        icon: 'warning',
+        title: 'Payment Failed',
+        html: `
+          <p>Your payment could not be processed, but your order has been created.</p>
+          <p><strong>You can retry payment or choose a different payment method.</strong></p>
+          <p>No items were charged to your account.</p>
+        `,
+        confirmButtonText: 'View Order & Retry Payment',
+        confirmButtonColor: '#007bff'
+      }).then(() => {
+        window.location.href = data.redirectUrl;
+      });
     } else {
-      // Fallback error handling
-      console.error('❌ Backend failure processing failed:', data);
-      showFallbackFailureDialog(reason);
+      console.error('Backend failure processing failed:', data);
+      Swal.fire({
+        icon: 'error',
+        title: 'System Error',
+        text: 'There was an error processing the payment failure. Please contact support.',
+        confirmButtonColor: '#dc3545'
+      });
     }
 
   } catch (error) {
-    console.error('❌ Error in payment failure handler:', error);
-    Swal.close();
-    showFallbackFailureDialog(reason);
+    console.error('Error in payment failure handler:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'System Error',
+      text: 'Unable to process payment failure. Please contact support.',
+      confirmButtonColor: '#dc3545'
+    });
   }
 }
+
 
 // Show loading state during failure processing
 function showPaymentFailureLoading(reason) {
@@ -305,7 +299,7 @@ async function validateCartAndRetry(fallbackUrl = '/cart') {
     }
     
   } catch (error) {
-    console.error('❌ Cart validation failed:', error);
+    console.error('Cart validation failed:', error);
     Swal.close();
     
     await Swal.fire({
@@ -390,10 +384,10 @@ function storeFailureDetails(data) {
   });
 }
 
-/* ========= WALLET PAYMENT FUNCTIONALITY ========= */
+// wallet payment functionality
 class WalletPaymentManager {
   constructor() {
-    this.walletBalance = window.walletBalance || 0; // ✅ Use server-passed balance
+    this.walletBalance = window.walletBalance || 0; 
     this.orderTotal = window.orderTotal || 0;
     this.init();
   }
@@ -406,13 +400,11 @@ class WalletPaymentManager {
       console.log(`💰 Order total detected: ₹${this.orderTotal}`);
     }
 
-    // ✅ UPDATED: Use server-passed balance instead of API call
     if (this.walletBalance > 0) {
-      console.log(`✅ Wallet balance loaded from server: ₹${this.walletBalance}`);
+      console.log(` Wallet balance loaded from server: ₹${this.walletBalance}`);
       this.updateWalletDisplay(this.walletBalance);
-      window.walletBalance = this.walletBalance; // Store globally
+      window.walletBalance = this.walletBalance;
     } else {
-      // Fallback to API call only if server didn't provide balance
       this.loadWalletBalance();
     }
   }
@@ -425,7 +417,6 @@ class WalletPaymentManager {
     return `₹${amount.toLocaleString('en-IN')}`;
   }
 
-  // ✅ UPDATED: Keep this method for fallback/refresh scenarios
   async loadWalletBalance() {
     try {
       console.log('🔄 Loading wallet balance via API (fallback)...');
@@ -436,14 +427,14 @@ class WalletPaymentManager {
       if (data.success) {
         this.walletBalance = data.balance || 0;
         this.updateWalletDisplay(data.balance);
-        console.log(`✅ Wallet balance updated via API: ₹${data.balance}`);
+        console.log(` Wallet balance updated via API: ₹${data.balance}`);
         window.walletBalance = data.balance;
       } else {
-        console.error('❌ Failed to load wallet balance:', data.message);
+        console.error('Failed to load wallet balance:', data.message);
         this.updateWalletDisplay(0, 'Failed to load balance');
       }
     } catch (error) {
-      console.error('❌ Error loading wallet balance:', error);
+      console.error('Error loading wallet balance:', error);
       this.updateWalletDisplay(0, 'Error loading balance');
     }
   }
@@ -503,14 +494,12 @@ class WalletPaymentManager {
       walletRadio.disabled = false;
       walletOption.classList.remove('opacity-50');
       
-      console.log(`✅ Sufficient balance: ₹${balance} >= ₹${this.orderTotal}`);
+      console.log(`Sufficient balance: ₹${balance} >= ₹${this.orderTotal}`);
     }
 
-    // Store for global access
     window.walletBalance = balance;
   }
 
-  // Refresh balance (useful after user adds money)
   async refreshBalance() {
     await this.loadWalletBalance();
   }
@@ -554,7 +543,7 @@ function showCheckoutValidationError(v) {
 }
 
 async function validateCheckoutOnLoad() {
-  console.log('🔍 Validating checkout on page load…');
+  console.log('Validating checkout on page load…');
   try {
     const v = await validateCheckoutStock();
     const bad = !v.success ||
@@ -564,13 +553,13 @@ async function validateCheckoutOnLoad() {
                   v.validationResults.unavailableItems.length));
 
     if (bad) setTimeout(() => showCheckoutValidationError(v), 1000);
-    else console.log('✅ Checkout validation passed – all items available');
+    else console.log('Checkout validation passed – all items available');
   } catch (err) {
     console.error('Error validating checkout on load:', err);
   }
 }
 
-/* ========= UI HELPERS ========= */
+// ui helper functions
 function selectAddress(radio) {
   document.querySelectorAll('.address-card').forEach(c => c.classList.remove('selected'));
   radio.closest('.address-card').classList.add('selected');
@@ -583,7 +572,6 @@ function selectPayment(radio) {
 
   const allActionBtns = document.querySelectorAll('.btn-continue');
   
-  // ✅ FIXED: Hide all PayPal containers
   const paypalMainContainer = document.getElementById('paypal-btn-container-main');
   const paypalLeftContainer = document.getElementById('paypal-btn-container-left');
   const razorpayContainer = document.getElementById('razorpay-btn-container');
@@ -615,14 +603,13 @@ function selectPayment(radio) {
     }
   });
 
-  console.log(`💳 Payment method selected: ${radio.value}`);
+  console.log(`Payment method selected: ${radio.value}`);
 }
 
 
 
-// ✅ Razorpay Integration Functions
+// Razorpay Integration Functions
 function initializeRazorpayCheckout(orderData) {
-  // ✅ ENHANCED: Validate orderData
   if (!orderData.razorpayOrderId || !orderData.keyId || !orderData.amount) {
     console.error('❌ Invalid Razorpay order data:', orderData);
     Swal.fire({
@@ -641,7 +628,7 @@ function initializeRazorpayCheckout(orderData) {
     description: `Order ${orderData.internalOrderId}`,
     order_id: orderData.razorpayOrderId,
     handler: function(response) {
-      console.log('✅ Razorpay payment successful:', response);
+      console.log('Razorpay payment successful:', response);
       verifyRazorpayPayment(response, orderData.internalOrderId);
     },
     prefill: {
@@ -654,7 +641,7 @@ function initializeRazorpayCheckout(orderData) {
     },
     modal: {
       ondismiss: function() {
-        console.log('⚠️ Razorpay payment dismissed');
+        console.log('Razorpay payment dismissed');
         document.querySelectorAll('.btn-continue').forEach(b => b.classList.remove('d-none'));
         Swal.fire({ 
           icon: 'warning', 
@@ -665,7 +652,6 @@ function initializeRazorpayCheckout(orderData) {
     }
   };
 
-  // ✅ ENHANCED: Error handling for Razorpay initialization
   try {
     if (typeof Razorpay === 'undefined') {
       throw new Error('Razorpay SDK not loaded');
@@ -673,7 +659,7 @@ function initializeRazorpayCheckout(orderData) {
 
     const razorpay = new Razorpay(options);
     razorpay.on('payment.failed', function(response) {
-      console.error('❌ Razorpay payment failed:', response);
+      console.error('Razorpay payment failed:', response);
       document.querySelectorAll('.btn-continue').forEach(b => b.classList.remove('d-none'));
       Swal.fire({
         icon: 'error',
@@ -684,7 +670,7 @@ function initializeRazorpayCheckout(orderData) {
 
     razorpay.open();
   } catch (error) {
-    console.error('❌ Error initializing Razorpay:', error);
+    console.error('Error initializing Razorpay:', error);
     document.querySelectorAll('.btn-continue').forEach(b => b.classList.remove('d-none'));
     Swal.fire({
       icon: 'error',
@@ -698,7 +684,7 @@ function verifyRazorpayPayment(paymentData) {
   fetch('/checkout/razorpay/verify-payment', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(paymentData) // ✅ Now includes transactionId
+    body: JSON.stringify(paymentData) 
   })
   .then(r => r.json())
   .then(data => {
@@ -715,7 +701,7 @@ function verifyRazorpayPayment(paymentData) {
 }
 
 
-/* ========= ADDRESS MODAL FUNCTIONALITY ========= */
+// address modal
 window.showAddAddressModal = function() {
   window.currentEditingId = null;
   const modalLabel = document.getElementById('addressModalLabel');
@@ -814,7 +800,7 @@ window.deleteAddress = async function(id) {
   }
 };
 
-/* ========= ENHANCED PLACE ORDER WITH WALLET SUPPORT ========= */
+
 async function proceedToPayment() {
   const addr = document.querySelector('input[name="deliveryAddress"]:checked');
   const pay = document.querySelector('input[name="paymentMethod"]:checked');
@@ -828,8 +814,8 @@ async function proceedToPayment() {
     return;
   }
 
-  // ✅ ENHANCED: Address validation
-  if (!addr.value || !addr.value.match(/^[0-9a-fA-F]{24}$/)) {
+  //  Address validation
+  if (!addr.value || addr.value.trim() === '') {
     Swal.fire({
       icon: 'error',
       title: 'Invalid Address',
@@ -866,23 +852,20 @@ async function proceedToPayment() {
     }
   }
 
-  // ✅ NEW: Handle UPI (Razorpay) payment
   if (pay.value === 'upi') {
     await handleRazorpayPayment(addr.value);
     return;
   }
 
-  // ✅ NEW: Handle PayPal payment
   if (pay.value === 'paypal') {
     await handlePayPalPayment(addr.value);
     return;
   }
 
-  // ✅ EXISTING: Handle other payment methods (COD, Wallet, etc.)
   await handleStandardPayment(addr.value, pay.value);
 }
 
-// ✅ NEW: Separate Razorpay payment handler
+
 async function handleRazorpayPayment(deliveryAddressId) {
   try {
     // Show loading
@@ -893,58 +876,62 @@ async function handleRazorpayPayment(deliveryAddressId) {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('🔄 Creating Razorpay order...');
-    
-    const requestPayload = { deliveryAddressId };
-    console.log('📤 Razorpay request payload:', requestPayload);
+    console.log(' Creating Razorpay order...');
 
-    const response = await fetch('/checkout/razorpay/create-order', { 
+    const txResponse = await fetch('/transactions/create-order-transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload)
+      body: JSON.stringify({ deliveryAddressId, paymentMethod: 'upi' })
     });
 
-    const data = await response.json();
-    console.log('📥 Razorpay response:', data);
+    const txData = await txResponse.json();
+    console.log('Transaction creation response:', txData);
+
+    if (!txResponse.ok || !txData.success) {
+      throw new Error(txData.message || 'Failed to create transaction');
+    }
+
+    const rzResponse = await fetch('/checkout/razorpay/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transactionId: txData.transactionId })
+    });
+
+    const rzData = await rzResponse.json();
+    console.log('Razorpay order response:', rzData);
 
     Swal.close();
 
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || 'Failed to create payment order');
+    if (!rzResponse.ok || !rzData.success) {
+      throw new Error(rzData.message || 'Failed to create payment order');
     }
 
-    console.log('✅ Razorpay order created, initializing checkout...');
+    console.log('Razorpay order created, initializing checkout...');
     
-    // ✅ Enhanced Razorpay initialization with failure handling
     const options = {
-      key: data.keyId,
-      amount: data.amount,
-      currency: data.currency || 'INR',
+      key: rzData.keyId,
+      amount: rzData.amount,
+      currency: rzData.currency || 'INR',
       name: 'LacedUp',
-      description: `Transaction ${data.transactionId}`,
-      order_id: data.razorpayOrderId,
+      description: `Transaction ${rzData.transactionId}`,
+      order_id: rzData.razorpayOrderId,
       handler: function(response) {
-        console.log('✅ Razorpay payment successful:', response);
-        
-        // ✅ Updated verification payload
+        console.log('Razorpay payment successful:', response);
         verifyRazorpayPayment({
           razorpay_payment_id: response.razorpay_payment_id,
           razorpay_order_id: response.razorpay_order_id,
           razorpay_signature: response.razorpay_signature,
-          transactionId: data.transactionId // ✅ Include transaction ID
+          transactionId: data.transactionId 
         });
       },
       modal: {
         ondismiss: function() {
-          console.log('⚠️ Razorpay payment dismissed');
-          
-          // ✅ Handle payment cancellation
-          handlePaymentCancellation(data.transactionId, 'User cancelled payment');
+          console.log('Razorpay payment dismissed');
+          handlePaymentCancellation(rzData.transactionId, 'User cancelled payment');
         }
       }
     };
 
-    // ✅ Enhanced error handling
     try {
       if (typeof Razorpay === 'undefined') {
         throw new Error('Razorpay SDK not loaded');
@@ -953,21 +940,20 @@ async function handleRazorpayPayment(deliveryAddressId) {
       const razorpay = new Razorpay(options);
       
       razorpay.on('payment.failed', function(response) {
-        console.error('❌ Razorpay payment failed:', response);
+        console.error('Razorpay payment failed:', response);
         
-        // ✅ Handle payment failure
-        handlePaymentFailure(data.transactionId, response.error.description || 'Payment failed');
+        handlePaymentFailure(rzData.transactionId, response.error.description || 'Payment failed');
       });
 
       razorpay.open();
       
     } catch (error) {
-      console.error('❌ Error initializing Razorpay:', error);
+      console.error('Error initializing Razorpay:', error);
       handlePaymentFailure(data.transactionId, 'Failed to initialize payment');
     }
 
   } catch (error) {
-    console.error('❌ Razorpay payment error:', error);
+    console.error('Razorpay payment error:', error);
     Swal.fire({ 
       icon: 'error', 
       title: 'UPI Payment Error', 
@@ -977,7 +963,6 @@ async function handleRazorpayPayment(deliveryAddressId) {
   }
 }
 
-// ✅ NEW: Separate PayPal payment handler  
 async function handlePayPalPayment(deliveryAddressId) {
   try {
     // Load PayPal SDK if not already loaded
@@ -985,7 +970,7 @@ async function handlePayPalPayment(deliveryAddressId) {
       window.loadPayPalSdk();
     }
 
-    // Show loading
+    // Show loading modal
     const loadingSwal = Swal.fire({
       title: 'Setting up PayPal Payment',
       html: 'Please wait while we prepare your payment...',
@@ -993,37 +978,45 @@ async function handlePayPalPayment(deliveryAddressId) {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('🔄 Creating PayPal order...');
-    
-    const requestPayload = { deliveryAddressId };
-    console.log('📤 PayPal request payload:', requestPayload);
+    console.log('Creating transaction for PayPal...');
 
-    const response = await fetch('/checkout/paypal/create-order', { 
+    const txResponse = await fetch('/transactions/create-order-transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload)
+      body: JSON.stringify({ deliveryAddressId, paymentMethod: 'paypal' })
     });
 
-    const data = await response.json();
-    console.log('📥 PayPal response:', data);
+    const txData = await txResponse.json();
+    console.log('Transaction creation response:', txData);
+
+    if (!txResponse.ok || !txData.success) {
+      throw new Error(txData.message || 'Failed to create transaction');
+    }
+
+    const ppResponse = await fetch('/checkout/paypal/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transactionId: txData.transactionId })
+    });
+
+    const ppData = await ppResponse.json();
+    console.log('PayPal order response:', ppData);
 
     Swal.close();
 
-    if (!response.ok || !data.success) {
-      throw new Error(data.message || 'Failed to create PayPal order');
+    if (!ppResponse.ok || !ppData.success) {
+      throw new Error(ppData.message || 'Failed to create PayPal order');
     }
 
-    console.log('✅ PayPal order created, rendering buttons...');
-    paypalOrderId = data.orderID;
-    
-    // ✅ Updated PayPal button rendering with failure handling
+    // Render PayPal Buttons
+    paypalOrderId = ppData.orderId;
+
     const paypalMainContainer = document.getElementById('paypal-btn-container-main');
     if (paypalMainContainer) {
       paypalMainContainer.classList.remove('d-none');
-      renderPayPalButtons(data.transactionId, 'paypal-btn-container-main');
+      renderPayPalButtons(txData.transactionId, 'paypal-btn-container-main');
     }
 
-    // Hide the "PAY WITH PAYPAL" button
     document.querySelectorAll('.btn-continue').forEach(btn => {
       if (btn.textContent.includes('PAY WITH PAYPAL')) {
         btn.classList.add('d-none');
@@ -1031,17 +1024,18 @@ async function handlePayPalPayment(deliveryAddressId) {
     });
 
   } catch (error) {
-    console.error('❌ PayPal payment error:', error);
-    Swal.fire({ 
-      icon: 'error', 
-      title: 'PayPal Payment Error', 
+    console.error('PayPal payment error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'PayPal Payment Error',
       text: error.message,
       confirmButtonColor: '#dc3545'
     });
   }
 }
 
-// ✅ EXISTING: Handle standard payments (COD, Wallet, etc.)
+
+// handle standard payments (COD, Wallet, etc.)
 async function handleStandardPayment(deliveryAddressId, paymentMethod) {
   try {
     // Show loading
@@ -1052,10 +1046,10 @@ async function handleStandardPayment(deliveryAddressId, paymentMethod) {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('🔄 Processing standard payment...');
+    console.log('Processing standard payment...');
     
     const requestPayload = { deliveryAddressId, paymentMethod };
-    console.log('📤 Standard payment request payload:', requestPayload);
+    console.log('Standard payment request payload:', requestPayload);
 
     const response = await fetch('/checkout/place-order', { 
       method: 'POST',
@@ -1064,7 +1058,7 @@ async function handleStandardPayment(deliveryAddressId, paymentMethod) {
     });
 
     const data = await response.json();
-    console.log('📥 Standard payment response:', data);
+    console.log('Standard payment response:', data);
 
     Swal.close();
 
@@ -1072,7 +1066,7 @@ async function handleStandardPayment(deliveryAddressId, paymentMethod) {
       throw new Error(data.message || 'Failed to place order');
     }
 
-    console.log('✅ Order placed successfully');
+    console.log('Order placed successfully');
     
     // Redirect to success page
     if (data.redirectUrl) {
@@ -1082,7 +1076,7 @@ async function handleStandardPayment(deliveryAddressId, paymentMethod) {
     }
 
   } catch (error) {
-    console.error('❌ Standard payment error:', error);
+    console.error('Standard payment error:', error);
     Swal.fire({ 
       icon: 'error', 
       title: 'Order Processing Error', 
@@ -1095,12 +1089,11 @@ async function handleStandardPayment(deliveryAddressId, paymentMethod) {
 
 
 
-// Alias for backward compatibility
 function placeOrder() { 
   proceedToPayment(); 
 }
 
-/* ========= ADDRESS FUNCTIONALITY ========= */
+// address functionality
 function handleCheckoutAddressSubmit(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
@@ -1146,7 +1139,7 @@ function handleCheckoutAddressSubmit(e) {
     }
   })
   .catch(error => {
-    console.error('❌ Error saving address:', error);
+    console.error('Error saving address:', error);
     Swal.fire({
       title: 'Error!',
       text: `Failed to save address: ${error.message}`,
@@ -1178,7 +1171,7 @@ function attachStateChangeHandler() {
       
       if (typeof updateDistricts === 'function') {
         updateDistricts(selectedState);
-        console.log('✅ CHECKOUT: Districts updated');
+        console.log('CHECKOUT: Districts updated');
       } else {
         console.warn('updateDistricts function not available');
       }
@@ -1195,10 +1188,10 @@ function attachStateChangeHandler() {
     districtSelect.disabled = true;
   }
   
-  console.log('✅ CHECKOUT: State change handler attached');
+  console.log('CHECKOUT: State change handler attached');
 }
 
-/* ========= ADDRESS RENDERING FUNCTIONALITY ========= */
+// address rendering
 async function loadCheckoutAddresses() {
     try {
         console.log('🔄 Loading addresses for checkout...');
@@ -1213,14 +1206,14 @@ async function loadCheckoutAddresses() {
 
         if (data && data.success) {
             checkoutAddresses = data.addresses || [];
-            console.log('✅ Addresses loaded:', checkoutAddresses.length, 'addresses');
+            console.log('Addresses loaded:', checkoutAddresses.length, 'addresses');
             renderCheckoutAddresses();
         } else {
-            console.error('❌ API returned error:', data ? data.message : 'Unknown error');
+            console.error('API returned error:', data ? data.message : 'Unknown error');
             showAddressError(data && data.message ? data.message : 'Failed to load addresses');
         }
     } catch (error) {
-        console.error('❌ Error loading addresses:', error);
+        console.error('Error loading addresses:', error);
         showAddressError(`Failed to load addresses: ${error.message}`);
     }
 }
@@ -1353,119 +1346,564 @@ window.showAddAddressModal = showAddAddressModal;
 window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
 
-console.log('✅ Global functions exposed for onclick handlers');
+console.log('Global functions exposed for onclick handlers');
 
-/* ========= COUPON FUNCTIONALITY ========= */
-document.addEventListener('DOMContentLoaded', function() {
-  // Apply coupon functionality
-  const applyCouponBtn = document.getElementById('applyCouponBtn');
-  const removeCouponBtn = document.getElementById('removeCouponBtn');
-  
-  if (applyCouponBtn) {
-    applyCouponBtn.addEventListener('click', async function() {
-      const couponCode = document.getElementById('couponCode').value.trim();
-      
-      if (!couponCode) {
-        showAlert('Please enter a coupon code', 'error');
-        return;
-      }
-      
-      try {
-        this.disabled = true;
-        this.textContent = 'Applying...';
-        
-        const response = await fetch('/checkout/apply-coupon', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ couponCode })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          // Update UI with applied coupon
-          document.getElementById('coupon-name').textContent = data.discount.couponName;
-          document.getElementById('coupon-code').textContent = data.discount.couponCode;
-          document.getElementById('coupon-discount').textContent = data.discount.discountAmount;
-          document.getElementById('discount-amount').textContent = data.discount.discountAmount;
-          document.getElementById('final-total').textContent = data.discount.finalTotal;
-          
-          // Show applied coupon section
-          document.getElementById('coupon-form').style.display = 'none';
-          document.getElementById('applied-coupon').style.display = 'block';
-          document.getElementById('coupon-discount-row').style.display = 'flex';
-          
-          showAlert('Coupon applied successfully!', 'success');
-        } else {
-          showAlert(data.message, 'error');
-        }
-        
-      } catch (error) {
-        console.error('Error applying coupon:', error);
-        showAlert('Error applying coupon. Please try again.', 'error');
-      } finally {
-        this.disabled = false;
-        this.textContent = 'Apply Coupon';
-      }
-    });
-  }
 
-  // Remove coupon functionality
-  if (removeCouponBtn) {
-    removeCouponBtn.addEventListener('click', async function() {
-      try {
-        const response = await fetch('/checkout/remove-coupon', {
-          method: 'POST'
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          // Reset UI
-          document.getElementById('couponCode').value = '';
-          document.getElementById('final-total').textContent = data.cartTotal;
-          
-          // Hide applied coupon section
-          document.getElementById('coupon-form').style.display = 'block';
-          document.getElementById('applied-coupon').style.display = 'none';
-          document.getElementById('coupon-discount-row').style.display = 'none';
-          
-          showAlert('Coupon removed successfully', 'info');
-        } else {
-          showAlert(data.message, 'error');
-        }
-        
-      } catch (error) {
-        console.error('Error removing coupon:', error);
-        showAlert('Error removing coupon. Please try again.', 'error');
-      }
-    });
-  }
-});
+// coupon functionality
 
-function showAlert(message, type) {
-  // Implement your alert/notification system
-  const alertClass = type === 'success' ? 'alert-success' : 
-                    type === 'error' ? 'alert-danger' : 'alert-info';
+// Global coupon state
+window.couponState = {
+  appliedCoupon: null,
+  availableCoupons: [],
+  isLoading: false
+}
+
+// Show available coupons modal
+function showAvailableCouponsModal() {
+  console.log('Opening Available Coupons Modal');
+
+  try {
+    const modalElement = document.getElementById('availableCouponsModal');
+
+    if (!modalElement) {
+      console.error('Modal element not found!');
+      toastr.error('Unable to find coupons modal');
+      return;
+    }
+
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
   
-  const alertDiv = document.createElement('div');
-  alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
-  alertDiv.innerHTML = `
-    ${message}
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-  `;
-  
-  const couponSection = document.querySelector('.section-card');
-  if (couponSection) {
-    couponSection.appendChild(alertDiv);
-    
-    // Auto remove after 3 seconds
-    setTimeout(() => {
-      if (alertDiv.parentNode) {
-        alertDiv.parentNode.removeChild(alertDiv);
-      }
-    }, 3000);
+    loadAvailableCoupons();
+
+  } catch (error) {
+    console.error('Error opening coupon modal:', error);
+    toastr.error('Unable to open coupon modal')
   }
 }
+
+async function loadAvailableCoupons() {
+  if (window.couponState.isLoading) {
+    console.log('Already loading coupons, skipping...');
+    return
+  }
+
+  const loadingDiv = document.getElementById('coupons-loading');
+  const containerDiv = document.getElementById('available-coupons-container');
+  const noCouponsDiv = document.getElementById('no-coupons-found');
+  const errorDiv = document.getElementById('coupons-error');
+
+  try {
+    console.log('Loading available coupons...')
+
+    window.couponState.isLoading = true;
+
+    showModalState('loading');
+
+    // get current order total
+    const currentTotal = window.orderTotal || 0;
+
+    const response = await fetch('/coupons/available', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to load coupons (Status: ${response.status})`);
+    }
+
+    const data = await response.json();
+    console.log('Available coupons API response:', data);
+
+    if (data.success && data.data && data.data.coupons && data.data.coupons.length > 0) {
+      window.couponState.availableCoupons = data.data.coupons;
+      renderCouponsInModal(data.data.coupons, currentTotal);
+    } else {
+      showModalState('no-coupons');
+    }
+
+  } catch (error) {
+    console.error('Error loading available coupons', error);
+    showModalState('error');
+    toastr.error('Failed to load coupons:', error.message);
+  } finally {
+    window.couponState.isLoading = false;
+  }
+}
+
+// show different modal states
+function showModalState(state) {
+  const loadingDiv = document.getElementById('coupons-loading');
+  const containerDiv = document.getElementById('available-coupons-container');
+  const noCouponsDiv = document.getElementById('no-coupons-found');
+  const errorDiv = document.getElementById('coupons-error');
+
+  // hide all states first
+  [loadingDiv, containerDiv, noCouponsDiv, errorDiv].forEach(div => {
+    if (div) div.classList.add('d-none');
+  });
+
+  // show requested state
+  switch (state) {
+    case 'loading':
+      if (loadingDiv) loadingDiv.classList.remove('d-none');
+      break;
+
+    case 'coupons' :
+      if (containerDiv) containerDiv.classList.remove('d-none');
+      break;
+
+    case 'no-coupons':
+      if (noCouponsDiv) noCouponsDiv.classList.remove('d-none');
+      break;
+      
+    case 'error':
+      if(errorDiv) errorDiv.classList.remove('d-none');
+      break;
+  }
+}
+
+// Render coupons dynamically in the modal
+function renderCouponsInModal(coupons, currentTotal = 0) {
+  const container = document.getElementById('available-coupons-container');
+  if (!container) {
+    console.error('Coupon container not found');
+    return;
+  }
+  const containerContent = container.querySelector('.p-3');
+  if (!containerContent) {
+    console.error('Coupon container content div not found');
+    return;
+  }
+
+  if (currentTotal === 0) {
+    currentTotal = window.orderTotal || 0;
+    
+    if (currentTotal === 0) {
+      const totalElement = document.querySelector('.summary-row.total .price-value, .final-amount, #final-total, .order-total');
+      if (totalElement) {
+        const extractedTotal = parseFloat(totalElement.textContent.replace(/[₹,]/g, '')) || 0;
+        currentTotal = extractedTotal;
+        window.orderTotal = extractedTotal;
+        console.log(`Extracted order total from DOM: ₹${currentTotal}`);
+      }
+    }
+  }
+
+  console.log(`Rendering ${coupons.length} coupons with currentTotal: ₹${currentTotal}`);
+
+  let html = '';
+
+  coupons.forEach(coupon => {
+    const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
+    const isApplicable = meetsMinOrder && coupon.isActive;
+    
+    console.log(`Coupon ${coupon.code}: minOrder=${coupon.minimumOrderValue}, currentTotal=${currentTotal}, meetsMin=${meetsMinOrder}, isActive=${coupon.isActive}, applicable=${isApplicable}`);
+    
+    const discountLabel = coupon.discountType === 'percentage'
+      ? `${coupon.discountValue}% OFF`
+      : `FLAT ₹${coupon.discountValue} OFF`;
+    const clickable = true;
+
+    const badgeLabel = coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `FLAT OFF`;
+    
+    const cardClass = !isApplicable ? 'coupon-disabled' : 'coupon-eligible';
+    const badgeClass = isApplicable ? 'coupon-badge-active' : '';
+
+    html += `
+    <div class="coupon-card-modern ${cardClass}" ${clickable && isApplicable ? `onclick="applyCouponFromModal('${coupon.code}')" style="cursor:pointer;"` : ''}>
+      <div class="coupon-badge ${badgeClass}">
+        <div class="badge-label">${badgeLabel}</div>
+      </div>
+      <div class="coupon-card-main">
+        <div class="coupon-card-header">
+          <span class="coupon-code">${coupon.code}</span>
+          <button class="apply-btn${!isApplicable ? ' apply-btn-disabled' : ''}">
+            ${isApplicable ? 'APPLY' : 'N/A'}
+          </button>
+        </div>
+        ${!meetsMinOrder && coupon.minimumOrderValue
+          ? `<div class="min-order-warning">Add ₹${(coupon.minimumOrderValue - currentTotal).toFixed(2)} more to avail this offer</div>`
+          : ''}
+        <div class="coupon-desc">${coupon.description || coupon.name || ''}</div>
+        <div class="dotted-separator"></div>
+        <div class="coupon-footer">
+          Use code <strong>${coupon.code}</strong> & get ${discountLabel}
+          ${coupon.minimumOrderValue ? ` off orders above ₹${coupon.minimumOrderValue}.` : ''}
+        </div>
+      </div>
+    </div>
+    `;
+  });
+
+  containerContent.innerHTML = html;
+  showModalState('coupons');
+  console.log(`Rendered ${coupons.length} coupons in modal`);
+}
+
+
+
+
+
+// apply coupon from modal
+function applyCouponFromModal(couponCode) {
+  console.log('Applying coupon from moda;:', couponCode);
+
+  if(!couponCode) {
+    console.error('No coupon code provided');
+    return;
+  }
+
+  try {
+    // fill input field with selected coupon
+    const couponInput = document.getElementById('couponCode');
+    if (couponInput) {
+      couponInput.value = couponCode.toUpperCase();
+    }
+
+    // close modal
+    const modalElement = document.getElementById('availableCouponsModal');
+    if (modalElement) {
+      const modal = bootstrap.Modal.getInstance(modalElement);
+      if (modal) {
+        modal.hide();
+      }
+    }
+
+    applyCoupon();
+
+  } catch (error) {
+    console.error('Error applying coupon from modal:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Failed to apply coupon',
+      timer: 3000,
+      timerProgressBar: true,
+      showConfirmButton: true,
+      confirmButtonText: 'Close'
+    });
+  }
+}
+
+// main apply coupon function
+async function applyCoupon () {
+  const couponCodeInput = document.getElementById('couponCode');
+  const applyBtn = document.getElementById('applyCouponBtn');
+
+  if(!couponCodeInput || !applyBtn) {
+    console.error('Coupon input elements not found');
+    toastr.error('Coupon form elements not found');
+    return;
+  }
+
+  const couponCode = couponCodeInput.value.trim().toUpperCase();
+
+  if(!couponCode) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'Please enter a coupon code',
+      timer: 3000,
+      timerProgressBar: true,
+      showConfirmButton: true,
+      confirmButtonText: 'Close'
+    });
+    couponCode.focus();
+    return;
+  }
+
+  try {
+    console.log('Applying coupon:', couponCode);
+
+    // show loading state
+    setApplyButtonLoading(true);
+
+    const currentTotal = window.orderTotal || 0;
+
+    if (currentTotal <= 0) {
+      throw new Error('Invalid order total. Please refresh and try again');
+    }
+
+    // api call
+    const response = await fetch('/checkout/apply-coupon', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        couponCode: couponCode,
+        orderTotal: currentTotal
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error (Status: ${response.status})`);
+    }
+
+    const data = await response.json();
+    console.log('Apply coupon response:', data);
+
+    if (data.success) {
+      // update global state
+      window.couponState.appliedCoupon = data.data.appliedCoupon;
+
+      // update ui
+      showAppliedCouponUI(data.data.appliedCoupon);
+      updateOrderSummaryUI(data.data.orderSummary);
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: data.message || 'Coupon applied successfully!',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
+
+    } else {
+      throw new Error(data.message || 'Failed to apply coupon');
+    }
+
+  } catch (error) {
+    console.error('Error applying coupon: ', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.message,
+      showConfirmButton: true,
+      confirmButtonText: 'Close'
+    });
+
+    couponCodeInput.focus();
+    couponCodeInput.select();
+
+  } finally {
+    setApplyButtonLoading(false);
+  }
+}
+
+// remove applied coupon
+async function removeCoupon() {
+  const removeBtn = document.getElementById('removeCouponBtn');
+
+  if(!removeBtn) {
+    console.error('Remove coupon button not found');
+    return;
+  }
+
+  try {
+    console.log('Removing applied coupon');
+
+    // show loading state
+    setRemoveButtonLoading(true);
+
+    // api call
+    const response = await fetch('/checkout/remove-coupon', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server error (Status: ${response.status})`);
+    }
+
+    const data = await response.json();
+    console.log('Remove coupon response:', data);
+
+    if (data.success) {
+      window.couponState.appliedCoupon = null;
+
+      // update ui
+      showCouponFormUI();
+      updateOrderSummaryUI(data.data.orderSummary);
+
+      Swal.fire({
+        toast: true,
+        position: 'top-end',
+        icon: 'success',
+        title: data.message || 'Coupon removed successfully!',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true
+      });
+    } else {
+      throw new Error(data.message || 'Failed to remove coupon');
+    }
+  } catch (error) {
+    console.error('Error removing coupon:', error);
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: error.message || 'Error removing coupon',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true
+    });
+  } finally {
+    setRemoveButtonLoading(false);
+  }
+}
+
+// COUPON UI HELPER FUNCTIONS
+
+// show applied coupon UI
+function showAppliedCouponUI(coupon) {
+  const couponForm = document.getElementById('coupon-form');
+  const appliedCouponDiv = document.getElementById('applied-coupon');
+
+  if(couponForm) {
+    couponForm.style.display = 'none';
+  }
+
+  if (appliedCouponDiv && coupon) {
+    const couponName = document.getElementById('coupon-name');
+    const couponCode = document.getElementById('coupon-code');
+    const couponDiscount = document.getElementById('coupon-discount');
+
+    if(couponName) couponName.textContent = coupon.name || coupon.code;
+    if (couponCode) couponCode.textContent = coupon.code;
+    if(couponDiscount) couponDiscount.textContent = (coupon.discountAmount || 0).toFixed(2);
+
+    appliedCouponDiv.style.display = 'block';
+  }
+
+  console.log('Applied coupon UI updated');
+}
+
+function showCouponFormUI () {
+  const couponForm = document.getElementById('coupon-form');
+  const appliedCouponDiv = document.getElementById('applied-coupon');
+  const couponInput = document.getElementById('couponCode');
+
+  if (appliedCouponDiv) {
+    appliedCouponDiv.style.display = 'none';
+  }
+
+  if (couponForm) {
+    couponForm.style.display = 'block';
+  }
+
+  if (couponInput) {
+    couponInput.value = '';
+  }
+    
+  console.log('Coupon form UI restored');
+
+}
+
+function updateOrderSummaryUI(orderSummary) {
+  if (!orderSummary) {
+    console.log('No order sumary provided');
+    return;
+  }
+
+  // update global order total
+  window.orderTotal = orderSummary.finalTotal || orderSummary.total || 0;
+
+  const totalElements = document.querySelectorAll('.order-total, #final-total, .final-amount');
+  totalElements.forEach(el => {
+    if (el) {
+      el.textContent = `${window.orderTotal.toFixed(2)}`;
+    }
+  });
+
+  console.log('Order summary UI updated, new total:', window.orderTotal);
+}
+
+// button loading states
+function setApplyButtonLoading(isLoading) {
+  const applyBtn = document.getElementById('applyCouponBtn');
+  if (!applyBtn) return;
+
+  if (isLoading) {
+    applyBtn.disabled = true;
+    applyBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Applying...';
+  } else {
+    applyBtn.disabled = false;
+    applyBtn.innerHTML = 'Apply Coupon';
+  }
+}
+
+function setRemoveButtonLoading(isLoading) {
+  const removeBtn = document.getElementById('removeCouponBtn');
+  if(!removeBtn) return;
+
+  if (isLoading) {
+    removeBtn.disabled = true;
+    removeBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status"></span>Removing...';
+  } else {
+    removeBtn.disabled = false;
+    removeBtn.innerHTML = 'Remove';
+  }
+}
+
+// EVENT LISTENERS INITIALIZATION
+
+// initialize coupon event listeners when DOM is loaded
+function initializeCouponEventListeners () {
+  console.log('Initializing coupon event listeners...');
+
+  // apply coupon button
+  const applyCouponBtn = document.getElementById('applyCouponBtn');
+  if(applyCouponBtn) {
+    applyCouponBtn.addEventListener('click', applyCoupon);
+    console.log('Appky coupon button not found');
+  } else {
+    console.warn('Apply coupon button not found');
+  }
+
+  // remove coupon button
+  const removeCouponBtn = document.getElementById('removeCouponBtn');
+  if (removeCouponBtn) {
+    removeCouponBtn.addEventListener('click', removeCoupon);
+    console.log('Remove coupon button listener added');
+  } else {
+    console.log('Remove coupon button not found (expected if no coupon applied');
+  }
+
+  // enter key support for coupon input
+  const couponInput = document.getElementById('couponCode');
+  if (couponInput) {
+    couponInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyCoupon();
+      }
+    });
+
+    // auto uppercase input
+    couponInput.addEventListener('input', function(e) {
+      e.target.value = e.target.value.toUpperCase();
+    });
+
+    console.log('Coupon input listeners added');
+  } else {
+    console.warn('Coupon input not found');
+  }
+
+  // trigger available coupons modal
+  const viewCouponsBtn = document.getElementById('viewAvailableCouponsBtn');
+  if (viewCouponsBtn) {
+    viewCouponsBtn.addEventListener('click', showAvailableCouponsModal);
+    console.log('View coupons button listener added');
+  }
+
+  console.log('Coupon event listeners initialized');
+}
+
+
+
+// auto initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, initializing coupon functionality...');
+  initializeCouponEventListeners();
+})
+
+console.log('Checkout coupon functionality script loaded successfully');

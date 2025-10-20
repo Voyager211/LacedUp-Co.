@@ -20,7 +20,7 @@ const validateUser = async (userId) => {
   }
   
   return user;
-};
+}; 
 
 /**
  * Get or create wallet for a user

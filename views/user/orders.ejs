@@ -38,7 +38,105 @@
           <div id="ordersContainer">
             <% if (orderItems && orderItems.length > 0) { %>
               <% orderItems.forEach(item => { %>
-                <%- include('partials/order-card', { item: item }) %>
+                <div class="order-card mb-3" data-status="<%= item.orderStatus %>">
+                  <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                      <div class="row align-items-center">
+                        <!-- Order Info -->
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                          <div class="order-info">
+                            <h6 class="mb-1 fw-bold text-dark">Order #<%= item.orderId %></h6>
+                            <small class="text-muted">
+                              <i class="bi bi-calendar3 me-1"></i>
+                              <%= new Date(item.orderDate).toLocaleDateString('en-IN') %>
+                            </small>
+                            <div class="mt-1">
+                              <small class="text-muted">Size: <%= item.size %> | Qty: <%= item.quantity %></small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Product Preview -->
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                          <div class="product-preview d-flex align-items-center">
+                            <% if (item.productImage) { %>
+                              <img src="<%= item.productImage %>" alt="<%= item.productName %>" class="product-thumb me-3">
+                            <% } else { %>
+                              <div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>
+                            <% } %>
+                            <div class="product-info">
+                              <div class="fw-semibold text-dark"><%= item.productName %></div>
+                              <small class="text-muted">SKU: <%= item.sku %></small>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Status & Amount -->
+                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+                          <div class="status-amount text-center">
+                            <% 
+                              let statusClass = 'secondary';
+                              let displayStatus = item.status;
+                              // Show order status for PENDING orders
+                              if (item.orderStatus === 'Pending') {
+                                statusClass = 'warning';
+                                displayStatus = 'Payment Pending';
+                              } else if (item.status === 'Delivered') statusClass = 'success';
+                              else if (item.status === 'Shipped') statusClass = 'info';
+                              else if (item.status === 'Processing') statusClass = 'primary';
+                              else if (['Cancelled', 'Failed'].includes(item.status)) statusClass = 'danger';
+                            %>
+                            <span class="badge bg-<%= statusClass %> fs-6 px-3 py-2 mb-2">
+                              <%= displayStatus %>
+                            </span>
+                            <div class="fw-bold text-dark fs-5">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+                            <small class="text-muted text-uppercase">
+                              <%= item.paymentMethod === 'cod' ? 'Cash on Delivery' : item.paymentMethod %>
+                            </small>
+                          </div>
+                        </div>
+
+                        <!-- Actions -->
+                        <div class="col-lg-3 col-md-6">
+                          <div class="order-actions d-flex flex-column gap-2">
+                            
+                            <!-- ✅ RETRY PAYMENT BUTTON for PENDING items -->
+                            <% if (item.orderStatus === 'Pending' && item.canRetry && item.transactionId) { %>
+                              <a href="/checkout/retry-payment/<%= item.transactionId %>" 
+                                class="btn btn-warning btn-sm">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
+                              </a>
+                            <% } %>
+                            
+                            <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('<%= item.orderId %>')">
+                              <i class="bi bi-eye me-1"></i>View Details
+                            </button>
+                            <div class="d-flex gap-2">
+                              <!-- Item-level actions based on status -->
+                              <% if (item.orderStatus === 'Pending' || item.status === 'Processing') { %>
+                                <button class="btn btn-outline-danger btn-sm flex-fill" 
+                                        onclick="cancelItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                                  <i class="bi bi-x-circle me-1"></i>Cancel
+                                </button>
+                              <% } %>
+                              
+                              <% if (item.status === 'Delivered') { %>
+                                <button class="btn btn-outline-warning btn-sm flex-fill" 
+                                        onclick="returnItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                                  <i class="bi bi-arrow-return-left me-1"></i>Return
+                                </button>
+                                <button class="btn btn-outline-success btn-sm flex-fill" 
+                                        onclick="downloadInvoice('<%= item.orderId %>')">
+                                  <i class="bi bi-download me-1"></i>Invoice
+                                </button>
+                              <% } %>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               <% }) %>
             <% } else { %>
               <!-- Empty State -->
@@ -54,6 +152,8 @@
               </div>
             <% } %>
           </div>
+
+
 
           <!-- Pagination -->
           <% if (totalPages > 1) { %>
@@ -297,6 +397,99 @@
 .order-actions .btn-primary:hover {
   box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
+
+/* Enhanced Order Card Styles */
+.order-card {
+  transition: all 0.3s ease;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+}
+
+.order-card .card {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Product Thumbnail Styles */
+.product-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-thumb-placeholder {
+  width: 50px;
+  height: 50px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+
+/* Order Item Row */
+.order-item-row {
+  min-height: 60px;
+}
+
+.order-item-row:last-child {
+  border-bottom: none !important;
+}
+
+/* Status-specific styling */
+.order-card[data-status="Pending"] {
+  border-left: 4px solid #ffc107;
+}
+
+.order-card[data-status="Processing"] {
+  border-left: 4px solid #0d6efd;
+}
+
+.order-card[data-status="Delivered"] {
+  border-left: 4px solid #198754;
+}
+
+.order-card[data-status="Cancelled"] {
+  border-left: 4px solid #dc3545;
+}
+
+/* Retry Payment Alert */
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffecb5;
+  color: #664d03;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .order-item-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    text-align: left;
+  }
+  
+  .order-item-row .text-end {
+    text-align: left !important;
+    margin-top: 0.5rem;
+  }
+  
+  .order-actions {
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+  
+  .order-actions .btn {
+    flex: 1;
+    min-width: 120px;
+  }
+}
+
 </style>
 
 <script>
@@ -329,7 +522,7 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
-// Load orders via AJAX
+
 // Load orders via AJAX
 async function loadOrders(page = 1, status = '') {
   if (isLoading) return;
@@ -471,10 +664,10 @@ function hideLoadingState() {
 }
 
 // Update orders container
-function updateOrdersContainer(orderItems) {
+function updateOrdersContainer(orders) {
   const container = document.getElementById('ordersContainer');
   
-  if (!orderItems || orderItems.length === 0) {
+  if (!orders || orders.length === 0) {
     container.innerHTML = `
       <div class="text-center py-5" id="emptyState">
         <div class="mb-4">
@@ -492,81 +685,70 @@ function updateOrdersContainer(orderItems) {
   
   // Generate order cards HTML
   let cardsHTML = '';
-  orderItems.forEach(item => {
-    cardsHTML += generateOrderCardHTML(item);
+  orders.forEach(order => {
+    cardsHTML += generateOrderCardHTML(order);
   });
   
   container.innerHTML = cardsHTML;
 }
 
+
 // Generate order card HTML (matches your existing partial structure)
-function generateOrderCardHTML(item) {
-  const orderDate = new Date(item.orderDate);
+function generateOrderCardHTML(order) {
+  const orderDate = new Date(order.createdAt);
   const formattedDate = orderDate.toLocaleDateString('en-IN', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric' 
   });
   
-  const productImageHTML = item.productImage 
-    ? `<img src="${item.productImage}" alt="${item.productName}" class="product-thumb me-3">`
+  // Status class logic
+  let statusClass = 'secondary';
+  if (order.status === 'Delivered') statusClass = 'success';
+  else if (order.status === 'Shipped') statusClass = 'info';
+  else if (order.status === 'Processing') statusClass = 'primary';
+  else if (order.status === 'Pending') statusClass = 'warning';
+  else if (['Cancelled', 'Failed'].includes(order.status)) statusClass = 'danger';
+  
+  // First item for preview
+  const firstItem = order.items[0];
+  const productImageHTML = (firstItem.productId && firstItem.productId.mainImage) 
+    ? `<img src="${firstItem.productId.mainImage}" alt="${firstItem.productId.productName}" class="product-thumb me-3">`
     : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
   
-  const statusClass = 
-    item.status === 'Delivered' ? 'success' : 
-    item.status === 'Shipped' ? 'info' : 
-    item.status === 'Processing' ? 'warning' : 
-    item.status === 'Processing Return' ? 'warning' :
-    item.status === 'Cancelled' ? 'danger' : 
-    item.status === 'Returned' ? 'secondary' : 'secondary';
+  const productName = firstItem.productId ? firstItem.productId.productName : 'Product';
   
-  // Generate action buttons based on status
+  // Generate retry button if applicable
+  let retryButtonHTML = '';
+  if (order.status === 'Pending' && order.canRetry && order.transactionId) {
+    retryButtonHTML = `
+      <a href="/checkout/retry-payment/${order.transactionId}" 
+         class="btn btn-warning btn-sm mb-2">
+        <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
+      </a>
+    `;
+  }
+  
+  // Generate action buttons
   let actionButtons = `
-    <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${item.orderId}')">
+    ${retryButtonHTML}
+    <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${order.orderId}')">
       <i class="bi bi-eye me-1"></i>View Details
     </button>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 mt-2">
   `;
   
-  if (item.status === 'Pending' || item.status === 'Processing') {
+  if (['Pending', 'Processing'].includes(order.status)) {
     actionButtons += `
-      <button class="btn btn-outline-danger btn-sm flex-fill" onclick="cancelItem('${item.orderId}', '${item.itemId}')">
-        <i class="bi bi-x-circle me-1"></i>Cancel
+      <button class="btn btn-outline-danger btn-sm flex-fill" onclick="cancelOrder('${order.orderId}')">
+        <i class="bi bi-x-circle me-1"></i>Cancel Order
       </button>
     `;
   }
   
-  if (item.status === 'Shipped') {
+  if (order.status === 'Delivered') {
     actionButtons += `
-      <button class="btn btn-outline-info btn-sm flex-fill" onclick="trackOrder('${item.orderId}')">
-        <i class="bi bi-truck me-1"></i>Track
-      </button>
-    `;
-  }
-  
-  if (item.status === 'Delivered') {
-    if (item.returnRequest) {
-      const returnStatusClass = 
-        item.returnRequest.status === 'Pending' ? 'warning' : 
-        item.returnRequest.status === 'Approved' ? 'success' : 
-        item.returnRequest.status === 'Rejected' ? 'danger' : 'secondary';
-      
-      actionButtons += `
-        <span class="badge bg-${returnStatusClass} flex-fill text-center py-2">
-          <i class="bi bi-arrow-return-left me-1"></i>
-          Return ${item.returnRequest.status}
-        </span>
-      `;
-    } else {
-      actionButtons += `
-        <button class="btn btn-outline-warning btn-sm flex-fill" onclick="returnItem('${item.orderId}', '${item.itemId}')">
-          <i class="bi bi-arrow-return-left me-1"></i>Return
-        </button>
-      `;
-    }
-    
-    actionButtons += `
-      <button class="btn btn-outline-success btn-sm flex-fill" onclick="downloadInvoice('${item.orderId}')">
+      <button class="btn btn-outline-success btn-sm flex-fill" onclick="downloadInvoice('${order.orderId}')">
         <i class="bi bi-download me-1"></i>Invoice
       </button>
     `;
@@ -575,51 +757,53 @@ function generateOrderCardHTML(item) {
   actionButtons += `</div>`;
   
   return `
-    <div class="order-card mb-3" data-status="${item.status}">
+    <div class="order-card mb-3" data-status="${order.status}">
       <div class="card border-0 shadow-sm">
         <div class="card-body p-4">
           <div class="row align-items-center">
-            <!-- Order Info -->
             <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
               <div class="order-info">
-                <h6 class="mb-1 fw-bold text-dark">Order #${item.orderId}</h6>
+                <h6 class="mb-1 fw-bold text-dark">Order #${order.orderId}</h6>
                 <small class="text-muted">
                   <i class="bi bi-calendar3 me-1"></i>
                   ${formattedDate}
                 </small>
                 <div class="mt-1">
-                  <small class="text-muted">Size: ${item.size} | Qty: ${item.quantity}</small>
+                  <small class="text-muted">
+                    ${order.items.length} item${order.items.length > 1 ? 's' : ''} | 
+                    ${order.paymentMethod.toUpperCase()}
+                  </small>
                 </div>
               </div>
             </div>
-
-            <!-- Product Preview -->
+            
             <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
               <div class="product-preview d-flex align-items-center">
                 ${productImageHTML}
                 <div class="product-info">
-                  <div class="fw-semibold text-dark">
-                    ${item.productName}
-                  </div>
-                  <small class="text-muted">SKU: ${item.sku}</small>
+                  <div class="fw-semibold text-dark">${productName}</div>
+                  <small class="text-muted">
+                    ${order.items.length > 1 ? 
+                      `... and ${order.items.length - 1} more item${order.items.length > 2 ? 's' : ''}` :
+                      `Size: ${firstItem.size} | Qty: ${firstItem.quantity}`
+                    }
+                  </small>
                 </div>
               </div>
             </div>
-
-            <!-- Status & Amount -->
+            
             <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
               <div class="status-amount text-center">
                 <span class="badge bg-${statusClass} fs-6 px-3 py-2 mb-2">
-                  ${item.status}
+                  ${order.status}
                 </span>
-                <div class="fw-bold text-dark fs-5">₹${item.totalPrice.toLocaleString('en-IN')}</div>
-                <small class="text-muted text-uppercase">
-                  ${item.paymentMethod === 'cod' ? 'Cash on Delivery' : item.paymentMethod}
+                <div class="fw-bold text-dark fs-5">₹${order.totalAmount.toLocaleString('en-IN')}</div>
+                <small class="text-muted">
+                  ${order.paymentStatus === 'Pending' ? 'Payment Pending' : 'Paid'}
                 </small>
               </div>
             </div>
-
-            <!-- Actions -->
+            
             <div class="col-lg-3 col-md-6">
               <div class="order-actions d-flex flex-column gap-2">
                 ${actionButtons}
@@ -631,6 +815,8 @@ function generateOrderCardHTML(item) {
     </div>
   `;
 }
+
+
 
 // Clear filter function
 function clearFilter() {

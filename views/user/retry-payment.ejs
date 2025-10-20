@@ -1,28 +1,31 @@
-<% var title = "Order Failed" %>
+<% var title = "Retry Payment" %>
 
-<!-- Main Order Failure Container -->
-<div class="order-failure-container py-5">
+<!-- Main Retry Payment Container -->
+<div class="retry-payment-container py-5">
     <!-- Single Section with All Content -->
-    <div class="order-failure-section">
-        <!-- Failure Animation -->
-        <div class="failure-animation-container text-center">
-            <div class="failure-xmark">
-                <svg class="xmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                    <circle class="xmark-circle" cx="26" cy="26" r="25" fill="none"/>
-                    <path class="xmark-cross" fill="none" d="M16 16 L36 36 M36 16 L16 36"/>
+    <div class="retry-payment-section">
+        <!-- Retry Animation -->
+        <div class="retry-animation-container text-center">
+            <div class="retry-icon">
+                <svg class="retry-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="retry-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="retry-arrow1" fill="none" d="M18 26c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+                    <path class="retry-arrow2" fill="none" d="M34 26c0 4.4-3.6 8-8 8s-8-3.6-8-8"/>
+                    <polygon class="retry-arrowhead1" points="24,14 18,20 24,26"/>
+                    <polygon class="retry-arrowhead2" points="28,38 34,32 28,26"/>
                 </svg>
             </div>
             
-            <div class="failure-content">
-                <h1 class="failure-title">Order Failed!</h1>
-                <p class="failure-subtitle">Unfortunately, your order could not be processed.</p>
-                <div class="failure-number">
+            <div class="retry-content">
+                <h1 class="retry-title">Retry Payment</h1>
+                <p class="retry-subtitle">Complete your payment to place the order.</p>
+                <div class="retry-number">
                     <strong>Transaction ID: #<%= transactionId || 'TXN' + Date.now() %></strong>
                 </div>
             </div>
         </div>
 
-        <!-- Delivery Address (if applicable) -->
+        <!-- Delivery Address -->
         <div class="content-section">
             <h5 class="section-title">
                 <i class="bi bi-geo-alt"></i> Delivery Address
@@ -41,7 +44,7 @@
             <% } %>
         </div>
 
-        <!-- Ordered Items (if applicable) -->
+        <!-- Ordered Items -->
         <div class="content-section">
             <h5 class="section-title">
                 <i class="bi bi-bag-check"></i> Ordered Items
@@ -85,7 +88,7 @@
             <% } %>
         </div>
 
-        <!-- Payment Method (if applicable) -->
+        <!-- Payment Method -->
         <div class="content-section">
             <h5 class="section-title">
                 <i class="bi bi-credit-card"></i> Payment Method
@@ -94,20 +97,20 @@
                 <% if (orderData && orderData.paymentMethod) { %>
                     <div class="payment-details">
                         <p><strong><%= orderData.paymentMethod.toUpperCase() %></strong></p>
-                        <p>Payment processing failed</p>
-                        <span class="payment-status failed">Payment Failed</span>
+                        <p>Ready to process payment</p>
+                        <span class="payment-status retry">Ready to Pay</span>
                     </div>
                 <% } else { %>
                     <div class="payment-details">
                         <p><strong>Payment Method Not Available</strong></p>
-                        <p>Payment processing failed</p>
-                        <span class="payment-status failed">Payment Failed</span>
+                        <p>Ready to process payment</p>
+                        <span class="payment-status retry">Ready to Pay</span>
                     </div>
                 <% } %>
             </div>
         </div>
 
-        <!-- Price Details (if applicable) -->
+        <!-- Price Details -->
         <div class="content-section">
             <h5 class="section-title">
                 <i class="bi bi-receipt"></i> Price Details
@@ -143,34 +146,33 @@
             </div>
         </div>
 
-        <!-- Failure Reason / Suggestions -->
+        <!-- Retry Instructions -->
         <div class="content-section">
             <h5 class="section-title">
-                <i class="bi bi-exclamation-triangle"></i> What Happened?
+                <i class="bi bi-info-circle"></i> Ready to Complete Payment
             </h5>
-            <div class="failure-reason">
-                <p class="text-muted"><%= reason || "We're sorry, but there was an issue processing your order. Please try again or contact support." %></p>
+            <div class="retry-instructions">
+                <p class="text-muted">Click "Retry Payment" below to complete your order. You will be redirected to the payment gateway to process your payment securely.</p>
             </div>
         </div>
 
         <!-- Action Buttons -->
         <div class="action-buttons text-center">
-            <a href="/checkout/retry-payment/<%= transactionId %>" class="btn btn-warning">
+            <button id="retry-payment-btn" class="btn btn-warning" data-transaction-id="<%= transactionId %>">
                 <i class="bi bi-arrow-clockwise"></i> Retry Payment
-            </a>
-            <a href="/cart" class="btn btn-danger">
+            </button>
+            <a href="/cart" class="btn btn-secondary">
                 <i class="bi bi-arrow-left"></i> Return to Cart
             </a>
-            <a href="/support" class="btn btn-outline-danger">
+            <a href="/support" class="btn btn-outline-secondary">
                 <i class="bi bi-headset"></i> Contact Support
             </a>
         </div>
-
     </div>
 </div>
 
 <style>
-/* ========= ORDER FAILURE PAGE STYLES ========= */
+/* ========= RETRY PAYMENT PAGE STYLES ========= */
 
 /* Force hide loading overlay on this page */
 #page-transition-overlay {
@@ -185,28 +187,28 @@
     visibility: visible !important;
 }
 
-.order-failure-container {
+.retry-payment-container {
     max-width: 800px;
     margin: 0 auto;
     padding: 0 15px;
 }
 
 /* Main Section */
-.order-failure-section {
+.retry-payment-section {
     background: white;
     border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.15);
     padding: 2rem;
     animation: fadeInUp 0.6s ease-out;
 }
 
-/* Failure Animation - Clean SVG X Mark */
-.failure-animation-container {
+/* Retry Animation - Clean SVG Retry Icon */
+.retry-animation-container {
     margin-bottom: 2rem;
     padding: 1rem 0;
 }
 
-.failure-xmark {
+.retry-icon {
     width: 100px;
     height: 100px;
     margin: 0 auto 1.5rem;
@@ -214,59 +216,60 @@
     position: relative;
 }
 
-.xmark {
+.retry-svg {
     width: 100%;
     height: 100%;
     border-radius: 50%;
     display: block;
     stroke-width: 3;
-    stroke: #dc3545;
+    stroke: #ff9800;
     stroke-miterlimit: 10;
-    box-shadow: 0 0 0 #dc3545;
-    animation: xmark-fill 0.4s ease-in-out 0.4s forwards, xmark-scale 0.3s ease-in-out 0.9s both;
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    animation: retry-spin 2s linear infinite;
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
     border-radius: 50%;
     padding: 10px;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
 }
 
-.xmark-circle {
+.retry-circle {
     stroke-dasharray: 166;
     stroke-dashoffset: 166;
     stroke-width: 3;
     stroke-miterlimit: 10;
-    stroke: #dc3545;
+    stroke: #ff9800;
     fill: none;
-    animation: xmark-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+    animation: retry-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
 }
 
-.xmark-cross {
-    transform-origin: 50% 50%;
-    stroke-dasharray: 48;
-    stroke-dashoffset: 48;
+.retry-arrow1, .retry-arrow2 {
     stroke-width: 3;
     stroke: #FFFFFF;
-    animation: xmark-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+    stroke-dasharray: 20;
+    stroke-dashoffset: 20;
+    animation: retry-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+.retry-arrowhead1, .retry-arrowhead2 {
+    fill: #FFFFFF;
+    opacity: 0;
+    animation: retry-fade-in 0.3s ease 1.2s forwards;
 }
 
 /* Keyframe Animations */
-@keyframes xmark-stroke {
+@keyframes retry-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes retry-stroke {
     100% {
         stroke-dashoffset: 0;
     }
 }
 
-@keyframes xmark-scale {
-    0%, 100% {
-        transform: none;
-    }
-    50% {
-        transform: scale3d(1.1, 1.1, 1);
-    }
-}
-
-@keyframes xmark-fill {
+@keyframes retry-fade-in {
     100% {
-        box-shadow: inset 0px 0px 0px 50px #dc3545;
+        opacity: 1;
     }
 }
 
@@ -281,28 +284,28 @@
     }
 }
 
-/* Failure Content */
-.failure-title {
+/* Retry Content */
+.retry-title {
     font-size: 2rem;
     font-weight: 700;
-    color: #dc3545;
+    color: #ff9800;
     margin-bottom: 0.5rem;
 }
 
-.failure-subtitle {
+.retry-subtitle {
     font-size: 1.1rem;
     color: #6c757d;
     margin-bottom: 1rem;
 }
 
-.failure-number {
-    background: linear-gradient(135deg, #dc3545, #c82333);
+.retry-number {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
     color: white;
     padding: 0.75rem 1.5rem;
     border-radius: 25px;
     display: inline-block;
     font-size: 1rem;
-    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
 }
 
 /* Content Sections */
@@ -397,16 +400,18 @@
     margin-top: 0.5rem;
 }
 
-.payment-status.failed {
-    background: #f8d7da;
-    color: #721c24;
+.payment-status.retry {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ff9800;
 }
 
 /* Price Breakdown */
 .price-breakdown {
-    background: #f8f9fa;
+    background: #fff8f0;
     padding: 1rem;
     border-radius: 8px;
+    border: 1px solid #ffcc80;
 }
 
 .price-row {
@@ -440,25 +445,30 @@
 
 .price-divider {
     height: 1px;
-    background: #dee2e6;
+    background: #ffcc80;
     margin: 0.75rem 0;
 }
 
 .total-row {
     font-size: 1.1rem;
     padding-top: 0.5rem;
-    border-top: 2px solid #dee2e6;
+    border-top: 2px solid #ff9800;
+    color: #ff9800;
 }
 
-/* Failure Reason / Suggestions */
-.failure-reason p {
+/* Retry Instructions */
+.retry-instructions p {
     margin: 0.25rem 0;
     color: #495057;
+    padding: 1rem;
+    background: #fff8f0;
+    border-left: 4px solid #ff9800;
+    border-radius: 4px;
 }
 
 /* Action Buttons */
 .action-buttons {
-    margin-top: 1rem;
+    margin-top: 2rem;
 }
 
 .action-buttons .btn {
@@ -467,39 +477,57 @@
     font-weight: 600;
     border-radius: 25px;
     transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
 }
 
-.action-buttons .btn-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+/* Orange Retry Button */
+.action-buttons .btn-warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border: none;
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+}
+
+.action-buttons .btn-warning:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.4);
+    color: white;
+}
+
+.action-buttons .btn-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
     border: none;
     color: white;
 }
 
-.action-buttons .btn-danger:hover {
-    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+.action-buttons .btn-secondary:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
+    color: white;
 }
 
-.action-buttons .btn-outline-danger {
-    border: 2px solid #dc3545;
-    color: #dc3545;
+.action-buttons .btn-outline-secondary {
+    border: 2px solid #6c757d;
+    color: #6c757d;
 }
 
-.action-buttons .btn-outline-danger:hover {
-    background: #dc3545;
+.action-buttons .btn-outline-secondary:hover {
+    background: #6c757d;
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .order-failure-section {
+    .retry-payment-section {
         padding: 1.5rem;
     }
     
-    .failure-title {
+    .retry-title {
         font-size: 1.75rem;
     }
     
@@ -516,29 +544,39 @@
         max-width: 300px;
     }
     
-    .failure-xmark {
+    .retry-icon {
         width: 80px;
         height: 80px;
     }
 }
 
-/* Action Buttons - Updated with Retry Button */
-.action-buttons .btn-warning {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-    border: none;
-    color: white;
+/* Loading states */
+.btn-warning:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
 }
 
-.action-buttons .btn-warning:hover {
-    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3);
+.btn-warning.loading::after {
+    content: "";
+    width: 16px;
+    height: 16px;
+    margin-left: 8px;
+    border: 2px solid transparent;
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    display: inline-block;
+    animation: spin 1s linear infinite;
 }
 
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 </style>
 
 <script>
-// Add some interactive effects and force hide loading overlay
+// Add interactive effects and handle retry payment
 document.addEventListener('DOMContentLoaded', function() {
     // Force hide any loading overlays immediately
     if (window.PageTransition) {
@@ -559,47 +597,105 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Add hover effects to the main section
-    const section = document.querySelector('.order-failure-section');
+    const section = document.querySelector('.retry-payment-section');
     if (section) {
         section.addEventListener('mouseenter', function() {
             this.style.transform = 'translateY(-5px)';
-            this.style.boxShadow = '0 8px 30px rgba(220, 53, 69, 0.15)';
+            this.style.boxShadow = '0 8px 30px rgba(255, 152, 0, 0.25)';
         });
         
         section.addEventListener('mouseleave', function() {
             this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+            this.style.boxShadow = '0 4px 20px rgba(255, 152, 0, 0.15)';
+        });
+    }
+
+    // Handle retry payment button
+    const retryBtn = document.getElementById('retry-payment-btn');
+    if (retryBtn) {
+        retryBtn.addEventListener('click', async function() {
+            const transactionId = this.getAttribute('data-transaction-id');
+            
+            if (!transactionId) {
+                alert('Transaction ID not found. Please try again.');
+                return;
+            }
+
+            // Disable button and show loading state
+            this.disabled = true;
+            this.classList.add('loading');
+            this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Processing...';
+
+            try {
+                // Call the retry payment API
+                const response = await fetch(`/checkout/retry-payment/${transactionId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    // Handle different payment methods
+                    if (result.paymentMethod === 'upi') {
+                        // Initialize Razorpay payment
+                        const options = {
+                            key: '<%= razorpayKeyId %>',
+                            amount: result.amount,
+                            currency: result.currency || 'INR',
+                            name: 'LacedUp',
+                            description: 'Retry Payment',
+                            order_id: result.razorpayOrderId,
+                            handler: function(response) {
+                                // Payment successful
+                                window.location.href = `/checkout/order-success/${response.razorpay_payment_id}`;
+                            },
+                            prefill: {
+                                name: '<%= user.fullname %>',
+                                email: '<%= user.email %>'
+                            },
+                            theme: {
+                                color: '#ff9800'
+                            }
+                        };
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                    } else if (result.paymentMethod === 'paypal') {
+                        // Redirect to PayPal payment
+                        window.location.href = '/checkout/paypal-payment';
+                    } else if (result.redirectToCheckout) {
+                        // Redirect to checkout for other payment methods
+                        window.location.href = '/checkout';
+                    }
+                } else {
+                    throw new Error(result.message || 'Failed to initiate retry payment');
+                }
+            } catch (error) {
+                console.error('Retry payment error:', error);
+                alert('Failed to initiate retry payment. Please try again.');
+                
+                // Re-enable button
+                this.disabled = false;
+                this.classList.remove('loading');
+                this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Payment';
+            }
         });
     }
 });
 
 // Also add a backup to ensure page loads properly
 window.addEventListener('load', function() {
-    // Force hide loading overlay after page fully loads
     const overlay = document.getElementById('page-transition-overlay');
     if (overlay) {
         overlay.classList.remove('show');
         overlay.style.display = 'none';
     }
     
-    // Ensure main content is visible
     const mainContent = document.getElementById('main-content');
     if (mainContent) {
         mainContent.style.opacity = '1';
     }
 });
-
-// Additional safety check - run after a short delay
-setTimeout(function() {
-    const overlay = document.getElementById('page-transition-overlay');
-    if (overlay) {
-        overlay.classList.remove('show');
-        overlay.style.display = 'none';
-    }
-    
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.style.opacity = '1';
-    }
-}, 500);
 </script>

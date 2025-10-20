@@ -34,16 +34,15 @@ exports.getUserOrders = async (req, res) => {
       return res.redirect('/login');
     }
 
-    const cancellationReasons = CANCELLATION_REASONS;
-    const returnReasons = RETURN_REASONS;
-
     const page = 1;
     const limit = 4;
     
-    // ✅ CORRECTED: Simplified and fixed aggregation pipeline
+    // ✅ FIXED: Item-level aggregation that INCLUDES PENDING orders
     const pipeline = [
-      { $match: { user: userId } },
+      { $match: { user: userId } }, // ✅ Include ALL order statuses (including Pending)
       { $unwind: '$items' },
+      
+      // Product lookup
       {
         $lookup: {
           from: 'products',
@@ -58,13 +57,15 @@ exports.getUserOrders = async (req, res) => {
           preserveNullAndEmptyArrays: true
         }
       },
+      
+      // ✅ ENHANCED: Project with order-level info for retry functionality
       {
         $project: {
           orderId: 1,
           orderDate: '$createdAt',
           paymentMethod: 1,
           paymentStatus: 1,
-          orderStatus: '$status',
+          orderStatus: '$status',           // ✅ Include order status
           totalAmount: 1,
           itemId: '$items._id',
           productId: '$items.productId',
@@ -75,7 +76,15 @@ exports.getUserOrders = async (req, res) => {
           quantity: '$items.quantity',
           price: '$items.price',
           totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] }
+          status: { $ifNull: ['$items.status', '$status'] },
+          
+          // ✅ NEW: Add fields for retry functionality
+          canRetry: {
+            $and: [
+              { $eq: ['$status', 'Pending'] },
+              { $in: ['$paymentMethod', ['upi', 'paypal']] }
+            ]
+          }
         }
       },
       { $sort: { orderDate: -1 } },
@@ -93,43 +102,51 @@ exports.getUserOrders = async (req, res) => {
     const result = await Order.aggregate(pipeline);
     const orderItems = result[0].data || [];
     
-    // ✅ ENHANCED: Better safe access with fallback
     const metadata = result[0].metadata || [];
     const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
     const totalPages = Math.ceil(totalItems / limit);
 
-    // ✅ DEBUG: Enhanced logging
-    console.log('🔧 getUserOrders Pagination Debug:', {
+    // ✅ NEW: Add transaction IDs for PENDING items
+    const transactionService = require('../../services/transactionService');
+    const enhancedOrderItems = await Promise.all(
+      orderItems.map(async (item) => {
+        // Add retry capability for PENDING orders
+        if (item.orderStatus === 'Pending' && ['upi', 'paypal'].includes(item.paymentMethod)) {
+          try {
+            const transactions = await transactionService.getUserTransactions(userId, {
+              orderId: item.orderId,
+              status: 'FAILED',
+              limit: 1
+            });
+            
+            if (transactions && transactions.length > 0) {
+              item.transactionId = transactions[0].transactionId;
+              item.canRetry = true;
+            }
+          } catch (error) {
+            console.error('Error fetching transaction for item:', item.orderId, error);
+          }
+        }
+        return item;
+      })
+    );
+
+    console.log('📊 Item listing debug:', {
       totalItems,
-      totalPages,
-      orderItemsLength: orderItems.length,
-      metadataLength: metadata.length,
-      page,
-      limit
-    });
-
-    // Get return requests
-    const itemIds = orderItems.map(item => item.itemId);
-    const returnRequests = await Return.find({ itemId: { $in: itemIds } });
-    const returnRequestsMap = {};
-    returnRequests.forEach(returnReq => {
-      returnRequestsMap[returnReq.itemId.toString()] = returnReq;
-    });
-
-    orderItems.forEach(item => {
-      item.returnRequest = returnRequestsMap[item.itemId.toString()] || null;
+      pendingItems: enhancedOrderItems.filter(i => i.orderStatus === 'Pending').length,
+      itemsWithRetry: enhancedOrderItems.filter(i => i.canRetry).length
     });
 
     res.render('user/orders', {
       user,
-      orderItems,
+      orderItems: enhancedOrderItems, // ✅ Back to orderItems for item-level display
       currentPage: page,
       totalPages,
       totalItems,
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
       active: 'orders',
-      cancellationReasons: getCancellationReasonsArray(), 
+      cancellationReasons: getCancellationReasonsArray(),
       returnReasons: getReturnReasonsArray()
     });
 
@@ -148,6 +165,8 @@ exports.getUserOrders = async (req, res) => {
   }
 };
 
+
+
 exports.getUserOrdersPaginated = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
@@ -162,10 +181,12 @@ exports.getUserOrdersPaginated = async (req, res) => {
       });
     }
 
-    // ✅ CORRECTED: Simplified and fixed aggregation pipeline
+    // ✅ FIXED: Item-level aggregation with status filter
     const pipeline = [
       { $match: { user: userId } },
       { $unwind: '$items' },
+      
+      // Product lookup
       {
         $lookup: {
           from: 'products',
@@ -180,8 +201,10 @@ exports.getUserOrdersPaginated = async (req, res) => {
           preserveNullAndEmptyArrays: true
         }
       },
-      // Add status filter for items if needed
-      ...(status ? [{ $match: { 'items.status': status } }] : []),
+      
+      // ✅ Status filter for orders (including Pending)
+      ...(status ? [{ $match: { 'status': status } }] : []),
+      
       {
         $project: {
           orderId: 1,
@@ -199,7 +222,13 @@ exports.getUserOrdersPaginated = async (req, res) => {
           quantity: '$items.quantity',
           price: '$items.price',
           totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] }
+          status: { $ifNull: ['$items.status', '$status'] },
+          canRetry: {
+            $and: [
+              { $eq: ['$status', 'Pending'] },
+              { $in: ['$paymentMethod', ['upi', 'paypal']] }
+            ]
+          }
         }
       },
       { $sort: { orderDate: -1 } },
@@ -217,35 +246,42 @@ exports.getUserOrdersPaginated = async (req, res) => {
     const result = await Order.aggregate(pipeline);
     const orderItems = result[0].data || [];
     
-    // ✅ ENHANCED: Better safe access with fallback
     const metadata = result[0].metadata || [];
     const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
     const totalPages = Math.ceil(totalItems / limit);
 
-
-    // Get return requests for these items
-    const itemIds = orderItems.map(item => item.itemId);
-    const returnRequests = await Return.find({ itemId: { $in: itemIds } });
-    const returnRequestsMap = {};
-    returnRequests.forEach(returnReq => {
-      returnRequestsMap[returnReq.itemId.toString()] = returnReq;
-    });
-
-    // Add return request info to items
-    orderItems.forEach(item => {
-      item.returnRequest = returnRequestsMap[item.itemId.toString()] || null;
-    });
+    // Add transaction IDs for retry functionality
+    const transactionService = require('../../services/transactionService');
+    const enhancedOrderItems = await Promise.all(
+      orderItems.map(async (item) => {
+        if (item.orderStatus === 'Pending' && ['upi', 'paypal'].includes(item.paymentMethod)) {
+          try {
+            const transactions = await transactionService.getUserTransactions(userId, {
+              orderId: item.orderId,
+              status: 'FAILED',
+              limit: 1
+            });
+            
+            if (transactions && transactions.length > 0) {
+              item.transactionId = transactions[0].transactionId;
+              item.canRetry = true;
+            }
+          } catch (error) {
+            console.error('Error fetching transaction for item:', item.orderId, error);
+          }
+        }
+        return item;
+      })
+    );
 
     res.json({
       success: true,
       data: {
-        orderItems,
+        orderItems: enhancedOrderItems, // ✅ Back to orderItems
         currentPage: page,
         totalPages,
         totalItems,
-        filters: {
-          status
-        }
+        filters: { status }
       }
     });
 
@@ -257,6 +293,7 @@ exports.getUserOrdersPaginated = async (req, res) => {
     });
   }
 };
+
 
 // Get order details
 exports.getOrderDetails = async (req, res) => {
@@ -271,7 +308,6 @@ exports.getOrderDetails = async (req, res) => {
     // Extract enum values
     const cancellationReasons = CANCELLATION_REASONS;
     const returnReasons = RETURN_REASONS;
-
 
     // Get user data
     const user = await User.findById(userId).select('name email profilePhoto');
@@ -300,6 +336,25 @@ exports.getOrderDetails = async (req, res) => {
         cancellationReasons: CANCELLATION_REASONS,
         returnReasons: RETURN_REASONS
       });
+    }
+
+    // ✅ NEW: Add transaction ID for retry functionality
+    if (order.status === 'Pending' && order.paymentStatus === 'Pending') {
+      try {
+        const transactionService = require('../../services/transactionService');
+        const transactions = await transactionService.getUserTransactions(userId, {
+          orderId: orderId,
+          status: 'FAILED',
+          limit: 1
+        });
+        
+        if (transactions && transactions.length > 0) {
+          order.transactionId = transactions[0].transactionId;
+          order.canRetry = ['upi', 'paypal'].includes(order.paymentMethod);
+        }
+      } catch (error) {
+        console.error('Error fetching transaction for order:', order.orderId, error);
+      }
     }
 
     // Get return requests for this order
@@ -424,6 +479,7 @@ exports.getOrderDetails = async (req, res) => {
 
 
 
+
 // Cancel entire order
 exports.cancelOrder = async (req, res) => {
   try {
@@ -480,6 +536,8 @@ exports.cancelOrder = async (req, res) => {
         message: 'Order not found'
       });
     }
+
+  
 
     // ✅ DEBUG: Check status BEFORE cancellation
     console.log('🔍 BEFORE CANCEL ORDER:');

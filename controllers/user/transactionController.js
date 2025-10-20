@@ -1,10 +1,13 @@
-const transactionService = require('../../services/transactionService');
 const User = require('../../models/User');
+const Cart = require('../../models/Cart');
+const Address = require('../../models/Address');
+const Product = require('../../models/Product');
+const transactionService = require('../../services/transactionService');
 
 /**
  * Get user transaction history
  */
-exports.getUserTransactions = async (req, res) => {
+const getUserTransactions = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
@@ -61,7 +64,7 @@ exports.getUserTransactions = async (req, res) => {
 /**
  * Get transaction details by ID
  */
-exports.getTransactionDetails = async (req, res) => {
+const getTransactionDetails = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { transactionId } = req.params;
@@ -107,7 +110,7 @@ exports.getTransactionDetails = async (req, res) => {
 /**
  * Cancel pending transaction (for user-cancelled payments)
  */
-exports.cancelTransaction = async (req, res) => {
+const cancelTransaction = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { transactionId } = req.params;
@@ -169,7 +172,7 @@ exports.cancelTransaction = async (req, res) => {
 /**
  * Get transaction statistics for user
  */
-exports.getTransactionStats = async (req, res) => {
+const getTransactionStats = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
@@ -228,3 +231,124 @@ exports.getTransactionStats = async (req, res) => {
     });
   }
 };
+
+const createOrderTransaction = async (req, res) => {
+  try {
+    const userId = req.user ? req.user?._id : req.session?.userId;
+    const { deliveryAddressId, paymentMethod } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    if (!deliveryAddressId || paymentMethod) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address and payment method are required'
+      });
+    }
+
+    const cart = await Cart.findOne({ userId }).populate({
+      path: 'items.productId',
+      populate: [
+        { path: 'category', select: 'name isListed isDeleted' }, 
+        { path: 'brand', select: 'name isActive isDeleted' }
+      ]
+    });
+
+    if (!cart || cart.items || cart.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cart is empty'
+      });
+    }
+
+    // validate stock and availability
+    const cartItems = [];
+    let subtotal = 0;
+    let totalDiscount = 0;
+    let totalItemCount = 0;
+
+    for (const item of cart.items) {
+      const product = await Product.findById(item.productId);
+      if (!product.isListed || product.isDeleted) continue;
+
+      const variant = product.variants.find(v => v._id.toString() === item.variantId.toString);
+      if (!variant || variant.stock < item.quantity) continue;
+
+      subtotal += item.price * item.quantity;
+      totalItemCount += item.quantity;
+
+      cartItems.push({
+        productId: item.product._id,
+        variantId: item.variantId,
+        sku: item.sku,
+        size: item.size,
+        quantity: item.quantity,
+        price: item.price,
+        totalPrice: item.totalPrice,
+        regularPrice: product.regularPrice
+      });
+    }
+
+    if (cartItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid items left in the cart'
+      });
+    }
+
+    const total = subtotal - totalDiscount;
+
+    const txResult = await transactionService.createOrderTransaction({
+      userId,
+      paymentMethod,
+      deliveryAddressId,
+      amount: total,
+      cartItems,
+      pricing: {
+        subtotal,
+        totalDiscount,
+        total: total,
+        totalItemCount
+      },
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip || req.connection.remoteAddress,
+      sessionId: req.sessionID
+    });
+
+    if (!txResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: txResult.error || 'Failed to create transaction'
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: 'Transaction created successfully',
+      transactionId: txResult.transactionId,
+      amount: total,
+      paymentMethod
+    });
+
+  } catch (error) {
+    console.error('Error occurred while creating transaction:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'An error occurred while creating the new transaction',
+      error: error.message
+    });
+  }
+};
+
+module.exports = {
+  getUserTransactions,
+  getTransactionDetails,
+  cancelTransaction,
+  getTransactionStats,
+  createOrderTransaction
+}
