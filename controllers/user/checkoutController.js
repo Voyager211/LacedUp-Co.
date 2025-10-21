@@ -20,27 +20,26 @@ const {
   PAYMENT_METHODS
 } = require('../../constants/orderEnums');
 
-//  Not modified
 async function restoreCartAfterPaymentFailure(userId, transactionId) {
   try {
-    console.log('🔄 Starting enhanced cart restoration for user:', userId);
+    console.log('Starting enhanced cart restoration for user:', userId);
 
-    // Get transaction details to find cart items
+    // Get transaction details
     const transactionService = require('../../services/transactionService');
     const transactionResult = await transactionService.getTransaction(transactionId);
     
     if (!transactionResult.success) {
-      console.log('⚠️ Transaction not found, skipping cart restoration');
+      console.log('Transaction not found, skipping cart restoration');
       return { success: true, message: 'No transaction found to restore from' };
     }
 
     const transaction = transactionResult.transaction;
     if (!transaction.orderData || !transaction.orderData.items) {
-      console.log('⚠️ No cart items found in transaction, skipping restoration');
+      console.log('No cart items found in transaction, skipping restoration');
       return { success: true, message: 'No items to restore' };
     }
 
-    // ✅ ENHANCED: Validate stock availability before restoration
+    //validate stock availability before restoration
     let cart = await Cart.findOne({ userId });
     if (!cart) {
       cart = new Cart({ userId, items: [] });
@@ -52,7 +51,7 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
 
     for (const originalItem of transaction.orderData.items) {
       try {
-        // Check if product still exists and is available
+        // check if product still exists and is available
         const product = await Product.findById(originalItem.productId)
           .populate(['category', 'brand']);
 
@@ -66,7 +65,6 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
           continue;
         }
 
-        // Check category and brand availability
         if ((product.category && (!product.category.isActive || product.category.isDeleted)) ||
             (product.brand && (!product.brand.isActive || product.brand.isDeleted))) {
           skippedItems++;
@@ -78,7 +76,6 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
           continue;
         }
 
-        // Check variant stock
         const variant = product.variants.find(v => v._id.toString() === originalItem.variantId.toString());
         if (!variant) {
           skippedItems++;
@@ -97,7 +94,6 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
         );
 
         if (existingItemIndex > -1) {
-          // Update existing item quantity (up to stock limit)
           const currentQty = cart.items[existingItemIndex].quantity;
           const desiredQty = Math.min(originalItem.quantity, variant.stock, 5);
           const newQty = Math.min(currentQty + desiredQty, variant.stock, 5);
@@ -119,11 +115,9 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
             });
           }
         } else {
-          // Add new item (up to stock limit)
           const quantityToAdd = Math.min(originalItem.quantity, variant.stock, 5);
           
           if (quantityToAdd > 0) {
-            // Calculate current price
             const currentPrice = calculateVariantFinalPrice(product, variant);
             
             cart.items.push({
@@ -153,7 +147,7 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
         }
 
       } catch (itemError) {
-        console.error('❌ Error processing item restoration:', itemError);
+        console.error('Error processing item restoration:', itemError);
         skippedItems++;
         restorationLog.push({
           productId: originalItem.productId,
@@ -163,16 +157,10 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
       }
     }
 
-    // Save cart if any items were restored
     if (restoredItems > 0) {
       await cart.save();
     }
 
-    console.log('✅ Cart restoration completed:', {
-      restoredItems,
-      skippedItems,
-      totalOriginalItems: transaction.orderData.items.length
-    });
 
     return {
       success: true,
@@ -184,7 +172,7 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
     };
 
   } catch (error) {
-    console.error('❌ Cart restoration failed:', error);
+    console.error('Cart restoration failed:', error);
     return {
       success: false,
       error: error.message,
@@ -193,19 +181,14 @@ async function restoreCartAfterPaymentFailure(userId, transactionId) {
   }
 }
 
-//  Not modified
 function generateFailureResponse(reason, failureType, retryCount = 0, cartResult) {
   const maxRetries = 3;
-  const baseRetryDelay = 2000; // 2 seconds
+  const baseRetryDelay = 2000;
 
-  // Determine if retry is possible
-  const canRetry = retryCount < maxRetries && 
-                   !['insufficient_funds', 'card_declined', 'cancelled'].includes(failureType);
+  const canRetry = retryCount < maxRetries && !['insufficient_funds', 'card_declined', 'cancelled'].includes(failureType);
 
-  // Calculate retry delay (exponential backoff)
   const retryDelay = baseRetryDelay * Math.pow(2, retryCount);
 
-  // Generate suggested actions based on failure type
   let suggestedActions = [];
   let redirectUrl = '/cart';
 
@@ -265,11 +248,8 @@ function generateFailureResponse(reason, failureType, retryCount = 0, cartResult
   };
 }
 
-//  Not modified
 async function logPaymentFailure(userId, transactionId, reason, failureType, retryCount) {
   try {
-    // You can implement this to log to your analytics service
-    // or store in a separate collection for failure analysis
     console.log('📊 Payment failure logged:', {
       userId,
       transactionId,
@@ -279,7 +259,7 @@ async function logPaymentFailure(userId, transactionId, reason, failureType, ret
       timestamp: new Date()
     });
   } catch (error) {
-    console.error('❌ Error logging payment failure:', error);
+    console.error('Error logging payment failure:', error);
   }
 }
 
@@ -303,21 +283,22 @@ const generateOrderId = () => {
 }
 
 
-const validateProductAvailability = (product) => {
+const validateProductAvailability = (product) => {  
   if (!product || !product.isListed || product.isDeleted) {
     return { isValid: false, reason: 'Product is no longer available' };
   }
-
+  
   if (product.category && (!product.category.isActive || product.category.isDeleted)) {
     return { isValid: false, reason: 'Product category is unavailable' };
   }
-
+  
   if (product.brand && (!product.brand.isActive || product.brand.isDeleted)) {
     return { isValid: false, reason: 'Product brand is unavailable' };
   }
 
   return { isValid: true };
 };
+
 
 const validateVariantStock = (product, variantId, requestedQuantity) => {
   const variant = product.variants.find(v => v._id.toString() === variantId.toString());
@@ -414,7 +395,7 @@ const deductStock = async (orderItems) => {
 
 // 1. validate checkout stock 
 const validateCheckoutStock = async (req, res) => {
-  try {
+  try {    
     const userId = req.user?._id || req.session?.userId;
 
     if (!userId) {
@@ -425,16 +406,17 @@ const validateCheckoutStock = async (req, res) => {
       });
     }
 
-    const cart = await Cart.findOne( { userId } )
+    const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
-          { path: 'category', select: 'name isListed isDeleted categoryOffer' },
+          { path: 'category', select: 'name isActive isDeleted categoryOffer' },
           { path: 'brand', select: 'name isActive isDeleted brandOffer' }
         ]
       });
 
     if (!cart || !cart.items || cart.items.length === 0) {
+      console.log('Cart is empty');
       return res.status(400).json({
         success: false,
         message: 'Cart is empty',
@@ -449,8 +431,10 @@ const validateCheckoutStock = async (req, res) => {
       unavailableItems: []
     };
 
-    // validate each cart item
-    for (const item of cart.items) {
+    // Validate each cart item
+    for (let i = 0; i < cart.items.length; i++) {
+      const item = cart.items[i];
+      
       const itemData = {
         productId: item.productId._id,
         variantId: item.variantId,
@@ -462,10 +446,8 @@ const validateCheckoutStock = async (req, res) => {
         totalPrice: item.totalPrice
       };
 
-      //validate product availability
       const availabilityCheck = validateProductAvailability(item.productId);
-      console.log(`Product Availability Check: ${availabilityCheck}`);
-
+      
       if (!availabilityCheck.isValid) {
         validationResults.unavailableItems.push({
           ...itemData,
@@ -474,11 +456,7 @@ const validateCheckoutStock = async (req, res) => {
         continue;
       }
 
-      
-
-      // validate variant and stock
       const stockCheck = validateVariantStock(item.productId, item.variantId, item.quantity);
-      console.log(`Product Stock Check: ${astockCheck}`);
       if (!stockCheck.isValid) {
         if (stockCheck.availableStock === 0) {
           validationResults.outOfStockItems.push({
@@ -493,39 +471,38 @@ const validateCheckoutStock = async (req, res) => {
             availableStock: stockCheck.availableStock,
             requestedQuantity: item.quantity
           });
-          continue;
         }
-
-        // when item is valid
-        validationResults.validItems.push({
-          ...itemData,
-          availableStock: stockCheck.availableStock
-        });
+        continue;
       }
 
-      // check checkout eligible items
-      if (validationResults.validItems.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'No items in your cart are available for checkout',
-          code: 'NO_CHECKOUT_ITEMS',
-          validationResults
-        });
-      }
+      validationResults.validItems.push({
+        ...itemData,
+        availableStock: stockCheck.availableStock
+      });
     }
 
-      return res.json({
-        success: true,
-        message: validationResults.validItems.length === cart.items.length
-        ? 'All cart items are available for checkout'
-        : 'Some items are unavailable but checkout can be processed',
-        validationResults,
-        totalValidItems: validationResults.validItems.length,
-        totalItems: cart.items.length
+    if (validationResults.validItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No items in your cart are available for checkout',
+        code: 'NO_CHECKOUT_ITEMS',
+        validationResults
       });
+    }
+
+    const responseMessage = validationResults.validItems.length === cart.items.length
+      ? 'All cart items are available for checkout'
+      : 'Some items are unavailable but checkout can be processed';
+
+    return res.json({
+      success: true,
+      message: responseMessage,
+      validationResults,
+      totalValidItems: validationResults.validItems.length,
+      totalItems: cart.items.length
+    });
 
   } catch (error) {
-    console.error('Error validating checkout stock:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to validate cart for checkout',
@@ -534,13 +511,13 @@ const validateCheckoutStock = async (req, res) => {
   }
 };
 
+
 // 2. place order
 const placeOrder = async (req, res) => {
   try {
     const userId = req.user?._id || req.session?.userId;
     const { deliveryAddressId, paymentMethod } = req.body;
 
-    // validate authentication
     if (!userId) {
       return res.status(401).json({
         success: false,
@@ -548,7 +525,6 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    // validate fields
     if (!deliveryAddressId || !paymentMethod) {
       return res.status(400).json({
         success: false,
@@ -556,7 +532,6 @@ const placeOrder = async (req, res) => {
       });
     }
 
-    // validate payment method
     const validatePaymentMethods = Object.values(PAYMENT_METHODS);
     if (!validatePaymentMethods.includes(paymentMethod)) {
       return res.status(400).json({
@@ -613,7 +588,7 @@ const placeOrderWithValidation = async (req, res) => {
       .populate({
         path: 'items.productId',
         populate: [
-          { path: 'category', select: 'name isListed isDeleted categoryOffer' },
+          { path: 'category', select: 'name isActive isDeleted categoryOffer' },
           { path: 'brand', select: 'name isActive isDeleted brandOffer' }
         ]
       });
@@ -723,14 +698,12 @@ const handleCODOrder = async (req, res) => {
       'COD order placed, payment pending until delivery'
     );
 
-    // handle coupon usage
     if (req.session.appliedCoupon) {
       const { updateCouponUsage } = require('./couponController');
       await updateCouponUsage(req.session.appliedCoupon._id, userId, order._id);
       delete req.session.appliedCoupon;
     }
 
-    // clear cart
     await Cart.findOneAndUpdate({userId}, { $set: { items: [] } });
 
     console.log(`COD order places successfully: ${order.orderId}`);
@@ -846,7 +819,6 @@ const handleWalletOrder = async (req, res) => {
         delete req.session.appliedCoupon;
       }
 
-      // clear cart
       await Cart.findOneAndUpdate({ userId }, { $set: { items: [] } });
 
       console.log(`Wallet payment successful for order: ${order.orderId}`);
@@ -913,7 +885,7 @@ const createOrderWithTransaction = async (userId, deliveryAddressId, paymentMeth
       .populate({
         path: 'items.productId',
         populate: [
-          { path: 'category', select: 'name isListed isDeleted categoryOffer' },
+          { path: 'category', select: 'name Active isDeleted categoryOffer' },
           { path: 'brand', select: 'name isActive isDeleted brandOffer' }
         ]
       });
@@ -1059,7 +1031,6 @@ const createOrderWithTransaction = async (userId, deliveryAddressId, paymentMeth
       try {
         await deductStock(validItems);
       } catch (stockError) {
-        // if stock deduction fails, mark transaction as failed
         await transactionService.failTransaction(
           transaction.transactionId,
           'Stock deduction failed',
@@ -2189,17 +2160,17 @@ const loadCheckout = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
-    // Get user data
+    // user
     const user = await User.findById(userId).select('fullname email profilePhoto');
     if (!user) {
       return res.redirect('/login');
     }
 
-    // Get user's addresses
+    // addresses
     const userAddresses = await Address.findOne({ userId }).lean();
     const addresses = userAddresses ? userAddresses.address : [];
 
-    // Get user's wallet balance
+    // wallet balance
     const walletService = require('../../services/walletService');
     let walletBalance = 0;
     try {
@@ -2207,20 +2178,19 @@ const loadCheckout = async (req, res) => {
       if (walletResult && walletResult.success) {
         walletBalance = walletResult.balance || 0;
       }
-      console.log(`✅ Wallet balance loaded for checkout: ₹${walletBalance}`);
+      console.log(`Wallet balance loaded for checkout: ₹${walletBalance}`);
     } catch (walletError) {
-      console.error('❌ Error fetching wallet balance for checkout:', walletError);
-      // Continue with 0 balance
+      console.error('Error fetching wallet balance for checkout:', walletError);
     }
 
-    // Get user's cart with populated product data
+    // cart
     const cart = await Cart.findOne({ userId })
       .populate({
         path: 'items.productId',
         populate: [
           {
             path: 'category',
-            select: 'name isListed isDeleted categoryOffer'
+            select: 'name isActive isDeleted categoryOffer'
           },
           {
             path: 'brand',
@@ -2235,28 +2205,23 @@ const loadCheckout = async (req, res) => {
     let totalDiscount = 0;
 
     if (cart && cart.items) {
-      // Filter out unavailable items and calculate totals
       cartItems = cart.items.filter(item => {
-        // Check if product exists and is available
         if (!item.productId || 
             !item.productId.isListed ||
             item.productId.isDeleted) {
           return false;
         }
 
-        // Check category availability
         if (item.productId.category && 
-            (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
+            (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) {
           return false;
         }
 
-        // Check brand availability
         if (item.productId.brand && 
             (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true)) {
           return false;
         }
 
-        // Check variant stock
         if (item.variantId) {
           const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
           if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
@@ -2274,13 +2239,10 @@ const loadCheckout = async (req, res) => {
       });
     }
 
-    // Calculate shipping (free shipping for orders above ₹500)
     const shipping = subtotal >= 500 ? 0 : 50;
     
-    // Calculate total
     const total = subtotal + shipping - totalDiscount;
 
-    // If cart is empty or no valid items, redirect to cart
     if (cartItems.length === 0) {
       return res.redirect('/cart');
     }
@@ -2307,7 +2269,6 @@ const loadCheckout = async (req, res) => {
   }
 };
 
-// not modified
 const loadOrderSuccess = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -2317,13 +2278,13 @@ const loadOrderSuccess = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get user data
+    // user
     const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
     }
 
-    // Get order details with populated product data and address
+    // order
     const order = await Order.findOne({ orderId: orderId, user: userId })
       .populate({
         path: 'items.productId',
@@ -2338,20 +2299,18 @@ const loadOrderSuccess = async (req, res) => {
       return res.status(404).send('Order not found');
     }
 
-    // Get the actual delivery address from the populated address document
+    // delivery address
     let actualDeliveryAddress = null;
     if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
       const addressIndex = order.deliveryAddress.addressIndex;
       actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
     }
 
-    // Create order data with proper product and address information
     const orderData = {
       orderId: order.orderId,
       items: order.items.map(item => {
         const itemObj = item.toObject();
         
-        // Ensure product data is available
         if (item.productId && typeof item.productId === 'object') {
           itemObj.productId = {
             _id: item.productId._id,
@@ -2360,7 +2319,6 @@ const loadOrderSuccess = async (req, res) => {
             subImages: item.productId.subImages || []
           };
         } else {
-          // Fallback if product is not populated
           itemObj.productId = {
             _id: itemObj.productId,
             productName: 'Product Name',
@@ -2406,7 +2364,6 @@ const loadOrderSuccess = async (req, res) => {
   }
 };
 
-// not modified
 const loadOrderFailure = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
@@ -2423,7 +2380,7 @@ const loadOrderFailure = async (req, res) => {
         if (transactionResult.success && transactionResult.transaction) {
           const transaction = transactionResult.transaction;
           
-          // Get delivery address from transaction data
+          // delivery address 
           let actualDeliveryAddress = null;
           if (transaction.orderData && transaction.orderData.deliveryAddressId) {
             const userAddresses = await Address.findOne({ userId });
@@ -2437,27 +2394,23 @@ const loadOrderFailure = async (req, res) => {
             }
           }
 
-          // ✅ FIXED: Populate product data for each item
           const itemsWithProducts = [];
           if (transaction.orderData.items && transaction.orderData.items.length > 0) {
             for (const item of transaction.orderData.items) {
               try {
-                // ✅ DEBUG: Log the original item structure
-                console.log('🔍 Original transaction item:', JSON.stringify(item, null, 2));
+                console.log('Original transaction item:', JSON.stringify(item, null, 2));
                 
                 // Populate product data
                 const product = await Product.findById(item.productId)
                   .select('productName mainImage subImages regularPrice salePrice')
                   .lean();
 
-                // ✅ FIXED: Calculate price from available sources
                 const itemPrice = item.price || item.unitPrice || product?.salePrice || product?.regularPrice || 0;
                 const itemQuantity = item.quantity || 1;
                 const itemTotalPrice = item.totalPrice || (itemPrice * itemQuantity);
 
                 const populatedItem = {
                   ...item,
-                  // ✅ Ensure all price fields are set
                   price: itemPrice,
                   quantity: itemQuantity,
                   totalPrice: itemTotalPrice,
@@ -2476,12 +2429,10 @@ const loadOrderFailure = async (req, res) => {
                   }
                 };
 
-                // ✅ DEBUG: Log the final populated item
-                console.log('✅ Final populated item:', JSON.stringify(populatedItem, null, 2));
+                console.log('Final populated item:', JSON.stringify(populatedItem, null, 2));
                 itemsWithProducts.push(populatedItem);
               } catch (productError) {
                 console.error('Error populating product for item:', productError);
-                // Add item with fallback product data and price calculation
                 const fallbackPrice = item.price || item.unitPrice || 0;
                 itemsWithProducts.push({
                   ...item,
@@ -2498,10 +2449,9 @@ const loadOrderFailure = async (req, res) => {
             }
           }
 
-          // Build orderData with populated items
           orderData = {
             orderId: transaction.transactionId,
-            items: itemsWithProducts, // ✅ Now contains populated product data
+            items: itemsWithProducts,
             deliveryAddress: actualDeliveryAddress || {
               name: 'Address not found',
               addressType: 'N/A',
@@ -2545,30 +2495,27 @@ const loadOrderFailure = async (req, res) => {
 };
 
 
-// not modified
 const loadRetryPaymentPage = async (req, res) => {
   try {
     const { transactionId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
 
-    console.log('🔄 Loading retry payment page for transaction:', transactionId);
+    console.log('Loading retry payment page for transaction:', transactionId);
 
     if (!userId) {
       return res.redirect('/login');
     }
 
-    // Get user data
     const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
     }
 
-    // Get transaction details
     const transactionService = require('../../services/transactionService');
     const transactionResult = await transactionService.getTransaction(transactionId);
 
     if (!transactionResult.success) {
-      console.log('❌ Transaction not found:', transactionId);
+      console.log('Transaction not found:', transactionId);
       return res.status(404).render('error', { 
         message: 'Transaction not found',
         title: 'Transaction Not Found',
@@ -2578,13 +2525,12 @@ const loadRetryPaymentPage = async (req, res) => {
 
     const transaction = transactionResult.transaction;
 
-    // Verify transaction belongs to current user
     const transactionUserId = transaction.userId && typeof transaction.userId === 'object' && transaction.userId._id
       ? transaction.userId._id.toString()
       : transaction.userId.toString();
 
     if (transactionUserId !== userId.toString()) {
-      console.log('❌ Unauthorized access to transaction');
+      console.log('Unauthorized access to transaction');
       return res.status(403).render('error', { 
         message: 'Unauthorized access',
         title: 'Access Denied',
@@ -2592,9 +2538,8 @@ const loadRetryPaymentPage = async (req, res) => {
       });
     }
 
-    // Check if transaction is retryable
     if (!['FAILED', 'CANCELLED'].includes(transaction.status)) {
-      console.log('❌ Transaction not retryable, status:', transaction.status);
+      console.log('Transaction not retryable, status:', transaction.status);
       return res.status(400).render('error', { 
         message: 'This transaction cannot be retried',
         title: 'Cannot Retry Payment',
@@ -2602,7 +2547,6 @@ const loadRetryPaymentPage = async (req, res) => {
       });
     }
 
-    // Get delivery address from transaction data
     let actualDeliveryAddress = null;
     if (transaction.orderData && transaction.orderData.deliveryAddressId) {
       const userAddresses = await Address.findOne({ userId });
@@ -2616,24 +2560,20 @@ const loadRetryPaymentPage = async (req, res) => {
       }
     }
 
-    // populate product data for each item
     const itemsWithProducts = [];
     if (transaction.orderData.items && transaction.orderData.items.length > 0) {
       for (const item of transaction.orderData.items) {
         try {
-          // Populate product data
           const product = await Product.findById(item.productId)
             .select('productName mainImage subImages regularPrice salePrice')
             .lean();
 
-          // Calculate price from available sources
           const itemPrice = item.price || item.unitPrice || product?.salePrice || product?.regularPrice || 0;
           const itemQuantity = item.quantity || 1;
           const itemTotalPrice = item.totalPrice || (itemPrice * itemQuantity);
 
           const populatedItem = {
             ...item,
-            // Ensure all price fields are set
             price: itemPrice,
             quantity: itemQuantity,
             totalPrice: itemTotalPrice,
@@ -2655,7 +2595,6 @@ const loadRetryPaymentPage = async (req, res) => {
           itemsWithProducts.push(populatedItem);
         } catch (productError) {
           console.error('Error populating product for retry item:', productError);
-          // Add item with fallback product data and price calculation
           const fallbackPrice = item.price || item.unitPrice || 0;
           itemsWithProducts.push({
             ...item,
@@ -2675,7 +2614,6 @@ const loadRetryPaymentPage = async (req, res) => {
       }
     }
 
-    // Build order data for retry page
     const orderData = {
       transactionId: transaction.transactionId,
       items: itemsWithProducts,
@@ -2699,7 +2637,7 @@ const loadRetryPaymentPage = async (req, res) => {
       createdAt: transaction.createdAt
     };
 
-    console.log('✅ Retry payment page loaded for transaction:', transactionId);
+    console.log('Retry payment page loaded for transaction:', transactionId);
 
     res.render('user/retry-payment', {
       user,
@@ -2722,7 +2660,6 @@ const loadRetryPaymentPage = async (req, res) => {
   }
 };
 
-// Not modified
 const getWalletBalanceForCheckout = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;

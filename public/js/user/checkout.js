@@ -543,21 +543,77 @@ function showCheckoutValidationError(v) {
 }
 
 async function validateCheckoutOnLoad() {
-  console.log('Validating checkout on page load…');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('🔍 [FRONTEND] validateCheckoutOnLoad START');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
   try {
+    console.log('📡 Calling validateCheckoutStock() API...');
     const v = await validateCheckoutStock();
+    
+    console.log('✅ API Response Received:');
+    console.log('   success:', v.success);
+    console.log('   message:', v.message);
+    console.log('   validationResults:', v.validationResults);
+    
+    // Log each validation array
+    if (v.validationResults) {
+      console.log('\n📊 Validation Arrays:');
+      console.log('   ✅ validItems:', v.validationResults.validItems?.length || 0);
+      console.log('   ❌ invalidItems:', v.validationResults.invalidItems?.length || 0);
+      console.log('   📦 outOfStockItems:', v.validationResults.outOfStockItems?.length || 0);
+      console.log('   ⚠️  unavailableItems:', v.validationResults.unavailableItems?.length || 0);
+    } else {
+      console.log('⚠️ WARNING: validationResults is missing or undefined');
+    }
+    
+    // Evaluate each condition separately for clarity
+    console.log('\n🔎 Evaluating Conditions:');
+    const notSuccess = !v.success;
+    console.log('   !v.success:', notSuccess);
+    
+    const hasValidationResults = v.validationResults !== undefined && v.validationResults !== null;
+    console.log('   hasValidationResults:', hasValidationResults);
+    
+    if (hasValidationResults) {
+      const hasInvalidItems = v.validationResults.invalidItems?.length > 0;
+      const hasOutOfStockItems = v.validationResults.outOfStockItems?.length > 0;
+      const hasUnavailableItems = v.validationResults.unavailableItems?.length > 0;
+      
+      console.log('   hasInvalidItems:', hasInvalidItems, '(length:', v.validationResults.invalidItems?.length || 0, ')');
+      console.log('   hasOutOfStockItems:', hasOutOfStockItems, '(length:', v.validationResults.outOfStockItems?.length || 0, ')');
+      console.log('   hasUnavailableItems:', hasUnavailableItems, '(length:', v.validationResults.unavailableItems?.length || 0, ')');
+    }
+    
+    // Calculate final "bad" status
     const bad = !v.success ||
                 (v.validationResults &&
-                 (v.validationResults.invalidItems.length     ||
-                  v.validationResults.outOfStockItems.length  ||
-                  v.validationResults.unavailableItems.length));
-
-    if (bad) setTimeout(() => showCheckoutValidationError(v), 1000);
-    else console.log('Checkout validation passed – all items available');
+                 (v.validationResults.invalidItems?.length     ||
+                  v.validationResults.outOfStockItems?.length  ||
+                  v.validationResults.unavailableItems?.length));
+    
+    console.log('\n🎯 Final Decision:');
+    console.log('   bad (should show error):', bad);
+    
+    if (bad) {
+      console.log('❌ Triggering error modal in 1 second...');
+      console.log('   Reason: Validation failed or has problem items');
+      setTimeout(() => showCheckoutValidationError(v), 1000);
+    } else {
+      console.log('✅ Checkout validation PASSED');
+      console.log('   All items are available for checkout');
+    }
+    
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
   } catch (err) {
-    console.error('Error validating checkout on load:', err);
+    console.error('❌ [FRONTEND] Error validating checkout on load:');
+    console.error('   Error:', err);
+    console.error('   Stack:', err.stack);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }
 }
+
 
 // ui helper functions
 function selectAddress(radio) {
