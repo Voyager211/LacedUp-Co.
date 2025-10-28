@@ -142,7 +142,7 @@ function validateCouponConditions  (coupon, orderTotal, userId, session) {
     // checkuser specific usage limit
     if (userId && coupon.userLimit) {
         const userUsageCount = coupon.usedBy?.filter(usage => 
-            usage.userId.toString() === userId.toString()
+            usage.user.toString() === userId.toString()
         ).length || 0;
 
         if (userUsageCount >= coupon.userLimit) {
@@ -190,6 +190,15 @@ function calculateDiscount(coupon, orderTotal) {
 
 const getAvailableCoupons = async (req, res) => {
     try {
+        const userId = req.user?.id || req.session.userId;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: 'User authentication required'
+            });
+        }
+
         console.log('Fetching available coupons for user');
 
         const currentDate = new Date();
@@ -197,29 +206,48 @@ const getAvailableCoupons = async (req, res) => {
         const coupons = await Coupon.find({
             isActive: true,
             validFrom: { $lte: currentDate },
-            validTo: { $gte: currentDate },
-            $or: [
-                { usageLimit: { $gt: 0 } },
-                { usageLimit: Infinity }
-            ]
+            validTo: { $gte: currentDate }
         })
-        .select('code name description discountType discountValue minimumOrderValue maximumDiscountAmount usageLimit usedCount userLimit validFrom validTo isActive')
+        .select('code name description discountType discountValue minimumOrderValue maximumDiscountAmount usageLimit usedCount userLimit validFrom validTo isActive usedBy')
         .sort({ createdAt: -1 });
 
         // filter out coupons that reached limits
         const availableCoupons = coupons.filter(coupon => {
-            if (coupon.usageLimit === Infinity) return true;
-            return coupon.usedCount < coupon.usageLimit;
+            // total limit
+            if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+                console.log(`Coupon ${coupon.code} excluded: Total usage limit reached`);
+                return false;
+            }
+
+            // per user limit
+            if (coupon.userLimit !== null) {
+                const userUsageCount = coupon.usedBy.filter(
+                    usage => usage.user.toString() === userId.toString()
+                ).length;
+
+                if (userUsageCount >= coupon.userLimit) {
+                    console.log(`Coupon ${coupon.code} excluded: User has reached usage limit (${userUsageCount}/${coupon.userLimit})`);
+                    return false;
+                }
+            }
+
+            return true;
         });
 
         console.log(`Found ${availableCoupons.length} available coupons`);
+
+        const couponsToSend = availableCoupons.map(coupon => {
+            const couponObj = coupon.toObject();
+            delete couponObj.usedBy;
+            return couponObj;
+        });
 
         res.status(200).json({
             success: true,
             message: 'Available coupons fetched successfully',
             data: {
-                coupons: availableCoupons,
-                count: availableCoupons.length
+                coupons: couponsToSend,
+                count: couponsToSend.length
             }
         });
 
@@ -417,7 +445,6 @@ const removeCoupon = async (req, res) => {
     }
 }
 
-// works after order is placed
 const updateCouponUsage = async (couponId, userId, orderId = null) => {
     try {
         const coupon = await Coupon.findById(couponId);

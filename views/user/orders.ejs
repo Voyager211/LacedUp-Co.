@@ -19,10 +19,12 @@
     <div class="col-lg-9 col-md-8">
       <div class="profile-content">
         <div class="content-card">
-          <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="content-title">My Orders</h2>
-            <div class="d-flex gap-2">
-              <select class="form-select" id="orderStatusFilter" style="width: auto;">
+          <!-- top bar -->
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+            <h2 class="content-title mb-0">My Orders</h2>
+            <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
+              <%- include('partials/order-search') %>
+              <select class="form-select" id="orderStatusFilter" style="width: auto; min-width: 140px;">
                 <option value="">All Orders</option>
                 <option value="Pending">Pending</option>
                 <option value="Processing">Processing</option>
@@ -34,106 +36,115 @@
             </div>
           </div>
 
+
           <!-- Orders Container -->
           <div id="ordersContainer">
-            <% if (orderItems && orderItems.length > 0) { %>
-              <% orderItems.forEach(item => { %>
-                <div class="order-card mb-3" data-status="<%= item.orderStatus %>">
-                  <div class="card border-0 shadow-sm">
+            <% if (orders && orders.length > 0) { %>
+              <% orders.forEach(order => { %>
+                <div class="order-card mb-3" data-status="<%= order.status %>">
+                  <div class="card shadow-sm">
                     <div class="card-body p-4">
-                      <div class="row align-items-center">
-                        <!-- Order Info -->
-                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-                          <div class="order-info">
-                            <h6 class="mb-1 fw-bold text-dark">Order #<%= item.orderId %></h6>
-                            <small class="text-muted">
-                              <i class="bi bi-calendar3 me-1"></i>
-                              <%= new Date(item.orderDate).toLocaleDateString('en-IN') %>
-                            </small>
-                            <div class="mt-1">
-                              <small class="text-muted">Size: <%= item.size %> | Qty: <%= item.quantity %></small>
+                      <!-- Order Header -->
+                      <div class="row mb-3 pb-3 border-bottom">
+                        <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
+                          <h6 class="mb-1 fw-bold text-dark">Order #<%= order.orderId %></h6>
+                          <small class="text-muted">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            <%= new Date(order.createdAt).toLocaleDateString('en-IN') %>
+                          </small>
+                        </div>
+                        <div class="col-lg-3 col-md-3 mb-2 mb-lg-0 text-center">
+                          <% 
+                            let statusClass = 'secondary';
+                            if (order.status === 'Pending') statusClass = 'warning';
+                            else if (order.status === 'Processing') statusClass = 'primary';
+                            else if (order.status === 'Shipped') statusClass = 'info';
+                            else if (order.status === 'Delivered') statusClass = 'success';
+                            else if (order.status === 'Cancelled') statusClass = 'danger';
+                            else if (order.status === 'Returned') statusClass = 'warning';
+                            else if (order.status === 'Partially Returned') statusClass = 'warning';
+                            else if (order.status === 'Partially Delivered') statusClass = 'info';
+                            else if (order.status === 'Processing Return') statusClass = 'warning';
+                          %>
+                          <span class="badge bg-<%= statusClass %> fs-6 px-3 py-2">
+                            <%= order.status %>
+                          </span>
+                        </div>
+                        <div class="col-lg-3 col-md-3 text-end">
+                          <div class="fw-bold text-dark fs-5">₹<%= (order.totalAmount - (order.couponDiscount || 0)).toLocaleString('en-IN') %></div>
+                          <small class="text-muted text-uppercase">
+                            <%= order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod %>
+                          </small>
+                        </div>
+                      </div>
+
+                      <!-- Items Display (Show max 4 items) -->
+                      <div class="items-container">
+                        <% 
+                          const displayItems = order.items.slice(0, 4);
+                          const remainingCount = order.items.length - 4;
+                        %>
+                        
+                        <% displayItems.forEach((item, index) => { %>
+                          <div class="item-row d-flex align-items-center py-2 <%= index < displayItems.length - 1 ? 'border-bottom' : '' %>">
+                            <!-- Product Image -->
+                            <div class="item-image me-3">
+                              <% if (item.productId && item.productId.mainImage) { %>
+                                <img src="<%= item.productId.mainImage %>" 
+                                    alt="<%= item.productId.productName %>" 
+                                    class="product-thumb">
+                              <% } else { %>
+                                <div class="product-thumb-placeholder">
+                                  <i class="bi bi-image"></i>
+                                </div>
+                              <% } %>
+                            </div>
+                            
+                            <!-- Product Info -->
+                            <div class="item-info flex-grow-1">
+                              <div class="fw-semibold text-dark">
+                                <%= item.productId ? item.productId.productName : 'Product' %>
+                              </div>
+                              <small class="text-muted">
+                                Size: <%= item.size %> | Qty: <%= item.quantity %>
+                              </small>
+                            </div>
+                            
+                            <!-- Item Price -->
+                            <div class="item-price text-end">
+                              <div class="fw-semibold">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+                              <% if (item.status && item.status !== order.status) { %>
+                                <small class="badge bg-secondary"><%= item.status %></small>
+                              <% } %>
                             </div>
                           </div>
-                        </div>
-
-                        <!-- Product Preview -->
-                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-                          <div class="product-preview d-flex align-items-center">
-                            <% if (item.productImage) { %>
-                              <img src="<%= item.productImage %>" alt="<%= item.productName %>" class="product-thumb me-3">
-                            <% } else { %>
-                              <div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>
-                            <% } %>
-                            <div class="product-info">
-                              <div class="fw-semibold text-dark"><%= item.productName %></div>
-                              <small class="text-muted">SKU: <%= item.sku %></small>
-                            </div>
+                        <% }) %>
+                        
+                        <!-- Show remaining items count -->
+                        <% if (remainingCount > 0) { %>
+                          <div class="text-center py-2">
+                            <button class="btn btn-link text-decoration-none p-0" 
+                                    onclick="viewOrderDetails('<%= order.orderId %>')">
+                              <i class="bi bi-plus-circle me-1"></i>
+                              + <%= remainingCount %> more item<%= remainingCount > 1 ? 's' : '' %>
+                            </button>
                           </div>
-                        </div>
+                        <% } %>
+                      </div>
 
-                        <!-- Status & Amount -->
-                        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-                          <div class="status-amount text-center">
-                            <% 
-                              let statusClass = 'secondary';
-                              let displayStatus = item.status;
-                              // Show order status for PENDING orders
-                              if (item.orderStatus === 'Pending') {
-                                statusClass = 'warning';
-                                displayStatus = 'Payment Pending';
-                              } else if (item.status === 'Delivered') statusClass = 'success';
-                              else if (item.status === 'Shipped') statusClass = 'info';
-                              else if (item.status === 'Processing') statusClass = 'primary';
-                              else if (['Cancelled', 'Failed'].includes(item.status)) statusClass = 'danger';
-                            %>
-                            <span class="badge bg-<%= statusClass %> fs-6 px-3 py-2 mb-2">
-                              <%= displayStatus %>
-                            </span>
-                            <div class="fw-bold text-dark fs-5">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
-                            <small class="text-muted text-uppercase">
-                              <%= item.paymentMethod === 'cod' ? 'Cash on Delivery' : item.paymentMethod %>
-                            </small>
-                          </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="col-lg-3 col-md-6">
-                          <div class="order-actions d-flex flex-column gap-2">
-                            
-                            <!-- ✅ RETRY PAYMENT BUTTON for PENDING items -->
-                            <% if (item.orderStatus === 'Pending' && item.canRetry && item.transactionId) { %>
-                              <a href="/checkout/retry-payment/<%= item.transactionId %>" 
-                                class="btn btn-warning btn-sm">
-                                <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
-                              </a>
-                            <% } %>
-                            
-                            <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('<%= item.orderId %>')">
+                      <!-- Order Actions -->
+                      <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                          <div class="order-actions d-flex flex-wrap gap-2 justify-content-end">
+                            <!-- View Details Button -->
+                            <button class="btn btn-primary btn-sm" 
+                                    onclick="viewOrderDetails('<%= order.orderId %>')">
                               <i class="bi bi-eye me-1"></i>View Details
                             </button>
-                            <div class="d-flex gap-2">
-                              <!-- Item-level actions based on status -->
-                              <% if (item.orderStatus === 'Pending' || item.status === 'Processing') { %>
-                                <button class="btn btn-outline-danger btn-sm flex-fill" 
-                                        onclick="cancelItem('<%= item.orderId %>', '<%= item.itemId %>')">
-                                  <i class="bi bi-x-circle me-1"></i>Cancel
-                                </button>
-                              <% } %>
-                              
-                              <% if (item.status === 'Delivered') { %>
-                                <button class="btn btn-outline-warning btn-sm flex-fill" 
-                                        onclick="returnItem('<%= item.orderId %>', '<%= item.itemId %>')">
-                                  <i class="bi bi-arrow-return-left me-1"></i>Return
-                                </button>
-                                <button class="btn btn-outline-success btn-sm flex-fill" 
-                                        onclick="downloadInvoice('<%= item.orderId %>')">
-                                  <i class="bi bi-download me-1"></i>Invoice
-                                </button>
-                              <% } %>
-                            </div>
                           </div>
                         </div>
                       </div>
+
                     </div>
                   </div>
                 </div>
@@ -152,6 +163,7 @@
               </div>
             <% } %>
           </div>
+
 
 
 
@@ -195,7 +207,7 @@
 <style>
 /* Profile Content Styles */
 .profile-content {
-  background: #fff;
+  background: #f8f9fa;
   border-radius: 12px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   overflow: hidden;
@@ -203,6 +215,7 @@
 
 .content-card {
   padding: 2rem;
+  background: #ffffff;
 }
 
 .content-title {
@@ -211,90 +224,223 @@
   color: #000;
   margin-bottom: 0;
   padding-bottom: 1rem;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 2px solid #e9ecef;
 }
 
-/* Order Card Styles */
+/* Enhanced Order Card Styles */
 .order-card {
   transition: all 0.3s ease;
-  cursor: pointer;
+  position: relative;
+  margin-bottom: 1.5rem;
 }
 
 .order-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+}
+
+.order-card:active {
+  transform: translateY(0);
 }
 
 .order-card .card {
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #e9ecef;
+  border: 1px solid #dee2e6; /* Right, top, bottom borders */
+  border-left: 5px solid #6c757d; /* Default left border */
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 
+              0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.order-card:hover .card {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 
+              0 8px 25px rgba(0, 0, 0, 0.08);
 }
 
 .order-card .card-body {
   padding: 1.5rem;
+  position: relative;
 }
 
-/* Product Thumbnail */
+/* Status-Specific Left Borders - Matching Badge Colors */
+.order-card[data-status="Pending"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Processing"] .card {
+  border-left: 5px solid #0d6efd; /* Bootstrap primary */
+}
+
+.order-card[data-status="Shipped"] .card {
+  border-left: 5px solid #0dcaf0; /* Bootstrap info */
+}
+
+.order-card[data-status="Delivered"] .card {
+  border-left: 5px solid #198754; /* Bootstrap success */
+}
+
+.order-card[data-status="Cancelled"] .card {
+  border-left: 5px solid #dc3545; /* Bootstrap danger */
+}
+
+.order-card[data-status="Returned"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Partially Returned"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Partially Delivered"] .card {
+  border-left: 5px solid #0dcaf0; /* Bootstrap info */
+}
+
+.order-card[data-status="Processing Return"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+/* Product Thumbnail Styles */
 .product-thumb {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   object-fit: cover;
   border-radius: 8px;
-  border: 1px solid #e9ecef;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
 .product-thumb-placeholder {
-  width: 50px;
-  height: 50px;
+  width: 60px;
+  height: 60px;
   background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
+  border: 2px solid #e9ecef;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #6c757d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  font-size: 1.25rem;
 }
 
-.product-info {
-  flex: 1;
+/* Item Row Styles */
+.item-row {
+  min-height: 70px;
+  transition: background-color 0.2s ease;
+  padding: 0.75rem 0.5rem !important;
+  margin: 0 -0.5rem;
+  border-radius: 8px;
+}
+
+.item-row:hover {
+  background-color: #f8f9fa;
+}
+
+.item-row .item-image {
+  flex-shrink: 0;
+}
+
+.item-row .item-info {
   min-width: 0;
+  flex: 1;
 }
 
-.product-info .fw-semibold {
-  font-size: 0.9rem;
-  line-height: 1.3;
+.item-row .item-info .fw-semibold {
+  font-size: 0.95rem;
+  line-height: 1.4;
   margin-bottom: 0.25rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  color: #212529;
+}
+
+.item-row .item-info small {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.item-row .item-price {
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.item-row .item-price .fw-semibold {
+  font-size: 1rem;
+  color: #000;
+}
+
+.item-row:last-child {
+  border-bottom: none !important;
+}
+
+/* Items Container */
+.items-container {
+  background: rgba(248, 249, 250, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+/* Order Header */
+.order-card .border-bottom {
+  border-color: #e9ecef !important;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-card .border-top {
+  border-color: #e9ecef !important;
+  padding-top: 1rem;
+  margin-top: 1rem;
 }
 
 /* Order Info */
 .order-info h6 {
   font-size: 1rem;
   margin-bottom: 0.5rem;
+  font-weight: 700;
 }
 
 /* Status & Amount */
 .status-amount .badge {
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.5px;
   display: inline-block;
   margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .status-amount .fs-5 {
   font-size: 1.25rem !important;
   margin-bottom: 0.25rem;
+  font-weight: 700;
+}
+
+/* Enhanced Badges */
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 /* Order Actions */
+.order-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .order-actions .btn {
   font-size: 0.875rem;
   padding: 0.5rem 1rem;
   border-radius: 6px;
   font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.order-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
 }
 
 .order-actions .btn-primary {
@@ -305,6 +451,7 @@
 .order-actions .btn-primary:hover {
   background-color: #dc3545;
   border-color: #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .order-actions .btn-outline-danger:hover,
@@ -314,10 +461,75 @@
   transform: translateY(-1px);
 }
 
-/* Badge Colors */
-.badge {
-  font-weight: 500;
-  letter-spacing: 0.5px;
+/* Remaining Items Button */
+.items-container .btn-link {
+  color: #0d6efd;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.items-container .btn-link:hover {
+  color: #0a58ca;
+  text-decoration: underline !important;
+}
+
+/* Loading State */
+.loading-state {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.loading-state .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3rem;
+  color: #000;
+}
+
+/* Empty State */
+#emptyState {
+  padding: 4rem 2rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 2rem 0;
+  text-align: center;
+}
+
+#emptyState i {
+  opacity: 0.5;
+  color: #6c757d;
+}
+
+#emptyState h4 {
+  color: #495057;
+  font-weight: 600;
+}
+
+#emptyState p {
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+/* Retry Payment Alert */
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffecb5;
+  color: #664d03;
+}
+
+/* Filter Dropdown */
+#orderStatusFilter {
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+#orderStatusFilter:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
 }
 
 /* Responsive Design */
@@ -333,20 +545,48 @@
   .order-actions {
     margin-top: 1rem;
   }
+  
+  .order-card[data-status="Pending"] .card,
+  .order-card[data-status="Processing"] .card,
+  .order-card[data-status="Shipped"] .card,
+  .order-card[data-status="Delivered"] .card,
+  .order-card[data-status="Cancelled"] .card,
+  .order-card[data-status="Returned"] .card,
+  .order-card[data-status="Partially Returned"] .card,
+  .order-card[data-status="Partially Delivered"] .card,
+  .order-card[data-status="Processing Return"] .card {
+    border-left-width: 4px;
+  }
 }
 
 @media (max-width: 768px) {
+  .content-card {
+    padding: 1.5rem;
+  }
+  
   .order-card .card-body {
     padding: 1rem;
   }
   
   .product-thumb,
   .product-thumb-placeholder {
-    width: 40px;
-    height: 40px;
+    width: 50px;
+    height: 50px;
   }
   
-  .product-info .fw-semibold {
+  .item-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    text-align: left;
+  }
+  
+  .item-row .item-price {
+    margin-top: 0.5rem;
+    width: 100%;
+    text-align: left !important;
+  }
+  
+  .item-row .item-info .fw-semibold {
     font-size: 0.85rem;
   }
   
@@ -354,22 +594,33 @@
     font-size: 1.1rem !important;
   }
   
+  .order-actions {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+  
   .order-actions .btn {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;
-  }
-  
-  .order-actions {
-    flex-direction: row !important;
-  }
-  
-  .order-actions .btn:first-child {
-    margin-bottom: 0;
-    margin-right: 0.5rem;
+    flex: 1;
+    min-width: 100px;
   }
 }
 
 @media (max-width: 576px) {
+  .content-card {
+    padding: 1rem;
+  }
+  
+  .content-title {
+    font-size: 1.25rem;
+  }
+  
+  .order-card .card-body {
+    padding: 0.875rem;
+  }
+  
   .order-card .row > div {
     margin-bottom: 1rem;
   }
@@ -378,152 +629,92 @@
     margin-bottom: 0;
   }
   
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 45px;
+    height: 45px;
+  }
+  
   .order-actions {
     flex-direction: column !important;
   }
   
-  .order-actions .btn:first-child {
-    margin-bottom: 0.5rem;
-    margin-right: 0;
-  }
-}
-
-/* Click effect for order cards */
-.order-card:active {
-  transform: translateY(0);
-}
-
-/* Hover effect for View Details button */
-.order-actions .btn-primary:hover {
-  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
-}
-
-/* Enhanced Order Card Styles */
-.order-card {
-  transition: all 0.3s ease;
-}
-
-.order-card:hover {
-  transform: translateY(-2px);
-}
-
-.order-card .card {
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-/* Product Thumbnail Styles */
-.product-thumb {
-  width: 50px;
-  height: 50px;
-  object-fit: cover;
-  border-radius: 8px;
-  border: 1px solid #e9ecef;
-}
-
-.product-thumb-placeholder {
-  width: 50px;
-  height: 50px;
-  background-color: #f8f9fa;
-  border: 1px solid #e9ecef;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6c757d;
-}
-
-/* Order Item Row */
-.order-item-row {
-  min-height: 60px;
-}
-
-.order-item-row:last-child {
-  border-bottom: none !important;
-}
-
-/* Status-specific styling */
-.order-card[data-status="Pending"] {
-  border-left: 4px solid #ffc107;
-}
-
-.order-card[data-status="Processing"] {
-  border-left: 4px solid #0d6efd;
-}
-
-.order-card[data-status="Delivered"] {
-  border-left: 4px solid #198754;
-}
-
-.order-card[data-status="Cancelled"] {
-  border-left: 4px solid #dc3545;
-}
-
-/* Retry Payment Alert */
-.alert-warning {
-  background-color: #fff3cd;
-  border-color: #ffecb5;
-  color: #664d03;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .order-item-row {
-    flex-direction: column;
-    align-items: flex-start !important;
-    text-align: left;
-  }
-  
-  .order-item-row .text-end {
-    text-align: left !important;
-    margin-top: 0.5rem;
-  }
-  
-  .order-actions {
-    justify-content: flex-start !important;
-    width: 100%;
-  }
-  
   .order-actions .btn {
-    flex: 1;
-    min-width: 120px;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .order-actions .btn:last-child {
+    margin-bottom: 0;
   }
 }
 
+/* Print Styles */
+@media print {
+  .order-actions,
+  #orderStatusFilter,
+  .profile-sidebar {
+    display: none !important;
+  }
+  
+  .order-card {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
 </style>
 
 <script>
-  console.log('Raw cancellation reasons from server:', <%- JSON.stringify(cancellationReasons) %>);
-
-  const cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
-  const returnReasons = <%- JSON.stringify(returnReasons) %>;
-
-   // ✅ DEBUG: Log what we received
-  console.log('Processed cancellation reasons:', cancellationReasons);
-  console.log('Type of cancellation reasons:', typeof cancellationReasons);
-  console.log('Is cancellation reasons array:', Array.isArray(cancellationReasons));
-</script>
-
-<script>
-// Global variables for pagination and filtering
-let currentPage = 1;
+// ==================== ORDER LISTING PAGE SCRIPT ====================
+// Global variables
+let currentPage = <%= currentPage %>;
 let isLoading = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-  // Set up pagination callbacks for the user pagination partial
-  window.fetchCallback = loadOrders;
-  window.paginationCallback = loadOrders;
+// Cancellation and return reasons
+const cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
+const returnReasons = <%- JSON.stringify(returnReasons) %>;
 
-  // Order status filter
-  const statusFilter = document.getElementById('orderStatusFilter');
-  
-  statusFilter.addEventListener('change', function() {
-    loadOrders(1, this.value); // Reset to page 1 when filter changes
-  });
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', function() {
+  initializeOrderPage();
 });
 
+function initializeOrderPage() {
+  // Setup status filter
+  const statusFilter = document.getElementById('orderStatusFilter');
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function() {
+      loadOrders(1, this.value);
+    });
+  }
+  
+  // Setup pagination click handlers
+  setupPaginationHandlers();
+}
 
-// Load orders via AJAX
+// ==================== PAGINATION HANDLERS ====================
+function setupPaginationHandlers() {
+  document.addEventListener('click', function(e) {
+    const paginationBtn = e.target.closest('.pagination-btn');
+    if (!paginationBtn) return;
+    
+    // Ignore if disabled
+    if (paginationBtn.classList.contains('disabled-btn') || 
+        paginationBtn.closest('.page-item')?.classList.contains('disabled')) {
+      return;
+    }
+    
+    e.preventDefault();
+    
+    const page = parseInt(paginationBtn.dataset.page);
+    if (!isNaN(page) && page > 0) {
+      const statusFilter = document.getElementById('orderStatusFilter');
+      loadOrders(page, statusFilter?.value || '');
+    }
+  });
+}
+
+// ==================== LOAD ORDERS (AJAX) ====================
 async function loadOrders(page = 1, status = '') {
   if (isLoading) return;
   
@@ -531,139 +722,30 @@ async function loadOrders(page = 1, status = '') {
   showLoadingState();
   
   try {
-    // Get current filter if not provided
-    if (!status) {
-      const statusFilter = document.getElementById('orderStatusFilter');
-      status = statusFilter.value;
-    }
-    
-    // Build query parameters
     const params = new URLSearchParams();
     params.append('page', page);
     if (status) params.append('status', status);
     
-    // Make API request
     const response = await fetch(`/orders/api/filtered?${params.toString()}`);
     const result = await response.json();
     
     if (result.success) {
-      updateOrdersContainer(result.data.orderItems);
       currentPage = result.data.currentPage;
-      
-      // ✅ FIX: Update pagination UI and remove loading states
-      if (window.PaginationUtils && result.data.totalPages) {
-        window.PaginationUtils.updateState(result.data.currentPage, result.data.totalPages);
-      }
-      
-      // ✅ FIX: Update pagination container if it exists
-      updatePaginationContainer(result.data);
-      
+      updateOrdersContainer(result.data.orders);
+      updatePagination(result.data.currentPage, result.data.totalPages);
     } else {
       throw new Error(result.message || 'Failed to load orders');
     }
   } catch (error) {
     console.error('Error loading orders:', error);
-    showToast.error('Error loading orders. Please try again.');
-    
-    // ✅ FIX: Remove loading states from pagination buttons on error
-    if (window.PaginationUtils) {
-      const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
-      loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
-    }
+    showError('Error loading orders. Please try again.');
   } finally {
     isLoading = false;
     hideLoadingState();
   }
 }
 
-function updatePaginationContainer(data) {
-  const paginationContainer = document.querySelector('.pagination');
-  if (!paginationContainer || !data.totalPages || data.totalPages <= 1) {
-    return;
-  }
-
-  // Update pagination data attributes
-  paginationContainer.dataset.totalPages = data.totalPages;
-  
-  // If pagination structure needs to be regenerated (for dynamic pages)
-  if (data.totalPages !== parseInt(paginationContainer.dataset.totalPages)) {
-    regeneratePagination(data.currentPage, data.totalPages);
-  }
-}
-
-// ✅ NEW: Regenerate pagination if total pages changed
-function regeneratePagination(currentPage, totalPages) {
-  const paginationWrapper = document.querySelector('.pagination').closest('nav').parentElement;
-  if (!paginationWrapper) return;
-  
-  let paginationHTML = `
-    <div class="row mt-4">
-      <div class="col-12">
-        <nav class="mt-4">
-          <ul class="pagination justify-content-center" id="pagination-container" data-total-pages="${totalPages}">
-            <!-- Previous Button -->
-            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-              <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}"
-                 href="#"
-                 data-page="${currentPage - 1}"
-                 ${currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
-                <i class="bi bi-chevron-left"></i>
-              </a>
-            </li>
-  `;
-  
-  for (let i = 1; i <= totalPages; i++) {
-    paginationHTML += `
-      <li class="page-item ${i === currentPage ? 'active' : ''}">
-        <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
-      </li>
-    `;
-  }
-  
-  paginationHTML += `
-            <!-- Next Button -->
-            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-              <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}"
-                 href="#"
-                 data-page="${currentPage + 1}"
-                 ${currentPage === totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
-                <i class="bi bi-chevron-right"></i>
-              </a>
-            </li>
-          </ul>
-        </nav>
-      </div>
-    </div>
-  `;
-  
-  paginationWrapper.innerHTML = paginationHTML;
-}
-
-// Show loading state
-function showLoadingState() {
-  const container = document.getElementById('ordersContainer');
-  container.innerHTML = `
-    <div class="text-center py-5">
-      <div class="loading-state">
-        <div class="spinner-border text-primary" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <p class="mt-3 text-muted">Loading your orders...</p>
-      </div>
-    </div>
-  `;
-}
-
-// Hide loading state
-function hideLoadingState() {
-  // ✅ ENHANCED: Also remove pagination button loading states
-  if (window.PaginationUtils) {
-    const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
-    loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
-  }
-}
-
-// Update orders container
+// ==================== UPDATE ORDERS CONTAINER ====================
 function updateOrdersContainer(orders) {
   const container = document.getElementById('ordersContainer');
   
@@ -683,7 +765,6 @@ function updateOrdersContainer(orders) {
     return;
   }
   
-  // Generate order cards HTML
   let cardsHTML = '';
   orders.forEach(order => {
     cardsHTML += generateOrderCardHTML(order);
@@ -692,8 +773,7 @@ function updateOrdersContainer(orders) {
   container.innerHTML = cardsHTML;
 }
 
-
-// Generate order card HTML (matches your existing partial structure)
+// ==================== GENERATE ORDER CARD ====================
 function generateOrderCardHTML(order) {
   const orderDate = new Date(order.createdAt);
   const formattedDate = orderDate.toLocaleDateString('en-IN', { 
@@ -702,111 +782,87 @@ function generateOrderCardHTML(order) {
     day: 'numeric' 
   });
   
-  // Status class logic
+  // Status badge class
   let statusClass = 'secondary';
-  if (order.status === 'Delivered') statusClass = 'success';
-  else if (order.status === 'Shipped') statusClass = 'info';
+  if (order.status === 'Pending') statusClass = 'warning';
   else if (order.status === 'Processing') statusClass = 'primary';
-  else if (order.status === 'Pending') statusClass = 'warning';
-  else if (['Cancelled', 'Failed'].includes(order.status)) statusClass = 'danger';
+  else if (order.status === 'Shipped') statusClass = 'info';
+  else if (order.status === 'Delivered') statusClass = 'success';
+  else if (order.status === 'Cancelled') statusClass = 'danger';
+  else if (order.status === 'Returned') statusClass = 'warning';
+  else if (order.status === 'Partially Returned') statusClass = 'warning';
+  else if (order.status === 'Partially Delivered') statusClass = 'info';
+  else if (order.status === 'Processing Return') statusClass = 'warning';
   
-  // First item for preview
-  const firstItem = order.items[0];
-  const productImageHTML = (firstItem.productId && firstItem.productId.mainImage) 
-    ? `<img src="${firstItem.productId.mainImage}" alt="${firstItem.productId.productName}" class="product-thumb me-3">`
-    : `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`;
+  // Items display (max 4)
+  const displayItems = order.items.slice(0, 4);
+  const remainingCount = order.items.length - 4;
   
-  const productName = firstItem.productId ? firstItem.productId.productName : 'Product';
+  let itemsHTML = '';
+  displayItems.forEach((item, index) => {
+    const productImageHTML = (item.productId && item.productId.mainImage) 
+      ? `<img src="${item.productId.mainImage}" alt="${item.productId.productName}" class="product-thumb">`
+      : `<div class="product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
+    
+    const productName = item.productId ? item.productId.productName : 'Product';
+    const borderClass = index < displayItems.length - 1 ? 'border-bottom' : '';
+    
+    itemsHTML += `
+      <div class="item-row d-flex align-items-center py-2 ${borderClass}">
+        <div class="item-image me-3">${productImageHTML}</div>
+        <div class="item-info flex-grow-1">
+          <div class="fw-semibold text-dark">${productName}</div>
+          <small class="text-muted">Size: ${item.size} | Qty: ${item.quantity}</small>
+        </div>
+        <div class="item-price text-end">
+          <div class="fw-semibold">₹${item.totalPrice.toLocaleString('en-IN')}</div>
+          ${item.status && item.status !== order.status ? 
+            `<small class="badge bg-secondary">${item.status}</small>` : ''}
+        </div>
+      </div>
+    `;
+  });
   
-  // Generate retry button if applicable
-  let retryButtonHTML = '';
-  if (order.status === 'Pending' && order.canRetry && order.transactionId) {
-    retryButtonHTML = `
-      <a href="/checkout/retry-payment/${order.transactionId}" 
-         class="btn btn-warning btn-sm mb-2">
-        <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
-      </a>
+  if (remainingCount > 0) {
+    itemsHTML += `
+      <div class="text-center py-2">
+        <button class="btn btn-link text-decoration-none p-0 fw-semibold" 
+                onclick="viewOrderDetails('${order.orderId}')">
+          <i class="bi bi-plus-circle me-1"></i>
+          + ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
+        </button>
+      </div>
     `;
   }
-  
-  // Generate action buttons
-  let actionButtons = `
-    ${retryButtonHTML}
-    <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${order.orderId}')">
-      <i class="bi bi-eye me-1"></i>View Details
-    </button>
-    <div class="d-flex gap-2 mt-2">
-  `;
-  
-  if (['Pending', 'Processing'].includes(order.status)) {
-    actionButtons += `
-      <button class="btn btn-outline-danger btn-sm flex-fill" onclick="cancelOrder('${order.orderId}')">
-        <i class="bi bi-x-circle me-1"></i>Cancel Order
-      </button>
-    `;
-  }
-  
-  if (order.status === 'Delivered') {
-    actionButtons += `
-      <button class="btn btn-outline-success btn-sm flex-fill" onclick="downloadInvoice('${order.orderId}')">
-        <i class="bi bi-download me-1"></i>Invoice
-      </button>
-    `;
-  }
-  
-  actionButtons += `</div>`;
   
   return `
     <div class="order-card mb-3" data-status="${order.status}">
-      <div class="card border-0 shadow-sm">
+      <div class="card">
         <div class="card-body p-4">
-          <div class="row align-items-center">
-            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-              <div class="order-info">
-                <h6 class="mb-1 fw-bold text-dark">Order #${order.orderId}</h6>
-                <small class="text-muted">
-                  <i class="bi bi-calendar3 me-1"></i>
-                  ${formattedDate}
-                </small>
-                <div class="mt-1">
-                  <small class="text-muted">
-                    ${order.items.length} item${order.items.length > 1 ? 's' : ''} | 
-                    ${order.paymentMethod.toUpperCase()}
-                  </small>
-                </div>
-              </div>
+          <div class="row mb-3 pb-3 border-bottom">
+            <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
+              <h6 class="mb-1 fw-bold text-dark">Order #${order.orderId}</h6>
+              <small class="text-muted">
+                <i class="bi bi-calendar3 me-1"></i>${formattedDate}
+              </small>
             </div>
-            
-            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-              <div class="product-preview d-flex align-items-center">
-                ${productImageHTML}
-                <div class="product-info">
-                  <div class="fw-semibold text-dark">${productName}</div>
-                  <small class="text-muted">
-                    ${order.items.length > 1 ? 
-                      `... and ${order.items.length - 1} more item${order.items.length > 2 ? 's' : ''}` :
-                      `Size: ${firstItem.size} | Qty: ${firstItem.quantity}`
-                    }
-                  </small>
-                </div>
-              </div>
+            <div class="col-lg-3 col-md-3 mb-2 mb-lg-0 text-center">
+              <span class="badge bg-${statusClass} fs-6 px-3 py-2">${order.status}</span>
             </div>
-            
-            <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
-              <div class="status-amount text-center">
-                <span class="badge bg-${statusClass} fs-6 px-3 py-2 mb-2">
-                  ${order.status}
-                </span>
-                <div class="fw-bold text-dark fs-5">₹${order.totalAmount.toLocaleString('en-IN')}</div>
-                <small class="text-muted">
-                  ${order.paymentStatus === 'Pending' ? 'Payment Pending' : 'Paid'}
-                </small>
-              </div>
+            <div class="col-lg-3 col-md-3 text-end">
+              <div class="fw-bold text-dark fs-5">₹${(order.totalAmount - (order.couponDiscount || 0)).toLocaleString('en-IN')}</div>
+              <small class="text-muted text-uppercase">
+                ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()}
+              </small>
             </div>
-            
-            <div class="col-lg-3 col-md-6">
-              <div class="order-actions d-flex flex-column gap-2">
-                ${actionButtons}
+          </div>
+          <div class="items-container">${itemsHTML}</div>
+          <div class="row mt-3 pt-3 border-top">
+            <div class="col-12">
+              <div class="order-actions d-flex flex-wrap gap-2 justify-content-end">
+                <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${order.orderId}')">
+                  <i class="bi bi-eye me-1"></i>View Details
+                </button>
               </div>
             </div>
           </div>
@@ -816,210 +872,90 @@ function generateOrderCardHTML(order) {
   `;
 }
 
+// ==================== UPDATE PAGINATION ====================
+function updatePagination(currentPage, totalPages) {
+  const paginationWrapper = document.querySelector('.pagination')?.closest('nav')?.parentElement;
+  if (!paginationWrapper || totalPages <= 1) return;
+  
+  const maxButtons = 5;
+  
+  // Calculate which 5 consecutive pages to show
+  const windowIndex = Math.floor((currentPage - 1) / maxButtons);
+  const startPage = (windowIndex * maxButtons) + 1;
+  const endPage = Math.min(startPage + maxButtons - 1, totalPages);
+  
+  let html = '<nav class="mt-4"><ul class="pagination justify-content-center">';
+  
+  // Previous button
+  html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+    <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}" 
+       href="#" data-page="${currentPage - 1}">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>`;
+  
+  // Show exactly 5 consecutive page buttons
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+      <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+    </li>`;
+  }
+  
+  // Next button
+  html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+    <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}" 
+       href="#" data-page="${currentPage + 1}">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+  </li>`;
+  
+  html += '</ul></nav>';
+  paginationWrapper.innerHTML = html;
+}
 
 
-// Clear filter function
+// ==================== LOADING STATES ====================
+function showLoadingState() {
+  const container = document.getElementById('ordersContainer');
+  container.innerHTML = `
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading your orders...</p>
+    </div>
+  `;
+}
+
+function hideLoadingState() {
+  // Loading state is replaced by updateOrdersContainer
+}
+
+function showError(message) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: message,
+      confirmButtonColor: '#dc3545'
+    });
+  } else {
+    alert(message);
+  }
+}
+
+// ==================== UTILITY FUNCTIONS ====================
 function clearFilter() {
   document.getElementById('orderStatusFilter').value = '';
   loadOrders(1, '');
 }
 
-// Order action functions
-function cancelItem(orderId, itemId) {
-  // ✅ FIXED: Ensure we send string values, not indices
-  const reasonOptions = {};
-  cancellationReasons.forEach(reason => {
-    reasonOptions[reason] = reason; // key = value = reason string
-  });
-
-  Swal.fire({
-    title: 'Cancel Item?',
-    text: 'Please select a reason for cancelling this item.',
-    icon: 'warning',
-    input: 'select',
-    inputOptions: reasonOptions,
-    inputPlaceholder: 'Select a reason for cancellation',
-    inputValidator: (value) => {
-      return new Promise((resolve) => {
-        if (!value || value === '') {
-          resolve('Please select a reason for cancellation');
-        } else {
-          resolve();
-        }
-      });
-    },
-    showCancelButton: true,
-    confirmButtonColor: '#dc3545',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'Yes, Cancel Item',
-    cancelButtonText: 'Keep Item'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // ✅ DEBUG: Log the selected value
-      console.log('Selected Reason:', result.value);
-      console.log('Type of Reason:', typeof result.value);
-
-      // Show loading
-      Swal.fire({
-        title: 'Cancelling Item...',
-        text: 'Please wait while we process your request.',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => Swal.showLoading()
-      });
-
-      fetch(`/orders/${orderId}/items/${itemId}`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'cancel',
-          reason: result.value // ✅ This should now be the string value
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Item Cancelled',
-            text: 'Your item has been successfully cancelled.',
-            confirmButtonColor: '#28a745'
-          }).then(() => {
-            // Refresh current page instead of full reload
-            loadOrders(currentPage);
-          });
-        } else {
-          throw new Error(data.message || 'Failed to cancel item');
-        }
-      })
-      .catch(error => {
-        console.error('Error cancelling item:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Cancellation Failed',
-          text: error.message || 'Failed to cancel item. Please try again.',
-          confirmButtonColor: '#dc3545'
-        });
-      });
-    }
-  });
-}
-
-function returnItem(orderId, itemId) {
-  // Convert array to object for SweetAlert inputOptions
-  const reasonOptions = returnReasons.reduce((options, reason, index) => {
-    options[reason] = reason;
-    return options;
-  }, {});
-
-  Swal.fire({
-    title: 'Return Item?',
-    text: 'Please select a reason for returning this item.',
-    icon: 'warning',
-    input: 'select',
-    inputOptions: reasonOptions,
-    inputPlaceholder: 'Select a reason for return',
-    inputValidator: (value) => {
-      return new Promise((resolve) => {
-        if (!value || value === '') {
-          resolve('Please select a reason for return');
-        } else {
-          resolve();
-        }
-      });
-    },
-    showCancelButton: true,
-    confirmButtonColor: '#ffc107',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'Yes, Return Item',
-    cancelButtonText: 'Keep Item'
-  }).then((result) => {
-    if (result.isConfirmed) {
-      // Show loading
-      Swal.fire({
-        title: 'Processing Return...',
-        text: 'Please wait while we process your return request.',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        showConfirmButton: false,
-        didOpen: () => {
-          Swal.showLoading();
-        }
-      });
-
-      //  POST method, /returns path
-      fetch(`/orders/${orderId}/items/${itemId}/returns`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          reason: result.value
-        })
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.success) {
-          Swal.fire({
-            icon: 'success',
-            title: 'Return Request Submitted',
-            text: 'Your return request has been sent for approval.',
-            confirmButtonColor: '#28a745'
-          }).then(() => {
-            // Refresh current page instead of full reload
-            loadOrders(currentPage);
-          });
-        } else {
-          throw new Error(data.message || 'Failed to return item');
-        }
-      })
-      .catch(error => {
-        console.error('Error returning item:', error);
-        Swal.fire({
-          icon: 'error',
-          title: 'Return Failed',
-          text: error.message || 'Failed to return item. Please try again.',
-          confirmButtonColor: '#dc3545'
-        });
-      });
-    }
-  });
-}
-
-function trackOrder(orderId) {
-  // Implement order tracking functionality
-  Swal.fire({
-    icon: 'info',
-    title: 'Order Tracking',
-    text: 'Order tracking feature coming soon!',
-    confirmButtonColor: '#007bff'
-  });
-}
-
-function downloadInvoice(orderId) {
-  // Implement invoice download functionality
-  window.open(`/orders/${orderId}/invoice`, '_blank');
-}
-
 function viewOrderDetails(orderId) {
-  // Implement order details view
   window.location.href = `/orders/${orderId}`;
 }
 
-// Add smooth scrolling for better UX
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-  anchor.addEventListener('click', function (e) {
-    e.preventDefault();
-    const target = document.querySelector(this.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }
-  });
-});
+function downloadInvoice(orderId) {
+  window.open(`/orders/${orderId}/invoice`, '_blank');
+}
 </script>
+

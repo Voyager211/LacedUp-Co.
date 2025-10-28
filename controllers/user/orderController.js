@@ -9,6 +9,7 @@ const walletService = require('../../services/walletService');
 const { paypalClient } = require('../../services/paypal');
 const paypal = require('@paypal/checkout-server-sdk');
 const razorpayService = require('../../services/razorpay');
+const { getPagination } = require('../../utils/pagination');
 
 const {
   ORDER_STATUS,
@@ -24,11 +25,10 @@ const {
 
 
 // Get all orders for user
-exports.getUserOrders = async (req, res) => {
+const getUserOrders = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Get user data
     const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
@@ -36,113 +36,31 @@ exports.getUserOrders = async (req, res) => {
 
     const page = 1;
     const limit = 4;
-    
-    // ✅ FIXED: Item-level aggregation that INCLUDES PENDING orders
-    const pipeline = [
-      { $match: { user: userId } }, // ✅ Include ALL order statuses (including Pending)
-      { $unwind: '$items' },
-      
-      // Product lookup
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.productId',
-          foreignField: '_id',
-          as: 'items.productId'
-        }
-      },
-      {
-        $unwind: {
-          path: '$items.productId',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      
-      // ✅ ENHANCED: Project with order-level info for retry functionality
-      {
-        $project: {
-          orderId: 1,
-          orderDate: '$createdAt',
-          paymentMethod: 1,
-          paymentStatus: 1,
-          orderStatus: '$status',           // ✅ Include order status
-          totalAmount: 1,
-          itemId: '$items._id',
-          productId: '$items.productId',
-          productName: { $ifNull: ['$items.productId.productName', 'Product'] },
-          productImage: '$items.productId.mainImage',
-          sku: '$items.sku',
-          size: '$items.size',
-          quantity: '$items.quantity',
-          price: '$items.price',
-          totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] },
-          
-          // ✅ NEW: Add fields for retry functionality
-          canRetry: {
-            $and: [
-              { $eq: ['$status', 'Pending'] },
-              { $in: ['$paymentMethod', ['upi', 'paypal']] }
-            ]
-          }
-        }
-      },
-      { $sort: { orderDate: -1 } },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [
-            { $skip: 0 },
-            { $limit: limit }
-          ]
-        }
-      }
-    ];
 
-    const result = await Order.aggregate(pipeline);
-    const orderItems = result[0].data || [];
-    
-    const metadata = result[0].metadata || [];
-    const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    const filter = { user: userId };
 
-    // ✅ NEW: Add transaction IDs for PENDING items
-    const transactionService = require('../../services/transactionService');
-    const enhancedOrderItems = await Promise.all(
-      orderItems.map(async (item) => {
-        // Add retry capability for PENDING orders
-        if (item.orderStatus === 'Pending' && ['upi', 'paypal'].includes(item.paymentMethod)) {
-          try {
-            const transactions = await transactionService.getUserTransactions(userId, {
-              orderId: item.orderId,
-              status: 'FAILED',
-              limit: 1
-            });
-            
-            if (transactions && transactions.length > 0) {
-              item.transactionId = transactions[0].transactionId;
-              item.canRetry = true;
-            }
-          } catch (error) {
-            console.error('Error fetching transaction for item:', item.orderId, error);
-          }
-        }
-        return item;
-      })
+    const queryBuilder = Order.find(filter)
+      .populate('items.productId', 'productName mainImage')
+      .sort({ createdAt: -1 });
+
+    const { data: orders, totalPages } = await getPagination(
+      queryBuilder,
+      Order,
+      filter,
+      page,
+      limit
     );
 
-    console.log('📊 Item listing debug:', {
-      totalItems,
-      pendingItems: enhancedOrderItems.filter(i => i.orderStatus === 'Pending').length,
-      itemsWithRetry: enhancedOrderItems.filter(i => i.canRetry).length
+    console.log('Order listing debug:', {
+      totalOrders: orders.length,
+      totalPages
     });
 
     res.render('user/orders', {
       user,
-      orderItems: enhancedOrderItems, // ✅ Back to orderItems for item-level display
+      orders,
       currentPage: page,
       totalPages,
-      totalItems,
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
       active: 'orders',
@@ -151,14 +69,14 @@ exports.getUserOrders = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error loading orders:', error);
-    res.status(500).render('errors/server-error', { 
+    console.error('Error loading orders: ', error);
+    res.status(500).render('errors/server-error', {
       message: 'Error loading orders',
       error: error.message,
       title: 'Error',
       layout: 'user/layouts/user-layout',
       active: 'orders',
-      user: null, 
+      user: null,
       cancellationReasons: CANCELLATION_REASONS,
       returnReasons: RETURN_REASONS
     });
@@ -166,13 +84,12 @@ exports.getUserOrders = async (req, res) => {
 };
 
 
-
-exports.getUserOrdersPaginated = async (req, res) => {
+const getUserOrdersPaginated = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const page = parseInt(req.query.page) || 1;
     const limit = 4;
-    const status = req.query.status || '';
+    const statusFilter = req.query.status || '';
 
     if (!userId) {
       return res.status(401).json({
@@ -181,109 +98,50 @@ exports.getUserOrdersPaginated = async (req, res) => {
       });
     }
 
-    // ✅ FIXED: Item-level aggregation with status filter
-    const pipeline = [
-      { $match: { user: userId } },
-      { $unwind: '$items' },
-      
-      // Product lookup
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.productId',
-          foreignField: '_id',
-          as: 'items.productId'
-        }
-      },
-      {
-        $unwind: {
-          path: '$items.productId',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      
-      // ✅ Status filter for orders (including Pending)
-      ...(status ? [{ $match: { 'status': status } }] : []),
-      
-      {
-        $project: {
-          orderId: 1,
-          orderDate: '$createdAt',
-          paymentMethod: 1,
-          paymentStatus: 1,
-          orderStatus: '$status',
-          totalAmount: 1,
-          itemId: '$items._id',
-          productId: '$items.productId',
-          productName: { $ifNull: ['$items.productId.productName', 'Product'] },
-          productImage: '$items.productId.mainImage',
-          sku: '$items.sku',
-          size: '$items.size',
-          quantity: '$items.quantity',
-          price: '$items.price',
-          totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] },
-          canRetry: {
-            $and: [
-              { $eq: ['$status', 'Pending'] },
-              { $in: ['$paymentMethod', ['upi', 'paypal']] }
-            ]
-          }
-        }
-      },
-      { $sort: { orderDate: -1 } },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [
-            { $skip: (page - 1) * limit },
-            { $limit: limit }
-          ]
-        }
-      }
-    ];
+    const filter = { user: userId };
 
-    const result = await Order.aggregate(pipeline);
-    const orderItems = result[0].data || [];
-    
-    const metadata = result[0].metadata || [];
-    const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    if (statusFilter) {
+      filter['items.status'] = statusFilter;
+    }
 
-    // Add transaction IDs for retry functionality
-    const transactionService = require('../../services/transactionService');
-    const enhancedOrderItems = await Promise.all(
-      orderItems.map(async (item) => {
-        if (item.orderStatus === 'Pending' && ['upi', 'paypal'].includes(item.paymentMethod)) {
-          try {
-            const transactions = await transactionService.getUserTransactions(userId, {
-              orderId: item.orderId,
-              status: 'FAILED',
-              limit: 1
-            });
-            
-            if (transactions && transactions.length > 0) {
-              item.transactionId = transactions[0].transactionId;
-              item.canRetry = true;
-            }
-          } catch (error) {
-            console.error('Error fetching transaction for item:', item.orderId, error);
-          }
+    const queryBuilder = Order.find(filter)
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage brand',
+        populate: {
+          path: 'brand',
+          select: 'name'
         }
-        return item;
       })
-    );
+      .sort({ createdAt: -1 });
 
-    res.json({
-      success: true,
-      data: {
-        orderItems: enhancedOrderItems, // ✅ Back to orderItems
-        currentPage: page,
-        totalPages,
-        totalItems,
-        filters: { status }
-      }
-    });
+      const { data: orders, totalPages } = await getPagination(
+        queryBuilder,
+        Order,
+        filter,
+        page,
+        limit
+      );
+
+      const filteredOrders = orders.map(order => {
+        const orderObj = order.toObject ? order.toObject() : order;
+        
+        if (statusFilter) {
+          orderObj.items = orderObj.items.filter(item => item.status === statusFilter);
+        }
+        return orderObj;
+      });
+
+      res.json({
+        success: true,
+        data: {
+          orders: filteredOrders,
+          currentPage: page,
+          totalPages,
+          totalOrders: await Order.countDocuments(filter),
+          filters: { status: statusFilter }
+        }
+      });
 
   } catch (error) {
     console.error('Error fetching paginated orders:', error);
@@ -294,9 +152,66 @@ exports.getUserOrdersPaginated = async (req, res) => {
   }
 };
 
+const searchOrders = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const searchTerm = req.query.q || '';
+
+    if (!searchTerm) {
+      return res.json({
+        success: false,
+        message: 'Search term required'
+      });
+    }
+
+    const orders = await Order.find({ user: userId})
+    .populate({
+        path: 'items.productId',
+        select: 'productName mainImage brand',
+        populate: {
+          path: 'brand',
+          select: 'name'
+        }
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+    const filteredOrders = orders.filter(order => {
+      const searchLower = searchTerm.toLowerCase();
+
+      const orderIdMatch = order.orderId.toLowerCase().includes(searchLower);
+
+      const productMatch = order.items.some(item => {
+        const productName = item.productId?.productName;
+        return productName && productName.toLowerCase().includes(searchLower);
+      });
+
+      const brandMatch = order.items.some(item => {
+        const brandName = item.productId?.brand?.name;
+        return brandName && brandName.toLowerCase().includes(searchLower);
+      });
+
+      return orderIdMatch || productMatch || brandMatch;
+    });
+
+    res.json({
+      success: true,
+      data: { orders: filteredOrders }
+    });
+
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Search failed'
+    });
+  }
+};
+
 
 // Get order details
-exports.getOrderDetails = async (req, res) => {
+const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
@@ -481,7 +396,7 @@ exports.getOrderDetails = async (req, res) => {
 
 
 // Cancel entire order
-exports.cancelOrder = async (req, res) => {
+const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -610,7 +525,7 @@ exports.cancelOrder = async (req, res) => {
 
 
 // Cancel individual item
-exports.cancelItem = async (req, res) => {
+const cancelItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -742,7 +657,7 @@ exports.cancelItem = async (req, res) => {
 
 
 // Return request for entire order
-exports.requestOrderReturn = async (req, res) => {
+const requestOrderReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -800,7 +715,7 @@ exports.requestOrderReturn = async (req, res) => {
 };
 
 // Return request for individual item
-exports.requestItemReturn = async (req, res) => {
+const requestItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -859,7 +774,7 @@ exports.requestItemReturn = async (req, res) => {
 
 
 // Download invoice
-exports.downloadInvoice = async (req, res) => {
+const downloadInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
@@ -1138,3 +1053,15 @@ function generateInvoiceHTML(order) {
     </body</html>
   `;
 }
+
+module.exports = {
+  getUserOrders,
+  getUserOrdersPaginated,
+  searchOrders,
+  getOrderDetails,
+  cancelOrder,
+  cancelItem,
+  requestOrderReturn,
+  requestItemReturn,
+  downloadInvoice
+};

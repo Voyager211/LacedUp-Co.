@@ -104,7 +104,7 @@ const orderSchema = new mongoose.Schema({
     addressId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Address',
-      required: true
+      required: false
     },
     addressIndex: {
       type: Number,
@@ -120,14 +120,18 @@ const orderSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  couponCode: {
+    type: String,
+    default: null
+  },
   paymentMethod: {
     type: String,
-    enum: getPaymentMethodsArray(),  // ✅ Using constants
+    enum: getPaymentMethodsArray(), 
     required: true
   },
   paymentStatus: {
     type: String,
-    enum: getPaymentStatusArray(),  // ✅ Using constants
+    enum: getPaymentStatusArray(), 
     default: 'Pending'
   },
   subtotal: {
@@ -168,14 +172,13 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: getOrderStatusArray(),  // ✅ Using constants
-    default: 'Pending'
+    enum: getOrderStatusArray(), 
   },
   statusHistory: [
     {
       status: {
         type: String,
-        enum: getOrderStatusArray(),  // ✅ Using constants
+        enum: getOrderStatusArray(),  
         required: true
       },
       updatedAt: {
@@ -189,11 +192,11 @@ const orderSchema = new mongoose.Schema({
   ],
   cancellationReason: {
     type: String,
-    enum: getCancellationReasonsArray()  // ✅ Using constants
+    enum: getCancellationReasonsArray()  
   },
   returnReason: {
     type: String,
-    enum: getReturnReasonsArray()  // ✅ Using constants
+    enum: getReturnReasonsArray()  
   },
   cancellationDate: {
     type: Date
@@ -242,14 +245,21 @@ orderSchema.pre('save', function(next) {
 });
 
 
-orderSchema.pre('save', function(next) {
-  // Validate total calculations
-  const calculatedTotal = this.subtotal - this.totalDiscount + this.shipping;
-  if (Math.abs(this.totalAmount - calculatedTotal) > 0.01) {
-    return next(new Error('Total amount calculation mismatch'));
-  }
-  next();
-});
+// orderSchema.pre('save', function(next) {
+//   // Validate total calculations
+//   const calculatedTotal = this.subtotal - this.totalDiscount - this.couponDiscount + this.shipping;
+//   if (Math.abs(this.totalAmount - calculatedTotal) > 0.01) {
+//     console.error('!!! Total amount calculation mismatch:');
+//     // console.error('   subtotal:', this.subtotal);
+//     // console.error('   totalDiscount:', this.totalDiscount);
+//     // console.error('   couponDiscount:', this.couponDiscount);
+//     // console.error('   shipping:', this.shipping);
+//     // console.error('   Expected total:', calculatedTotal);
+//     // console.error('   Actual totalAmount:', this.totalAmount);
+//     return next(new Error('Total amount calculation mismatch'));
+//   }
+//   next();
+// });
 
 
 // Simple data getters

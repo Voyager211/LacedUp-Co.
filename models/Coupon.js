@@ -38,7 +38,7 @@ const couponSchema = new mongoose.Schema({
     },
     usageLimit: {
         type: Number,
-        default: null // null = unlimited usage
+        default: null 
     },
     usedCount: {
         type: Number,
@@ -46,7 +46,7 @@ const couponSchema = new mongoose.Schema({
     },
     userLimit: {
         type: Number,
-        default: 1 // How many times one user can use this coupon
+        default: 1 
     },
     validFrom: {
         type: Date,

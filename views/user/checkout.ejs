@@ -45,7 +45,7 @@
                         <% addresses.forEach((address, index) => { %>
                             <div class="address-card <%= index === 0 ? 'selected' : '' %>" id="address-card-<%= address._id %>">
                                 <label class="d-flex align-items-start">
-                                    <input type="radio" name="deliveryAddress" value="<%= address._id %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
+                                    <input type="radio" name="deliveryAddress" value="<%= addressDocumentId %>" data-address-index="<%= index %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
                                     <div class="address-info flex-grow-1">
                                         <h6><%= address.name %></h6>
                                         <p><%= address.addressType %></p>
@@ -322,12 +322,13 @@
                     <% } %>
 
                     <!-- Price Breakdown -->
-                        <div class="price-breakdown">
+                    <div class="price-breakdown">
                         <div class="summary-row">
                             <span class="price-label">Subtotal (<%= totalItemCount || 0 %> items)</span>
                             <span class="price-value">₹<%= subtotal || 0 %></span>
                         </div>
-                        
+                    
+                        <!-- Sale Price Discount -->
                         <% if (totalDiscount && totalDiscount > 0) { %>
                             <div class="summary-row discount-row">
                             <span class="price-label">
@@ -336,16 +337,20 @@
                             <span class="price-value text-success">-₹<%= totalDiscount %></span>
                             </div>
                         <% } %>
-                        
+                    
                         <!-- Coupon Discount Row -->
-                        <div id="coupon-discount-row" class="summary-row discount-row" 
-                            style="<%= typeof appliedCoupon === 'undefined' || !appliedCoupon ? 'display: none;' : '' %>">
+                        <div id="coupon-discount-row" class="summary-row discount-row" style="display: <%= (appliedCoupon && couponDiscount > 0) ? 'flex' : 'none' %>;">
                             <span class="price-label">
-                            <i class="bi bi-percent me-1"></i>Coupon Discount
+                                Coupon Discount 
+                                <span id="coupon-code-label">
+                                    <% if (appliedCoupon && appliedCoupon.code) { %>
+                                        (<%= appliedCoupon.code %>)
+                                    <% } %>
+                                </span>
                             </span>
-                            <span class="price-value text-success">-₹<span id="discount-amount"><%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? appliedCoupon.discountAmount : '0' %></span></span>
+                            <span class="price-value text-success">-₹<span id="discount-amount"><%= couponDiscount || 0 %></span></span>
                         </div>
-                        
+                    
                         <div class="summary-row">
                             <span class="price-label">
                             <i class="bi bi-truck me-1"></i>Shipping
@@ -365,7 +370,9 @@
                             <span class="price-label">Total</span>
                             <span class="price-value">₹<span id="final-total"><%= total || 0 %></span></span>
                         </div>
-                        </div>
+                    </div>
+
+
 
                     <!-- Place Order Button -->
                     <button class="btn-continue" onclick="proceedToPayment()">

@@ -22,6 +22,8 @@ const requireAuth = (req, res, next) => {
 
 // Get all orders for user (api)
 router.get('/orders/api/filtered', requireAuth, orderController.getUserOrdersPaginated);
+router.get('/orders/api/search', requireAuth, orderController.searchOrders);
+
 
 // Get all orders for user
 router.get('/orders', requireAuth, orderController.getUserOrders);

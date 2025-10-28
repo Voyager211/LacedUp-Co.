@@ -288,17 +288,32 @@
                 <span>Subtotal:</span>
                 <span>₹<%= order.subtotal.toLocaleString('en-IN') %></span>
               </div>
-              <% if (order.totalDiscount > 0) { %>
+              <% if (order.totalDiscount && order.totalDiscount > 0) { %>
                 <div class="summary-row text-success">
-                  <span>Discount:</span>
+                  <span><i class="bi bi-tag-fill me-1"></i>Product Discount</span>
                   <span>-₹<%= order.totalDiscount.toLocaleString('en-IN') %></span>
                 </div>
               <% } %>
+
+              <% if (order.couponDiscount && order.couponDiscount > 0) { %>
+                <div class="summary-row text-success">
+                  <span>
+                    <i class="bi bi-percent me-1"></i>Coupon Discount
+                    <% if (order.couponCode) { %>
+                      (<%= order.couponCode %>)
+                    <% } %>
+                  </span>
+                  <span>-₹<%= order.couponDiscount.toLocaleString('en-IN') %></span>
+                </div>
+              <% } %>
+
               <div class="summary-row">
-                <span>Shipping:</span>
-                <span><%= order.shipping === 0 ? 'Free' : '₹' + order.shipping.toLocaleString('en-IN') %></span>
+                <span>Shipping</span>
+                <span><%= order.shipping && order.shipping > 0 ? '₹' + order.shipping.toLocaleString('en-IN') : 'Free' %></span>
               </div>
+
               <hr class="my-3">
+
               <div class="summary-row total-row">
                 <span class="fw-bold">Total:</span>
                 <span class="fw-bold fs-5">₹<%= order.totalAmount.toLocaleString('en-IN') %></span>
