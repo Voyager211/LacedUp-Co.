@@ -234,20 +234,43 @@ async function proceedToPayment() {
     return;
   }
 
-  // COD payment only
-  if (pay.value !== 'cod') {
-    Swal.fire({
-      icon: 'info',
-      title: 'Payment Method Not Available',
-      text: 'Only Cash on Delivery is currently available'
-    });
-    return;
-  }
+  const deliveryAddressId = addr.value;
+  const addressIndex = addr.dataset.addressIndex;
+  const paymentMethod = pay.value;
 
-  await handleCODPayment(addr.value, addr.dataset.addressIndex);
+  console.log(`💳 Payment method selected: ${paymentMethod}`);
+  console.log(`📍 Address: ${deliveryAddressId}, Index: ${addressIndex}`);
+
+  // ✅ Route to correct handler based on payment method
+  switch(paymentMethod) {
+    case 'cod':
+      return await handleCODOrder(deliveryAddressId, addressIndex);
+    
+    case 'upi':
+      return await handleUPIPayment(deliveryAddressId, addressIndex);
+    
+    case 'card':
+    case 'netbanking':
+    case 'wallet':
+    case 'paypal':
+      Swal.fire({
+        icon: 'info',
+        title: 'Coming Soon',
+        text: `${paymentMethod.toUpperCase()} payment will be available soon`,
+        confirmButtonColor: '#007bff'
+      });
+      return;
+    
+    default:
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid Payment Method',
+        text: 'Please select a valid payment method'
+      });
+  }
 }
 
-async function handleCODPayment(deliveryAddressId, addressIndex) {
+async function handleCODOrder(deliveryAddressId, addressIndex) {
   try {
     // Show loading
     Swal.fire({
@@ -295,6 +318,227 @@ async function handleCODPayment(deliveryAddressId, addressIndex) {
     Swal.fire({ 
       icon: 'error', 
       title: 'Order Processing Error', 
+      text: error.message,
+      confirmButtonColor: '#dc3545'
+    });
+  }
+}
+
+// Handle UPI Payment
+async function handleUPIPayment(deliveryAddressId, addressIndex) {
+  try {
+    // Show loading
+    Swal.fire({
+      title: 'Processing Payment',
+      html: 'Please wait while we prepare your payment gateway...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    console.log('💳 Processing UPI payment...');
+
+    // Step 1: Create Razorpay order
+    console.log('📡 Creating Razorpay order...');
+    const createOrderResponse = await fetch('/checkout/create-razorpay-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deliveryAddressId,
+        addressIndex: parseInt(addressIndex),
+        paymentMethod: 'upi'
+      })
+    });
+
+    const createOrderData = await createOrderResponse.json();
+    console.log('✅ Razorpay order created:', createOrderData);
+
+    if (!createOrderResponse.ok || !createOrderData.success) {
+      throw new Error(createOrderData.message || 'Failed to create payment order');
+    }
+
+    Swal.close();
+
+    // Step 2: Open Razorpay Checkout
+    const options = {
+      key: createOrderData.data.keyId,
+      amount: createOrderData.data.amount, // in paise
+      currency: createOrderData.data.currency,
+      order_id: createOrderData.data.razorpayOrderId,
+      name: 'LacedUp',
+      description: createOrderData.data.description,
+      customer_details: {
+        name: createOrderData.data.userName,
+        email: createOrderData.data.userEmail,
+        contact: createOrderData.data.userPhone
+      },
+      handler: async function (response) {
+        console.log('✅ Payment successful from Razorpay:', response);
+        await verifyRazorpayPayment(
+          response.razorpay_order_id,
+          response.razorpay_payment_id,
+          response.razorpay_signature
+        );
+      },
+      prefill: {
+        name: createOrderData.data.userName,
+        email: createOrderData.data.userEmail,
+        contact: createOrderData.data.userPhone
+      },
+      notes: {
+        deliveryAddressId: deliveryAddressId,
+        addressIndex: addressIndex
+      },
+      theme: {
+        color: '#000000'
+      },
+      modal: {
+        // ✅ Handle modal close (manual dismiss)
+        ondismiss: async function () {
+          console.log('❌ Payment modal closed by user or payment failed');
+          
+          try {
+            const failureResponse = await fetch('/checkout/payment-failure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayOrderId: createOrderData.data.razorpayOrderId,
+                error: {
+                  description: 'Payment cancelled by user',
+                  reason: 'User closed the payment modal'
+                }
+              })
+            });
+            
+            const failureData = await failureResponse.json();
+            console.log('📍 Payment failure handled:', failureData);
+
+            if (failureData.success && failureData.data.redirectUrl) {
+              window.location.href = failureData.data.redirectUrl;
+            } else {
+              window.location.href = '/checkout/order-failure/' + createOrderData.data.razorpayOrderId;
+            }
+          } catch (error) {
+            console.error('❌ Error handling payment cancellation:', error);
+            window.location.href = '/checkout/order-failure/' + createOrderData.data.razorpayOrderId;
+          }
+        }
+      }
+    };
+
+    console.log('🚀 Opening Razorpay checkout...');
+    const rzp1 = new Razorpay(options);
+    
+    // ✅ THE MISSING PIECE: Catch payment failures from the gateway
+    rzp1.on('payment.failed', async function(response) {
+      try {
+        console.error('❌ Payment failed:', response.error);
+        
+        await fetch('/checkout/payment-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpayOrderId: createOrderData.data.razorpayOrderId,
+            error: {
+              description: response.error.description || 'Payment failed',
+              reason: response.error.reason || 'Unknown error'
+            }
+          })
+        });
+
+        // Redirect to failure page
+        window.location.href = '/checkout/order-failure/' + createOrderData.data.razorpayOrderId;
+      } catch (error) {
+        console.error('Error handling payment failure:', error);
+        window.location.href = '/checkout/order-failure/' + createOrderData.data.razorpayOrderId;
+      }
+    });
+    
+    rzp1.open();
+
+  } catch (error) {
+    console.error('❌ UPI payment error:', error);
+    
+    // Handle payment creation failure
+    try {
+      const failureResponse = await fetch('/checkout/payment-failure', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpayOrderId: `ERR-${Date.now()}`,
+          error: {
+            description: error.message,
+            reason: 'Failed to create payment order'
+          }
+        })
+      });
+
+      const failureData = await failureResponse.json();
+      if (failureData.success && failureData.data.redirectUrl) {
+        window.location.href = failureData.data.redirectUrl;
+      } else {
+        window.location.href = '/checkout/order-failure/' + `ERR-${Date.now()}`;
+      }
+    } catch (failureError) {
+      console.error('❌ Error logging payment failure:', failureError);
+      Swal.fire({
+        icon: 'error',
+        title: 'Payment Error',
+        text: error.message,
+        confirmButtonColor: '#dc3545'
+      });
+    }
+  }
+}
+
+
+
+
+
+// Verify Razorpay Payment
+async function verifyRazorpayPayment(razorpayOrderId, razorpayPaymentId, razorpaySignature) {
+  try {
+    Swal.fire({
+      title: 'Verifying Payment',
+      html: 'Please wait while we verify your payment...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    console.log('🔐 Verifying payment signature...');
+
+    const response = await fetch('/checkout/verify-razorpay-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        razorpayOrderId,
+        razorpayPaymentId,
+        razorpaySignature
+      })
+    });
+
+    const data = await response.json();
+    console.log('✅ Payment verification response:', data);
+
+    Swal.close();
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || 'Payment verification failed');
+    }
+
+    console.log('✅ Payment verified successfully');
+
+    // Redirect to success page
+    if (data.data.redirectUrl) {
+      window.location.href = data.data.redirectUrl;
+    } else {
+      window.location.href = `/checkout/order-success/${data.data.orderId}`;
+    }
+
+  } catch (error) {
+    console.error('❌ Payment verification error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Payment Verification Failed',
       text: error.message,
       confirmButtonColor: '#dc3545'
     });
@@ -1079,6 +1323,8 @@ function initializeCouponEventListeners () {
 
   console.log('✅ Coupon event listeners initialized');
 }
+
+
 
 
 /* ========= DOM READY & INITIALIZATION ========= */

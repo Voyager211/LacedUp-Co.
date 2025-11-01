@@ -47,9 +47,15 @@ router.post('/remove-coupon', requireAuthAPI, couponController.removeCoupon);
 // order placement
 router.post('/place-order', requireAuthAPI, checkoutController.placeOrderWithValidation);
 
-
+// razorpay
+router.post('/create-razorpay-order', requireAuthAPI, checkoutController.createRazorpayPayment);
+router.post('/verify-razorpay-payment', requireAuthAPI, checkoutController.verifyRazorpayPayment);
 
 // order result pages
 router.get('/order-success/:orderId', requireAuth, checkoutController.loadOrderSuccess);
+router.post('/payment-failure', requireAuthAPI, checkoutController.handlePaymentFailure);
+router.get('/order-failure/:transactionId', requireAuth, checkoutController.loadOrderFailure);
+router.get('/retry-payment/:transactionId', requireAuth, checkoutController.loadRetryPaymentPage);
+router.get('/retry-payment/:transactionId', requireAuth, checkoutController.retryRazorpayPayment);
 
 module.exports = router;

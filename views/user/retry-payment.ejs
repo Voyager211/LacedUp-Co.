@@ -1,701 +1,351 @@
 <% var title = "Retry Payment" %>
 
+<!-- Retry Payment Page Specific CSS -->
+<link rel="stylesheet" href="/css/checkout.css">
+
+<!-- Breadcrumbs -->
+<div class="container my-4">
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Cart', href: '/cart' },
+      { label: 'Retry Payment' }
+    ]
+  }) %>
+</div>
+
 <!-- Main Retry Payment Container -->
-<div class="retry-payment-container py-5">
-    <!-- Single Section with All Content -->
-    <div class="retry-payment-section">
-        <!-- Retry Animation -->
-        <div class="retry-animation-container text-center">
-            <div class="retry-icon">
-                <svg class="retry-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
-                    <circle class="retry-circle" cx="26" cy="26" r="25" fill="none"/>
-                    <path class="retry-arrow1" fill="none" d="M18 26c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
-                    <path class="retry-arrow2" fill="none" d="M34 26c0 4.4-3.6 8-8 8s-8-3.6-8-8"/>
-                    <polygon class="retry-arrowhead1" points="24,14 18,20 24,26"/>
-                    <polygon class="retry-arrowhead2" points="28,38 34,32 28,26"/>
-                </svg>
-            </div>
-            
-            <div class="retry-content">
-                <h1 class="retry-title">Retry Payment</h1>
-                <p class="retry-subtitle">Complete your payment to place the order.</p>
-                <div class="retry-number">
-                    <strong>Transaction ID: #<%= transactionId || 'TXN' + Date.now() %></strong>
-                </div>
-            </div>
-        </div>
+<div class="container pb-4 checkout-content">
+    <!-- Header Bar -->
+    <div class="checkout-header-bar">
+        <h1 class="checkout-title">
+            <i class="bi bi-arrow-clockwise me-2"></i>Retry Payment
+        </h1>
+    </div>
 
-        <!-- Delivery Address -->
-        <div class="content-section">
-            <h5 class="section-title">
-                <i class="bi bi-geo-alt"></i> Delivery Address
-            </h5>
-            <% if (orderData && orderData.deliveryAddress) { %>
-                <div class="address-info">
-                    <p><strong><%= orderData.deliveryAddress.name %></strong></p>
-                    <p><%= orderData.deliveryAddress.addressType %></p>
-                    <p><%= orderData.deliveryAddress.landMark %></p>
-                    <p><%= orderData.deliveryAddress.city %>, <%= orderData.deliveryAddress.state %></p>
-                    <p>PIN: <%= orderData.deliveryAddress.pincode %></p>
-                    <p><i class="bi bi-telephone"></i> <%= orderData.deliveryAddress.phone %></p>
-                </div>
-            <% } else { %>
-                <p class="text-muted">Address information not available</p>
-            <% } %>
-        </div>
-
-        <!-- Ordered Items -->
-        <div class="content-section">
-            <h5 class="section-title">
-                <i class="bi bi-bag-check"></i> Ordered Items
-            </h5>
-            <% if (orderData && orderData.items && orderData.items.length > 0) { %>
-                <% orderData.items.forEach(item => { %>
-                    <div class="order-item">
-                        <div class="item-image">
-                            <% 
-                                let imageSrc = '/images/placeholder.svg';
-                                let productName = 'Product Name';
-                                if (item.productId && item.productId.mainImage) {
-                                    imageSrc = item.productId.mainImage.startsWith('/') ? 
-                                               item.productId.mainImage : 
-                                               '/uploads/products/' + item.productId.mainImage;
-                                    productName = item.productId.productName || 'Product Name';
-                                } else if (item.productId && item.productId.subImages && item.productId.subImages.length > 0) {
-                                    const subImage = item.productId.subImages[0];
-                                    imageSrc = subImage.startsWith('/') ? 
-                                               subImage : 
-                                               '/uploads/products/' + subImage;
-                                    productName = item.productId.productName || 'Product Name';
-                                }
-                            %>
-                            <img src="<%= imageSrc %>" 
-                                 alt="<%= productName %>"
-                                 onerror="this.onerror=null; this.src='/images/placeholder.svg';"
-                                 loading="lazy">
-                        </div>
-                        <div class="item-details">
-                            <h6><%= productName %></h6>
-                            <p>Size: <%= item.size || 'N/A' %> | SKU: <%= item.sku || 'N/A' %> | Qty: <%= item.quantity || 0 %></p>
-                        </div>
-                        <div class="item-price">
-                            <span class="price">₹<%= Math.round(item.totalPrice || 0) %></span>
-                        </div>
-                    </div>
-                <% }) %>
-            <% } else { %>
-                <p class="text-muted">Order items not available</p>
-            <% } %>
-        </div>
-
-        <!-- Payment Method -->
-        <div class="content-section">
-            <h5 class="section-title">
-                <i class="bi bi-credit-card"></i> Payment Method
-            </h5>
-            <div class="payment-method-info">
-                <% if (orderData && orderData.paymentMethod) { %>
-                    <div class="payment-details">
-                        <p><strong><%= orderData.paymentMethod.toUpperCase() %></strong></p>
-                        <p>Ready to process payment</p>
-                        <span class="payment-status retry">Ready to Pay</span>
-                    </div>
+    <!-- Main Content - Two Column Layout -->
+    <div class="main-checkout-content">
+        <!-- LEFT SECTION - SINGLE CARD -->
+        <div class="checkout-left">
+            <div class="section-card">
+              
+              <!-- Delivery Address -->
+              <div class="section-header">
+                <h3 class="section-title">
+                  <i class="bi bi-geo-alt me-2"></i>Delivery Address
+                </h3>
+              </div>
+              <div class="section-content pb-3 border-bottom">
+                <% if (orderData.deliveryAddress) { %>
+                  <div class="address-detail">
+                    <p class="mb-1"><strong><%= orderData.deliveryAddress.name %></strong></p>
+                    <p class="mb-1"><small class="text-muted"><%= orderData.deliveryAddress.addressType %></small></p>
+                    <p class="mb-1"><%= orderData.deliveryAddress.street || '' %></p>
+                    <% if (orderData.deliveryAddress.landMark) { %>
+                      <p class="mb-1"><%= orderData.deliveryAddress.landMark %></p>
+                    <% } %>
+                    <p class="mb-1"><%= orderData.deliveryAddress.city %>, <%= orderData.deliveryAddress.state %></p>
+                    <p class="mb-1">PIN: <%= orderData.deliveryAddress.pincode %></p>
+                    <p class="mb-0"><i class="bi bi-telephone me-2"></i><%= orderData.deliveryAddress.phone %></p>
+                  </div>
                 <% } else { %>
-                    <div class="payment-details">
-                        <p><strong>Payment Method Not Available</strong></p>
-                        <p>Ready to process payment</p>
-                        <span class="payment-status retry">Ready to Pay</span>
-                    </div>
+                  <p class="text-muted">Address not available</p>
                 <% } %>
+              </div>
+
+              <!-- Applied Coupon -->
+              <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                <div class="section-content py-3 border-bottom">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-ticket me-2 text-success"></i>
+                    <div>
+                      <h6 class="mb-0">Applied Coupon</h6>
+                      <p class="mb-0 text-success small"><strong>₹<%= orderData.couponDiscount %></strong> discount</p>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+
+              <!-- Payment Method -->
+              <div class="section-content py-3 border-bottom">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-credit-card me-2"></i>
+                  <div>
+                    <h6 class="mb-0">Payment Method</h6>
+                    <p class="mb-0 text-muted small">UPI / Digital Wallet</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Retry Payment Buttons - Centered and Smaller -->
+              <div class="section-content pt-3">
+                <div class="d-flex gap-2 justify-content-center">
+                  <button id="retry-payment-btn" class="btn btn-warning px-4 py-2">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Retry Payment
+                  </button>
+                  <a href="/cart" class="btn btn-outline-secondary px-4 py-2">
+                    <i class="bi bi-arrow-left me-2"></i>Return to Cart
+                  </a>
+                </div>
+              </div>
+
             </div>
         </div>
 
-        <!-- Price Details -->
-        <div class="content-section">
-            <h5 class="section-title">
-                <i class="bi bi-receipt"></i> Price Details
-            </h5>
-            <div class="price-breakdown">
-                <div class="price-row">
-                    <span class="price-label">Subtotal (<%= (orderData && orderData.totalItemCount) || 0 %> items)</span>
-                    <span class="price-value">₹<%= (orderData && orderData.subtotal) || 0 %></span>
-                </div>
-                <% if (orderData && orderData.totalDiscount && orderData.totalDiscount > 0) { %>
-                    <div class="price-row">
-                        <span class="price-label">Discount</span>
-                        <span class="price-value discount">-₹<%= orderData.totalDiscount %></span>
+        <!-- RIGHT SECTION - SINGLE CARD -->
+        <div class="checkout-right">
+            <div class="section-card">
+              
+              <!-- Order Items -->
+              <div class="section-header">
+                <h3 class="section-title">
+                  <i class="bi bi-bag me-2"></i>Order Items (<%= orderData.totalItemCount || 0 %>)
+                </h3>
+              </div>
+              <div class="section-content pb-3 border-bottom">
+                <% if (orderData.items && orderData.items.length > 0) { %>
+                  <% orderData.items.forEach((item, index) => { %>
+                    <div class="cart-item-summary <%= index > 0 ? 'border-top pt-3' : '' %>">
+                      <div class="row g-3">
+                        <div class="col-md-3">
+                          <img src="<%= item.productId.mainImage || '/images/placeholder.png' %>" 
+                               alt="<%= item.productId.productName %>" 
+                               class="img-fluid rounded">
+                        </div>
+                        <div class="col-md-5">
+                          <h6 class="mb-2"><%= item.productId.productName %></h6>
+                          <small class="text-muted d-block">Size: <%= item.size %></small>
+                          <small class="text-muted d-block">SKU: <%= item.sku %></small>
+                          <small class="text-muted d-block">Qty: <%= item.quantity %></small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <p class="mb-0"><strong>₹<%= item.price %></strong></p>
+                          <small class="text-muted">Total: ₹<%= item.totalPrice %></small>
+                        </div>
+                      </div>
                     </div>
+                  <% }); %>
+                <% } else { %>
+                  <p class="text-muted">No items in order</p>
                 <% } %>
-                <div class="price-row">
+              </div>
+
+              <!-- Price Details -->
+              <div class="section-content pt-3">
+                <h6 class="mb-3"><i class="bi bi-receipt me-2"></i>Price Details</h6>
+                <div class="price-summary">
+                  <!-- Subtotal -->
+                  <div class="summary-row">
+                    <span class="price-label">Subtotal</span>
+                    <span class="price-value">₹<%= orderData.subtotal || 0 %></span>
+                  </div>
+
+                  <!-- Product Discount -->
+                  <% if (orderData.totalDiscount && orderData.totalDiscount > 0) { %>
+                    <div class="summary-row text-success">
+                      <span class="price-label">Product Discount</span>
+                      <span class="price-value">-₹<%= orderData.totalDiscount %></span>
+                    </div>
+                  <% } %>
+
+                  <!-- Coupon Discount -->
+                  <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                    <div class="summary-row text-success">
+                      <span class="price-label">Coupon Discount</span>
+                      <span class="price-value">-₹<%= orderData.couponDiscount %></span>
+                    </div>
+                  <% } %>
+
+                  <!-- Shipping -->
+                  <div class="summary-row">
                     <span class="price-label">Shipping</span>
-                    <span class="price-value">
-                        <% if (orderData && orderData.shipping && orderData.shipping > 0) { %>
-                            ₹<%= orderData.shipping %>
-                        <% } else { %>
-                            <span class="free-shipping">FREE</span>
-                        <% } %>
-                    </span>
-                </div>
-                
-                <div class="price-divider"></div>
-                
-                <div class="price-row total-row">
+                    <% if (orderData.shipping === 0 || orderData.shipping === '0' || orderData.shipping === 'FREE') { %>
+                      <span class="price-value text-success">FREE</span>
+                    <% } else { %>
+                      <span class="price-value">₹<%= orderData.shipping %></span>
+                    <% } %>
+                  </div>
+
+                  <!-- Total -->
+                  <div class="summary-row border-top pt-3 mt-3 total-row">
                     <span class="price-label"><strong>Total Amount</strong></span>
-                    <span class="price-value total"><strong>₹<%= (orderData && orderData.total) || 0 %></strong></span>
+                    <span class="price-value"><strong>₹<%= orderData.total || 0 %></strong></span>
+                  </div>
                 </div>
-            </div>
-        </div>
+              </div>
 
-        <!-- Retry Instructions -->
-        <div class="content-section">
-            <h5 class="section-title">
-                <i class="bi bi-info-circle"></i> Ready to Complete Payment
-            </h5>
-            <div class="retry-instructions">
-                <p class="text-muted">Click "Retry Payment" below to complete your order. You will be redirected to the payment gateway to process your payment securely.</p>
             </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="action-buttons text-center">
-            <button id="retry-payment-btn" class="btn btn-warning" data-transaction-id="<%= transactionId %>">
-                <i class="bi bi-arrow-clockwise"></i> Retry Payment
-            </button>
-            <a href="/cart" class="btn btn-secondary">
-                <i class="bi bi-arrow-left"></i> Return to Cart
-            </a>
-            <a href="/support" class="btn btn-outline-secondary">
-                <i class="bi bi-headset"></i> Contact Support
-            </a>
         </div>
     </div>
 </div>
 
-<style>
-/* ========= RETRY PAYMENT PAGE STYLES ========= */
+<!-- Include Razorpay SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-/* Force hide loading overlay on this page */
-#page-transition-overlay {
-    display: none !important;
-    opacity: 0 !important;
-    visibility: hidden !important;
-}
-
-/* Ensure main content is always visible */
-#main-content {
-    opacity: 1 !important;
-    visibility: visible !important;
-}
-
-.retry-payment-container {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 0 15px;
-}
-
-/* Main Section */
-.retry-payment-section {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(255, 152, 0, 0.15);
-    padding: 2rem;
-    animation: fadeInUp 0.6s ease-out;
-}
-
-/* Retry Animation - Clean SVG Retry Icon */
-.retry-animation-container {
-    margin-bottom: 2rem;
-    padding: 1rem 0;
-}
-
-.retry-icon {
-    width: 100px;
-    height: 100px;
-    margin: 0 auto 1.5rem;
-    display: block;
-    position: relative;
-}
-
-.retry-svg {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    display: block;
-    stroke-width: 3;
-    stroke: #ff9800;
-    stroke-miterlimit: 10;
-    animation: retry-spin 2s linear infinite;
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-    border-radius: 50%;
-    padding: 10px;
-    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-}
-
-.retry-circle {
-    stroke-dasharray: 166;
-    stroke-dashoffset: 166;
-    stroke-width: 3;
-    stroke-miterlimit: 10;
-    stroke: #ff9800;
-    fill: none;
-    animation: retry-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
-}
-
-.retry-arrow1, .retry-arrow2 {
-    stroke-width: 3;
-    stroke: #FFFFFF;
-    stroke-dasharray: 20;
-    stroke-dashoffset: 20;
-    animation: retry-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
-}
-
-.retry-arrowhead1, .retry-arrowhead2 {
-    fill: #FFFFFF;
-    opacity: 0;
-    animation: retry-fade-in 0.3s ease 1.2s forwards;
-}
-
-/* Keyframe Animations */
-@keyframes retry-spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-@keyframes retry-stroke {
-    100% {
-        stroke-dashoffset: 0;
-    }
-}
-
-@keyframes retry-fade-in {
-    100% {
-        opacity: 1;
-    }
-}
-
-@keyframes fadeInUp {
-    from {
-        opacity: 0;
-        transform: translateY(30px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Retry Content */
-.retry-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #ff9800;
-    margin-bottom: 0.5rem;
-}
-
-.retry-subtitle {
-    font-size: 1.1rem;
-    color: #6c757d;
-    margin-bottom: 1rem;
-}
-
-.retry-number {
-    background: linear-gradient(135deg, #ff9800, #f57c00);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 25px;
-    display: inline-block;
-    font-size: 1rem;
-    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-}
-
-/* Content Sections */
-.content-section {
-    margin-bottom: 2rem;
-    padding-bottom: 1.5rem;
-    border-bottom: 1px solid #e9ecef;
-}
-
-.content-section:last-of-type {
-    border-bottom: none;
-    margin-bottom: 1rem;
-}
-
-.section-title {
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #000;
-    margin-bottom: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-/* Address Info */
-.address-info p {
-    margin: 0.25rem 0;
-    color: #495057;
-    line-height: 1.4;
-}
-
-/* Order Items */
-.order-item {
-    display: flex;
-    align-items: center;
-    padding: 1rem 0;
-    border-bottom: 1px solid #f8f9fa;
-}
-
-.order-item:last-child {
-    border-bottom: none;
-}
-
-.item-image {
-    width: 60px;
-    height: 60px;
-    margin-right: 1rem;
-    border-radius: 8px;
-    overflow: hidden;
-}
-
-.item-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-.item-details {
-    flex: 1;
-}
-
-.item-details h6 {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: #000;
-}
-
-.item-details p {
-    margin: 0;
-    color: #6c757d;
-    font-size: 0.9rem;
-}
-
-.item-price .price {
-    font-weight: 700;
-    font-size: 1rem;
-    color: #000;
-}
-
-/* Payment Method */
-.payment-details p {
-    margin: 0.25rem 0;
-    color: #495057;
-}
-
-.payment-status {
-    display: inline-block;
-    padding: 0.25rem 0.75rem;
-    border-radius: 15px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-top: 0.5rem;
-}
-
-.payment-status.retry {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ff9800;
-}
-
-/* Price Breakdown */
-.price-breakdown {
-    background: #fff8f0;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #ffcc80;
-}
-
-.price-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-}
-
-.price-row:last-child {
-    margin-bottom: 0;
-}
-
-.price-label {
-    color: #495057;
-}
-
-.price-value {
-    color: #000;
-    font-weight: 500;
-}
-
-.price-value.discount {
-    color: #28a745;
-}
-
-.price-value.free-shipping {
-    color: #28a745;
-    font-weight: 600;
-}
-
-.price-divider {
-    height: 1px;
-    background: #ffcc80;
-    margin: 0.75rem 0;
-}
-
-.total-row {
-    font-size: 1.1rem;
-    padding-top: 0.5rem;
-    border-top: 2px solid #ff9800;
-    color: #ff9800;
-}
-
-/* Retry Instructions */
-.retry-instructions p {
-    margin: 0.25rem 0;
-    color: #495057;
-    padding: 1rem;
-    background: #fff8f0;
-    border-left: 4px solid #ff9800;
-    border-radius: 4px;
-}
-
-/* Action Buttons */
-.action-buttons {
-    margin-top: 2rem;
-}
-
-.action-buttons .btn {
-    margin: 0 0.5rem;
-    padding: 0.75rem 2rem;
-    font-weight: 600;
-    border-radius: 25px;
-    transition: all 0.3s ease;
-    text-decoration: none;
-    display: inline-block;
-}
-
-/* Orange Retry Button */
-.action-buttons .btn-warning {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-    border: none;
-    color: white;
-    box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
-}
-
-.action-buttons .btn-warning:hover {
-    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.4);
-    color: white;
-}
-
-.action-buttons .btn-secondary {
-    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
-    border: none;
-    color: white;
-}
-
-.action-buttons .btn-secondary:hover {
-    background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
-    color: white;
-}
-
-.action-buttons .btn-outline-secondary {
-    border: 2px solid #6c757d;
-    color: #6c757d;
-}
-
-.action-buttons .btn-outline-secondary:hover {
-    background: #6c757d;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(108, 117, 125, 0.3);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .retry-payment-section {
-        padding: 1.5rem;
-    }
-    
-    .retry-title {
-        font-size: 1.75rem;
-    }
-    
-    .order-item {
-        flex-direction: column;
-        text-align: center;
-        gap: 0.5rem;
-    }
-    
-    .action-buttons .btn {
-        display: block;
-        margin: 0.5rem auto;
-        width: 100%;
-        max-width: 300px;
-    }
-    
-    .retry-icon {
-        width: 80px;
-        height: 80px;
-    }
-}
-
-/* Loading states */
-.btn-warning:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
-.btn-warning.loading::after {
-    content: "";
-    width: 16px;
-    height: 16px;
-    margin-left: 8px;
-    border: 2px solid transparent;
-    border-top: 2px solid #ffffff;
-    border-radius: 50%;
-    display: inline-block;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-</style>
-
+<!-- Retry Payment Script -->
 <script>
-// Add interactive effects and handle retry payment
-document.addEventListener('DOMContentLoaded', function() {
-    // Force hide any loading overlays immediately
-    if (window.PageTransition) {
-        window.PageTransition.forceReset();
-    }
-    
-    // Also manually hide any loading overlays
-    const overlay = document.getElementById('page-transition-overlay');
-    if (overlay) {
-        overlay.classList.remove('show');
-        overlay.style.display = 'none';
-    }
-    
-    // Ensure main content is visible
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.style.opacity = '1';
-    }
-    
-    // Add hover effects to the main section
-    const section = document.querySelector('.retry-payment-section');
-    if (section) {
-        section.addEventListener('mouseenter', function() {
-            this.style.transform = 'translateY(-5px)';
-            this.style.boxShadow = '0 8px 30px rgba(255, 152, 0, 0.25)';
-        });
-        
-        section.addEventListener('mouseleave', function() {
-            this.style.transform = 'translateY(0)';
-            this.style.boxShadow = '0 4px 20px rgba(255, 152, 0, 0.15)';
-        });
+document.getElementById('retry-payment-btn').addEventListener('click', async function() {
+  try {
+    Swal.fire({
+      title: 'Processing Payment',
+      html: 'Please wait while we prepare your payment gateway...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    const deliveryAddressId = '<%= orderData.deliveryAddressId %>';
+    const addressIndex = '<%= orderData.addressIndex %>';
+
+    if (!deliveryAddressId || deliveryAddressId === 'undefined') {
+      throw new Error('Delivery Address ID is missing!');
     }
 
-    // Handle retry payment button
-    const retryBtn = document.getElementById('retry-payment-btn');
-    if (retryBtn) {
-        retryBtn.addEventListener('click', async function() {
-            const transactionId = this.getAttribute('data-transaction-id');
-            
-            if (!transactionId) {
-                alert('Transaction ID not found. Please try again.');
-                return;
-            }
+    if (addressIndex === 'undefined' || addressIndex === '') {
+      throw new Error('Address Index is missing!');
+    }
 
-            // Disable button and show loading state
-            this.disabled = true;
-            this.classList.add('loading');
-            this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Processing...';
+    const orderResponse = await fetch('/checkout/create-razorpay-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deliveryAddressId: deliveryAddressId,
+        addressIndex: parseInt(addressIndex),
+        paymentMethod: 'upi'
+      })
+    });
 
-            try {
-                // Call the retry payment API
-                const response = await fetch(`/checkout/retry-payment/${transactionId}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    }
-                });
+    if (!orderResponse.ok) {
+      throw new Error('Failed to create payment order');
+    }
 
-                const result = await response.json();
+    const orderData = await orderResponse.json();
+    if (!orderData.success) {
+      throw new Error(orderData.message || 'Failed to create Razorpay order');
+    }
 
-                if (result.success) {
-                    // Handle different payment methods
-                    if (result.paymentMethod === 'upi') {
-                        // Initialize Razorpay payment
-                        const options = {
-                            key: '<%= razorpayKeyId %>',
-                            amount: result.amount,
-                            currency: result.currency || 'INR',
-                            name: 'LacedUp',
-                            description: 'Retry Payment',
-                            order_id: result.razorpayOrderId,
-                            handler: function(response) {
-                                // Payment successful
-                                window.location.href = `/checkout/order-success/${response.razorpay_payment_id}`;
-                            },
-                            prefill: {
-                                name: '<%= user.fullname %>',
-                                email: '<%= user.email %>'
-                            },
-                            theme: {
-                                color: '#ff9800'
-                            }
-                        };
-                        const rzp = new Razorpay(options);
-                        rzp.open();
-                    } else if (result.paymentMethod === 'paypal') {
-                        // Redirect to PayPal payment
-                        window.location.href = '/checkout/paypal-payment';
-                    } else if (result.redirectToCheckout) {
-                        // Redirect to checkout for other payment methods
-                        window.location.href = '/checkout';
-                    }
-                } else {
-                    throw new Error(result.message || 'Failed to initiate retry payment');
+    const razorpayOrderId = orderData.data.razorpayOrderId;
+
+    const options = {
+      key: '<%= razorpayKeyId %>',
+      amount: orderData.data.amount,
+      currency: orderData.data.currency || 'INR',
+      name: 'LacedUp',
+      description: orderData.data.description,
+      order_id: razorpayOrderId,
+      prefill: {
+        name: orderData.data.userName,
+        email: orderData.data.userEmail,
+        contact: orderData.data.userPhone
+      },
+      theme: {
+        color: '#FFC400'
+      },
+      handler: async function(response) {
+        try {
+          Swal.fire({
+            title: 'Verifying Payment',
+            html: 'Please wait...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+
+          const verifyResponse = await fetch('/checkout/verify-razorpay-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Payment Successful',
+              text: 'Your order has been placed successfully!',
+              confirmButtonColor: '#28a745'
+            }).then(() => {
+              window.location.href = verifyData.data.redirectUrl;
+            });
+          } else {
+            throw new Error(verifyData.message || 'Payment verification failed');
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Verification Failed',
+            text: error.message,
+            confirmButtonColor: '#dc3545'
+          });
+        }
+      },
+      modal: {
+        ondismiss: async function() {
+          console.log('Payment modal closed');
+          
+          try {
+            await fetch('/checkout/payment-failure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayOrderId: razorpayOrderId,
+                error: {
+                  description: 'User closed payment modal',
+                  reason: 'Modal dismissed'
                 }
-            } catch (error) {
-                console.error('Retry payment error:', error);
-                alert('Failed to initiate retry payment. Please try again.');
-                
-                // Re-enable button
-                this.disabled = false;
-                this.classList.remove('loading');
-                this.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Retry Payment';
-            }
-        });
-    }
-});
+              })
+            });
 
-// Also add a backup to ensure page loads properly
-window.addEventListener('load', function() {
-    const overlay = document.getElementById('page-transition-overlay');
-    if (overlay) {
-        overlay.classList.remove('show');
-        overlay.style.display = 'none';
-    }
+            window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+          } catch (error) {
+            console.error('Error:', error);
+            window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+          }
+        }
+      }
+    };
+
+    const rzp = new Razorpay(options);
     
-    const mainContent = document.getElementById('main-content');
-    if (mainContent) {
-        mainContent.style.opacity = '1';
-    }
+    // ✅ THE MISSING PIECE: Catch payment failures from the gateway
+    rzp.on('payment.failed', async function(response) {
+      try {
+        console.error('❌ Payment failed:', response.error);
+        
+        await fetch('/checkout/payment-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpayOrderId: razorpayOrderId,
+            error: {
+              description: response.error.description || 'Payment failed',
+              reason: response.error.reason || 'Unknown error'
+            }
+          })
+        });
+
+        // Redirect to failure page
+        window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+      } catch (error) {
+        console.error('Error handling payment failure:', error);
+        window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+      }
+    });
+    
+    rzp.open();
+
+  } catch (error) {
+    console.error('Error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.message,
+      confirmButtonColor: '#dc3545'
+    });
+  }
 });
 </script>

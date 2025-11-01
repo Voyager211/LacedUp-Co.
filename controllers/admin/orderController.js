@@ -244,61 +244,128 @@ async function getTodayOrdersCount() {
   });
 }
 
-// Get all orders for admin (showing individual items)
-exports.getAllOrders = async (req, res) => {
+// Get all orders
+const getAllOrders = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
-    
-    // Get filter parameters
-    const status = req.query.status || '';
-    const paymentMethod = req.query.paymentMethod || '';
-    const paymentStatus = req.query.paymentStatus || '';
-    const search = req.query.search || '';
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder || 'desc';
+    const limit = parseInt(req.query.limit) || 10;
 
-    // Build aggregation pipeline
-    const pipeline = buildOrderItemsPipeline({
-      status,
-      paymentMethod,
-      paymentStatus,
-      search,
-      sortBy,
-      sortOrder
+    // Get filter parameters
+    const status = req.query.status;
+    const paymentMethod = req.query.paymentMethod;
+    const paymentStatus = req.query.paymentStatus;
+    const search = req.query.search;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+    // Build filter object
+    const filter = {};
+
+    // Filter by payment method
+    if (paymentMethod) {
+      filter.paymentMethod = paymentMethod;
+    }
+
+    // Filter by payment status
+    if (paymentStatus) {
+      filter.paymentStatus = paymentStatus;
+    }
+
+    // Filter by item status (if status filter is applied)
+    if (status) {
+      filter['items.status'] = status;
+    }
+
+    // Search functionality
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      const searchRegex = new RegExp(searchTerm, 'i');
+      
+      // Remove 'ORD-' prefix if present for order ID search
+      const orderIdSearchTerm = searchTerm.startsWith('ORD-') 
+        ? searchTerm.substring(4) 
+        : searchTerm;
+
+      filter.$or = [
+        { orderId: new RegExp(orderIdSearchTerm, 'i') }
+      ];
+
+      // If search might be user info, add user lookup
+      if (isNaN(searchTerm)) {
+        // Will search in user after populate
+      }
+    }
+
+    // Build query
+    const queryBuilder = Order.find(filter)
+      .populate({
+        path: 'user',
+        select: 'name email phone'
+      })
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage',
+      })
+      .populate({
+        path: 'deliveryAddress.addressId',
+        select: 'address'
+      })
+      .sort({ [sortBy]: sortOrder });
+
+    // Use regular pagination utility
+    const { getPagination } = require('../../utils/pagination');
+    const { data: orders, totalPages } = await getPagination(
+      queryBuilder,
+      Order,
+      filter,
+      page,
+      limit
+    );
+
+    // Process orders to extract specific delivery address
+    const processedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      if (orderObj.deliveryAddress && orderObj.deliveryAddress.addressId) {
+        const addressIndex = orderObj.deliveryAddress.addressIndex;
+        const specificAddress = orderObj.deliveryAddress.addressId.address?.[addressIndex];
+        
+        if (specificAddress) {
+          orderObj.deliveryAddress = {
+            ...orderObj.deliveryAddress,
+            ...specificAddress
+          };
+        }
+      }
+      
+      return orderObj;
     });
 
-    
-
-    // Use new paginateAggregate utility
-    const result = await paginateAggregate(Order, pipeline, page, limit);
-
-    const { data: orderItems, totalPages, count } = result;
-
-    // Get statistics (separate aggregation for performance)
+    // Get statistics (separate queries for performance)
     const [orderStats, todayOrders] = await Promise.all([
       getOrderItemStatistics(),
       getTodayOrdersCount()
     ]);
 
     const totalOrders = await Order.countDocuments();
+    const totalItems = processedOrders.reduce((sum, order) => sum + order.items.length, 0);
 
     res.render('admin/orders', {
       title: 'Order Management',
-      orderItems,
+      orders: processedOrders,
       currentPage: page,
       totalPages,
       totalOrders,
-      totalItems: count,
       orderStats,
       todayOrders,
+      totalItems,
       filters: {
         status,
         paymentMethod,
         paymentStatus,
         search,
         sortBy,
-        sortOrder
+        sortOrder: sortOrder === -1 ? 'desc' : 'asc'
       },
       layout: 'admin/layout',
       orderStatuses: getOrderStatusArray(),
@@ -311,7 +378,7 @@ exports.getAllOrders = async (req, res) => {
     console.error('Error fetching orders:', error);
     res.status(500).render('admin/orders', {
       title: 'Order Management',
-      orderItems: [],
+      orders: [],
       currentPage: 1,
       totalPages: 1,
       totalOrders: 0,
@@ -320,11 +387,118 @@ exports.getAllOrders = async (req, res) => {
       todayOrders: 0,
       filters: {},
       error: 'Error loading orders',
-      layout: 'admin/layout'
+      layout: 'admin/layout',
+      ORDER_STATUS: ORDER_STATUS,
+      PAYMENT_STATUS: PAYMENT_STATUS,
+      paymentStatuses: getPaymentStatusArray()
     });
   }
 };
 
+const getFilteredOrders = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const status = req.query.status;
+    const paymentMethod = req.query.paymentMethod;
+    const paymentStatus = req.query.paymentStatus;
+    const search = req.query.search;
+    const sortBy = req.query.sortBy || 'createdAt';
+    const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+
+    // Build filter
+    const filter = {};
+
+    if (paymentMethod) filter.paymentMethod = paymentMethod;
+    if (paymentStatus) filter.paymentStatus = paymentStatus;
+    if (status) filter['items.status'] = status;
+
+    // Search
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      const orderIdSearchTerm = searchTerm.startsWith('ORD-') 
+        ? searchTerm.substring(4) 
+        : searchTerm;
+
+      filter.$or = [
+        { orderId: new RegExp(orderIdSearchTerm, 'i') }
+      ];
+    }
+
+    // Query
+    const queryBuilder = Order.find(filter)
+      .populate({
+        path: 'user',
+        select: 'name email phone'
+      })
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage'
+      })
+      .populate({
+        path: 'deliveryAddress.addressId',
+        select: 'address'
+      })
+      .sort({ [sortBy]: sortOrder });
+
+    const { getPagination } = require('../../utils/pagination');
+    const { data: orders, totalPages, totalCount } = await getPagination(
+      queryBuilder,
+      Order,
+      filter,
+      page,
+      limit
+    );
+
+    // Process orders
+    const processedOrders = orders.map(order => {
+      const orderObj = order.toObject();
+      
+      if (orderObj.deliveryAddress && orderObj.deliveryAddress.addressId) {
+        const addressIndex = orderObj.deliveryAddress.addressIndex;
+        const specificAddress = orderObj.deliveryAddress.addressId.address?.[addressIndex];
+        
+        if (specificAddress) {
+          orderObj.deliveryAddress = {
+            ...orderObj.deliveryAddress,
+            ...specificAddress
+          };
+        }
+      }
+      
+      return orderObj;
+    });
+
+    // ✅ UPDATED: Include complete pagination info for continuous row numbering
+    res.json({
+      success: true,
+      data: {
+        orders: processedOrders,
+        currentPage: page,
+        totalPages: totalPages,
+        itemsPerPage: limit,
+        totalCount: totalCount,
+        filteredOrdersCount: totalCount
+      },
+      filters: { 
+        status, 
+        paymentMethod, 
+        paymentStatus, 
+        search, 
+        sortBy, 
+        sortOrder: sortOrder === -1 ? 'desc' : 'asc' 
+      }
+    });
+
+  } catch (error) {
+    console.error('Error in getFilteredOrders:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error loading orders',
+      debug: error.message
+    });
+  }
+};
 
 // Get allowed status transitions based on current status
 const getAllowedStatusTransitions = (currentStatus) => {
@@ -332,7 +506,7 @@ const getAllowedStatusTransitions = (currentStatus) => {
 };
 
 // Update order status
-exports.getOrderDetails = async (req, res) => {
+const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
     console.log('🔍 DEBUG: Accessing order details for:', orderId);
@@ -464,7 +638,7 @@ exports.getOrderDetails = async (req, res) => {
 
 
 
-exports.getOrderDetailsJSON = async (req, res) => {
+const getOrderDetailsJSON = async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -546,7 +720,7 @@ exports.getOrderDetailsJSON = async (req, res) => {
 };
 
 // Get allowed status transitions for a specific order
-exports.getAllowedTransitions = async (req, res) => {
+const getAllowedTransitions = async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -577,16 +751,16 @@ exports.getAllowedTransitions = async (req, res) => {
 };
 
 // updateOrderStatus function with transition validation
-exports.updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { status, notes, action } = req.body;
 
     // Handle different actions
     if (action === 'cancel') {
-      return exports.cancelOrder(req, res);
+      return cancelOrder(req, res);
     } else if (action === 'return') {
-      return exports.returnOrder(req, res);
+      return returnOrder(req, res);
     }
 
     // Get current order to validate transition
@@ -680,7 +854,7 @@ exports.updateOrderStatus = async (req, res) => {
 };
 
 // update item status
-exports.updateItemStatus = async (req, res) => {
+const updateItemStatus = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { status, notes } = req.body;
@@ -859,7 +1033,7 @@ exports.updateItemStatus = async (req, res) => {
 
 
 // Cancel individual item
-exports.cancelItem = async (req, res) => {
+const cancelItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -925,7 +1099,7 @@ exports.cancelItem = async (req, res) => {
 };
 
 // Cancel entire order using admin function
-exports.cancelOrder = async (req, res) => {
+const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -976,7 +1150,7 @@ exports.cancelOrder = async (req, res) => {
 };
 
 // Create return request for entire order using admin function
-exports.returnOrderRequest = async (req, res) => {
+const returnOrderRequest = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -1013,7 +1187,7 @@ exports.returnOrderRequest = async (req, res) => {
 };
 
 // Create return request for individual item using admin function
-exports.returnItemRequest = async (req, res) => {
+const returnItemRequest = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -1053,7 +1227,7 @@ exports.returnItemRequest = async (req, res) => {
 
 
 // Get order statistics for dashboard
-exports.getOrderStatistics = async (req, res) => {
+const getOrderStatistics = async (req, res) => {
   try {
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
@@ -1122,76 +1296,10 @@ exports.getOrderStatistics = async (req, res) => {
   }
 };
 
-// API endpoint for filtered orders (for dynamic updates)
-exports.getFilteredOrders = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 5;
-    
-    const status = req.query.status || '';
-    const paymentMethod = req.query.paymentMethod || '';
-    const paymentStatus = req.query.paymentStatus || '';
-    const search = req.query.search || '';
-    const sortBy = req.query.sortBy || 'createdAt';
-    const sortOrder = req.query.sortOrder || 'desc';
-
-    console.log('🚀 API called with filters:', {
-      page, limit, status, paymentMethod, paymentStatus, search, sortBy, sortOrder
-    });
-
-    // Build aggregation pipeline
-    const pipeline = buildOrderItemsPipeline({
-      status,
-      paymentMethod,
-      paymentStatus,
-      search,
-      sortBy,
-      sortOrder
-    });
-
-    // Use paginateAggregate for efficient pagination
-    const result = await paginateAggregate(Order, pipeline, page, limit);
-    console.log('📊 Aggregation result:', { 
-      totalItems: result.count, 
-      currentPage: result.currentPage || page,
-      totalPages: result.totalPages,
-      itemsReturned: result.data?.length || 0 
-    });
-
-    const { data: orderItems, totalPages, count } = result;
-
-    // ✅ FIXED: Don't include system-wide statistics in filtered response
-    res.json({
-      success: true,
-      data: {
-        orderItems,
-        currentPage: page,
-        totalPages,
-        filteredItemsCount: count, // ✅ Only the filtered count
-        filters: {
-          status,
-          paymentMethod,
-          paymentStatus,
-          search,
-          sortBy,
-          sortOrder
-        }
-      }
-    });
-
-  } catch (error) {
-    console.error('❌ Error in getFilteredOrders:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error loading orders',
-      debug: error.message
-    });
-  }
-};
 
 
 // Export orders data (CSV)
-exports.exportOrders = async (req, res) => {
+const exportOrders = async (req, res) => {
   try {
     const { startDate, endDate, status } = req.query;
     
@@ -1259,7 +1367,7 @@ exports.exportOrders = async (req, res) => {
   }
 };
 
-exports.getSystemStatistics = async (req, res) => {
+const getSystemStatistics = async (req, res) => {
   try {
     const [orderStats, todayOrders] = await Promise.all([
       getOrderItemStatistics(),
@@ -1295,7 +1403,7 @@ exports.getSystemStatistics = async (req, res) => {
 };
 
 // Fix payment status for cancelled order
-exports.fixCancelledOrderPaymentStatus = async (req, res) => {
+const fixCancelledOrderPaymentStatus = async (req, res) => {
   try {
     const { orderId } = req.params;
     
@@ -1368,3 +1476,21 @@ exports.fixCancelledOrderPaymentStatus = async (req, res) => {
     });
   }
 };
+
+module.exports = {
+  getAllOrders,
+  getOrderDetails,
+  getOrderDetailsJSON,
+  getAllowedTransitions,
+  updateOrderStatus,
+  updateItemStatus,
+  cancelItem,
+  cancelOrder,
+  returnOrderRequest,
+  returnItemRequest,
+  getOrderStatistics,
+  getFilteredOrders,
+  exportOrders,
+  getSystemStatistics,
+  fixCancelledOrderPaymentStatus
+}
