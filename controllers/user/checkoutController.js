@@ -6,7 +6,7 @@ const Order = require('../../models/Order');
 const Coupon = require('../../models/Coupon');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
-const razorpayService = require('../../services/razorpay');
+const razorpayService = require('../../services/paymentProviders/razorpay');
 
 const {
   ORDER_STATUS,
@@ -149,6 +149,47 @@ const deductStock = async (orderItems) => {
     throw error;
   }
 };
+
+const increaseCouponUsage = async (couponId, userId, orderId) => {
+  try {
+    const coupon = await Coupon.findById(couponId);
+    if (coupon) {
+      coupon.usedCount += 1;
+      coupon.usedBy.push({
+        user: userId,
+        usedAt: new Date(),
+        orderId: orderId
+      });
+      await coupon.save();
+      console.log(`✅ Coupon usage increased: ${coupon.code}`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error increasing coupon usage:', error);
+    throw error;
+  }
+};
+
+const decreaseCouponUsage = async (couponId, userId, orderId) => {
+  try {
+    const coupon = await Coupon.findById(couponId);
+    if (coupon && coupon.usedCount > 0) {
+      coupon.usedCount = Math.max(0, coupon.usedCount - 1);
+      coupon.usedBy = coupon.usedBy.filter(
+        usage => !(usage.user.toString() === userId.toString() && usage.orderId.toString() === orderId.toString())
+      );
+      await coupon.save();
+      console.log(`✅ Coupon usage decreased: ${coupon.code}`);
+      return true;
+    }
+    return false;
+  } catch (error) {
+    console.error('Error decreasing coupon usage:', error);
+    throw error;
+  }
+};
+
 
 const calculateOrderTotals = (cartItems) => {
   let subtotal = 0;
@@ -828,7 +869,7 @@ const createRazorpayPayment = async (req, res) => {
       message: 'Razorpay order created successfully',
       data: {
         razorpayOrderId: razorpayOrder.id,
-        amount: Math.round(finalTotal * 100), // Convert to paise for frontend
+        amount: Math.round(finalTotal * 100),
         currency: 'INR',
         userName: req.user?.fullname || 'User',
         userEmail: req.user?.email || '',
@@ -850,8 +891,7 @@ const createRazorpayPayment = async (req, res) => {
 };
 
 
-
-// Verify Razorpay Payment & Create Order
+// Verify Razorpay Payment
 const verifyRazorpayPayment = async (req, res) => {
   try {
     const userId = req.user?._id || req.session?.userId;
@@ -865,98 +905,41 @@ const verifyRazorpayPayment = async (req, res) => {
       });
     }
 
-    if (!razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment details incomplete',
-        code: 'INCOMPLETE_PAYMENT_DETAILS'
-      });
-    }
+    console.log('🔐 Verifying Razorpay payment for new order...');
 
-    // Verify signature
-    const isSignatureValid = razorpayService.verifyPaymentSignature(
-      razorpayOrderId,
-      razorpayPaymentId,
-      razorpaySignature
-    );
+    // Step 1: Verify signature
+    const body = razorpayOrderId + '|' + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
 
-    if (!isSignatureValid) {
+    if (expectedSignature !== razorpaySignature) {
       console.error('❌ Signature verification failed');
       return res.status(400).json({
         success: false,
-        message: 'Payment verification failed - Invalid signature',
-        code: 'INVALID_SIGNATURE'
+        message: 'Payment signature verification failed',
+        code: 'SIGNATURE_VERIFICATION_FAILED'
       });
     }
 
-    console.log('✅ Signature verified successfully');
+    console.log('✅ Signature verified');
 
-    // Get pending order from session
     const pendingOrder = req.session.pendingRazorpayOrder;
-    const paymentFailure = req.session.paymentFailure;
 
     if (!pendingOrder) {
       return res.status(400).json({
         success: false,
-        message: 'Pending order not found in session',
+        message: 'No pending order found',
         code: 'NO_PENDING_ORDER'
       });
     }
 
-    // Verify razorpay order ID matches
-    if (pendingOrder.razorpayOrderId !== razorpayOrderId) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order ID mismatch',
-        code: 'ORDER_MISMATCH'
-      });
-    }
+    console.log('✨ Processing new order payment');
 
-    console.log('📦 Processing payment verification...');
-
-    // ✅ Check if this is a retry (update existing failed order) or new order
-    let order = null;
-    
-    if (paymentFailure && paymentFailure.orderId) {
-      // RETRY - Update existing failed order
-      console.log('🔄 Updating failed order:', paymentFailure.orderId);
-      
-      try {
-        order = await Order.findByIdAndUpdate(
-          paymentFailure.orderId,
-          {
-            paymentStatus: PAYMENT_STATUS.COMPLETED,
-            razorpayPaymentId: razorpayPaymentId,
-            status: ORDER_STATUS.PROCESSING,
-            $push: {
-              statusHistory: {
-                status: ORDER_STATUS.PROCESSING,
-                updatedAt: new Date(),
-                notes: 'Payment successful on retry - Order processing'
-              }
-            }
-          },
-          { new: true }
-        );
-        
-        console.log(`✅ Failed order updated: ${order.orderId}`);
-      } catch (updateError) {
-        console.error('❌ Error updating order:', updateError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to update order after payment',
-          code: 'ORDER_UPDATE_FAILED',
-          error: updateError.message
-        });
-      }
-    } else {
-      // NEW ORDER - Create fresh order
-      console.log('✨ Creating new order');
-
-      // Convert deliveryAddressId to ObjectId
+    try {
       const addressObjectId = new mongoose.Types.ObjectId(pendingOrder.deliveryAddressId);
 
-      // Create order items
       const orderItems = pendingOrder.cart.map(item => ({
         productId: item.productId._id,
         variantId: item.variantId,
@@ -965,31 +948,26 @@ const verifyRazorpayPayment = async (req, res) => {
         quantity: item.quantity,
         price: item.price,
         totalPrice: item.totalPrice,
-        status: ORDER_STATUS.PENDING,
+        status: ORDER_STATUS.PROCESSING,
         paymentStatus: PAYMENT_STATUS.COMPLETED,
         statusHistory: [{
-          status: ORDER_STATUS.PENDING,
+          status: ORDER_STATUS.PROCESSING,
           updatedAt: new Date(),
-          notes: 'Order placed with UPI payment'
+          notes: 'Order confirmed - Payment successful'
         }]
       }));
 
-      // Deduct stock
+      // Step 2: Deduct stock for new order
       try {
-        await deductStock(orderItems);
-        console.log('✅ Stock deducted successfully');
-      } catch (error) {
-        console.error('❌ Stock deduction failed:', error);
-        return res.status(400).json({
-          success: false,
-          message: 'Failed to process order - Stock issue',
-          error: error.message,
-          code: 'STOCK_DEDUCTION_FAILED'
-        });
+        await deductStock(pendingOrder.cart);
+        console.log('✅ Stock deducted for new order');
+      } catch (stockError) {
+        console.error('❌ Error deducting stock:', stockError);
+        throw new Error(`Stock deduction failed: ${stockError.message}`);
       }
 
-      // Create Order in database
-      order = new Order({
+      // Step 3: Create new order with successful payment
+      const order = new Order({
         orderId: generateOrderId(),
         user: userId,
         items: orderItems,
@@ -1003,6 +981,7 @@ const verifyRazorpayPayment = async (req, res) => {
         paymentStatus: PAYMENT_STATUS.COMPLETED,
         razorpayOrderId: razorpayOrderId,
         razorpayPaymentId: razorpayPaymentId,
+        razorpaySignature: razorpaySignature,
         subtotal: pendingOrder.totals.subtotal,
         totalDiscount: pendingOrder.totals.totalDiscount,
         amountAfterDiscount: pendingOrder.totals.amountAfterDiscount,
@@ -1013,94 +992,114 @@ const verifyRazorpayPayment = async (req, res) => {
         statusHistory: [{
           status: ORDER_STATUS.PROCESSING,
           updatedAt: new Date(),
-          notes: 'Payment successful - Order processing'
+          notes: 'Order confirmed - Payment successful'
         }]
       });
 
       try {
         await order.save();
-        console.log(`✅ Order created: ${order.orderId}`);
-      } catch (saveError) {
-        console.error('❌ Error saving order:', saveError);
-        await restoreStock(orderItems);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to create order after payment',
-          code: 'ORDER_CREATION_FAILED',
-          error: saveError.message
-        });
+        console.log(`✅ New order created: ${order.orderId}`);
+      } catch (orderCreateError) {
+        console.error('❌ Error creating order:', orderCreateError);
+        throw new Error(`Order creation failed: ${orderCreateError.message}`);
       }
-    }
 
-    // Update coupon usage if applied (only once per order)
-    if (pendingOrder.appliedCouponId) {
-      // Check if coupon was already applied for this order (on retry)
-      const existingUsage = await Coupon.findOne({
-        _id: pendingOrder.appliedCouponId,
-        'usedBy.orderId': order._id
+      // Step 4: Update coupon usage
+      if (pendingOrder.appliedCouponId) {
+        try {
+          await increaseCouponUsage(pendingOrder.appliedCouponId, userId, order._id);
+          console.log('✅ Coupon usage updated');
+        } catch (couponError) {
+          console.error('❌ Error updating coupon usage:', couponError);
+          throw new Error(`Coupon update failed: ${couponError.message}`);
+        }
+      }
+
+      // Step 5: Clear cart after successful payment
+      try {
+        let userCart = await Cart.findOne({ user: userId });
+        if (!userCart) {
+          userCart = await Cart.findOne({ userId: userId });
+        }
+
+        if (userCart) {
+          userCart.items = [];
+          userCart.totalItems = 0;
+          userCart.totalPrice = 0;
+          await userCart.save();
+          console.log('✅ Cart cleared after successful payment');
+        }
+      } catch (cartError) {
+        console.error('⚠️ Error clearing cart:', cartError);
+      }
+
+      // Step 6: Clear session data
+      delete req.session.pendingRazorpayOrder;
+      delete req.session.appliedCoupon;
+
+      return res.json({
+        success: true,
+        message: 'Payment successful',
+        data: {
+          redirectUrl: `/checkout/order-success/${order.orderId}`,
+          orderId: order._id,
+          orderNumber: order.orderId
+        }
       });
 
-      if (!existingUsage) {
-        await Coupon.findByIdAndUpdate(
-          pendingOrder.appliedCouponId,
-          {
-            $inc: { usedCount: 1 },
-            $push: {
-              usedBy: {
-                user: userId,
-                usedAt: new Date(),
-                orderId: order._id
-              }
-            }
-          }
-        );
-        console.log('✅ Coupon usage updated');
-      } else {
-        console.log('⏭️ Coupon already used for this order (retry)');
+    } catch (processingError) {
+      console.error('❌ Error processing payment:', processingError);
+
+      // Restore stock and coupon on error
+      console.log('🔄 Restoring stock and coupon on payment error...');
+
+      try {
+        await restoreStock(pendingOrder.cart);
+        console.log('✅ Stock restored after payment error');
+      } catch (restoreError) {
+        console.error('⚠️ Error restoring stock:', restoreError);
       }
+
+      if (pendingOrder.appliedCouponId) {
+        try {
+          await decreaseCouponUsage(pendingOrder.appliedCouponId, userId, null);
+          console.log('✅ Coupon usage restored after payment error');
+        } catch (couponRestoreError) {
+          console.error('⚠️ Error restoring coupon usage:', couponRestoreError);
+        }
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Error processing payment',
+        code: 'PAYMENT_PROCESSING_ERROR',
+        error: processingError.message
+      });
     }
-
-    // Clear cart only if new order
-    if (!paymentFailure || !paymentFailure.orderId) {
-      const cart = await Cart.findOne({ userId });
-      if (cart) {
-        cart.items = [];
-        await cart.save();
-        console.log('✅ Cart cleared');
-      }
-    }
-
-    // Clear session
-    delete req.session.pendingRazorpayOrder;
-    delete req.session.paymentFailure;
-    delete req.session.appliedCoupon;
-
-    return res.json({
-      success: true,
-      message: paymentFailure ? 'Payment verified successfully on retry' : 'Payment verified and order created successfully',
-      data: {
-        orderId: order.orderId,
-        orderDocumentId: order._id,
-        redirectUrl: `/checkout/order-success/${order.orderId}`
-      }
-    });
 
   } catch (error) {
-    console.error('❌ Error verifying Razorpay payment:', error);
+    console.error('❌ Error verifying payment:', error);
     return res.status(500).json({
       success: false,
-      message: 'Payment verification error',
+      message: 'Error verifying payment',
       code: 'VERIFICATION_ERROR',
       error: error.message
     });
   }
 };
 
+
+
+
+
 // Handle Payment Failure
 const handlePaymentFailure = async (req, res) => {
   try {
     const userId = req.user?._id || req.session?.userId;
     const { razorpayOrderId, error } = req.body;
+
+    console.log('❌ Payment failed for Razorpay Order:', razorpayOrderId);
+    console.log('Error details:', error);
 
     if (!userId) {
       return res.status(401).json({
@@ -1109,9 +1108,6 @@ const handlePaymentFailure = async (req, res) => {
         code: 'UNAUTHORIZED'
       });
     }
-
-    console.log('❌ Payment failed for Razorpay Order:', razorpayOrderId);
-    console.log('Error details:', error);
 
     const pendingOrder = req.session.pendingRazorpayOrder;
     
@@ -1123,7 +1119,6 @@ const handlePaymentFailure = async (req, res) => {
       });
     }
 
-    // ✅ Create Order with PENDING status and FAILED payment status
     const addressObjectId = new mongoose.Types.ObjectId(pendingOrder.deliveryAddressId);
 
     const orderItems = pendingOrder.cart.map(item => ({
@@ -1135,29 +1130,20 @@ const handlePaymentFailure = async (req, res) => {
       price: item.price,
       totalPrice: item.totalPrice,
       status: ORDER_STATUS.PENDING,
-      paymentStatus: PAYMENT_STATUS.FAILED,  // ✅ Payment Failed
+      paymentStatus: PAYMENT_STATUS.FAILED,
       statusHistory: [{
         status: ORDER_STATUS.PENDING,
         updatedAt: new Date(),
-        notes: 'Order created but payment failed'
+        notes: 'Order created but payment failed - awaiting retry'
       }]
     }));
 
-    // Deduct stock
-    try {
-      await deductStock(orderItems);
-      console.log('✅ Stock deducted for failed order');
-    } catch (stockError) {
-      console.error('❌ Stock deduction failed:', stockError);
-      return res.status(400).json({
-        success: false,
-        message: 'Stock unavailable',
-        error: stockError.message,
-        code: 'STOCK_DEDUCTION_FAILED'
-      });
-    }
+    // ❌ DO NOT DEDUCT STOCK - Payment hasn't succeeded yet
+    console.log('⏸️ Stock NOT deducted - Payment failed, awaiting retry');
 
-    // Create Order in database
+    // ❌ DO NOT UPDATE COUPON - Payment hasn't succeeded yet  
+    console.log('⏸️ Coupon usage NOT updated - Payment failed, awaiting retry');
+
     const order = new Order({
       orderId: generateOrderId(),
       user: userId,
@@ -1169,7 +1155,7 @@ const handlePaymentFailure = async (req, res) => {
       couponApplied: pendingOrder.appliedCouponId,
       couponDiscount: Math.round(pendingOrder.couponDiscount),
       paymentMethod: PAYMENT_METHODS.UPI,
-      paymentStatus: PAYMENT_STATUS.FAILED,  // ✅ Payment Failed
+      paymentStatus: PAYMENT_STATUS.FAILED,
       razorpayOrderId: razorpayOrderId,
       subtotal: pendingOrder.totals.subtotal,
       totalDiscount: pendingOrder.totals.totalDiscount,
@@ -1177,24 +1163,38 @@ const handlePaymentFailure = async (req, res) => {
       shipping: pendingOrder.totals.shipping,
       totalAmount: Math.round(pendingOrder.amount),
       totalItemCount: pendingOrder.totals.totalItemCount,
-      status: ORDER_STATUS.PENDING,  // ✅ Order Pending
+      status: ORDER_STATUS.PENDING,
       statusHistory: [{
         status: ORDER_STATUS.PENDING,
         updatedAt: new Date(),
-        notes: `Payment failed: ${error?.description || 'Payment processing failed'}`
+        notes: `Payment failed: ${error?.description || 'Payment processing failed'} - User can retry`
       }]
     });
 
     try {
       await order.save();
-      console.log(`✅ Order created with FAILED payment: ${order.orderId}`);
+      console.log(`✅ Order created with FAILED payment status: ${order.orderId}`);
 
-      // Store failed order ID in session for retry
+      // Clear cart after payment failure
+      try {
+        let userCart = await Cart.findOne({ userId: userId });
+        if (userCart) {
+          userCart.items = [];
+          userCart.totalItems = 0;
+          userCart.totalPrice = 0;
+          await userCart.save();
+          console.log('✅ Cart cleared after payment failure');
+        }
+      } catch (cartError) {
+        console.error('⚠️ Error clearing cart:', cartError);
+      }
+
+      // Store failed order info in session for retry page
       req.session.paymentFailure = {
         transactionId: razorpayOrderId || `TXN-${Date.now()}`,
         reason: error?.description || error?.reason || 'Payment processing failed. Please try again.',
         failedAt: new Date(),
-        orderId: order._id,  // ✅ Store failed order ID
+        orderId: order._id,
         orderNumber: order.orderId,
         orderData: {
           items: pendingOrder.cart,
@@ -1211,9 +1211,12 @@ const handlePaymentFailure = async (req, res) => {
         }
       };
 
+      delete req.session.pendingRazorpayOrder;
+      delete req.session.appliedCoupon;
+
       return res.json({
         success: true,
-        message: 'Order created with failed payment status',
+        message: 'Order created with failed payment status. You can retry payment.',
         data: {
           redirectUrl: `/checkout/order-failure/${razorpayOrderId || 'unknown'}`,
           orderId: order._id,
@@ -1223,7 +1226,6 @@ const handlePaymentFailure = async (req, res) => {
 
     } catch (saveError) {
       console.error('❌ Error saving failed order:', saveError);
-      await restoreStock(orderItems);
       return res.status(500).json({
         success: false,
         message: 'Failed to create order',
@@ -1242,6 +1244,11 @@ const handlePaymentFailure = async (req, res) => {
     });
   }
 };
+
+
+
+
+
 
 
 const loadOrderSuccess = async (req, res) => {
@@ -1365,27 +1372,105 @@ const loadOrderFailure = async (req, res) => {
       return res.redirect('/login');
     }
 
-    const paymentFailure = req.session.paymentFailure;
-
+    let paymentFailure = req.session.paymentFailure;
+    
     if (!paymentFailure) {
-      return res.redirect('/cart');
-    }
-
-    console.log('📄 Loading order failure page for transaction:', transactionId);
-
-    let deliveryAddress = null;
-    if (paymentFailure.orderData?.deliveryAddressId) {
+      console.log('⚠️ Payment failure not in session, searching database...');
+      
       try {
-        const userAddresses = await Address.findOne({ userId }).lean();
-        if (userAddresses && userAddresses.address) {
-          const addressIndex = parseInt(paymentFailure.orderData.addressIndex) || 0;
-          deliveryAddress = userAddresses.address[addressIndex];
+        // Try to find by orderId (MongoDB ObjectId) or orderNumber (ORD-xxxxx)
+        let failedOrder = null;
+        
+        // Check if transactionId is a valid MongoDB ObjectId
+        if (transactionId.match(/^[0-9a-fA-F]{24}$/)) {
+          failedOrder = await Order.findOne({
+            user: userId,
+            paymentStatus: PAYMENT_STATUS.FAILED,
+            _id: transactionId
+          }).lean();
+        } else {
+          // Search by orderId (ORD-xxxxx) instead
+          failedOrder = await Order.findOne({
+            user: userId,
+            paymentStatus: PAYMENT_STATUS.FAILED,
+            orderId: transactionId
+          }).lean();
         }
-      } catch (addressError) {
-        console.error('Error fetching address:', addressError);
+
+        if (failedOrder) {
+          console.log('✅ Found failed order in database by', 
+            transactionId.match(/^[0-9a-fA-F]{24}$/) ? 'ObjectId' : 'orderId');
+          
+          // Reconstruct paymentFailure from the order
+          paymentFailure = {
+            orderId: failedOrder._id,
+            orderNumber: failedOrder.orderId,
+            reason: 'Payment failed. Please try again.',
+            orderData: {
+              items: failedOrder.items,
+              deliveryAddressId: failedOrder.deliveryAddress?.addressId,
+              addressIndex: failedOrder.deliveryAddress?.addressIndex || 0,
+              subtotal: failedOrder.subtotal,
+              totalDiscount: failedOrder.totalDiscount,
+              shipping: failedOrder.shipping,
+              total: failedOrder.totalAmount,
+              totalItemCount: failedOrder.totalItemCount,
+              couponDiscount: failedOrder.couponDiscount || 0,
+              appliedCouponId: failedOrder.couponApplied
+            }
+          };
+          
+          // Restore it to session
+          req.session.paymentFailure = paymentFailure;
+        }
+      } catch (dbError) {
+        console.error('Error searching database for failed order:', dbError);
       }
     }
 
+    if (!paymentFailure) {
+      console.log('❌ No payment failure found in session or database, redirecting to cart');
+      return res.redirect('/cart');
+    }
+
+    // Fetch the failed order from database
+    let failedOrder = null;
+    try {
+      failedOrder = await Order.findById(paymentFailure.orderId)
+        .populate({
+          path: 'items.productId',
+          select: 'productName mainImage subImages'
+        })
+        .lean();
+    } catch (err) {
+      console.error('Error fetching failed order:', err);
+    }
+
+    if (!failedOrder) {
+      console.log('❌ Failed order not found in database');
+      return res.redirect('/cart');
+    }
+
+    const canRetry = failedOrder.status !== ORDER_STATUS.FAILED;
+    
+    if (!canRetry) {
+      console.log('❌ Order status is FAILED - No more retries allowed');
+    }
+
+    // Fetch full address
+    let deliveryAddress = null;
+    try {
+      const userAddresses = await Address.findOne({ userId }).lean();
+      
+      if (userAddresses && userAddresses.address) {
+        const addressIndex = parseInt(paymentFailure.orderData.addressIndex) || 0;
+        deliveryAddress = userAddresses.address[addressIndex];
+      }
+    } catch (addressError) {
+      console.error('Error fetching address:', addressError);
+    }
+
+    // Populate product details
     let populatedItems = [];
     if (paymentFailure.orderData?.items) {
       for (const item of paymentFailure.orderData.items) {
@@ -1405,15 +1490,26 @@ const loadOrderFailure = async (req, res) => {
     }
 
     const orderData = {
-      ...paymentFailure.orderData,
       items: populatedItems,
-      deliveryAddress: deliveryAddress || null
+      subtotal: paymentFailure.orderData.subtotal,
+      totalDiscount: paymentFailure.orderData.totalDiscount,
+      shipping: paymentFailure.orderData.shipping,
+      total: paymentFailure.orderData.total,
+      totalItemCount: paymentFailure.orderData.totalItemCount,
+      couponDiscount: paymentFailure.orderData.couponDiscount,
+      deliveryAddress: deliveryAddress || null,
+      deliveryAddressId: paymentFailure.orderData.deliveryAddressId,
+      addressIndex: paymentFailure.orderData.addressIndex,
+      paymentMethod: failedOrder.paymentMethod || 'upi'
     };
 
     return res.render('user/order-failure', {
-      transactionId: paymentFailure.transactionId || transactionId,
-      reason: paymentFailure.reason,
+      transactionId: transactionId,
+      orderId: paymentFailure.orderId,
+      orderNumber: paymentFailure.orderNumber,
+      failureReason: paymentFailure.reason,
       orderData,
+      canRetry: canRetry,
       title: 'Order Failed',
       layout: 'user/layouts/user-layout',
       active: 'checkout'
@@ -1421,12 +1517,13 @@ const loadOrderFailure = async (req, res) => {
 
   } catch (error) {
     console.error('Error loading order failure page:', error);
-    return res.status(500).render('error', {
-      message: 'Error loading order failure page',
-      layout: 'user/layouts/user-layout'
-    });
+    return res.redirect('/cart');
   }
 };
+
+
+
+
 
 // Load Retry Payment Page
 const loadRetryPaymentPage = async (req, res) => {
@@ -1548,70 +1645,433 @@ const loadRetryPaymentPage = async (req, res) => {
   }
 };
 
-
-
 // Retry razorpay Payment
-const retryRazorpayPayment = async (req, res) => {
+const createRazorpayOrderForRetry = async (req, res) => {
   try {
     const userId = req.user?._id || req.session?.userId;
-    const { transactionId } = req.params;
+    const { razorpayOrderId, error } = req.body;
 
     if (!userId) {
-      return res.redirect('/login');
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED'
+      });
     }
 
-    console.log('🔄 Retrying payment for transaction:', transactionId);
-
+    // ✅ Use paymentFailure data instead of cart
     const paymentFailure = req.session.paymentFailure;
 
     if (!paymentFailure) {
-      console.log('⚠️ No payment failure found, redirecting to cart');
-      return res.redirect('/cart');
+      return res.status(400).json({
+        success: false,
+        message: 'No failed order found for retry',
+        code: 'NO_FAILED_ORDER'
+      });
     }
 
-    // Validate all items are still available before retry
-    try {
-      const failedOrder = await Order.findById(paymentFailure.orderId)
-        .populate('items.productId')
-        .lean();
+    console.log('🔄 Creating Razorpay order for retry payment...');
 
-      if (!failedOrder) {
-        return res.redirect('/cart');
-      }
+    // Use the order data from the previous failed payment
+    const orderData = paymentFailure.orderData;
 
-      // Check each item's stock
-      for (const item of failedOrder.items) {
-        const product = await Product.findById(item.productId._id).lean();
+    // Validate all items are still available
+    for (const item of orderData.items) {
+      try {
+        const product = await Product.findById(item.productId._id);
         
         if (!product || !product.isListed || product.isDeleted) {
-          console.warn(`⚠️ Product no longer available: ${item.productId.productName}`);
-          return res.redirect('/cart');
+          return res.status(400).json({
+            success: false,
+            message: `${item.productId.productName} is no longer available`,
+            code: 'PRODUCT_UNAVAILABLE'
+          });
         }
 
+        // Check variant stock
         if (item.variantId && product.variants) {
           const variant = product.variants.find(v => v._id.toString() === item.variantId.toString());
           if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
-            console.warn(`⚠️ Variant out of stock: ${item.sku}`);
-            return res.redirect('/cart');
+            return res.status(400).json({
+              success: false,
+              message: `${item.productId.productName} (Size: ${item.size}) is out of stock`,
+              code: 'OUT_OF_STOCK'
+            });
           }
+        }
+      } catch (itemError) {
+        console.error('Error validating item:', itemError);
+        return res.status(400).json({
+          success: false,
+          message: 'Error validating order items',
+          code: 'VALIDATION_ERROR'
+        });
+      }
+    }
+
+    console.log('✅ All items validated for retry');
+
+    // Recalculate final total (in case coupon validity has changed)
+    const finalTotal = orderData.total;
+
+    // Create new Razorpay order for retry
+    const razorpayOrder = await razorpayService.createRazorpayOrder(
+      `RETRY-${paymentFailure.orderNumber}`,
+      finalTotal
+    );
+
+    console.log(`✅ Razorpay order created for retry: ${razorpayOrder.id}`);
+
+    // Store retry order data in session
+    req.session.pendingRazorpayOrder = {
+      isRetry: true,  // ✅ Mark as retry
+      failedOrderId: paymentFailure.orderId,
+      userId,
+      deliveryAddressId: orderData.deliveryAddressId,
+      addressIndex: orderData.addressIndex,
+      cart: orderData.items,
+      totals: {
+        subtotal: orderData.subtotal,
+        totalDiscount: orderData.totalDiscount,
+        amountAfterDiscount: orderData.subtotal - orderData.totalDiscount,
+        shipping: orderData.shipping,
+        totalItemCount: orderData.totalItemCount
+      },
+      couponDiscount: orderData.couponDiscount,
+      appliedCouponId: orderData.appliedCouponId,
+      razorpayOrderId: razorpayOrder.id,
+      amount: finalTotal
+    };
+
+    return res.json({
+      success: true,
+      message: 'Razorpay order created for retry payment',
+      data: {
+        razorpayOrderId: razorpayOrder.id,
+        amount: Math.round(finalTotal * 100),
+        currency: 'INR',
+        userName: req.user?.fullname || 'User',
+        userEmail: req.user?.email || '',
+        userPhone: req.user?.phone || '',
+        keyId: process.env.RAZORPAY_KEY_ID,
+        description: `Retry payment for ${paymentFailure.orderNumber}`
+      }
+    });
+
+  } catch (error) {
+    console.error('Error creating Razorpay order for retry:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to create Razorpay order for retry',
+      code: 'RAZORPAY_ORDER_FAILED',
+      error: error.message
+    });
+  }
+};
+
+const verifyRetryRazorpayPayment = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.session?.userId;
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED'
+      });
+    }
+
+    console.log('🔐 Verifying Razorpay retry payment...');
+
+    // Step 1: Verify signature
+    const body = razorpayOrderId + '|' + razorpayPaymentId;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+
+    if (expectedSignature !== razorpaySignature) {
+      console.error('❌ Signature verification failed');
+      return res.status(400).json({
+        success: false,
+        message: 'Payment signature verification failed',
+        code: 'SIGNATURE_VERIFICATION_FAILED'
+      });
+    }
+
+    console.log('✅ Signature verified');
+
+    const paymentFailure = req.session.paymentFailure;
+
+    if (!paymentFailure || !paymentFailure.orderId) {
+      return res.status(400).json({
+        success: false,
+        message: 'No failed order found for retry',
+        code: 'NO_FAILED_ORDER'
+      });
+    }
+
+    console.log('🔄 Processing retry payment for order:', paymentFailure.orderId);
+
+    try {
+      // Step 2: Deduct stock for retry payment (NOT deducted during initial failure)
+      try {
+        await deductStock(paymentFailure.orderData.items);
+        console.log('✅ Stock deducted for retry payment');
+      } catch (stockError) {
+        console.error('❌ Error deducting stock on retry:', stockError);
+        throw new Error(`Stock deduction failed on retry: ${stockError.message}`);
+      }
+
+      // Step 3: Update coupon usage for retry payment (NOT updated during initial failure)
+      if (paymentFailure.orderData.appliedCouponId) {
+        try {
+          await increaseCouponUsage(paymentFailure.orderData.appliedCouponId, userId, paymentFailure.orderId);
+          console.log('✅ Coupon usage updated for retry payment');
+        } catch (couponError) {
+          console.error('❌ Error updating coupon usage on retry:', couponError);
+          throw new Error(`Coupon update failed on retry: ${couponError.message}`);
         }
       }
 
-      console.log('✅ All items validated for retry');
-    } catch (validationError) {
-      console.error('Error validating items:', validationError);
-      return res.redirect('/cart');
+      // Step 4: Update existing failed order to successful
+      const updateResult = await Order.updateOne(
+        { _id: paymentFailure.orderId },
+        {
+          $set: {
+            paymentStatus: PAYMENT_STATUS.COMPLETED,
+            razorpayOrderId: razorpayOrderId,
+            razorpayPaymentId: razorpayPaymentId,
+            razorpaySignature: razorpaySignature,
+            status: ORDER_STATUS.PROCESSING,
+            updatedAt: new Date()
+          },
+          $push: {
+            statusHistory: {
+              status: ORDER_STATUS.PROCESSING,
+              updatedAt: new Date(),
+              notes: 'Payment successful - Order confirmed (Retry Payment)'
+            }
+          }
+        }
+      );
+
+      if (updateResult.matchedCount === 0) {
+        throw new Error('Order not found for retry');
+      }
+
+      // Step 5: Update all order items status
+      await Order.updateOne(
+        { _id: paymentFailure.orderId },
+        {
+          $set: {
+            'items.$[].status': ORDER_STATUS.PROCESSING,
+            'items.$[].paymentStatus': PAYMENT_STATUS.COMPLETED
+          },
+          $push: {
+            'items.$[].statusHistory': {
+              status: ORDER_STATUS.PROCESSING,
+              updatedAt: new Date(),
+              notes: 'Payment successful - Order confirmed (Retry Payment)'
+            }
+          }
+        }
+      );
+
+      const order = await Order.findById(paymentFailure.orderId);
+      console.log(`✅ Retry payment successful. Order updated: ${order.orderId}`);
+
+      // Step 6: Clear cart after successful retry payment
+      try {
+        let userCart = await Cart.findOne({ user: userId });
+        if (!userCart) {
+          userCart = await Cart.findOne({ userId: userId });
+        }
+
+        if (userCart) {
+          userCart.items = [];
+          userCart.totalItems = 0;
+          userCart.totalPrice = 0;
+          await userCart.save();
+          console.log('✅ Cart cleared after successful retry payment');
+        }
+      } catch (cartError) {
+        console.error('⚠️ Error clearing cart:', cartError);
+      }
+
+      // Step 7: Clear session data
+      delete req.session.paymentFailure;
+      delete req.session.appliedCoupon;
+
+      return res.json({
+        success: true,
+        message: 'Retry payment successful',
+        data: {
+          redirectUrl: `/checkout/order-success/${order.orderId}`,
+          orderId: order._id,
+          orderNumber: order.orderId
+        }
+      });
+
+    } catch (processingError) {
+      console.error('❌ Error processing retry payment:', processingError);
+
+      // Restore stock and coupon on retry error
+      console.log('🔄 Restoring stock and coupon on retry payment error...');
+
+      try {
+        await restoreStock(paymentFailure.orderData.items);
+        console.log('✅ Stock restored after retry payment error');
+      } catch (restoreError) {
+        console.error('⚠️ Error restoring stock:', restoreError);
+      }
+
+      if (paymentFailure.orderData.appliedCouponId) {
+        try {
+          await decreaseCouponUsage(paymentFailure.orderData.appliedCouponId, userId, paymentFailure.orderId);
+          console.log('✅ Coupon usage restored after retry payment error');
+        } catch (couponRestoreError) {
+          console.error('⚠️ Error restoring coupon usage:', couponRestoreError);
+        }
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: 'Error processing retry payment',
+        code: 'RETRY_PROCESSING_ERROR',
+        error: processingError.message
+      });
     }
 
-    // Don't clear paymentFailure - keep it for verifyRazorpayPayment to detect retry
-    // Redirect to retry payment page (which will call handleUPIPayment)
-    return res.redirect(`/checkout/retry-payment/${transactionId}`);
-
   } catch (error) {
-    console.error('❌ Error in retryRazorpayPayment:', error);
-    return res.redirect('/cart');
+    console.error('❌ Error verifying retry payment:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error verifying retry payment',
+      code: 'RETRY_VERIFICATION_ERROR',
+      error: error.message
+    });
   }
 };
+
+const handleRetryPaymentFailure = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.session?.userId;
+    const { razorpayOrderId, error } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED'
+      });
+    }
+
+    const paymentFailure = req.session.paymentFailure;
+    
+    if (!paymentFailure) {
+      return res.status(400).json({
+        success: false,
+        message: 'No failed order found',
+        code: 'NO_FAILED_ORDER'
+      });
+    }
+
+    console.log('❌ Retry payment also failed for order:', paymentFailure.orderId);
+
+    try {
+      // ✅ Update order: paymentStatus = FAILED, status = FAILED
+      const updateResult = await Order.findByIdAndUpdate(
+        paymentFailure.orderId,
+        {
+          $set: {
+            paymentStatus: PAYMENT_STATUS.FAILED,
+            status: ORDER_STATUS.FAILED,
+            updatedAt: new Date()
+          },
+          $push: {
+            statusHistory: {
+              status: ORDER_STATUS.FAILED,
+              updatedAt: new Date(),
+              notes: `Retry payment failed: ${error?.description || 'Payment processing failed'} - Order marked as failed`
+            },
+            'items.$[].statusHistory': {
+              status: ORDER_STATUS.FAILED,
+              updatedAt: new Date(),
+              notes: `Retry payment failed: ${error?.description || 'Payment processing failed'}`
+            }
+          }
+        },
+        { new: true, runValidators: true }
+      );
+
+      if (!updateResult) {
+        return res.status(404).json({
+          success: false,
+          message: 'Order not found',
+          code: 'ORDER_NOT_FOUND'
+        });
+      }
+
+      // Update all items status to FAILED
+      await Order.updateOne(
+        { _id: paymentFailure.orderId },
+        {
+          $set: {
+            'items.$[].status': ORDER_STATUS.FAILED,
+            'items.$[].paymentStatus': PAYMENT_STATUS.FAILED
+          }
+        }
+      );
+
+      console.log('✅ Order marked as FAILED - No more retry attempts allowed');
+      console.log('⏸️ Stock NOT deducted - Order failed');
+      console.log('⏸️ Coupon usage NOT updated - Order failed');
+
+      // ✅ CRITICAL FIX: Keep paymentFailure in session with orderNumber
+      // So loadOrderFailure() can reconstruct it if needed
+      req.session.paymentFailure = {
+        ...paymentFailure,
+        transactionId: razorpayOrderId || paymentFailure.transactionId,
+        failedAt: new Date()
+      };
+
+      return res.json({
+        success: true,
+        message: 'Order marked as failed. Please place a new order.',
+        data: {
+          // ✅ Return orderNumber instead of razorpayOrderId for URL
+          redirectUrl: `/checkout/order-failure/${paymentFailure.orderNumber}`,
+          orderId: paymentFailure.orderId,
+          orderNumber: paymentFailure.orderNumber,
+          canRetry: false
+        }
+      });
+
+    } catch (updateError) {
+      console.error('❌ Error updating order on retry failure:', updateError);
+      return res.status(500).json({
+        success: false,
+        message: 'Error processing retry payment failure',
+        code: 'UPDATE_ERROR',
+        error: updateError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Error handling retry payment failure:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error handling retry payment failure',
+      code: 'RETRY_FAILURE_ERROR',
+      error: error.message
+    });
+  }
+};
+
+
+
 
 
 
@@ -1622,9 +2082,11 @@ module.exports = {
   placeOrderWithValidation,
   createRazorpayPayment,
   verifyRazorpayPayment,
+  handlePaymentFailure,
   loadOrderSuccess,
   loadOrderFailure,
   loadRetryPaymentPage,
-  retryRazorpayPayment,
-  handlePaymentFailure
+  createRazorpayOrderForRetry,
+  verifyRetryRazorpayPayment,
+  handleRetryPaymentFailure
 };

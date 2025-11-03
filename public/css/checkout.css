@@ -516,6 +516,7 @@
     color: #000;
 }
 
+/* ========= PLACE ORDER BUTTON STYLES ========= */
 .btn-continue {
     background-color: #000;
     color: white;
@@ -530,12 +531,32 @@
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    cursor: pointer;
 }
 
-.btn-continue:hover {
+.btn-continue:hover:not(:disabled):not(.btn-disabled) {
     background-color: #dc3545;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+/* ✅ NEW: Disabled state styles */
+.btn-continue:disabled,
+.btn-continue.btn-disabled {
+    background-color: #6c757d;
+    color: #ffffff;
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-continue:disabled:hover,
+.btn-continue.btn-disabled:hover {
+    background-color: #6c757d;
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-back {
@@ -985,5 +1006,3 @@ p {
 #applied-coupon .alert {
   margin-bottom: 0;
 }
-
-

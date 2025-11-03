@@ -50,9 +50,9 @@
           <div class="order-actions-bar mb-4">
             <div class="d-flex gap-2 flex-wrap">
               
-              <!-- ✅ NEW: Retry Payment Button for PENDING orders -->
-              <% if (order.status === 'Pending' && order.paymentStatus === 'Pending' && order.transactionId) { %>
-                <a href="/checkout/retry-payment/<%= order.transactionId %>" class="btn btn-warning">
+              <!-- ✅ NEW: Retry Payment Button - Only for PENDING orders with FAILED payment -->
+              <% if (order.status === 'Pending' && order.paymentStatus === 'Failed') { %>
+                <a href="/checkout/retry-payment/<%= order.orderId %>" class="btn btn-warning">
                   <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
                 </a>
               <% } %>
@@ -78,21 +78,19 @@
                 </button>
               <% } %>
               
-              <!-- ✅ UPDATED: Download Invoice Button - Only for DELIVERED orders -->
-              <% if (order.status === 'Delivered') { %>
+              <!-- Download Invoice Button - Only for DELIVERED orders -->
+              <% if (order.status === 'Delivered' && order.paymentStatus === 'Completed') { %>
                 <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
                   <i class="bi bi-download me-1"></i>Download Invoice
                 </button>
               <% } %>
-              
+                           
               <!-- Back to Orders Button -->
               <a href="/orders" class="btn btn-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Back to Orders
               </a>
             </div>
           </div>
-
-
 
           <!-- Order Items Section -->
           <div class="order-section mb-4">

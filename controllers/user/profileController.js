@@ -181,53 +181,7 @@ exports.loadAddresses = async (req, res) => {
   res.redirect('/addresses');
 };
 
-exports.loadWallet = async (req, res) => {
-  try {
-    const userId = req.session.userId || (req.user && req.user._id);
-    if (!userId) {
-      return res.redirect('/login');
-    }
 
-    const user = await User.findById(userId).select('name email profilePhoto');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    // Mock wallet data for now
-    const wallet = {
-      balance: 0,
-      transactions: []
-    };
-
-    const totalAdded = wallet.transactions
-      .filter(t => t.type === 'credit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const totalSpent = wallet.transactions
-      .filter(t => t.type === 'debit')
-      .reduce((sum, t) => sum + t.amount, 0);
-
-    const recentTransactions = wallet.transactions
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-      .slice(0, 10);
-
-    res.render('user/wallet', {
-      user,
-      title: 'My Wallet - LacedUp',
-      layout: 'user/layouts/user-layout',
-      active: 'profile',
-      wallet: {
-        balance: wallet.balance,
-        totalAdded,
-        totalSpent,
-        transactions: recentTransactions
-      }
-    });
-  } catch (error) {
-    console.error('Error loading wallet page:', error);
-    res.status(500).render('error', { message: 'Error loading wallet page' });
-  }
-};
 
 exports.loadOrders = async (req, res) => {
   try {

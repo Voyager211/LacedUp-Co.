@@ -54,6 +54,7 @@ const getPaymentDetails = async (paymentId) => {
 
 
 module.exports = {
+  razorpayInstance,
   createRazorpayOrder,
   verifyPaymentSignature,
   getPaymentDetails,

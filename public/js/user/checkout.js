@@ -93,8 +93,12 @@ function selectPayment(radio) {
   document.querySelectorAll('.payment-option').forEach(o => o.classList.remove('selected'));
   radio.closest('.payment-option').classList.add('selected');
 
+  // ✅ Enable the Place Order button when payment method is selected
   const allActionBtns = document.querySelectorAll('.btn-continue');
-  allActionBtns.forEach(b => b.classList.remove('d-none'));
+  allActionBtns.forEach(b => {
+    b.classList.remove('d-none', 'btn-disabled');
+    b.disabled = false;  // Enable button
+  });
 
   // Update button text for COD
   allActionBtns.forEach(btn => {
@@ -108,6 +112,7 @@ function selectPayment(radio) {
 
   console.log(`Payment method selected: ${radio.value}`);
 }
+
 
 
 /* ========= ADDRESS MODAL FUNCTIONS ========= */

@@ -1,6 +1,6 @@
 const Order = require('../models/Order');
 const Return = require('../models/Return');
-const walletService = require('./walletService');
+const walletService = require('./paymentProviders/walletService');
 const Product = require('../models/Product');
 const mongoose = require('mongoose');
 // const { sendNotification } = require('./notificationService'); // Optional - for future use
@@ -65,6 +65,7 @@ function calculateOrderStatus(items) {
       shipped = 0,
       delivered = 0,
       cancelled = 0,
+      failed = 0,
       processingReturn = 0,
       returned = 0;
 
@@ -76,6 +77,7 @@ function calculateOrderStatus(items) {
       case ORDER_STATUS.SHIPPED:            shipped++;            break;
       case ORDER_STATUS.DELIVERED:          delivered++;          break;
       case ORDER_STATUS.CANCELLED:          cancelled++;          break;
+      case ORDER_STATUS.FAILED:             failed++;             break;
       case ORDER_STATUS.PROCESSING_RETURN:  processingReturn++;   break;
       case ORDER_STATUS.RETURNED:           returned++;           break;
     }
@@ -83,6 +85,12 @@ function calculateOrderStatus(items) {
 
   const total        = items.length;
   const activeItems  = total - cancelled; // “active” = not cancelled
+
+  if (failed > 0) {
+    return failed === total 
+      ? ORDER_STATUS.FAILED 
+      : 'Failed';
+  }
 
   // 1. All cancelled
   if (cancelled === total) return ORDER_STATUS.CANCELLED;
@@ -113,6 +121,15 @@ function calculateOrderStatus(items) {
   return ORDER_STATUS.PENDING;
 }
 
+
+const isFinalStatus = (status) => {
+  const finalStatuses = [
+    ORDER_STATUS.CANCELLED,
+    ORDER_STATUS.RETURNED,
+    ORDER_STATUS.FAILED
+  ];
+  return finalStatuses.includes(status);
+};
 
 
 /**
@@ -408,7 +425,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
           
           // Process refund via PayPal
           const paypal = require('@paypal/checkout-server-sdk');
-          const { paypalClient } = require('../services/paypal');
+          const { paypalClient } = require('./paymentProviders/paypal');
           
           const request = new paypal.payments.CapturesRefundRequest(captureId);
           request.requestBody({
@@ -435,7 +452,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
         
         const paymentId = order.razorpayPaymentId;
         if (paymentId) {
-          const razorpayService = require('./razorpay');
+          const razorpayService = require('./paymentProviders/razorpay');
           const refundResult = await razorpayService.createRefund(paymentId, order.totalAmount);
           
           if (refundResult.success) {
@@ -725,7 +742,7 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
           
           // Process partial refund via PayPal
           const paypal = require('@paypal/checkout-server-sdk');
-          const { paypalClient } = require('../services/paypal');
+          const { paypalClient } = require('./paymentProviders/paypal');
           
           const request = new paypal.payments.CapturesRefundRequest(captureId);
           request.requestBody({
@@ -755,7 +772,7 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
         
         const paymentId = order.razorpayPaymentId;
         if (paymentId) {
-          const razorpayService = require('./razorpay');
+          const razorpayService = require('./paymentProviders/razorpay');
           const refundResult = await razorpayService.createRefund(paymentId, item.totalPrice);
           
           if (refundResult.success) {
@@ -1544,7 +1561,8 @@ const getValidTransitions = (currentStatus) => {
     [ORDER_STATUS.DELIVERED]: [ORDER_STATUS.PROCESSING_RETURN],
     [ORDER_STATUS.PROCESSING_RETURN]: [ORDER_STATUS.RETURNED],
     [ORDER_STATUS.CANCELLED]: [],
-    [ORDER_STATUS.RETURNED]: []
+    [ORDER_STATUS.RETURNED]: [],
+    [ORDER_STATUS.FAILED] : []
   };
   
   return transitions[currentStatus] || [];

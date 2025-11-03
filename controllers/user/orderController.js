@@ -5,10 +5,10 @@ const Address = require('../../models/Address');
 const User = require('../../models/User');
 const Return = require('../../models/Return');
 const orderService = require('../../services/orderService');
-const walletService = require('../../services/walletService');
-const { paypalClient } = require('../../services/paypal');
+const walletService = require('../../services/paymentProviders/walletService');
+const { paypalClient } = require('../../services/paymentProviders/paypal');
 const paypal = require('@paypal/checkout-server-sdk');
-const razorpayService = require('../../services/razorpay');
+const razorpayService = require('../../services/paymentProviders/razorpay');
 const { getPagination } = require('../../utils/pagination');
 
 const {

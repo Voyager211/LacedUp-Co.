@@ -143,24 +143,48 @@
             </div>
         </div>
 
-        <!-- Failure Reason / Suggestions -->
+        <!-- Failure Reason / Status -->
         <div class="content-section">
             <h5 class="section-title">
                 <i class="bi bi-exclamation-triangle"></i> What Happened?
             </h5>
             <div class="failure-reason">
-                <p class="text-muted"><%= reason || "We're sorry, but there was an issue processing your order. Please try again or contact support." %></p>
+                <p class="text-muted"><%= failureReason || "We're sorry, but there was an issue processing your order. Please try again or contact support." %></p>
             </div>
         </div>
 
+        <!-- ✅ NEW: Order Payment Failed Alert (when order status is FAILED) -->
+        <% if (canRetry === false) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert-content">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div class="alert-text">
+                        <h6 class="alert-title">Payment Failed - Maximum Retry Attempts Exceeded</h6>
+                        <p class="alert-message">
+                            Your payment has failed on multiple attempts. Unfortunately, we cannot process this order further. 
+                            <strong>Please place a new order</strong> to continue your purchase. Your items remain available in your cart.
+                        </p>
+                        <small class="text-muted">If you continue to experience issues, please contact our support team for assistance.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+
         <!-- Action Buttons -->
         <div class="action-buttons text-center">
-            <a href="/checkout/retry-payment/<%= transactionId %>" class="btn btn-warning">
-                <i class="bi bi-arrow-clockwise"></i> Retry Payment
+            <!-- ✅ CONDITIONAL: Show Retry Button Only if Order Status is NOT Failed -->
+            <% if (canRetry !== false) { %>
+                <a href="/checkout/retry-payment/<%= transactionId %>" class="btn btn-warning">
+                    <i class="bi bi-arrow-clockwise"></i> Retry Payment
+                </a>
+            <% } %>
+            
+            <!-- Always show Place New Order button -->
+            <a href="/cart" class="btn btn-primary">
+                <i class="bi bi-bag-plus"></i> Place New Order
             </a>
-            <a href="/cart" class="btn btn-danger">
-                <i class="bi bi-arrow-left"></i> Return to Cart
-            </a>
+            
             <a href="/support" class="btn btn-outline-danger">
                 <i class="bi bi-headset"></i> Contact Support
             </a>
@@ -456,9 +480,54 @@
     color: #495057;
 }
 
+/* ✅ NEW: Alert Styles for Failed Order */
+.alert-danger {
+    background: #f8d7da;
+    border: 2px solid #f5c6cb;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.alert-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.alert-content i {
+    font-size: 1.5rem;
+    color: #dc3545;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-title {
+    color: #721c24;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.alert-message {
+    color: #721c24;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.alert-message strong {
+    font-weight: 600;
+    color: #bd2130;
+}
+
 /* Action Buttons */
 .action-buttons {
-    margin-top: 1rem;
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
 }
 
 .action-buttons .btn {
@@ -469,16 +538,28 @@
     transition: all 0.3s ease;
 }
 
-.action-buttons .btn-danger {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
     border: none;
     color: white;
 }
 
-.action-buttons .btn-danger:hover {
-    background: linear-gradient(135deg, #c82333 0%, #bd2130 100%);
+.action-buttons .btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
     transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+.action-buttons .btn-warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-warning:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3);
 }
 
 .action-buttons .btn-outline-danger {
@@ -520,21 +601,15 @@
         width: 80px;
         height: 80px;
     }
-}
 
-/* Action Buttons - Updated with Retry Button */
-.action-buttons .btn-warning {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
-    border: none;
-    color: white;
-}
+    .alert-content {
+        flex-direction: column;
+    }
 
-.action-buttons .btn-warning:hover {
-    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3);
+    .alert-content i {
+        margin-top: 0;
+    }
 }
-
 </style>
 
 <script>

@@ -204,7 +204,7 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
       throw new Error('Address Index is missing!');
     }
 
-    const orderResponse = await fetch('/checkout/create-razorpay-order', {
+    const orderResponse = await fetch('/checkout/create-razorpay-order-retry', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -249,7 +249,7 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
             didOpen: () => Swal.showLoading()
           });
 
-          const verifyResponse = await fetch('/checkout/verify-razorpay-payment', {
+          const verifyResponse = await fetch('/checkout/verify-retry-razorpay-payment', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -285,10 +285,11 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
       },
       modal: {
         ondismiss: async function() {
-          console.log('Payment modal closed');
+          console.log('User closed Razorpay modal during retry payment');
           
           try {
-            await fetch('/checkout/payment-failure', {
+            // ✅ CORRECTED: Use retry-payment-failure endpoint for retries
+            await fetch('/checkout/retry-payment-failure', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -311,12 +312,13 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
 
     const rzp = new Razorpay(options);
     
-    // ✅ THE MISSING PIECE: Catch payment failures from the gateway
+    // ✅ CORRECTED: Catch payment failures from the gateway during retry
     rzp.on('payment.failed', async function(response) {
       try {
-        console.error('❌ Payment failed:', response.error);
+        console.error('❌ Retry payment failed:', response.error);
         
-        await fetch('/checkout/payment-failure', {
+        // ✅ CORRECTED: Use retry-payment-failure endpoint for retries
+        await fetch('/checkout/retry-payment-failure', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -331,7 +333,7 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
         // Redirect to failure page
         window.location.href = '/checkout/order-failure/' + razorpayOrderId;
       } catch (error) {
-        console.error('Error handling payment failure:', error);
+        console.error('Error handling retry payment failure:', error);
         window.location.href = '/checkout/order-failure/' + razorpayOrderId;
       }
     });

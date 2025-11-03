@@ -4,6 +4,7 @@ const checkoutController = require('../../controllers/user/checkoutController');
 const addressController = require('../../controllers/user/addressController');
 const couponController = require('../../controllers/user/couponController');
 
+
 const requireAuth = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
@@ -20,6 +21,7 @@ const requireAuth = (req, res, next) => {
   return res.redirect('/login');
 };
 
+
 const requireAuthAPI = (req, res, next) => {
   if (req.isAuthenticated()) {
     return next();
@@ -32,30 +34,41 @@ const requireAuthAPI = (req, res, next) => {
   });
 };
 
-// checkout
-router.get('/', requireAuth, checkoutController.loadCheckout);
 
+// ========== CHECKOUT PAGE ==========
+router.get('/', requireAuth, checkoutController.loadCheckout);
 router.get('/validate-checkout-stock', requireAuthAPI, checkoutController.validateCheckoutStock);
 
-// address
+
+// ========== ADDRESS ==========
 router.get('/api/addresses', requireAuthAPI, addressController.getAddresses);
 
-// coupon
+
+// ========== COUPON ==========
 router.post('/apply-coupon', requireAuthAPI, couponController.applyCoupon);
 router.post('/remove-coupon', requireAuthAPI, couponController.removeCoupon);
 
-// order placement
+
+// ========== ORDER PLACEMENT ==========
 router.post('/place-order', requireAuthAPI, checkoutController.placeOrderWithValidation);
 
-// razorpay
+
+// ========== RAZORPAY - NEW ORDER PAYMENT ==========
 router.post('/create-razorpay-order', requireAuthAPI, checkoutController.createRazorpayPayment);
 router.post('/verify-razorpay-payment', requireAuthAPI, checkoutController.verifyRazorpayPayment);
-
-// order result pages
-router.get('/order-success/:orderId', requireAuth, checkoutController.loadOrderSuccess);
 router.post('/payment-failure', requireAuthAPI, checkoutController.handlePaymentFailure);
+
+
+// ========== ORDER SUCCESS/FAILURE PAGES ==========
+router.get('/order-success/:orderId', requireAuth, checkoutController.loadOrderSuccess);
 router.get('/order-failure/:transactionId', requireAuth, checkoutController.loadOrderFailure);
+
+
+// ========== RAZORPAY - RETRY PAYMENT ==========
 router.get('/retry-payment/:transactionId', requireAuth, checkoutController.loadRetryPaymentPage);
-router.get('/retry-payment/:transactionId', requireAuth, checkoutController.retryRazorpayPayment);
+router.post('/create-razorpay-order-retry', requireAuthAPI, checkoutController.createRazorpayOrderForRetry);
+router.post('/verify-retry-razorpay-payment', requireAuthAPI, checkoutController.verifyRetryRazorpayPayment);
+router.post('/retry-payment-failure', requireAuthAPI, checkoutController.handleRetryPaymentFailure);
+
 
 module.exports = router;

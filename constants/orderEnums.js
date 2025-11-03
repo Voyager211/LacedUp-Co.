@@ -5,6 +5,7 @@ const ORDER_STATUS = {
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
   RETURNED: 'Returned',
+  FAILED: 'Failed',
   PARTIALLY_RETURNED: 'Partially Returned',
   PARTIALLY_DELIVERED: 'Partially Delivered',
   PROCESSING_RETURN: 'Processing Return'

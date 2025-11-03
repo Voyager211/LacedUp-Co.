@@ -216,9 +216,9 @@
                 </div>
 
                 <!-- Cash on Delivery -->
-                <div class="payment-option selected">
+                <div class="payment-option">
                     <label class="d-flex align-items-center">
-                        <input type="radio" name="paymentMethod" value="cod" checked onclick="selectPayment(this)">
+                        <input type="radio" name="paymentMethod" value="cod" onclick="selectPayment(this)">
                         <div class="payment-icon">
                             <i class="bi bi-cash-coin"></i>
                         </div>
@@ -230,7 +230,7 @@
                 </div>
 
                 <!-- Continue Button -->
-                <button class="btn-continue" onclick="proceedToPayment()">
+                <button class="btn-continue btn-disabled" id="placeOrderBtn" onclick="proceedToPayment()" disabled>
                     <i class="bi bi-check-circle"></i> PLACE ORDER
                 </button>
             </div>

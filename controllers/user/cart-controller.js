@@ -2,7 +2,7 @@ const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
 const Wishlist = require('../../models/Wishlist');
-const walletService = require('../../services/walletService');
+const walletService = require('../../services/paymentProviders/walletService');
 
 // Helper function to calculate final price with offers
 const calculateFinalPrice = async (product) => {

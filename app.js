@@ -44,7 +44,7 @@ const userCouponRoutes = require('./routes/user/coupon-routes');
 // const transactionRoutes = require('./routes/user/transaction-routes');
 const checkoutRoutes = require('./routes/user/checkout-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
-// const userWalletRoutes = require('./routes/user/wallet-routes');
+const userWalletRoutes = require('./routes/user/wallet-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -118,10 +118,7 @@ morganBody(app, {
 // User Routes 
 app.use('/cart', userCartRoutes);
 app.use('/wishlist', userWishlistRoutes);
-// app.get('/coupons/available', (req, res) => {
-//     console.log('🚀 /coupons/available route HIT!');
-//     userCouponController.getAvailableCoupons(req, res);
-// });
+app.use('/wallet', userWalletRoutes);
 app.use('/coupons', userCouponRoutes);
 app.use('/checkout', checkoutRoutes);
 // app.use('/transactions', transactionRoutes);
@@ -130,7 +127,6 @@ app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
 app.use('/', userProductRoutes);
 app.use('/', userReviewRoutes);
-// app.use('/', userWalletRoutes);
 app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
 app.use('/', userOrderRoutes);
