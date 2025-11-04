@@ -406,7 +406,7 @@ const debitWallet = async (req, res) => {
 module.exports = {
   renderWalletPage,
   getPaginatedTransactionsAPI,
-  createRazorpayOrder: createRazorpayOrderHandler,  // ✅ Renamed to avoid conflict
+  createRazorpayOrder: createRazorpayOrderHandler,
   verifyRazorpayPayment,
   addMoney,
   getWalletBalance,

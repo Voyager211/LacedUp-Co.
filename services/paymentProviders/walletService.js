@@ -87,59 +87,54 @@ const addTransaction = async (userId, transactionData) => {
 const getPaginatedTransactions = async (userId, page = 1, limit = 10, type = null) => {
   const skip = (page - 1) * limit;
 
-  // Build match pipeline
-  const matchStage = { userId: userId };
+  try {
+    // ✅ FIXED: Simpler approach - get wallet and paginate in JavaScript
+    const wallet = await Wallet.findOne({ userId });
 
-  // Aggregation pipeline
-  const pipeline = [
-    { $match: matchStage },
-    {
-      $facet: {
-        metadata: [
-          { $count: 'totalTransactions' },
-          {
-            $addFields: {
-              page: page,
-              limit: limit,
-              totalPages: {
-                $ceil: { $divide: ['$totalTransactions', limit] }
-              }
-            }
-          }
-        ],
-        transactions: [
-          { $unwind: '$transactions' },
-          ...(type ? [{ $match: { 'transactions.type': type } }] : []),
-          { $sort: { 'transactions.date': -1 } },
-          { $skip: skip },
-          { $limit: limit },
-          { $replaceRoot: { newRoot: '$transactions' } }
-        ]
-      }
+    if (!wallet) {
+      return {
+        transactions: [],
+        currentPage: page,
+        totalPages: 0,
+        totalTransactions: 0,
+        hasNextPage: false,
+        hasPrevPage: false
+      };
     }
-  ];
 
-  const result = await Wallet.aggregate(pipeline);
+    // Filter transactions by type if provided
+    let transactions = wallet.transactions;
+    
+    if (type) {
+      transactions = transactions.filter(t => t.type === type && t.status === 'completed');
+    } else {
+      transactions = transactions.filter(t => t.status === 'completed');
+    }
 
-  // Extract results
-  const metadata = result[0].metadata[0] || {
-    totalTransactions: 0,
-    page: page,
-    limit: limit,
-    totalPages: 0
-  };
+    // Sort by date descending (newest first)
+    transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
 
-  const transactions = result[0].transactions;
+    // Get total
+    const totalTransactions = transactions.length;
+    const totalPages = Math.ceil(totalTransactions / limit);
 
-  return {
-    transactions,
-    currentPage: page,
-    totalPages: metadata.totalPages,
-    totalTransactions: metadata.totalTransactions,
-    hasNextPage: page < metadata.totalPages,
-    hasPrevPage: page > 1
-  };
+    // Paginate
+    const paginatedTransactions = transactions.slice(skip, skip + limit);
+
+    return {
+      transactions: paginatedTransactions,
+      currentPage: page,
+      totalPages: totalPages,
+      totalTransactions: totalTransactions,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    };
+  } catch (error) {
+    console.error('Error in getPaginatedTransactions:', error);
+    throw error;
+  }
 };
+
 
 /**
  * Get transactions by type (credit/debit)

@@ -96,80 +96,73 @@
 
 
 <!-- Add Money Modal -->
-<div class="modal fade" id="addMoneyModal" tabindex="-1" aria-labelledby="addMoneyModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+<div class="modal fade" id="addMoneyModal" tabindex="-1" aria-labelledby="addMoneyLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title" id="addMoneyModalLabel">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="addMoneyLabel">
           <i class="bi bi-plus-circle me-2"></i>Add Money to Wallet
         </h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body">
-        <form id="addMoneyForm">
-          <div class="mb-3">
-            <label for="amount" class="form-label">Amount</label>
+
+      <form id="addMoneyForm" class="needs-validation">
+        <div class="modal-body">
+          <!-- Amount Input -->
+          <div class="mb-4">
+            <label for="amount" class="form-label fw-600">Amount</label>
             <div class="input-group">
               <span class="input-group-text">₹</span>
-              <input type="number" class="form-control" id="amount" name="amount" min="1" max="50000" required>
+              <input 
+                type="number" 
+                class="form-control" 
+                id="amount" 
+                name="amount" 
+                placeholder="5000" 
+                value="500"
+                min="1" 
+                max="50000" 
+                required
+              >
             </div>
-            <div class="form-text">Minimum: ₹1, Maximum: ₹50,000</div>
-          </div>
-          <div class="mb-3">
-            <label for="description" class="form-label">Description (Optional)</label>
-            <input type="text" class="form-control" id="description" name="description" placeholder="e.g., Adding money for shopping">
-          </div>
-          <div class="quick-amounts mb-4">
-            <label class="form-label">Quick Add</label>
-            <div class="d-flex gap-2 flex-wrap">
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(500)">₹500</button>
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(1000)">₹1,000</button>
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(2000)">₹2,000</button>
-              <button type="button" class="btn btn-outline-primary btn-sm" onclick="setAmount(5000)">₹5,000</button>
-            </div>
+            <small class="text-muted d-block mt-2">Minimum: ₹1, Maximum: ₹50,000</small>
           </div>
 
-          <!-- ✅ NEW: Payment Method Selection -->
+          <!-- Description (Optional) -->
           <div class="mb-4">
-            <label class="form-label">Payment Method</label>
-            <div class="payment-methods">
-              <div class="form-check payment-method-option">
-                <input class="form-check-input" type="radio" name="paymentMethod" id="upiPayment" value="upi" checked>
-                <label class="form-check-label" for="upiPayment">
-                  <div class="d-flex align-items-center">
-                    <i class="bi bi-phone me-2 text-primary"></i>
-                    <div>
-                      <strong>UPI Payment</strong>
-                      <div class="text-muted small">Pay using Google Pay, PhonePe, Paytm & more</div>
-                    </div>
-                  </div>
-                </label>
-              </div>
-              <div class="form-check payment-method-option">
-                <input class="form-check-input" type="radio" name="paymentMethod" id="paypalPayment" value="paypal">
-                <label class="form-check-label" for="paypalPayment">
-                  <div class="d-flex align-items-center">
-                    <i class="bi bi-paypal me-2 text-primary"></i>
-                    <div>
-                      <strong>PayPal</strong>
-                      <div class="text-muted small">Pay with your PayPal account or cards</div>
-                    </div>
-                  </div>
-                </label>
-              </div>
+            <label for="description" class="form-label fw-600">Description (Optional)</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="description" 
+              name="description" 
+              placeholder="e.g., Adding money for shopping"
+            >
+          </div>
+
+          <!-- Quick Add Buttons -->
+          <div class="mb-4">
+            <label class="fw-600 d-block mb-3">Quick Add</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(500)">₹500</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(1000)">₹1,000</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(2000)">₹2,000</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(5000)">₹5,000</button>
             </div>
           </div>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <button type="button" class="btn btn-primary" id="addMoneyBtn" onclick="initiateWalletTopUp()">
-          <i class="bi bi-plus-circle me-2"></i>Add Money
-        </button>
-      </div>
+        </div>
+
+        <div class="modal-footer border-top-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" onclick="processDirectRazorpayTopUp()">
+            <i class="bi bi-lightning-charge me-2"></i>Add Money
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+
 
 <!-- ✅ NEW: PayPal Button Container (hidden by default) -->
 <div id="paypal-wallet-container" class="d-none"></div>
@@ -648,69 +641,14 @@
     document.getElementById('amount').value = amount;
   }
 
-  async function addMoney() {
-    const form = document.getElementById('addMoneyForm');
-    const formData = new FormData(form);
-    const paymentMethod = formData.get('paymentMethod');
-    
-    if (paymentMethod && (paymentMethod === 'upi' || paymentMethod === 'paypal')) {
-      return initiateWalletTopUp();
-    }
-    
-    if (isProcessing) return;
-    
-    const amount = parseFloat(formData.get('amount'));
-    const description = formData.get('description');
-    
-    if (!amount || amount <= 0) {
-      showAlert('error', 'Invalid Amount', 'Please enter a valid amount');
-      return;
-    }
-    
-    if (amount > 50000) {
-      showAlert('error', 'Amount Too High', 'Maximum amount allowed is ₹50,000');
-      return;
-    }
-    
-    isProcessing = true;
-    showLoading('Processing...', 'Adding money to your wallet');
-    
-    try {
-      const response = await fetch('/wallet/add-money', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, description: description || `Added ₹${amount} to wallet` })
-      });
 
-      const data = await response.json();
-
-      if (data.success) {
-        updateBalance(data.newBalance);
-        await loadTransactions(1);
-        showAlert('success', 'Success!', `₹${amount.toLocaleString('en-IN')} added to wallet`);
-        bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
-        form.reset();
-      } else {
-        throw new Error(data.message || 'Failed to add money');
-      }
-    } catch (error) {
-      console.error('Add money error:', error);
-      showAlert('error', 'Error', error.message || 'Failed to add money. Please try again.');
-    } finally {
-      isProcessing = false;
-      Swal.close();
-    }
-  }
-
-  async function initiateWalletTopUp() {
-    if (isProcessing) return;
-    
+  async function processDirectRazorpayTopUp() {
     const form = document.getElementById('addMoneyForm');
     const formData = new FormData(form);
     const amount = parseFloat(formData.get('amount'));
     const description = formData.get('description');
-    const paymentMethod = formData.get('paymentMethod');
     
+    // Validation
     if (!amount || amount <= 0) {
       showAlert('error', 'Invalid Amount', 'Please enter a valid amount');
       return;
@@ -721,19 +659,11 @@
       return;
     }
 
-    if (!paymentMethod) {
-      showAlert('error', 'Payment Method Required', 'Please select a payment method');
-      return;
-    }
-    
+    if (isProcessing) return;
     isProcessing = true;
     
     try {
-      if (paymentMethod === 'upi') {
-        await processUPIWalletTopUp(amount, description);
-      } else if (paymentMethod === 'paypal') {
-        await processPayPalWalletTopUp(amount, description);
-      }
+      await processUPIWalletTopUp(amount, description);
     } catch (error) {
       console.error('Wallet top-up error:', error);
       showAlert('error', 'Error', error.message || 'Failed to process wallet top-up');
@@ -741,6 +671,7 @@
       isProcessing = false;
     }
   }
+
 
   // UPI wallet top-up processing
   async function processUPIWalletTopUp(amount, description) {
@@ -1020,13 +951,31 @@
   }
 
   function showAlert(icon, title, text) {
-    Swal.fire({
-      icon: icon,
-      title: title,
-      text: text,
-      confirmButtonColor: icon === 'success' ? '#28a745' : '#dc3545'
-    });
+    if (icon === 'success') {
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: text,
+        toast: true,
+        position: 'top-right',
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.addEventListener('mouseenter', Swal.stopTimer)
+          toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+      });
+    } else {
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: text,
+        confirmButtonColor: '#dc3545'
+      });
+    }
   }
+
 
   function showLoading(title, text) {
     Swal.fire({

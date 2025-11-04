@@ -45,7 +45,7 @@
                         <% addresses.forEach((address, index) => { %>
                             <div class="address-card <%= index === 0 ? 'selected' : '' %>" id="address-card-<%= address._id %>">
                                 <label class="d-flex align-items-start">
-                                    <input type="radio" name="deliveryAddress" value="<%= addressDocumentId %>" data-address-index="<%= index %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
+                                    <input type="radio" name="deliveryAddress" value="<%= addressDocumentId %>" data-address-id="<%= address._id %>" data-address-index="<%= index %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
                                     <div class="address-info flex-grow-1">
                                         <h6><%= address.name %></h6>
                                         <p><%= address.addressType %></p>
@@ -80,7 +80,6 @@
             </div>
             
             <!-- Coupon Section -->
-            <!-- Apply Coupon Section -->
             <div class="section-card">
                 <div class="section-title">
                     <div><i class="bi bi-tag"></i> Apply Coupon</div>
@@ -88,13 +87,12 @@
                 
                 <!-- Coupon Input Form -->
                 <div id="coupon-form" style="<%= typeof appliedCoupon !== 'undefined' && appliedCoupon ? 'display: none;' : '' %>">
-                    <!-- Input group with no margin-bottom to control spacing -->
                     <div class="input-group">
                         <input type="text" id="couponCode" class="form-control" placeholder="Enter coupon code" maxlength="20" style="text-transform: uppercase;">
                         <button type="button" id="applyCouponBtn" class="btn btn-primary">Apply Coupon</button>
                     </div>
                     
-                    <!-- View Available Coupons Link - On separate line -->
+                    <!-- View Available Coupons Link -->
                     <div class="view-coupons-container">
                         <span class="view-available-coupons" id="viewAvailableCouponsBtn">
                             View Available Coupons
@@ -119,13 +117,6 @@
                 </div>
             </div>
 
-
-
-
-            
-
-
-
             <!-- Payment Method Section -->
             <div class="section-card">
                 <div class="section-title">
@@ -149,7 +140,7 @@
                     </label>
                 </div>
 
-                <!-- ✅ UPI Payment (Razorpay) -->
+                <!-- UPI Payment (Razorpay) -->
                 <div class="payment-option">
                     <label class="d-flex align-items-center">
                         <input type="radio" name="paymentMethod" value="upi" onclick="selectPayment(this)">
@@ -163,7 +154,7 @@
                     </label>
                 </div>
 
-                <!-- ✅ NEW: PayPal Payment (Separate) -->
+                <!-- PayPal Payment -->
                 <div class="payment-option">
                     <label class="d-flex align-items-center">
                         <input type="radio" name="paymentMethod" value="paypal" onclick="selectPayment(this)">
@@ -191,8 +182,8 @@
                     </label>
                 </div>
 
-                <!-- Wallet Payment -->
-                <div class="payment-option" id="wallet-payment-option">
+                <!-- ✅ UPDATED: Wallet Payment with proper status -->
+                <div class="payment-option" id="wallet-payment-option" <%= walletBalance < total ? 'style="opacity: 0.7;"' : '' %>>
                     <label class="d-flex align-items-center">
                         <input type="radio" name="paymentMethod" value="wallet" onclick="selectPayment(this)" 
                             <%= walletBalance < total ? 'disabled' : '' %>>
@@ -206,6 +197,7 @@
                             </p>
                         </div>
                     </label>
+                    <!-- ✅ Insufficient Balance Warning -->
                     <div id="insufficient-balance-warning" class="mt-2 alert alert-warning <%= walletBalance >= total ? 'd-none' : '' %>">
                         <i class="bi bi-exclamation-triangle me-2"></i>
                         <span id="insufficient-balance-message">
@@ -228,23 +220,19 @@
                         </div>
                     </label>
                 </div>
-
-                <!-- Continue Button -->
-                <button class="btn-continue btn-disabled" id="placeOrderBtn" onclick="proceedToPayment()" disabled>
-                    <i class="bi bi-check-circle"></i> PLACE ORDER
-                </button>
             </div>
 
-            <!-- ✅ Containers for payment gateways -->
+            <!-- Containers for payment gateways -->
             <div id="paypal-btn-container-left" class="mt-3 d-none"></div>
             <div id="razorpay-btn-container-left" class="mt-3 d-none"></div>
+
             <!-- Back to Cart -->
             <a href="/cart" class="btn-back">
                 <i class="bi bi-arrow-left"></i> Back to Cart
             </a>
         </div>
 
-        <!-- Right Side - Order Summary (styled exactly like cart page) -->
+        <!-- Right Side - Order Summary -->
         <div class="checkout-right">
             <div class="order-summary">
                 <!-- Summary Header -->
@@ -263,26 +251,21 @@
                         <% cartItems.forEach(item => { %>
                             <div class="order-item">
                                 <% 
-                                    // Multiple fallback options for product image
                                     let imageSrc = '/images/placeholder.svg';
                                     let productName = 'Product Name';
                                     
-                                    // Try to get image from productId (main fallback)
                                     if (item.productId && item.productId.mainImage) {
-                                        // Check if mainImage already contains the full path
                                         imageSrc = item.productId.mainImage.startsWith('/') ? 
                                                    item.productId.mainImage : 
                                                    '/uploads/products/' + item.productId.mainImage;
                                         productName = item.productId.productName || 'Product Name';
                                     }
-                                    // Try to get image from product (additional fallback)
                                     else if (item.product && item.product.mainImage) {
                                         imageSrc = item.product.mainImage.startsWith('/') ? 
                                                    item.product.mainImage : 
                                                    '/uploads/products/' + item.product.mainImage;
                                         productName = item.product.productName || 'Product Name';
                                     }
-                                    // Try to get image from subImages if mainImage is not available
                                     else if (item.productId && item.productId.subImages && item.productId.subImages.length > 0) {
                                         const subImage = item.productId.subImages[0];
                                         imageSrc = subImage.startsWith('/') ? 
@@ -331,10 +314,10 @@
                         <!-- Sale Price Discount -->
                         <% if (totalDiscount && totalDiscount > 0) { %>
                             <div class="summary-row discount-row">
-                            <span class="price-label">
-                                <i class="bi bi-tag me-1"></i>Product Discount
-                            </span>
-                            <span class="price-value text-success">-₹<%= totalDiscount %></span>
+                                <span class="price-label">
+                                    <i class="bi bi-tag me-1"></i>Product Discount
+                                </span>
+                                <span class="price-value text-success">-₹<%= totalDiscount %></span>
                             </div>
                         <% } %>
                     
@@ -343,7 +326,7 @@
                             <span class="price-label">
                                 Coupon Discount 
                                 <span id="coupon-code-label">
-                                    <% if (appliedCoupon && appliedCoupon.code) { %>
+                                    <% if (appliedCoupon && appliedCoupon.code) { %> 
                                         (<%= appliedCoupon.code %>)
                                     <% } %>
                                 </span>
@@ -353,14 +336,14 @@
                     
                         <div class="summary-row">
                             <span class="price-label">
-                            <i class="bi bi-truck me-1"></i>Shipping
+                                <i class="bi bi-truck me-1"></i>Shipping
                             </span>
                             <span class="price-value">
-                            <% if (shipping && shipping > 0) { %>
-                                ₹<%= shipping %>
-                            <% } else { %>
-                                <span class="text-success fw-bold">FREE</span>
-                            <% } %>
+                                <% if (shipping && shipping > 0) { %>
+                                    ₹<%= shipping %>
+                                <% } else { %>
+                                    <span class="text-success fw-bold">FREE</span>
+                                <% } %>
                             </span>
                         </div>
 
@@ -372,14 +355,12 @@
                         </div>
                     </div>
 
-
-
-                    <!-- Place Order Button -->
-                    <button class="btn-continue" onclick="proceedToPayment()">
+                    <!-- ✅ PLACE ORDER BUTTON - Only in order summary -->
+                    <button class="btn-continue btn-disabled" id="placeOrderBtn" onclick="proceedToPayment()" disabled>
                         <i class="bi bi-check-circle"></i> PLACE ORDER
                     </button>
 
-                    <!-- ⬇ NEW: PayPal buttons appear here for UPI/PayPal -->
+                    <!-- PayPal buttons container -->
                     <div id="paypal-btn-container-main" class="mt-3 d-none"></div>
 
                     <!-- Back to Cart -->
@@ -411,9 +392,8 @@
   </div>
 </div>
 
-<!-- Coupons modal -->
+<!-- Coupons Modal -->
 <%- include('partials/checkout-coupons-modal') %>
-
 
 <!-- Geoapify Autocomplete Script -->
 <script src="https://api.geoapify.com/v1/api.js?apiKey=<%= geoapifyApiKey %>"></script>
@@ -421,29 +401,26 @@
 <!-- SweetAlert2 JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-
-
-
 <script src="/js/user/checkout.js"></script>
 
 <script>
-// Pass server-side data to client-side JavaScript
-window.geoapifyApiKey = '<%= geoapifyApiKey %>';
-window.orderTotal = <%= total || 0 %>;
-window.walletBalance = <%= walletBalance || 0 %>;
+  // Pass server-side data to client-side JavaScript
+  window.geoapifyApiKey = '<%= geoapifyApiKey %>';
+  window.orderTotal = <%= total || 0 %>;
+  window.walletBalance = <%= walletBalance || 0 %>;
 </script>
 
 <!-- Razorpay Checkout Script -->
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
 <script>
-/* ========= PayPal JS-SDK lazy loader ========= */
-window.loadPayPalSdk = function () {
-  if (window.paypal) return;                   // already on page
-  const s = document.createElement('script');
-  s.src = 'https://www.paypal.com/sdk/js?client-id=<%= paypalClientId %>&currency=USD&intent=capture&disable-funding=credit,card'; // ✅ CHANGED: Use USD and disable unwanted funding
-  s.onload = () => console.log('PayPal SDK loaded');
-  s.onerror = (error) => console.error('PayPal SDK failed to load:', error);
-  document.head.appendChild(s);
-};
+  /* ========= PayPal JS-SDK lazy loader ========= */
+  window.loadPayPalSdk = function () {
+    if (window.paypal) return;
+    const s = document.createElement('script');
+    s.src = 'https://www.paypal.com/sdk/js?client-id=<%= paypalClientId %>&currency=USD&intent=capture&disable-funding=credit,card';
+    s.onload = () => console.log('PayPal SDK loaded');
+    s.onerror = (error) => console.error('PayPal SDK failed to load:', error);
+    document.head.appendChild(s);
+  };
 </script>

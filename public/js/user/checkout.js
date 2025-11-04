@@ -253,10 +253,14 @@ async function proceedToPayment() {
     
     case 'upi':
       return await handleUPIPayment(deliveryAddressId, addressIndex);
+
+    case 'wallet':
+      showWalletProcessingLoader();
+      return await handleWalletPayment(deliveryAddressId, addressIndex);
+
     
     case 'card':
     case 'netbanking':
-    case 'wallet':
     case 'paypal':
       Swal.fire({
         icon: 'info',
@@ -274,6 +278,48 @@ async function proceedToPayment() {
       });
   }
 }
+
+// ✅ WALLET ONLY: Show processing loader
+function showWalletProcessingLoader() {
+  const walletLoaderHtml = `
+    <div style="text-align: center; padding: 20px;">
+      <div style="margin-bottom: 20px;">
+        <i class="bi bi-wallet2" style="font-size: 48px; color: #28a745;"></i>
+      </div>
+      <p style="color: #495057; font-size: 16px; margin-bottom: 20px;">Processing wallet payment...</p>
+      
+      <!-- Red Progress Bar -->
+      <div style="width: 100%; height: 6px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+        <div style="height: 100%; background: linear-gradient(90deg, #dc3545, #e74c3c); width: 0%; animation: walletProgress 2s ease-in-out infinite;"></div>
+      </div>
+      <p style="font-size: 13px; color: #6c757d;">Please wait...</p>
+    </div>
+  `;
+
+  Swal.fire({
+    html: walletLoaderHtml,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    background: '#ffffff',
+    didOpen: () => {
+      // Add animation style if not already added
+      if (!document.getElementById('wallet-loader-styles')) {
+        const style = document.createElement('style');
+        style.id = 'wallet-loader-styles';
+        style.textContent = `
+          @keyframes walletProgress {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 100%; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    }
+  });
+}
+
 
 async function handleCODOrder(deliveryAddressId, addressIndex) {
   try {
@@ -553,6 +599,170 @@ async function verifyRazorpayPayment(razorpayOrderId, razorpayPaymentId, razorpa
 function placeOrder() { 
   proceedToPayment(); 
 }
+
+// Handle wallet payment
+async function handleWalletPayment(deliveryAddressId, addressIndex) {
+  try {
+    if (!deliveryAddressId || addressIndex === undefined) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Please select a delivery address',
+        confirmButtonColor: '#dc3545'
+      });
+      return;
+    }
+
+    // ✅ STEP 1: Show white loader with red progress bar
+    const walletLoaderHtml = `
+      <div style="text-align: center; padding: 20px;">
+        <div style="margin-bottom: 20px;">
+          <i class="bi bi-wallet2" style="font-size: 48px; color: #28a745;"></i>
+        </div>
+        <p style="color: #495057; font-size: 16px; margin-bottom: 20px;">Processing wallet payment...</p>
+        
+        <!-- Red Progress Bar -->
+        <div style="width: 100%; height: 6px; background: #f0f0f0; border-radius: 10px; overflow: hidden; margin-bottom: 10px;">
+          <div style="height: 100%; background: linear-gradient(90deg, #dc3545, #e74c3c); width: 0%; animation: walletProgress 2s ease-in-out infinite;"></div>
+        </div>
+        <p style="font-size: 13px; color: #6c757d;">Please wait...</p>
+      </div>
+    `;
+
+    Swal.fire({
+      html: walletLoaderHtml,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      background: '#ffffff',
+      didOpen: () => {
+        // Add animation style
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes walletProgress {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 100%; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    });
+
+    console.log('💳 Wallet payment initiated');
+
+    // ✅ STEP 2: Make API request
+    const response = await fetch('/checkout/process-wallet-payment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deliveryAddressId,
+        addressIndex: parseInt(addressIndex)
+      })
+    });
+
+    const data = await response.json();
+    console.log('Wallet payment response:', data);
+
+    // Close loader
+    Swal.close();
+
+    // ✅ STEP 3: Show animated success message
+    if (data.success) {
+      // Animated success popup
+      const successHtml = `
+        <div style="text-align: center;">
+          <!-- Animated Checkmark -->
+          <svg class="checkmark-animation" viewBox="0 0 52 52" style="width: 80px; height: 80px; margin: 0 auto 20px;">
+            <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none" stroke="#28a745" stroke-width="2"/>
+            <path class="checkmark-check" fill="none" stroke="#28a745" stroke-width="3" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+          </svg>
+          
+          <h2 style="color: #28a745; margin: 20px 0 10px; font-weight: 700;">Payment Successful!</h2>
+          <p style="color: #495057; margin: 0 0 10px; font-size: 16px;">Your order has been placed</p>
+          <p style="color: #6c757d; font-size: 14px; margin: 0;">Amount: ₹<strong>${data.data.amountDebited}</strong></p>
+        </div>
+      `;
+
+      Swal.fire({
+        html: successHtml,
+        icon: null,
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        confirmButtonText: 'Continue',
+        confirmButtonColor: '#28a745',
+        background: '#ffffff',
+        didOpen: () => {
+          // Add checkmark animation styles
+          const style = document.createElement('style');
+          style.textContent = `
+            .checkmark-circle {
+              stroke-dasharray: 166;
+              stroke-dashoffset: 166;
+              animation: checkmark-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+            }
+            
+            .checkmark-check {
+              stroke-dasharray: 48;
+              stroke-dashoffset: 48;
+              animation: checkmark-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+            }
+            
+            @keyframes checkmark-stroke {
+              100% {
+                stroke-dashoffset: 0;
+              }
+            }
+            
+            .checkmark-animation {
+              animation: checkmark-scale 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) 0.2s both;
+            }
+            
+            @keyframes checkmark-scale {
+              0% {
+                transform: scale(0);
+              }
+              50% {
+                transform: scale(1.2);
+              }
+              100% {
+                transform: scale(1);
+              }
+            }
+          `;
+          document.head.appendChild(style);
+        }
+      }).then(() => {
+        // Redirect to success page
+        window.location.href = data.data.redirectUrl;
+      });
+    } else {
+      // Show error
+      Swal.fire({
+        icon: 'error',
+        title: 'Payment Failed',
+        text: data.message || 'Failed to process wallet payment',
+        confirmButtonColor: '#dc3545',
+        background: '#ffffff'
+      });
+    }
+
+  } catch (error) {
+    console.error('❌ Wallet payment error:', error);
+    Swal.close();
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.message || 'An error occurred while processing payment',
+      confirmButtonColor: '#dc3545',
+      background: '#ffffff'
+    });
+  }
+}
+
+// Bind to button click in checkout.js
+document.querySelector('.btn-continue.wallet-payment')?.addEventListener('click', handleWalletPayment);
+
 
 
 /* ========= ADDRESS FORM HANDLING ========= */

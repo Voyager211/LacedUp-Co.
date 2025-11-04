@@ -7,9 +7,10 @@ const Coupon = require('../../models/Coupon');
 const crypto = require('crypto');
 const mongoose = require('mongoose');
 const razorpayService = require('../../services/paymentProviders/razorpay');
+const walletService = require('../../services/paymentProviders/walletService');
 
 const {
-  ORDER_STATUS,
+  ORDER_STATUS, 
   PAYMENT_STATUS,
   getOrderStatusArray,
   getPaymentStatusArray,
@@ -298,6 +299,14 @@ const loadCheckout = async (req, res) => {
 
     const finalTotal = Math.max(0, totals.total - couponDiscount);
 
+    let walletBalance = 0;
+    try {
+      const wallet = await walletService.getOrCreateWallet(userId);
+      walletBalance = wallet.balance || 0;
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+    }
+
     res.render('user/checkout', {
       user,
       cartItems,
@@ -311,7 +320,7 @@ const loadCheckout = async (req, res) => {
       appliedCoupon,
       shipping: totals.shipping,
       total: Math.round(finalTotal),
-      walletBalance: 0,
+      walletBalance: walletBalance,
       paypalClientId: '',
       title: 'Checkout',
       layout: 'user/layouts/user-layout',
@@ -451,13 +460,16 @@ const placeOrderWithValidation = async (req, res) => {
       });
     }
 
-    if (![PAYMENT_METHODS.COD, PAYMENT_METHODS.UPI].includes(paymentMethod)) {
+    // ✅ UPDATED: Support wallet payment method as well
+    if (![PAYMENT_METHODS.COD, PAYMENT_METHODS.UPI, 'wallet'].includes(paymentMethod)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid payment method. Only COD and UPI are supported',
+        message: 'Invalid payment method. COD, UPI, and Wallet are supported',
         code: 'INVALID_PAYMENT_METHOD'
       });
     }
+
+    console.log(`💳 Processing order with payment method: ${paymentMethod}`);
 
     // Fetch and validate cart
     const cart = await Cart.findOne({ userId })
@@ -477,6 +489,72 @@ const placeOrderWithValidation = async (req, res) => {
       });
     }
 
+    console.log(`📦 Cart items found: ${cart.items.length}`);
+
+    // ✅ NEW: Validate coupon before processing order
+    if (req.session.appliedCoupon) {
+      try {
+        const coupon = await Coupon.findById(req.session.appliedCoupon._id);
+
+        if (!coupon || !coupon.isActive) {
+          console.warn('⚠️ Applied coupon is no longer valid');
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Applied coupon is no longer valid',
+            code: 'INVALID_COUPON'
+          });
+        }
+
+        const now = new Date();
+        if (now < new Date(coupon.validFrom) || now > new Date(coupon.validTo)) {
+          console.warn('⚠️ Applied coupon has expired');
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Coupon has expired',
+            code: 'COUPON_EXPIRED'
+          });
+        }
+
+        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+          console.warn('⚠️ Coupon usage limit reached');
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Coupon usage limit reached',
+            code: 'COUPON_LIMIT_REACHED'
+          });
+        }
+
+        const userUsageCount = coupon.usedBy.filter(
+          usage => usage.user.toString() === userId.toString()
+        ).length;
+
+        if (coupon.userLimit && userUsageCount >= coupon.userLimit) {
+          console.warn('⚠️ User has reached coupon usage limit');
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'You have reached the coupon usage limit',
+            code: 'USER_COUPON_LIMIT_REACHED'
+          });
+        }
+
+        console.log(`✅ Coupon validated: ${coupon.code}`);
+
+      } catch (couponError) {
+        console.error('Error validating coupon:', couponError);
+        delete req.session.appliedCoupon;
+        return res.status(400).json({
+          success: false,
+          message: 'Error validating coupon',
+          code: 'COUPON_VALIDATION_ERROR'
+        });
+      }
+    }
+
+    // Check for stock issues
     const stockIssues = [];
 
     for (const item of cart.items) {
@@ -514,6 +592,8 @@ const placeOrderWithValidation = async (req, res) => {
         `${index + 1}. ${issue.productName} (Size: ${issue.size}) \n ${issue.error}`
       );
 
+      console.warn('❌ Stock validation failed:', errorMessages);
+
       return res.status(400).json({
         success: false,
         message: 'Some items in your cart have stock issues:\n\n' + errorMessages.join('\n\n') + '\n\nPlease update your cart before proceeding.',
@@ -522,14 +602,22 @@ const placeOrderWithValidation = async (req, res) => {
       });
     }
 
+    console.log('✅ All stock validations passed');
+
+    // ✅ UPDATED: Route to appropriate payment handler
     if (paymentMethod === PAYMENT_METHODS.COD) {
+      console.log('💵 Routing to COD handler');
       return await handleCODOrder(req, res, cart);
     } else if (paymentMethod === PAYMENT_METHODS.UPI) {
+      console.log('🏦 Routing to Razorpay/UPI handler');
       return await createRazorpayPayment(req, res);
+    } else if (paymentMethod === 'wallet') {
+      console.log('💳 Routing to Wallet payment handler');
+      return await handleWalletPayment(req, res);
     }
 
   } catch (error) {
-    console.error('Error in placeOrderWithValidation:', error);
+    console.error('❌ Error in placeOrderWithValidation:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to validate and place order',
@@ -538,6 +626,7 @@ const placeOrderWithValidation = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -2070,6 +2159,334 @@ const handleRetryPaymentFailure = async (req, res) => {
   }
 };
 
+// ✅ NEW: Handle Wallet Payment for Checkout
+const handleWalletPayment = async (req, res) => {
+  try {
+    const userId = req.user?._id || req.session?.userId;
+    const { deliveryAddressId, addressIndex } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        code: 'UNAUTHORIZED'
+      });
+    }
+
+    if (!deliveryAddressId || addressIndex === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address is required',
+        code: 'MISSING_REQUIRED_FIELDS'
+      });
+    }
+
+    console.log('💳 Processing wallet payment...');
+
+    // Step 1: Fetch and validate cart
+    const cart = await Cart.findOne({ userId })
+      .populate({
+        path: 'items.productId',
+        populate: [
+          { path: 'category', select: 'name isActive isDeleted' },
+          { path: 'brand', select: 'name isActive isDeleted' }
+        ]
+      });
+
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cart is empty',
+        code: 'EMPTY_CART'
+      });
+    }
+
+    // Step 2: Calculate totals and validate coupon
+    const totals = calculateOrderTotals(cart.items);
+    let couponDiscount = 0;
+    let appliedCouponId = null;
+
+    if (req.session.appliedCoupon) {
+      try {
+        const coupon = await Coupon.findById(req.session.appliedCoupon._id);
+
+        if (!coupon || !coupon.isActive) {
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Applied coupon is no longer valid',
+            code: 'INVALID_COUPON'
+          });
+        }
+
+        const now = new Date();
+        if (now < new Date(coupon.validFrom) || now > new Date(coupon.validTo)) {
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Coupon has expired',
+            code: 'COUPON_EXPIRED'
+          });
+        }
+
+        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'Coupon usage limit reached',
+            code: 'COUPON_LIMIT_REACHED'
+          });
+        }
+
+        const userUsageCount = coupon.usedBy.filter(
+          usage => usage.user.toString() === userId.toString()
+        ).length;
+
+        if (coupon.userLimit && userUsageCount >= coupon.userLimit) {
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: 'You have reached the coupon usage limit',
+            code: 'USER_COUPON_LIMIT_REACHED'
+          });
+        }
+
+        if (coupon.minimumOrderValue && totals.total < coupon.minimumOrderValue) {
+          delete req.session.appliedCoupon;
+          return res.status(400).json({
+            success: false,
+            message: `Minimum order value of ₹${coupon.minimumOrderValue} required`,
+            code: 'MIN_ORDER_VALUE_NOT_MET'
+          });
+        }
+
+        couponDiscount = req.session.appliedCoupon.discountAmount || 0;
+        appliedCouponId = req.session.appliedCoupon._id;
+        console.log(`✅ Coupon validated: ${coupon.code} (₹${couponDiscount} off)`);
+
+      } catch (couponError) {
+        console.error('Error validating coupon:', couponError);
+        delete req.session.appliedCoupon;
+        return res.status(400).json({
+          success: false,
+          message: 'Error validating coupon',
+          code: 'COUPON_VALIDATION_ERROR'
+        });
+      }
+    }
+
+    const finalTotal = Math.max(0, totals.total - couponDiscount);
+
+    // Step 3: Check wallet balance
+    let wallet;
+    try {
+      wallet = await walletService.getOrCreateWallet(userId);
+    } catch (walletError) {
+      console.error('Error fetching wallet:', walletError);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch wallet balance',
+        code: 'WALLET_FETCH_ERROR'
+      });
+    }
+
+    if (!wallet || wallet.balance < finalTotal) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient wallet balance. Required: ₹${finalTotal}, Available: ₹${wallet?.balance || 0}`,
+        code: 'INSUFFICIENT_BALANCE',
+        data: {
+          required: finalTotal,
+          available: wallet?.balance || 0
+        }
+      });
+    }
+
+    console.log(`✅ Wallet balance verified: ₹${wallet.balance} (Required: ₹${finalTotal})`);
+
+    // Step 4: Validate all items availability
+    const stockIssues = [];
+    for (const item of cart.items) {
+      const productName = item.productId?.productName || 'Unknown Product';
+
+      const availabilityCheck = validateProductAvailability(item.productId);
+      if (!availabilityCheck.isValid) {
+        stockIssues.push({
+          productName,
+          size: item.size,
+          quantity: item.quantity,
+          error: availabilityCheck.reason
+        });
+        continue;
+      }
+
+      if (item.variantId) {
+        const stockCheck = validateVariantStock(item.productId, item.variantId, item.quantity);
+        if (!stockCheck.isValid) {
+          stockIssues.push({
+            productName,
+            size: item.size,
+            quantity: item.quantity,
+            availableStock: stockCheck.availableStock,
+            error: stockCheck.reason
+          });
+        }
+      }
+    }
+
+    if (stockIssues.length > 0) {
+      const errorMessages = stockIssues.map((issue, index) =>
+        `${index + 1}. ${issue.productName} (Size: ${issue.size}) \n ${issue.error}`
+      );
+
+      return res.status(400).json({
+        success: false,
+        message: 'Some items have stock issues:\n\n' + errorMessages.join('\n\n'),
+        code: 'STOCK_VALIDATION_FAILED',
+        invalidItems: stockIssues
+      });
+    }
+
+    console.log('✅ All items validated for wallet payment');
+
+    // Step 5: Prepare order items
+    const orderItems = cart.items.map(item => ({
+      productId: item.productId._id,
+      variantId: item.variantId,
+      sku: item.sku,
+      size: item.size,
+      quantity: item.quantity,
+      price: item.price,
+      totalPrice: item.totalPrice,
+      status: ORDER_STATUS.PROCESSING,
+      paymentStatus: PAYMENT_STATUS.COMPLETED,
+      statusHistory: [{
+        status: ORDER_STATUS.PROCESSING,
+        updatedAt: new Date(),
+        notes: 'Order placed successfully with wallet payment'
+      }]
+    }));
+
+    // Step 6: Deduct stock
+    try {
+      await deductStock(orderItems);
+      console.log('✅ Stock deducted for wallet order');
+    } catch (stockError) {
+      console.error('❌ Stock deduction failed:', stockError);
+      return res.status(400).json({
+        success: false,
+        message: 'Failed to process order due to stock issues',
+        error: stockError.message,
+        code: 'STOCK_DEDUCTION_FAILED'
+      });
+    }
+
+    // Step 7: Create order document
+    const addressObjectId = new mongoose.Types.ObjectId(deliveryAddressId);
+
+    const order = new Order({
+      orderId: generateOrderId(),
+      user: userId,
+      items: orderItems,
+      deliveryAddress: {
+        addressId: addressObjectId,
+        addressIndex: parseInt(addressIndex)
+      },
+      couponApplied: appliedCouponId,
+      couponDiscount: Math.round(couponDiscount),
+      couponCode: req.session.appliedCoupon?.code || null,
+      paymentMethod: 'wallet',
+      paymentStatus: PAYMENT_STATUS.COMPLETED,
+      subtotal: totals.subtotal,
+      totalDiscount: totals.totalDiscount,
+      amountAfterDiscount: totals.amountAfterDiscount,
+      shipping: totals.shipping,
+      totalAmount: Math.round(finalTotal),
+      totalItemCount: totals.totalItemCount,
+      status: ORDER_STATUS.PROCESSING,
+      statusHistory: [{
+        status: ORDER_STATUS.PROCESSING,
+        updatedAt: new Date(),
+        notes: 'Order placed successfully with wallet payment'
+      }]
+    });
+
+    try {
+      await order.save();
+      order.orderDocumentId = order._id;
+      await order.save();
+      console.log(`✅ Order created: ${order.orderId}`);
+    } catch (saveError) {
+      console.error('❌ Error saving order:', saveError);
+      await restoreStock(orderItems);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to create order',
+        code: 'ORDER_CREATION_FAILED'
+      });
+    }
+
+    // Step 8: Debit from wallet
+    try {
+      await walletService.addTransaction(userId, {
+        type: 'debit',
+        amount: finalTotal,
+        description: `Payment for order ${order.orderId}`,
+        paymentMethod: 'payment_for_order',
+        orderId: order._id,
+        status: 'completed'
+      });
+      console.log(`✅ Wallet debited: ₹${finalTotal}`);
+    } catch (walletError) {
+      console.error('❌ Error debiting wallet:', walletError);
+      // Don't fail the order, wallet debit is secondary
+      // But log it for investigation
+    }
+
+    // Step 9: Update coupon usage
+    if (appliedCouponId) {
+      try {
+        await increaseCouponUsage(appliedCouponId, userId, order._id);
+        console.log(`✅ Coupon usage updated`);
+      } catch (couponError) {
+        console.error('❌ Error updating coupon usage:', couponError);
+        // Don't fail the order for coupon error
+      }
+    }
+
+    // Step 10: Clear cart
+    try {
+      cart.items = [];
+      await cart.save();
+      console.log('✅ Cart cleared after wallet payment');
+    } catch (cartError) {
+      console.error('⚠️ Error clearing cart:', cartError);
+    }
+
+    // Step 11: Clear session data
+    delete req.session.appliedCoupon;
+
+    return res.json({
+      success: true,
+      message: 'Wallet payment processed successfully',
+      data: {
+        redirectUrl: `/checkout/order-success/${order.orderId}`,
+        orderId: order._id,
+        orderNumber: order.orderId,
+        amountDebited: finalTotal
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error processing wallet payment:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to process wallet payment',
+      code: 'WALLET_PAYMENT_ERROR',
+      error: error.message
+    });
+  }
+};
 
 
 
@@ -2088,5 +2505,6 @@ module.exports = {
   loadRetryPaymentPage,
   createRazorpayOrderForRetry,
   verifyRetryRazorpayPayment,
-  handleRetryPaymentFailure
+  handleRetryPaymentFailure,
+  handleWalletPayment
 };
