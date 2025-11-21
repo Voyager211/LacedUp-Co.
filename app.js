@@ -31,6 +31,8 @@ const adminProductRoutes = require('./routes/admin/product');
 const adminOrderRoutes = require('./routes/admin/order');
 const adminReturnRoutes = require('./routes/admin/returns');
 const adminCouponRoutes = require('./routes/admin/coupon');
+const adminSalesReportRoutes = require('./routes/admin/sales-report');
+
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
@@ -144,6 +146,7 @@ app.use('/admin/products', adminProductRoutes);
 app.use('/admin/orders', adminOrderRoutes);
 app.use('/admin/returns', adminReturnRoutes);
 app.use('/admin/coupons', adminCouponRoutes);
+app.use('/admin/sales-report', adminSalesReportRoutes);
 
 app.get('coupons/available', (req, res) => {
     console.log('🚀 /coupons/available route HIT!');

@@ -9,7 +9,6 @@ module.exports = {
         return res.redirect('/home'); // Redirect logged-in users
     },
 
-    // ✅ ADD THIS FUNCTION
     requireAuth: (req, res, next) => {
         if (req.isAuthenticated()) {
             return next();

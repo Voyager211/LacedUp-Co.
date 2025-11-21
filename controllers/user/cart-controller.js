@@ -41,7 +41,7 @@ const calculateItemTotal = (price, quantity) => {
 };
 
 // Add product to cart with comprehensive validation (SKU-based)
-exports.addToCart = async (req, res) => {
+const addToCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId, quantity = 1 } = req.body;
@@ -252,7 +252,7 @@ exports.addToCart = async (req, res) => {
 };
 
 // Get cart count for navbar
-exports.getCartCount = async (req, res) => {
+const getCartCount = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -273,7 +273,7 @@ exports.getCartCount = async (req, res) => {
 };
 
 // Load cart page (SKU-based) - UPDATED VERSION
-exports.loadCart = async (req, res) => {
+const loadCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
@@ -472,7 +472,7 @@ exports.loadCart = async (req, res) => {
 };
 
 // Remove item from cart (SKU-based)
-exports.removeFromCart = async (req, res) => {
+const removeFromCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -536,7 +536,7 @@ exports.removeFromCart = async (req, res) => {
 };
 
 // Update cart item quantity (SKU-based)
-exports.updateCartQuantity = async (req, res) => {
+const updateCartQuantity = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId, quantity } = req.body;
@@ -710,7 +710,7 @@ exports.updateCartQuantity = async (req, res) => {
 
 
 // Clear entire cart
-exports.clearCart = async (req, res) => {
+const clearCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -742,7 +742,7 @@ exports.clearCart = async (req, res) => {
 };
 
 // Remove all out-of-stock items from cart (SKU-based)
-exports.removeOutOfStockItems = async (req, res) => {
+const removeOutOfStockItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -831,7 +831,7 @@ exports.removeOutOfStockItems = async (req, res) => {
 };
 
 // Validate cart items and return availability status (SKU-based)
-exports.validateCartItems = async (req, res) => {
+const validateCartItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -928,7 +928,7 @@ exports.validateCartItems = async (req, res) => {
 };
 
 // Check authentication status
-exports.checkAuth = async (req, res) => {
+const checkAuth = async (req, res) => {
   try {
     const isAuthenticated = !!(req.user || req.session.userId);
     res.json({ 
@@ -942,12 +942,12 @@ exports.checkAuth = async (req, res) => {
 };
 
 // Load checkout page
-exports.loadCheckout = async (req, res) => {
+const loadCheckout = async (req, res) => {
   return res.redirect('/checkout');
 };
 
 // Validate cart stock for checkout
-exports.validateCheckoutStock = async (req, res) => {
+const validateCheckoutStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -1101,7 +1101,7 @@ exports.validateCheckoutStock = async (req, res) => {
 };
 
 // Validate cart stock (general validation)
-exports.validateCartStock = async (req, res) => {
+const validateCartStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -1230,7 +1230,7 @@ exports.validateCartStock = async (req, res) => {
 };
 
 // Reset cart item quantity to available stock
-exports.resetCartItemQuantity = async (req, res) => {
+const resetCartItemQuantity = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -1320,7 +1320,7 @@ exports.resetCartItemQuantity = async (req, res) => {
 };
 
 // Save item for later (move from cart to wishlist)
-exports.saveForLater = async (req, res) => {
+const saveForLater = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -1415,7 +1415,7 @@ exports.saveForLater = async (req, res) => {
   }
 };
 
-exports.getWalletBalanceForCheckout = async (req, res) => {
+const getWalletBalanceForCheckout = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
@@ -1452,3 +1452,21 @@ exports.getWalletBalanceForCheckout = async (req, res) => {
     });
   }
 };
+
+module.exports = {
+  addToCart,
+  getCartCount,
+  loadCart,
+  removeFromCart,
+  updateCartQuantity,
+  clearCart,
+  removeOutOfStockItems,
+  validateCartItems,
+  checkAuth,
+  loadCheckout,
+  validateCheckoutStock,
+  validateCartStock,
+  resetCartItemQuantity,
+  saveForLater,
+  getWalletBalanceForCheckout
+}
