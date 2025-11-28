@@ -39,7 +39,6 @@ function getDateRange(timePeriod, startDate, endDate) {
         end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
       } else {
-        // Default to last 30 days if custom dates not provided
         start = new Date(now);
         start.setDate(now.getDate() - 30);
         start.setHours(0, 0, 0, 0);
@@ -191,6 +190,7 @@ const getSalesReport = async (req, res) => {
         currentPage: page,
         totalPages,
         totalOrders,
+        itemsPerPage: limit,  // ADDED THIS
         hasPrev: page > 1,
         hasNext: page < totalPages
       },
@@ -222,6 +222,7 @@ const getSalesReport = async (req, res) => {
         currentPage: 1,
         totalPages: 1,
         totalOrders: 0,
+        itemsPerPage: 10,  // ADDED THIS
         hasPrev: false,
         hasNext: false
       },
