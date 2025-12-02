@@ -1,0 +1,523 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile', href: '/profile' },
+      { label: 'Referrals' }
+    ]
+  }) %>
+
+  <!-- Main Layout: Sidebar + Content -->
+  <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <%- include('partials/profile-sidebar.ejs', { user: user, active: 'referrals' }) %>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="referrals-content">
+        
+        <!-- Referral Stats Card -->
+        <div class="referral-stats-card mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <h3 class="referral-title mb-2">
+                    <i class="bi bi-people-fill me-2 text-primary"></i>
+                    My Referrals
+                  </h3>
+                  <div class="stats-display">
+                    <div class="row">
+                      <div class="col-6">
+                        <span class="stat-label">Total Referrals</span>
+                        <div class="stat-value"><%= user.referralCount %></div>
+                      </div>
+                      <div class="col-6">
+                        <span class="stat-label">Total Earnings</span>
+                        <div class="stat-value">₹<%= totalEarnings.toLocaleString('en-IN') %></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-4 text-end">
+                  <button class="btn btn-primary btn-lg" onclick="showShareModal()">
+                    <i class="bi bi-share-fill me-2"></i>Share Code
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral Code Section -->
+        <div class="referral-code-section mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <h5 class="mb-3">
+                <i class="bi bi-gift-fill me-2"></i>
+                Your Referral Code
+              </h5>
+              <p class="text-muted mb-3">Share this code with friends and earn ₹300 when they sign up!</p>
+              
+              <div class="referral-code-display mb-3">
+                <div class="input-group">
+                  <input 
+                    type="text" 
+                    class="form-control form-control-lg" 
+                    id="referralCode" 
+                    value="<%= user.referralCode %>" 
+                    readonly
+                  >
+                  <button class="btn btn-primary" onclick="copyCode()">
+                    <i class="bi bi-clipboard"></i> Copy
+                  </button>
+                </div>
+              </div>
+
+              <div class="referral-link-display">
+                <label class="form-label fw-600">Referral Link</label>
+                <div class="input-group">
+                  <input 
+                    type="text" 
+                    class="form-control" 
+                    id="referralLink" 
+                    value="<%= referralLink %>" 
+                    readonly
+                  >
+                  <button class="btn btn-outline-primary" onclick="copyLink()">
+                    <i class="bi bi-link-45deg"></i> Copy Link
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Referral History -->
+        <div class="referral-history-card">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+              <h5 class="mb-0">
+                <i class="bi bi-clock-history me-2"></i>
+                Referral History
+              </h5>
+            </div>
+            
+            <div class="card-body p-0">
+              <% if (referredUsers.length > 0) { %>
+                <div class="referral-list">
+                  <% referredUsers.forEach((referredUser, index) => { %>
+                    <div class="referral-item">
+                      <div class="row align-items-center py-3 px-4">
+                        <div class="col-md-1">
+                          <div class="referral-icon">
+                            <i class="bi bi-person-check-fill"></i>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="referral-details">
+                            <div class="referral-name"><%= referredUser.name %></div>
+                            <div class="referral-meta">
+                              <span class="referral-email"><%= referredUser.email %></span>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                          <div class="referral-date">
+                            <%= new Date(referredUser.createdAt).toLocaleDateString('en-IN', { 
+                              day: '2-digit',
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) %>
+                          </div>
+                        </div>
+                        <div class="col-md-3 text-end">
+                          <div class="referral-reward">
+                            <span class="badge bg-success">+₹300</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              <% } else { %>
+                <div class="empty-referrals text-center py-5">
+                  <div class="mb-4">
+                    <i class="bi bi-people display-1 text-muted"></i>
+                  </div>
+                  <h4 class="text-muted mb-3">No Referrals Yet</h4>
+                  <p class="text-muted mb-4">Start sharing your referral code to earn rewards!</p>
+                  <button class="btn btn-primary" onclick="showShareModal()">
+                    <i class="bi bi-share-fill me-2"></i>Share Your Code
+                  </button>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        </div>
+
+        <!-- Earnings History -->
+        <% if (referralTransactions.length > 0) { %>
+          <div class="earnings-history-card mt-4">
+            <div class="card border-0 shadow-sm">
+              <div class="card-header bg-white border-bottom">
+                <h5 class="mb-0">
+                  <i class="bi bi-wallet2 me-2"></i>
+                  Earnings History
+                </h5>
+              </div>
+              
+              <div class="card-body p-0">
+                <div class="earnings-list">
+                  <% referralTransactions.forEach((transaction) => { %>
+                    <div class="earnings-item">
+                      <div class="row align-items-center py-3 px-4">
+                        <div class="col-md-1">
+                          <div class="transaction-icon credit">
+                            <i class="bi bi-arrow-down-circle"></i>
+                          </div>
+                        </div>
+                        <div class="col-md-6">
+                          <div class="transaction-description"><%= transaction.description %></div>
+                          <div class="transaction-meta">
+                            <span class="transaction-id">ID: <%= transaction.transactionId %></span>
+                          </div>
+                        </div>
+                        <div class="col-md-2 text-center">
+                          <div class="transaction-date">
+                            <%= new Date(transaction.date).toLocaleDateString('en-IN', { 
+                              day: '2-digit',
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) %>
+                            <div class="transaction-time">
+                              <%= new Date(transaction.date).toLocaleTimeString('en-IN', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              }) %>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="col-md-3 text-end">
+                          <div class="transaction-amount credit">
+                            +₹<%= transaction.amount.toLocaleString('en-IN') %>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+            </div>
+          </div>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share Modal -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="shareModalLabel">
+          <i class="bi bi-share-fill me-2"></i>Share Your Referral Code
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body text-center">
+        <div class="mb-4">
+          <div class="display-4 fw-bold text-primary mb-3"><%= user.referralCode %></div>
+          <p class="text-muted">Share this code with your friends!</p>
+        </div>
+
+        <div class="d-grid gap-2">
+          <button class="btn btn-primary btn-lg" onclick="copyCodeAndShare()">
+            <i class="bi bi-clipboard me-2"></i>Copy Code
+          </button>
+          <button class="btn btn-outline-primary" onclick="copyLinkAndShare()">
+            <i class="bi bi-link-45deg me-2"></i>Copy Link
+          </button>
+        </div>
+
+        <div class="mt-4">
+          <p class="small text-muted mb-2">Or share via:</p>
+          <div class="d-flex gap-2 justify-content-center">
+            <a href="https://wa.me/?text=<%= encodeURIComponent('Join LacedUp using my referral code ' + user.referralCode + ' and get ₹100 off! ' + referralLink) %>" 
+               target="_blank" 
+               class="btn btn-success btn-sm">
+              <i class="bi bi-whatsapp"></i> WhatsApp
+            </a>
+            <a href="mailto:?subject=Join LacedUp&body=<%= encodeURIComponent('Use my referral code ' + user.referralCode + ' to get ₹100 off your first order! ' + referralLink) %>" 
+               class="btn btn-secondary btn-sm">
+              <i class="bi bi-envelope"></i> Email
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Referrals Styles - Matching Wallet Theme */
+.referrals-content {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.referral-stats-card .card {
+  background: #000000 !important;
+  color: white;
+  border: none !important;
+  border-top: 4px solid #dc3545 !important;
+}
+
+.referral-title {
+  color: white;
+  font-weight: 600;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.referral-stats-card .text-primary {
+  color: #dc3545 !important;
+}
+
+/* Referral Code Display */
+.referral-code-display input {
+  font-size: 1.5rem;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+/* Referral List Styles */
+.referral-item {
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+}
+
+.referral-item:hover {
+  background-color: #f8f9fa;
+}
+
+.referral-item:last-child {
+  border-bottom: none;
+}
+
+.referral-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #d4edda;
+  color: #155724;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.referral-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.referral-meta {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.referral-date {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.referral-reward .badge {
+  font-size: 1rem;
+  padding: 0.5rem 1rem;
+}
+
+/* Transaction Styles (for earnings history) */
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.transaction-icon.credit {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.transaction-description {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.transaction-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.transaction-date {
+  font-size: 0.9rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.transaction-time {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+
+.transaction-amount {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.transaction-amount.credit {
+  color: #28a745;
+}
+
+.earnings-item {
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+}
+
+.earnings-item:hover {
+  background-color: #f8f9fa;
+}
+
+.earnings-item:last-child {
+  border-bottom: none;
+}
+
+/* Empty State */
+.empty-referrals {
+  padding: 3rem 1rem;
+}
+
+/* Red Theme Buttons */
+.btn-primary {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-primary:hover {
+  background-color: #c82333 !important;
+  border-color: #bd2130 !important;
+}
+
+.btn-outline-primary {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+.text-primary {
+  color: #dc3545 !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .stat-value {
+    font-size: 1.5rem;
+  }
+  
+  .referral-code-display input {
+    font-size: 1.2rem;
+  }
+  
+  .referral-item .row > div,
+  .earnings-item .row > div {
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .referral-item .row > div:last-child,
+  .earnings-item .row > div:last-child {
+    margin-bottom: 0;
+  }
+}
+</style>
+
+<script>
+  // Copy referral code
+  function copyCode() {
+    const codeInput = document.getElementById('referralCode');
+    codeInput.select();
+    navigator.clipboard.writeText(codeInput.value);
+    showToast('success', 'Referral code copied!');
+  }
+
+  // Copy referral link
+  function copyLink() {
+    const linkInput = document.getElementById('referralLink');
+    linkInput.select();
+    navigator.clipboard.writeText(linkInput.value);
+    showToast('success', 'Referral link copied!');
+  }
+
+  // Show share modal
+  function showShareModal() {
+    const modal = new bootstrap.Modal(document.getElementById('shareModal'));
+    modal.show();
+  }
+
+  // Copy code from modal
+  function copyCodeAndShare() {
+    const code = '<%= user.referralCode %>';
+    navigator.clipboard.writeText(code);
+    showToast('success', 'Referral code copied to clipboard!');
+  }
+
+  // Copy link from modal
+  function copyLinkAndShare() {
+    const link = '<%= referralLink %>';
+    navigator.clipboard.writeText(link);
+    showToast('success', 'Referral link copied to clipboard!');
+  }
+
+  // Toast notification
+  function showToast(icon, message) {
+    Swal.fire({
+      icon: icon,
+      text: message,
+      toast: true,
+      position: 'top-right',
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true
+    });
+  }
+</script>

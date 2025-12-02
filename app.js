@@ -32,6 +32,7 @@ const adminOrderRoutes = require('./routes/admin/order');
 const adminReturnRoutes = require('./routes/admin/returns');
 const adminCouponRoutes = require('./routes/admin/coupon');
 const adminSalesReportRoutes = require('./routes/admin/sales-report');
+const adminDashboardRoutes = require('./routes/admin/dashboard');
 
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
@@ -47,6 +48,7 @@ const userCouponRoutes = require('./routes/user/coupon-routes');
 const checkoutRoutes = require('./routes/user/checkout-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
 const userWalletRoutes = require('./routes/user/wallet-routes');
+const userReferralRoutes = require('./routes/user/referral-routes');
 
 require('./config/passport')(passport); // ✅ Load passport config
 
@@ -122,6 +124,7 @@ app.use('/cart', userCartRoutes);
 app.use('/wishlist', userWishlistRoutes);
 app.use('/wallet', userWalletRoutes);
 app.use('/coupons', userCouponRoutes);
+app.use ('/referrals', userReferralRoutes);
 app.use('/checkout', checkoutRoutes);
 // app.use('/transactions', transactionRoutes);
 app.use('/', landingRoutes);
@@ -147,6 +150,7 @@ app.use('/admin/orders', adminOrderRoutes);
 app.use('/admin/returns', adminReturnRoutes);
 app.use('/admin/coupons', adminCouponRoutes);
 app.use('/admin/sales-report', adminSalesReportRoutes);
+app.use('/admin/dashboard', adminDashboardRoutes);
 
 app.get('coupons/available', (req, res) => {
     console.log('🚀 /coupons/available route HIT!');

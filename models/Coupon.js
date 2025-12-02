@@ -33,7 +33,16 @@ const couponSchema = new mongoose.Schema({
         min: 0
     },
     maximumDiscountAmount: {
-        type: Number, // For percentage discounts
+        type: Number,
+        default: null
+    },
+    isReferralCoupon: {
+        type: Boolean,
+        default: false
+    },
+    assignedTo: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
         default: null
     },
     usageLimit: {

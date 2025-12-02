@@ -1,20 +1,32 @@
 const crypto = require('crypto');
 const User = require('../models/User');
 
-const generateReferralCode = async (userId) => {
-    // Create a unique code based on user ID and random string
-    const randomString = crypto.randomBytes(4).toString('hex').toUpperCase();
-    const userIdStr = userId.toString().slice(-4).toUpperCase();
-    const referralCode = `LAC${userIdStr}${randomString}`;
-    
+/**
+ * Generate a unique referral code for a user
+ * Format: 6-character alphanumeric code (e.g., ABC123)
+ */
+async function generateReferralCode(userId) {
+  const maxAttempts = 5;
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    // Generate 6-character code using user ID + random string
+    const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+    const code = randomPart.substring(0, 6);
+
     // Check if code already exists
-    const existingUser = await User.findOne({ referralCode });
-    if (existingUser) {
-        // Recursively generate new code if collision
-        return generateReferralCode(userId);
-    }
+    const existing = await User.findOne({ referralCode: code });
     
-    return referralCode;
-};
+    if (!existing) {
+      return code;
+    }
+
+    attempts++;
+  }
+
+  // Fallback: use timestamp-based code
+  const timestamp = Date.now().toString(36).toUpperCase();
+  return timestamp.substring(timestamp.length - 6);
+}
 
 module.exports = { generateReferralCode };

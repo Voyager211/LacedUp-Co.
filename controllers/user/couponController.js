@@ -205,6 +205,7 @@ const getAvailableCoupons = async (req, res) => {
         
         const coupons = await Coupon.find({
             isActive: true,
+            
             validFrom: { $lte: currentDate },
             validTo: { $gte: currentDate }
         })

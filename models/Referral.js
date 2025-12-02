@@ -17,7 +17,7 @@ const referralSchema = new mongoose.Schema({
     },
     rewardAmount: {
         type: Number,
-        default: 100 // ₹100 wallet credit
+        default: 300
     },
     status: {
         type: String,

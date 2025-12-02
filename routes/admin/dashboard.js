@@ -1,26 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const dashboardController = require('../controllers/adminDashboardController');
-const { isAdminAuthenticated } = require('../middleware/adminAuth');
+const dashboardController = require('../../controllers/admin/dashboardController');
+const isAdmin = require('../../middlewares/isAdmin');
 
-// Apply authentication middleware to all dashboard routes
-router.use(isAdminAuthenticated);
+// Apply admin authentication middleware to all routes
+router.use(isAdmin);
 
-// Dashboard statistics
-router.get('/api/dashboard/stats', dashboardController.getDashboardStats);
+// ============================================
+// API ENDPOINTS FOR DASHBOARD ANALYTICS
+// ============================================
 
-// Sales analytics
-router.get('/api/dashboard/sales', dashboardController.getSalesData);
+// Dashboard overview statistics
+router.get('/api/stats', dashboardController.getDashboardStats);
 
-// Revenue distribution
-router.get('/api/dashboard/revenue-distribution', dashboardController.getRevenueDistribution);
+// Sales analytics with time periods (monthly/weekly/yearly)
+router.get('/api/sales', dashboardController.getSalesData);
 
-// Best selling analytics
-router.get('/api/dashboard/best-selling-products', dashboardController.getBestSellingProducts);
-router.get('/api/dashboard/best-selling-category', dashboardController.getBestSellingCategory);
-router.get('/api/dashboard/best-selling-brand', dashboardController.getBestSellingBrand);
+// Revenue distribution by payment method
+router.get('/api/revenue-distribution', dashboardController.getRevenueDistribution);
 
-// Ledger report
+// Best selling products (top 5)
+router.get('/api/best-selling-products', dashboardController.getBestSellingProducts);
+
+// Best selling category
+router.get('/api/best-selling-category', dashboardController.getBestSellingCategory);
+
+// Best selling brand
+router.get('/api/best-selling-brand', dashboardController.getBestSellingBrand);
+
+// ============================================
+// REPORT GENERATION
+// ============================================
+
+// Export ledger report as PDF
 router.get('/ledger-report/export-pdf', dashboardController.exportLedgerPDF);
 
 module.exports = router;

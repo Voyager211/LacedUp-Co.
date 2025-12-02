@@ -72,4 +72,4 @@ router.delete('/profile/photo', requireAuth, profileController.deleteProfilePhot
 router.post('/logout', profileController.logout);
 router.get('/logout', profileController.logout);
 
-module.exports = router;
+module.exports = router; 

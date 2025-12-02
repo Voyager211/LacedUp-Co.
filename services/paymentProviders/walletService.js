@@ -18,7 +18,7 @@ const getOrCreateWallet = async (userId) => {
 
   return wallet;
 };
-
+ 
 /**
  * Get wallet by userId
  */

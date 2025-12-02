@@ -36,7 +36,7 @@ const walletSchema = new mongoose.Schema(
         },
         paymentMethod: {
           type: String,
-          enum: ['razorpay', 'manual_credit', 'refund', 'payment_for_order'],
+          enum: ['razorpay', 'manual_credit', 'refund', 'payment_for_order', 'referral_reward'],
           required: true
         },
         status: {

@@ -11,7 +11,8 @@ const crypto = require('crypto');
 const renderWalletPage = async (req, res) => {
   try {
     const userId = req.user?.id || req.user?._id || req.session.userId;
-
+    console.log(userId);
+    
     if (!userId) {
       req.flash('error', 'Please log in to continue');
       return res.redirect('/login');

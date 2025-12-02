@@ -10,4 +10,4 @@ router.get('/', salesReportController.getSalesReport);
 router.get('/export-pdf', salesReportController.exportPDF);
 router.get('/export-excel', salesReportController.exportExcel);
 
-module.exports = router;
+module.exports = router; 

@@ -27,7 +27,10 @@ const userSchema = new mongoose.Schema({
       type: Number,
       default: 0
   },
-
+  hasUsedReferralCode: {
+        type: Boolean,
+        default: false
+    },
   // Auth
   role: { type: String, default: 'user', enum: ['user', 'admin'] },
   isBlocked: { type: Boolean, default: false },
