@@ -1,5 +1,5 @@
 const Brand = require('../../models/Brand');
-const { getPagination } = require('../../utils/pagination');
+const getPagination = require('../../utils/pagination');
 
 exports.listBrands = async (req, res) => {
     try {

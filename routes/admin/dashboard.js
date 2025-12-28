@@ -6,6 +6,14 @@ const isAdmin = require('../../middlewares/isAdmin');
 // Apply admin authentication middleware to all routes
 router.use(isAdmin);
 
+
+// ============================================
+// DASHBOARD PAGE RENDER
+// ============================================
+
+// Render dashboard page
+router.get('/', dashboardController.renderDashboard);
+
 // ============================================
 // API ENDPOINTS FOR DASHBOARD ANALYTICS
 // ============================================

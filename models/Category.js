@@ -12,7 +12,7 @@ const categorySchema = new mongoose.Schema({
         max: 100
     },
     isActive: { type: Boolean, default: true },
-    isDeleted: {type: Boolean, default: false}
+    isDeleted: {type: Boolean, default: false} 
 }, {timestamps: true});
 
 categorySchema.pre('save', function(next) {

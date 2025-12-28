@@ -1,56 +1,117 @@
-const Order = require('../models/Order');
-const User = require('../models/User');
-const Product = require('../models/Product');
-const Category = require('../models/Category');
-const Brand = require('../models/Brand');
+const Order = require('../../models/Order');
+const User = require('../../models/User');
+const Product = require('../../models/Product');
+const Category = require('../../models/Category');
+const Brand = require('../../models/Brand');
 const { startOfDay, endOfDay, startOfWeek, endOfWeek, 
         startOfMonth, endOfMonth, startOfYear, endOfYear, 
         subMonths, subWeeks, subYears } = require('date-fns');
+const PDFDocument = require('pdfkit');
 
 // ============================================
-// GET DASHBOARD STATISTICS
+// HELPER: GET DATE RANGE BASED ON PERIOD
+// ============================================
+const getDateRange = (period = 'monthly') => {
+    const now = new Date();
+    let startDate, endDate;
+
+    switch (period) {
+        case 'weekly':
+            startDate = subWeeks(now, 12);
+            endDate = now;
+            break;
+        case 'yearly':
+            startDate = subYears(now, 5);
+            endDate = now;
+            break;
+        case 'monthly':
+        default:
+            startDate = subMonths(now, 12);
+            endDate = now;
+    }
+
+    console.log(`📅 Date range for ${period}:`, { startDate, endDate });
+    return { startDate, endDate };
+};
+
+// ============================================
+// RENDER DASHBOARD PAGE
+// ============================================
+const renderDashboard = async (req, res) => {
+    try {
+        res.render('admin/dashboard', {
+            title: 'Admin Dashboard - LacedUp Co',
+            layout: 'admin/layout'
+        });
+    } catch (error) {
+        console.error('Error rendering dashboard:', error);
+        res.status(500).send('Error loading dashboard');
+    }
+};
+
+// ============================================
+// GET DASHBOARD STATISTICS (FILTERED BY PERIOD)
 // ============================================
 const getDashboardStats = async (req, res) => {
     try {
+        const { period = 'monthly' } = req.query;
+        console.log('📊 getDashboardStats called with period:', period);
+        
+        const { startDate, endDate } = getDateRange(period);
+
         const [totalCustomers, totalOrders, revenueData, pendingOrders] = await Promise.all([
             // Total customers (only users, not admins, not blocked)
             User.countDocuments({ role: 'user', isBlocked: false }),
             
-            // Total orders count
-            Order.countDocuments(),
+            // Total orders count (within period)
+            Order.countDocuments({
+                createdAt: { $gte: startDate, $lte: endDate }
+            }),
             
-            // Total revenue from completed orders
+            // Total revenue from completed orders (within period)
             Order.aggregate([
                 { 
                     $match: { 
+                        createdAt: { $gte: startDate, $lte: endDate },
                         'items.status': { $in: ['Delivered', 'Shipped', 'Processing'] }
                     } 
+                },
+                { $unwind: '$items' },
+                {
+                    $match: {
+                        'items.status': { $in: ['Delivered', 'Shipped', 'Processing'] }
+                    }
                 },
                 { 
                     $group: { 
                         _id: null, 
-                        totalRevenue: { $sum: '$totalAmount' }
+                        totalRevenue: { $sum: '$items.totalPrice' }
                     } 
                 }
             ]),
             
-            // Pending orders (items with Pending or Processing status)
+            // Pending orders (within period)
             Order.countDocuments({ 
+                createdAt: { $gte: startDate, $lte: endDate },
                 'items.status': { $in: ['Pending', 'Processing'] } 
             })
         ]);
 
+        const responseData = {
+            totalCustomers,
+            totalOrders,
+            totalRevenue: revenueData[0]?.totalRevenue || 0,
+            pendingOrders
+        };
+
+        console.log('✅ Stats response:', responseData);
+
         res.json({
             success: true,
-            data: {
-                totalCustomers,
-                totalOrders,
-                totalRevenue: revenueData[0]?.totalRevenue || 0,
-                pendingOrders
-            }
+            data: responseData
         });
     } catch (error) {
-        console.error('Error fetching dashboard stats:', error);
+        console.error('❌ Error fetching dashboard stats:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching dashboard statistics'
@@ -64,6 +125,8 @@ const getDashboardStats = async (req, res) => {
 const getSalesData = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
+        console.log('📊 getSalesData called with period:', period);
+        
         let salesData, labels;
 
         switch (period) {
@@ -78,12 +141,14 @@ const getSalesData = async (req, res) => {
                 ({ salesData, labels } = await getMonthlySales());
         }
 
+        console.log('✅ Sales data points:', salesData.length);
+
         res.json({
             success: true,
             data: { labels, salesData }
         });
     } catch (error) {
-        console.error('Error fetching sales data:', error);
+        console.error('❌ Error fetching sales data:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching sales data'
@@ -231,11 +296,21 @@ const getYearlySales = async () => {
 };
 
 // ============================================
-// GET REVENUE DISTRIBUTION BY PAYMENT METHOD
+// GET REVENUE DISTRIBUTION BY PAYMENT METHOD (FILTERED)
 // ============================================
 const getRevenueDistribution = async (req, res) => {
     try {
+        const { period = 'monthly' } = req.query;
+        console.log('📊 getRevenueDistribution called with period:', period);
+        
+        const { startDate, endDate } = getDateRange(period);
+
         const distribution = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
             { $unwind: '$items' },
             {
                 $match: {
@@ -253,6 +328,8 @@ const getRevenueDistribution = async (req, res) => {
             }
         ]);
 
+        console.log('📦 Revenue distribution results:', distribution);
+
         const totalRevenue = distribution.reduce((sum, item) => sum + item.totalRevenue, 0);
 
         const formattedData = distribution.map(item => ({
@@ -261,12 +338,14 @@ const getRevenueDistribution = async (req, res) => {
             percentage: totalRevenue > 0 ? ((item.totalRevenue / totalRevenue) * 100).toFixed(2) : '0.00'
         }));
 
+        console.log('✅ Formatted revenue data:', formattedData);
+
         res.json({
             success: true,
             data: formattedData
         });
     } catch (error) {
-        console.error('Error fetching revenue distribution:', error);
+        console.error('❌ Error fetching revenue distribution:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching revenue distribution'
@@ -275,11 +354,21 @@ const getRevenueDistribution = async (req, res) => {
 };
 
 // ============================================
-// GET BEST SELLING PRODUCTS (TOP 5)
+// GET BEST SELLING PRODUCTS (TOP 5 - FILTERED)
 // ============================================
 const getBestSellingProducts = async (req, res) => {
     try {
+        const { period = 'monthly' } = req.query;
+        console.log('📊 getBestSellingProducts called with period:', period);
+        
+        const { startDate, endDate } = getDateRange(period);
+
         const bestProducts = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
             { $unwind: '$items' },
             {
                 $match: {
@@ -323,12 +412,14 @@ const getBestSellingProducts = async (req, res) => {
             }
         ]);
 
+        console.log('✅ Best products count:', bestProducts.length);
+
         res.json({
             success: true,
             data: bestProducts
         });
     } catch (error) {
-        console.error('Error fetching best selling products:', error);
+        console.error('❌ Error fetching best selling products:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling products'
@@ -337,11 +428,21 @@ const getBestSellingProducts = async (req, res) => {
 };
 
 // ============================================
-// GET BEST SELLING CATEGORY
+// GET BEST SELLING CATEGORY (FILTERED)
 // ============================================
 const getBestSellingCategory = async (req, res) => {
     try {
+        const { period = 'monthly' } = req.query;
+        console.log('📊 getBestSellingCategory called with period:', period);
+        
+        const { startDate, endDate } = getDateRange(period);
+
         const bestCategory = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
             { $unwind: '$items' },
             {
                 $match: {
@@ -386,12 +487,14 @@ const getBestSellingCategory = async (req, res) => {
             }
         ]);
 
+        console.log('✅ Best category:', bestCategory[0]?.categoryName || 'None');
+
         res.json({
             success: true,
             data: bestCategory[0] || null
         });
     } catch (error) {
-        console.error('Error fetching best selling category:', error);
+        console.error('❌ Error fetching best selling category:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling category'
@@ -400,11 +503,21 @@ const getBestSellingCategory = async (req, res) => {
 };
 
 // ============================================
-// GET BEST SELLING BRAND
+// GET BEST SELLING BRAND (FILTERED)
 // ============================================
 const getBestSellingBrand = async (req, res) => {
     try {
+        const { period = 'monthly' } = req.query;
+        console.log('📊 getBestSellingBrand called with period:', period);
+        
+        const { startDate, endDate } = getDateRange(period);
+
         const bestBrand = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
             { $unwind: '$items' },
             {
                 $match: {
@@ -456,12 +569,14 @@ const getBestSellingBrand = async (req, res) => {
             }
         ]);
 
+        console.log('✅ Best brand:', bestBrand[0]?.brandName || 'None');
+
         res.json({
             success: true,
             data: bestBrand[0] || null
         });
     } catch (error) {
-        console.error('Error fetching best selling brand:', error);
+        console.error('❌ Error fetching best selling brand:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling brand'
@@ -474,21 +589,46 @@ const getBestSellingBrand = async (req, res) => {
 // ============================================
 const exportLedgerPDF = async (req, res) => {
     try {
-        const { timePeriod, paymentMethod, orderStatus } = req.query;
-        
-        // TODO: Implement PDF generation logic using PDFKit or Puppeteer
-        // This is a placeholder implementation
-        
-        res.json({
-            success: true,
-            message: 'PDF export functionality - to be implemented with PDFKit/Puppeteer'
-        });
+        const { timePeriod = 'monthly', paymentMethod = 'all', orderStatus = 'all' } = req.query;
+
+        // Create a new PDF document
+        const doc = new PDFDocument({ margin: 50 });
+
+        // Generate filename with date
+        const today = new Date();
+        const dateString = today.toISOString().split('T')[0];
+        const filename = `LacedUp-Ledger-Report-${dateString}.pdf`;
+
+        // Set headers to force download
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+
+        // Pipe PDF stream to response
+        doc.pipe(res);
+
+        // Simple placeholder content (replace with real ledger data)
+        doc.fontSize(20).text('LacedUp Co - Ledger Report', { align: 'center' });
+        doc.moveDown();
+        doc.fontSize(12).text(`Generated on: ${today.toLocaleString()}`);
+        doc.text(`Time Period: ${timePeriod}`);
+        doc.text(`Payment Method: ${paymentMethod}`);
+        doc.text(`Order Status: ${orderStatus}`);
+        doc.moveDown();
+        doc.text('This is a placeholder PDF. Replace this section with actual ledger data.');
+
+        // Finalize PDF
+        doc.end();
     } catch (error) {
         console.error('Error exporting ledger PDF:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error exporting ledger report'
-        });
+        if (!res.headersSent) {
+            res.status(500).json({
+                success: false,
+                message: 'Error exporting ledger report',
+            });
+        }
     }
 };
 
@@ -496,6 +636,7 @@ const exportLedgerPDF = async (req, res) => {
 // EXPORTS
 // ============================================
 module.exports = {
+    renderDashboard,
     getDashboardStats,
     getSalesData,
     getRevenueDistribution,

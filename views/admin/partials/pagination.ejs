@@ -100,51 +100,5 @@
       }
     }
   </style>
-
-  <!-- Enhanced Pagination JavaScript -->
-  <script>
-    document.addEventListener('click', function (e) {
-      const target = e.target.closest('.page-link');
-      if (!target || !target.dataset.page || target.classList.contains('disabled-btn')) return;
-
-      e.preventDefault();
-      const page = parseInt(target.dataset.page);
-
-      // Validate page number
-      if (isNaN(page) || page < 1 || page > <%- totalPages %>) return;
-
-      // Call the fetch function if it exists
-      if (typeof fetchCallback === 'function') {
-        fetchCallback(page);
-      } else if (typeof window.paginationCallback === 'function') {
-        window.paginationCallback(page);
-      } else {
-        console.warn('No pagination callback function found');
-      }
-    });
-
-    // Add keyboard navigation
-    document.addEventListener('keydown', function(e) {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-
-      const currentPage = <%- currentPage %>;
-      const totalPages = <%- totalPages %>;
-
-      if (e.key === 'ArrowLeft' && currentPage > 1) {
-        e.preventDefault();
-        if (typeof fetchCallback === 'function') {
-          fetchCallback(currentPage - 1);
-        } else if (typeof window.paginationCallback === 'function') {
-          window.paginationCallback(currentPage - 1);
-        }
-      } else if (e.key === 'ArrowRight' && currentPage < totalPages) {
-        e.preventDefault();
-        if (typeof fetchCallback === 'function') {
-          fetchCallback(currentPage + 1);
-        } else if (typeof window.paginationCallback === 'function') {
-          window.paginationCallback(currentPage + 1);
-        }
-      }
-    });
-  </script>
 <% } %>
+ 

@@ -1,49 +1,77 @@
 const Category = require('../../models/Category');
-const { getPagination } = require('../../utils/pagination');
+const getPagination = require('../../utils/pagination');
 
-exports.listCategories = async (req, res) => {
-    try {
-        const q = req.query.q || '';
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10;
-
-        const query = {
-            name: { $regex: q, $options: 'i' },
-            isDeleted: false
-        };
-
-        const { data: categories, totalPages } = await getPagination(
-            Category.find(query).sort({ createdAt: -1 }),
-            Category,
-            query,
-            page,
-            limit
-        );
-
-        res.render('admin/categories', {
-            categories,
-            currentPage: page,
-            totalPages,
-            searchQuery: q,
-            title: "Category Management"
-        });
-    } catch (error) {
-        console.error('Error listing categories:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-// Fetch-based category listing
-exports.apiCategories = async (req, res) => {
+// List categories with search and filter
+const listCategories = async (req, res) => {
   try {
-    const q = req.query.q || '';
+    const searchQuery = req.query.q || '';
+    const statusFilter = req.query.status || 'all';
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
 
+    // Build filter query
     const query = {
-      name: { $regex: q, $options: 'i' },
+      name: { $regex: searchQuery, $options: 'i' },
       isDeleted: false
     };
+
+    // Apply status filter - USE isActive NOT isListed
+    if (statusFilter === 'active') {
+      query.isActive = true;
+    } else if (statusFilter === 'inactive') {
+      query.isActive = false;
+    }
+
+    const { data: categories, totalPages } = await getPagination(
+      Category.find(query).sort({ createdAt: -1 }),
+      Category,
+      query,
+      page,
+      limit
+    );
+
+    res.render('admin/categories', {
+      categories,
+      currentPage: page,
+      totalPages,
+      searchQuery,
+      statusFilter,
+      title: 'Category Management'
+    });
+  } catch (error) {
+    console.error('Error listing categories:', error);
+    res.status(500).render('admin/categories', {
+      categories: [],
+      currentPage: 1,
+      totalPages: 1,
+      searchQuery: '',
+      statusFilter: 'all',
+      title: 'Category Management',
+      error: 'Failed to load categories'
+    });
+  }
+};
+
+// Fetch-based category listing
+const apiCategories = async (req, res) => {
+  try {
+    const searchQuery = req.query.q || '';
+    const statusFilter = req.query.status || 'all';
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
+    // Build filter query
+    const query = {
+      name: { $regex: searchQuery, $options: 'i' },
+      isDeleted: false
+    };
+
+    // Apply status filter - USE isActive NOT isListed
+    if (statusFilter === 'active') {
+      query.isActive = true;
+    } else if (statusFilter === 'inactive') {
+      query.isActive = false;
+    }
 
     const { data: categories, totalPages } = await getPagination(
       Category.find(query).sort({ createdAt: -1 }),
@@ -61,7 +89,7 @@ exports.apiCategories = async (req, res) => {
 };
 
 // Get single category
-exports.apiGetCategory = async (req, res) => {
+const apiGetCategory = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
     if (!category || category.isDeleted) {
@@ -75,7 +103,7 @@ exports.apiGetCategory = async (req, res) => {
 };
 
 // Add category via fetch
-exports.apiCreateCategory = async (req, res) => {
+const apiCreateCategory = async (req, res) => {
   try {
     const { name, description, categoryOffer } = req.body;
 
@@ -83,13 +111,11 @@ exports.apiCreateCategory = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Category name is required' });
     }
 
-    // Trim and validate name
     const trimmedName = name.trim();
     if (!trimmedName) {
       return res.status(400).json({ success: false, message: 'Category name cannot be empty' });
     }
 
-    // Check for case-insensitive uniqueness
     const existingCategory = await Category.findOne({
       name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
       isDeleted: false
@@ -111,7 +137,6 @@ exports.apiCreateCategory = async (req, res) => {
   } catch (err) {
     console.error('Create Error:', err);
 
-    // Handle MongoDB duplicate key error (in case the unique index catches it)
     if (err.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -124,7 +149,7 @@ exports.apiCreateCategory = async (req, res) => {
 };
 
 // Update category via fetch
-exports.apiUpdateCategory = async (req, res) => {
+const apiUpdateCategory = async (req, res) => {
   try {
     const { name, description, categoryOffer } = req.body;
     const categoryId = req.params.id;
@@ -133,13 +158,11 @@ exports.apiUpdateCategory = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Category name is required' });
     }
 
-    // Trim and validate name
     const trimmedName = name.trim();
     if (!trimmedName) {
       return res.status(400).json({ success: false, message: 'Category name cannot be empty' });
     }
 
-    // Check for case-insensitive uniqueness (excluding current category)
     const existingCategory = await Category.findOne({
       name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
       isDeleted: false,
@@ -163,7 +186,6 @@ exports.apiUpdateCategory = async (req, res) => {
   } catch (err) {
     console.error('Update Error:', err);
 
-    // Handle MongoDB duplicate key error
     if (err.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -175,15 +197,22 @@ exports.apiUpdateCategory = async (req, res) => {
   }
 };
 
-// Toggle status via fetch
-exports.apiToggleStatus = async (req, res) => {
+// Toggle category status - USE isActive NOT isListed
+const apiToggleStatus = async (req, res) => {
   try {
     const category = await Category.findById(req.params.id);
-    if (category) {
-      category.isActive = !category.isActive;
-      await category.save();
+    if (!category || category.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
     }
-    res.json({ success: true });
+
+    category.isActive = !category.isActive;
+    await category.save();
+
+    res.json({
+      success: true,
+      message: `Category ${category.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: category.isActive
+    });
   } catch (err) {
     console.error('Toggle Status Error:', err);
     res.status(500).json({ success: false, message: 'Failed to toggle status' });
@@ -191,12 +220,27 @@ exports.apiToggleStatus = async (req, res) => {
 };
 
 // Soft delete via fetch
-exports.apiSoftDeleteCategory = async (req, res) => {
+const apiSoftDeleteCategory = async (req, res) => {
   try {
+    const category = await Category.findById(req.params.id);
+    if (!category || category.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Category not found' });
+    }
+
     await Category.findByIdAndUpdate(req.params.id, { isDeleted: true });
-    res.json({ success: true });
+    res.json({ success: true, message: 'Category deleted successfully' });
   } catch (err) {
     console.error('Delete Error:', err);
     res.status(500).json({ success: false, message: 'Failed to delete category' });
   }
+};
+
+module.exports = {
+  listCategories,
+  apiCategories,
+  apiGetCategory,
+  apiCreateCategory,
+  apiUpdateCategory,
+  apiToggleStatus,
+  apiSoftDeleteCategory
 };
