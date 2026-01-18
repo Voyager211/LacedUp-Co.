@@ -1,0 +1,1550 @@
+<% var title = "Shop Sneakers"; %>
+
+<div class="container-fluid">
+  <!-- Breadcrumbs -->
+  <div class="breadcrumb-container">
+    <%- include('partials/breadcrumb', {
+      breadcrumbs: [
+        { label: 'Home', href: '/' },
+        { label: 'Sneakers' }
+      ]
+    }) %>
+  </div>
+
+  <div class="row">
+    <!-- Sidebar Filters -->
+    <aside id="filter-sidebar" class="col-md-3 mb-4" style="display: none;">
+        <form id="filter-form" class="filter-sidebar p-3">
+            <!-- Hide Filters Button -->
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">Filters</h5>
+                <button type="button" id="hide-filters-btn" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-x-lg"></i> Hide Filters
+                </button>
+            </div>
+
+            <!-- Category -->
+            <div class="mb-4">
+                <label class="form-label">Category</label>
+                <select id="category-select" class="form-select">
+                    <option value="">All Categories</option>
+                    <% categories.forEach(cat => { %>
+                    <option value="<%= cat._id %>"><%= cat.name %></option>
+                    <% }) %>
+                </select>
+            </div>
+
+            <!-- Brand Filter -->
+            <div class="mb-4">
+                <label class="form-label">Brand</label>
+                <div class="brand-filter-dropdown">
+                    <button type="button" class="form-select brand-dropdown-btn" id="brand-dropdown-btn">
+                        <span class="selected-text">All Brands</span>
+                        <i class="bi bi-chevron-down ms-auto"></i>
+                    </button>
+                    <div class="brand-dropdown-menu" id="brand-dropdown-menu">
+                        <div class="brand-option">
+                            <input type="checkbox" id="brand-all" class="brand-checkbox" value="" checked>
+                            <label for="brand-all">All Brands</label>
+                        </div>
+                        <% brands.forEach((brand, index) => { %>
+                        <div class="brand-option">
+                            <input type="checkbox" id="brand-<%= index %>" class="brand-checkbox" value="<%= brand._id %>">
+                            <label for="brand-<%= index %>"><%= brand.name %></label>
+                        </div>
+                        <% }) %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Size Filter -->
+            <div class="mb-4">
+                <label class="form-label">Size</label>
+                <div class="size-filter">
+                    <% if (availableSizes && availableSizes.length > 0) { %>
+                        <% availableSizes.forEach(size => { %>
+                            <div class="size-option" data-size="<%= size %>">
+                                <%= size.toString().toLowerCase().includes('uk') ? size : 'UK ' + size %>
+                            </div>
+                        <% }) %>
+                    <% } else { %>
+                        <div class="text-muted small">No sizes available</div>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Price Range -->
+            <div class="mb-4">
+                <label class="form-label">Price Range</label>
+                <div class="d-flex gap-2">
+                    <input type="number" id="min-price" class="form-control" placeholder="Min">
+                    <input type="number" id="max-price" class="form-control" placeholder="Max">
+                </div>
+            </div>
+
+            <!-- Stock Status Filter -->
+            <div class="mb-4">
+                <label class="form-label">Stock Status</label>
+                <div class="stock-filter">
+                    <div class="stock-option">
+                        <input type="checkbox" id="stock-in-stock" class="stock-checkbox" value="inStock">
+                        <label for="stock-in-stock">In Stock</label>
+                    </div>
+                    <div class="stock-option">
+                        <input type="checkbox" id="stock-out-of-stock" class="stock-checkbox" value="outOfStock">
+                        <label for="stock-out-of-stock">Out of Stock</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apply Filters Button -->
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-apply-filters">
+                    Apply Filters
+                </button>
+                <button type="button" id="reset-filters" class="btn btn-reset-filters">
+                    Reset All
+                </button>
+            </div>
+        </form>
+    </aside>
+
+    <!-- Main Section -->
+    <section id="main-section" class="col-12">
+      <!-- Top Controls Bar -->
+      <div class="top-controls-bar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <!-- Left Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Product Count -->
+            <div class="product-count">
+              Products (<span id="product-count"><%= totalProductCount || products.length %></span>)
+            </div>
+
+            <!-- View Filters Button -->
+            <button type="button" id="view-filters-btn" class="btn btn-outline-primary btn-sm">
+              <i class="bi bi-funnel"></i> View Filters
+            </button>
+          </div>
+
+          <!-- Right Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Search Input with Dropdown -->
+            <div class="search-input-container" style="min-width: 250px;">
+              <form id="search-form" class="position-relative">
+                <input type="text" id="top-search-input" class="form-control pe-5" placeholder="Search products..." autocomplete="off">
+                <button type="button" id="top-clear-search" class="clear-btn">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                <button type="submit" class="search-icon-btn">
+                  <i class="bi bi-search search-icon"></i>
+                </button>
+              </form>
+
+              <!-- Search Suggestions Dropdown -->
+              <div id="search-suggestions" class="search-suggestions-dropdown">
+                <div class="suggestions-loading" style="display: none;">
+                  <div class="d-flex align-items-center justify-content-center py-3">
+                    <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                    <span>Searching...</span>
+                  </div>
+                </div>
+                <div class="suggestions-list"></div>
+                <div class="suggestions-empty" style="display: none;">
+                  <div class="text-center py-3 text-muted">
+                    <i class="bi bi-search me-2"></i>
+                    No products found
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sort Dropdown -->
+            <div class="d-flex align-items-center gap-2">
+              <label for="top-sort-select" class="fw-semibold text-nowrap">Sort By:</label>
+              <select id="top-sort-select" class="form-select form-select-sm" style="min-width: 150px;">
+                <option value="">Default</option>
+                <option value="nameAZ">Name: A - Z</option>
+                <option value="nameZA">Name: Z - A</option>
+                <option value="priceLow">Price: Low to High</option>
+                <option value="priceHigh">Price: High to Low</option>
+                <option value="newest">Newest</option>
+                <option value="featured">Featured</option>
+                <option value="rating">Rating</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Grid -->
+      <div class="row" id="product-grid">
+        <% products.forEach(product => { %>
+          <%- include('partials/product-card', { product }) %>
+        <% }) %>
+      </div>
+
+      <!-- No Results -->
+      <div id="no-results" class="text-center my-5 d-none">
+        <h5 class="text-muted">No sneakers found matching your filters.</h5>
+      </div>
+
+      <!-- Pagination -->
+      <% if (totalPages > 1) { %>
+        <div class="pagination-wrapper">
+          <div class="pagination">
+            <!-- Previous Button -->
+            <% if (hasPrevPage) { %>
+              <button
+                class="page-btn pagination-btn"
+                data-page="<%= prevPage %>"
+                data-category="<%= selectedCategory %>"
+                data-search="<%= search %>"
+                data-sort="<%= sortBy %>"
+                data-min="<%= minPrice %>"
+                data-max="<%= maxPrice %>">
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            <% } else { %>
+              <button class="page-btn" disabled>
+                <i class="bi bi-chevron-left"></i>
+              </button>
+            <% } %>
+
+            <!-- Page Numbers -->
+            <% pageNumbers.forEach(pageNum => { %>
+              <% if (pageNum === currentPage) { %>
+                <button class="page-btn active"><%= pageNum %></button>
+              <% } else { %>
+                <button
+                  class="page-btn pagination-btn"
+                  data-page="<%= pageNum %>"
+                  data-category="<%= selectedCategory %>"
+                  data-search="<%= search %>"
+                  data-sort="<%= sortBy %>"
+                  data-min="<%= minPrice %>"
+                  data-max="<%= maxPrice %>">
+                  <%= pageNum %>
+                </button>
+              <% } %>
+            <% }) %>
+
+            <!-- Next Button -->
+            <% if (hasNextPage) { %>
+              <button
+                class="page-btn pagination-btn"
+                data-page="<%= nextPage %>"
+                data-category="<%= selectedCategory %>"
+                data-search="<%= search %>"
+                data-sort="<%= sortBy %>"
+                data-min="<%= minPrice %>"
+                data-max="<%= maxPrice %>">
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            <% } else { %>
+              <button class="page-btn" disabled>
+                <i class="bi bi-chevron-right"></i>
+              </button>
+            <% } %>
+          </div>
+        </div>
+      <% } %>
+    </section>
+  </div>
+</div>
+
+<!-- ============================================
+     🧠 Script 1: Fetch-Based Dynamic Product Loading Logic
+     - Handles state-based query building
+     - Injects product grid + pagination
+     - Pushes URL state
+     - Restores filters on back/forward navigation
+============================================= -->
+<script>
+  let currentFilters = {
+    q: '',
+    sort: '',
+    category: '',
+    brand: '',
+    minPrice: '',
+    maxPrice: '',
+    sizes: [],
+    stockStatus: []
+  };
+
+  // Helper function to render products
+  function renderProducts(products) {
+    const productGrid = document.getElementById('product-grid');
+    if (!products || products.length === 0) {
+      productGrid.innerHTML = '';
+      return;
+    }
+
+    productGrid.innerHTML = products.map(product => `
+      <div class="col-6 col-md-4 col-lg-3 mb-4">
+        <div class="card h-100 border-0 shadow-sm product-card bg-white" style="${product.totalStock === 0 ? 'position: relative; overflow: hidden;' : ''}">
+          <a href="/product/${product.slug || product._id}" class="text-decoration-none text-dark" style="${product.totalStock === 0 ? 'position: relative; z-index: 5;' : ''}">
+            <img src="${product.mainImage}" class="card-img-top img-fluid" alt="${product.productName}" style="object-fit: cover; height: 200px;">
+          </a>
+          ${product.totalStock === 0 ? `
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
+            <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
+          ` : ''}
+          <div class="card-body d-flex flex-column justify-content-between">
+            <div>
+              <h6 class="fw-bold mb-1">${product.productName}</h6>
+              <p class="text-muted mb-1">${product.brand?.name || product.brand || 'No Brand'}</p>
+              <div class="d-flex align-items-center gap-2">
+                ${product.variants && product.variants.length > 0 ? (() => {
+                  let avgPrice;
+                  // Use the computed averageFinalPrice or averageSalePrice if available
+                  if (product.averageFinalPrice) {
+                    avgPrice = product.averageFinalPrice;
+                  } else if (product.averageSalePrice) {
+                    avgPrice = product.averageSalePrice;
+                  } else {
+                    // Fallback: use finalPrice from variants if available, otherwise calculate
+                    if (product.variants[0].finalPrice !== undefined) {
+                      avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
+                    } else {
+                      // Legacy calculation for backward compatibility with category offer logic
+                      const calculatedPrices = product.variants.map(v => {
+                        const basePrice = v.basePrice ? Math.round(v.basePrice) : Math.round(product.regularPrice);
+                        const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                        const productOffer = product.productOffer || 0;
+                        const variantOffer = v.variantSpecificOffer || 0;
+                        const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                        return basePrice * (1 - maxOffer / 100);
+                      });
+                      avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+                    }
+                  }
+                  return `<p class="mb-0 fw-semibold text-danger">₹${Math.round(avgPrice)}</p>`;
+                })() : '<p class="mb-0 fw-semibold text-danger">₹0</p>'}
+                <p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice || 0}</p>
+              </div>
+              ${product.variants && product.variants.length > 0 ? (() => {
+                let avgPrice;
+                // Calculate average price for discount calculation
+                if (product.averageFinalPrice) {
+                  avgPrice = product.averageFinalPrice;
+                } else if (product.averageSalePrice) {
+                  avgPrice = product.averageSalePrice;
+                } else if (product.variants[0].finalPrice !== undefined) {
+                  avgPrice = product.variants.reduce((sum, v) => sum + v.finalPrice, 0) / product.variants.length;
+                } else {
+                  const calculatedPrices = product.variants.map(v => {
+                    const basePrice = v.basePrice ? Math.round(v.basePrice) : Math.round(product.regularPrice);
+                    const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                    const productOffer = product.productOffer || 0;
+                    const variantOffer = v.variantSpecificOffer || 0;
+                    const maxOffer = Math.max(categoryOffer, productOffer, variantOffer);
+                    return basePrice * (1 - maxOffer / 100);
+                  });
+                  avgPrice = calculatedPrices.reduce((sum, price) => sum + price, 0) / calculatedPrices.length;
+                }
+
+                const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
+                  ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
+                  : 0;
+
+                if (discountPercentage > 0) {
+                  return `
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                      <span class="badge bg-success small">${discountPercentage}% OFF</span>
+                      <p class="mb-0 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+                    </div>
+                  `;
+                } else {
+                  return `<p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>`;
+                }
+              })() : '<p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>'}
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-sm btn-outline-secondary wishlist-btn" data-id="${product._id}">
+                <i class="bi bi-heart"></i>
+              </button>
+              <button class="btn btn-sm btn-dark cart-btn" data-id="${product._id}">
+                <i class="bi bi-cart-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function fetchCallback(page = 1) {
+    const params = new URLSearchParams();
+    if (currentFilters.q) params.append('q', currentFilters.q);
+    if (currentFilters.sort) params.append('sort', currentFilters.sort);
+    if (currentFilters.minPrice) params.append('minPrice', currentFilters.minPrice);
+    if (currentFilters.maxPrice) params.append('maxPrice', currentFilters.maxPrice);
+    if (currentFilters.category) params.append('category', currentFilters.category);
+    if (currentFilters.brand) params.append('brand', currentFilters.brand);
+    currentFilters.sizes.forEach(size => params.append('size', size));
+    currentFilters.stockStatus.forEach(status => params.append('stockStatus', status));
+    params.append('page', page);
+
+    fetch(`/api/shop?${params.toString()}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          // Update product grid
+          renderProducts(data.products);
+
+          // Update product count
+          document.getElementById('product-count').textContent = data.totalProductCount || data.pagination.totalProducts || data.products.length;
+
+          // Show/hide no results message
+          document.getElementById('no-results').classList.toggle('d-none', data.products.length > 0);
+
+          // Push state to browser history
+          history.pushState(null, '', `/shop?${params.toString()}`);
+
+          // Note: Pagination is now handled by the custom implementation
+          // The page will reload with new pagination state
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching products:', err);
+      });
+  }
+
+  // 🌐 Restore filters on browser back/forward buttons
+  window.addEventListener('popstate', () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    currentFilters.q = urlParams.get('q') || '';
+    currentFilters.sort = urlParams.get('sort') || '';
+    currentFilters.minPrice = urlParams.get('minPrice') || '';
+    currentFilters.maxPrice = urlParams.get('maxPrice') || '';
+    currentFilters.category = urlParams.get('category') || '';
+    currentFilters.brand = urlParams.get('brand') || '';
+    currentFilters.sizes = urlParams.getAll('size');
+    const page = parseInt(urlParams.get('page')) || 1;
+
+    fetchCallback(page);
+  });
+</script>
+
+<!-- =================================================
+     💡 Script 2: Enhanced UI Interaction
+     - ❌ Toggle & clear search input (both sidebar and top)
+     - 🎯 Size filter selection
+     - � Reset all filters functionality
+     - �📋 Collect all filter inputs on Apply button
+     - 🛒 Triggers fetchCallback only on submit
+================================================== -->
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // Get top search and sort elements
+    const topSearchInput = document.getElementById('top-search-input');
+    const topClearBtn = document.getElementById('top-clear-search');
+    const topSortSelect = document.getElementById('top-sort-select');
+
+    // Filter sidebar toggle elements
+    const filterSidebar = document.getElementById('filter-sidebar');
+    const mainSection = document.getElementById('main-section');
+    const viewFiltersBtn = document.getElementById('view-filters-btn');
+    const hideFiltersBtn = document.getElementById('hide-filters-btn');
+
+    // Filter sidebar toggle functionality - simple static behavior
+    function showFilters() {
+      console.log('Showing filters');
+
+      // Show sidebar instantly
+      filterSidebar.style.display = 'block';
+
+      // Adjust main section columns instantly
+      mainSection.classList.remove('col-12');
+      mainSection.classList.add('col-md-9');
+
+      // Hide the view filters button
+      viewFiltersBtn.style.display = 'none';
+    }
+
+    function hideFilters() {
+      console.log('Hiding filters');
+
+      // Hide sidebar instantly
+      filterSidebar.style.display = 'none';
+
+      // Reset main section to full width instantly
+      mainSection.classList.remove('col-md-9');
+      mainSection.classList.add('col-12');
+
+      // Show the view filters button
+      viewFiltersBtn.style.display = 'inline-block';
+    }
+
+    // Event listeners for filter toggle
+    viewFiltersBtn.addEventListener('click', showFilters);
+    hideFiltersBtn.addEventListener('click', hideFilters);
+
+    // Keyboard support for accessibility
+    document.addEventListener('keydown', function(e) {
+      // Close sidebar with Escape key
+      if (e.key === 'Escape' && filterSidebar.style.display === 'block') {
+        hideFilters();
+      }
+    });
+
+    // Debounce function for search
+    function debounce(func, wait) {
+      let timeout;
+      return function executedFunction(...args) {
+        const later = () => {
+          clearTimeout(timeout);
+          func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+      };
+    }
+
+    // Search suggestions functionality
+    const searchForm = document.getElementById('search-form');
+    const searchSuggestions = document.getElementById('search-suggestions');
+    const suggestionsLoading = searchSuggestions.querySelector('.suggestions-loading');
+    const suggestionsList = searchSuggestions.querySelector('.suggestions-list');
+    const suggestionsEmpty = searchSuggestions.querySelector('.suggestions-empty');
+
+    let currentSuggestionIndex = -1;
+    let searchTimeout;
+
+    // Function to perform actual search (updates product grid)
+    function performSearch() {
+      currentFilters.q = topSearchInput.value.trim();
+      hideSuggestions();
+      fetchCallback(1);
+    }
+
+    // Function to perform immediate sort
+    function performSort() {
+      currentFilters.sort = topSortSelect.value;
+      fetchCallback(1);
+    }
+
+    // Toggle 'X' clear button visibility for top search
+    function toggleTopClearButton() {
+      topClearBtn.style.display = topSearchInput.value.trim() ? 'block' : 'none';
+    }
+
+    // Show suggestions dropdown
+    function showSuggestions() {
+      console.log('🔽 Showing suggestions dropdown');
+      searchSuggestions.classList.add('show');
+      console.log('🔽 Dropdown classes:', searchSuggestions.className);
+      console.log('🔽 Dropdown computed style:', window.getComputedStyle(searchSuggestions).display);
+    }
+
+    // Hide suggestions dropdown
+    function hideSuggestions() {
+      searchSuggestions.classList.remove('show');
+      currentSuggestionIndex = -1;
+    }
+
+    // Fetch search suggestions
+    async function fetchSuggestions(query) {
+      console.log('🔍 Fetching suggestions for:', query);
+
+      if (!query || query.length < 2) {
+        hideSuggestions();
+        return;
+      }
+
+      // Show loading state
+      suggestionsLoading.style.display = 'block';
+      suggestionsList.innerHTML = '';
+      suggestionsEmpty.style.display = 'none';
+      showSuggestions();
+
+      try {
+        console.log('📡 Making API call to:', `/api/search-suggestions?q=${encodeURIComponent(query)}`);
+        const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('📦 API response:', data);
+
+        suggestionsLoading.style.display = 'none';
+
+        if (data.success && data.suggestions && data.suggestions.length > 0) {
+          console.log('✅ Rendering suggestions:', data.suggestions.length);
+          renderSuggestions(data.suggestions);
+        } else {
+          console.log('❌ No suggestions found');
+          suggestionsEmpty.style.display = 'block';
+        }
+      } catch (error) {
+        console.error('❌ Error fetching suggestions:', error);
+        suggestionsLoading.style.display = 'none';
+        suggestionsEmpty.style.display = 'block';
+      }
+    }
+
+    // Render suggestions in dropdown - SIMPLIFIED VERSION (only product names)
+    function renderSuggestions(suggestions) {
+      console.log('🎨 Rendering suggestions:', suggestions);
+
+      suggestionsList.innerHTML = suggestions.map((product, index) => `
+        <div class="suggestion-item" data-index="${index}" data-name="${product.productName}">
+          <div class="suggestion-name">${product.productName}</div>
+        </div>
+      `).join('');
+
+      console.log('✅ Suggestions HTML rendered, adding click listeners...');
+
+      // Add click listeners to suggestions
+      suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
+        item.addEventListener('click', () => {
+          console.log('🖱️ Suggestion clicked:', item.dataset.name);
+          const productName = item.dataset.name;
+          topSearchInput.value = productName;
+          performSearch();
+        });
+      });
+    }
+
+    // Debounced suggestions fetch (300ms delay)
+    const debouncedFetchSuggestions = debounce((query) => {
+      fetchSuggestions(query);
+    }, 300);
+
+    // Top search input event listeners
+    topSearchInput.addEventListener('input', function () {
+      toggleTopClearButton();
+      const query = this.value.trim();
+
+      if (query.length >= 2) {
+        debouncedFetchSuggestions(query);
+      } else {
+        hideSuggestions();
+      }
+    });
+
+    // Keyboard navigation for suggestions
+    topSearchInput.addEventListener('keydown', function(e) {
+      const suggestions = suggestionsList.querySelectorAll('.suggestion-item');
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
+        updateSuggestionSelection(suggestions);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+        updateSuggestionSelection(suggestions);
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
+          const selectedItem = suggestions[currentSuggestionIndex];
+          topSearchInput.value = selectedItem.dataset.name;
+        }
+        performSearch();
+      } else if (e.key === 'Escape') {
+        hideSuggestions();
+      }
+    });
+
+    // Update visual selection of suggestions
+    function updateSuggestionSelection(suggestions) {
+      suggestions.forEach((item, index) => {
+        item.classList.toggle('active', index === currentSuggestionIndex);
+      });
+
+      if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
+        topSearchInput.value = suggestions[currentSuggestionIndex].dataset.name;
+      }
+    }
+
+    // Search form submission
+    searchForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      performSearch();
+    });
+
+    // Clear search field
+    topClearBtn.addEventListener('click', () => {
+      topSearchInput.value = '';
+      topClearBtn.style.display = 'none';
+      hideSuggestions();
+      currentFilters.q = '';
+      fetchCallback(1);
+    });
+
+    // Hide suggestions when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!searchForm.contains(e.target) && !searchSuggestions.contains(e.target)) {
+        hideSuggestions();
+      }
+    });
+
+    // Top sort dropdown - immediate sort on change
+    topSortSelect.addEventListener('change', function() {
+      performSort(); // Immediate sort on selection change
+    });
+
+    // 🎯 Brand filter dropdown functionality
+    const brandDropdownBtn = document.getElementById('brand-dropdown-btn');
+    const brandDropdownMenu = document.getElementById('brand-dropdown-menu');
+    const brandCheckboxes = document.querySelectorAll('.brand-checkbox');
+    const brandAllCheckbox = document.getElementById('brand-all');
+
+    // Toggle brand dropdown
+    brandDropdownBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      brandDropdownMenu.classList.toggle('show');
+    });
+
+    // Close brand dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!brandDropdownBtn.contains(e.target) && !brandDropdownMenu.contains(e.target)) {
+        brandDropdownMenu.classList.remove('show');
+      }
+    });
+
+    // Handle brand checkbox changes
+    brandCheckboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', function() {
+        if (this.value === '') {
+          // "All Brands" checkbox clicked
+          if (this.checked) {
+            // Uncheck all other brand checkboxes
+            brandCheckboxes.forEach(cb => {
+              if (cb.value !== '') {
+                cb.checked = false;
+              }
+            });
+          }
+        } else {
+          // Individual brand checkbox clicked
+          if (this.checked) {
+            // Uncheck "All Brands"
+            brandAllCheckbox.checked = false;
+          } else {
+            // If no individual brands are selected, check "All Brands"
+            const anyBrandSelected = Array.from(brandCheckboxes).some(cb => cb.value !== '' && cb.checked);
+            if (!anyBrandSelected) {
+              brandAllCheckbox.checked = true;
+            }
+          }
+        }
+
+        // Update dropdown button text
+        updateBrandDropdownText();
+      });
+    });
+
+    // Function to update brand dropdown button text
+    function updateBrandDropdownText() {
+      const selectedBrands = Array.from(brandCheckboxes)
+        .filter(cb => cb.value !== '' && cb.checked)
+        .map(cb => cb.nextElementSibling.textContent);
+
+      const selectedText = brandDropdownBtn.querySelector('.selected-text');
+      
+      if (selectedBrands.length === 0 || brandAllCheckbox.checked) {
+        selectedText.textContent = 'All Brands';
+      } else if (selectedBrands.length === 1) {
+        selectedText.textContent = selectedBrands[0];
+      } else {
+        selectedText.textContent = `${selectedBrands.length} Brands Selected`;
+      }
+    }
+
+    // Function to get selected brand IDs
+    function getSelectedBrands() {
+      if (brandAllCheckbox.checked) {
+        return '';
+      }
+      return Array.from(brandCheckboxes)
+        .filter(cb => cb.value !== '' && cb.checked)
+        .map(cb => cb.value)
+        .join(',');
+    }
+
+    // 🎯 Size filter selection
+    const sizeOptions = document.querySelectorAll('.size-option');
+    sizeOptions.forEach(option => {
+      option.addEventListener('click', function() {
+        this.classList.toggle('selected');
+      });
+    });
+
+    // 🎯 Stock filter selection
+    const stockCheckboxes = document.querySelectorAll('.stock-checkbox');
+
+    // Function to get selected stock status
+    function getSelectedStockStatus() {
+      return Array.from(stockCheckboxes)
+        .filter(cb => cb.checked)
+        .map(cb => cb.value);
+    }
+
+    // 🔄 Reset all filters
+    document.getElementById('reset-filters').addEventListener('click', function() {
+      // Clear all form inputs
+      topSearchInput.value = '';
+      topSortSelect.value = '';
+      document.getElementById('category-select').value = '';
+      document.getElementById('min-price').value = '';
+      document.getElementById('max-price').value = '';
+
+      // Clear size selections
+      sizeOptions.forEach(option => option.classList.remove('selected'));
+
+      // Clear stock status selections
+      stockCheckboxes.forEach(cb => cb.checked = false);
+
+      // Reset brand filter
+      brandCheckboxes.forEach(cb => {
+        if (cb.value === '') {
+          cb.checked = true; // Check "All Brands"
+        } else {
+          cb.checked = false; // Uncheck individual brands
+        }
+      });
+      updateBrandDropdownText();
+
+      // Hide clear button
+      topClearBtn.style.display = 'none';
+
+      // Reset filters and fetch
+      currentFilters = {
+        q: '',
+        sort: '',
+        category: '',
+        brand: '',
+        minPrice: '',
+        maxPrice: '',
+        sizes: [],
+        stockStatus: []
+      };
+
+      fetchCallback(1);
+    });
+
+    // 🧠 Handle Apply Filters form submission
+    document.getElementById('filter-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+
+      // 📋 Read values from form elements (sync with top controls)
+      currentFilters.q = topSearchInput.value.trim();
+      currentFilters.sort = topSortSelect.value;
+      currentFilters.category = document.getElementById('category-select').value;
+      currentFilters.brand = getSelectedBrands();
+      currentFilters.minPrice = document.getElementById('min-price').value.trim();
+      currentFilters.maxPrice = document.getElementById('max-price').value.trim();
+
+      // Get selected sizes
+      const selectedSizes = [];
+      sizeOptions.forEach(option => {
+        if (option.classList.contains('selected')) {
+          selectedSizes.push(option.dataset.size);
+        }
+      });
+      currentFilters.sizes = selectedSizes;
+
+      // Get selected stock status
+      currentFilters.stockStatus = getSelectedStockStatus();
+
+      // 🚀 Trigger product fetch
+      fetchCallback(1);
+    });
+
+    // Initialize clear button state
+    toggleTopClearButton();
+
+    // Pagination is now handled by the custom implementation in the HTML
+  });
+</script>
+
+<!-- Custom Pagination JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const paginationContainer = document.querySelector('.pagination-wrapper');
+  const productGrid = document.getElementById('product-grid');
+
+  if (paginationContainer) {
+    paginationContainer.addEventListener('click', async (e) => {
+      if (e.target.closest('.pagination-btn')) {
+        const btn = e.target.closest('.pagination-btn');
+
+        const page = btn.dataset.page || 1;
+        const category = btn.dataset.category || '';
+        const search = btn.dataset.search || '';
+        const sort = btn.dataset.sort || '';
+        const minPrice = btn.dataset.min || '';
+        const maxPrice = btn.dataset.max || '';
+
+        try {
+          const url = `/shop?page=${page}&category=${category}&search=${search}&sort=${sort}&minPrice=${minPrice}&maxPrice=${maxPrice}`;
+
+          const res = await fetch(url, {
+            headers: {
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          });
+
+          if (!res.ok) throw new Error('Failed to fetch products');
+
+          const html = await res.text();
+
+          // Replace the product grid and pagination content
+          const temp = document.createElement('div');
+          temp.innerHTML = html;
+
+          const newGrid = temp.querySelector('#product-grid');
+          const newPagination = temp.querySelector('.pagination-wrapper');
+
+          if (newGrid && productGrid) {
+            productGrid.innerHTML = newGrid.innerHTML;
+          }
+
+          if (newPagination && paginationContainer) {
+            paginationContainer.innerHTML = newPagination.innerHTML;
+          }
+
+        } catch (err) {
+          console.error('Pagination fetch error:', err);
+        }
+      }
+    });
+  }
+});
+</script>
+
+<style>
+/* Custom Pagination Styles */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Red hover effect for enabled buttons */
+.page-btn:not(:disabled):not(.active):hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+}
+
+/* Active page styling */
+.page-btn.active {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn.active:hover {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Disabled button styles */
+.page-btn:disabled {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-btn:disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon spacing */
+.page-btn i {
+  font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .page-btn {
+    min-width: 35px;
+    height: 35px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .page-btn i {
+    font-size: 0.8em;
+  }
+
+  .pagination {
+    gap: 0.25rem;
+  }
+}
+</style>
+
+<style>
+/* Filter Sidebar Toggle Styles */
+#view-filters-btn {
+  background: white;
+  border: 3px solid #e03a2f;
+  color: #e03a2f;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+#view-filters-btn:hover {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(224, 58, 47, 0.3);
+}
+
+#view-filters-btn:active {
+  transform: translateY(0);
+}
+
+#hide-filters-btn {
+  background: white;
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+#hide-filters-btn:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Filter Sidebar Styles - Static */
+.filter-sidebar {
+  background: white;
+  border: 3px solid #e03a2f;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(224, 58, 47, 0.1);
+}
+
+/* Smooth transitions for all interactive elements */
+.btn, .form-control, .form-select {
+  transition: all 0.3s ease;
+}
+
+/* Apply Filters Button */
+.btn-apply-filters {
+  background: black;
+  border: 2px solid black;
+  color: white;
+  font-weight: 600;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-apply-filters:hover {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* Reset Filters Button */
+.btn-reset-filters {
+  background: white;
+  border: 2px solid #6c757d;
+  color: #6c757d;
+  font-weight: 500;
+  padding: 10px;
+  transition: all 0.3s ease;
+}
+
+.btn-reset-filters:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+}
+
+/* Size Filter Options */
+.size-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-option {
+  padding: 8px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  text-align: center;
+  min-width: 60px;
+}
+
+.size-option:hover {
+  border-color: #e03a2f;
+  color: #e03a2f;
+}
+
+.size-option.selected {
+  background: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+}
+
+/* Search Input Styling */
+.search-input-container {
+  position: relative;
+  /* Ensure search container is above all other elements */
+  z-index: 200;
+  overflow: visible;
+}
+
+.search-icon-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.search-icon-btn:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+
+.search-icon {
+  font-size: 16px;
+}
+
+.clear-btn {
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: none;
+  z-index: 2;
+}
+
+.clear-btn:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+
+/* Search Suggestions Dropdown - SIMPLIFIED STYLES */
+.search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 300 !important;
+  max-height: 300px;
+  overflow-y: auto;
+  display: none;
+  width: 100%;
+}
+
+.search-suggestions-dropdown.show {
+  display: block;
+}
+
+.suggestion-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.suggestion-item:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+  border-left: 3px solid #e03a2f;
+  padding-left: 13px;
+}
+
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.suggestion-item.active {
+  background-color: rgba(224, 58, 47, 0.1);
+  border-left: 3px solid #e03a2f;
+  padding-left: 13px;
+}
+
+.suggestion-name {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suggestions-loading,
+.suggestions-empty {
+  padding: 16px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.suggestions-loading .spinner-border {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Top Controls Bar */
+.top-controls-bar {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  /* Ensure dropdown can overflow this container */
+  overflow: visible !important;
+}
+
+/* Product Count */
+.product-count {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .top-controls-bar .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .search-input-container {
+    min-width: 100% !important;
+    margin-bottom: 10px;
+  }
+
+  #view-filters-btn {
+    align-self: flex-start;
+    margin-bottom: 10px;
+  }
+}
+</style>
+
+<script>
+// Additional script for cart/wishlist authentication handling
+document.addEventListener('DOMContentLoaded', function() {
+  // Function to handle fade-out transition and redirect
+  function redirectToLogin() {
+    document.body.style.transition = 'opacity 0.4s ease';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 400);
+  }
+
+  // Handle cart and wishlist buttons with authentication check
+  document.addEventListener('click', function(e) {
+    // Cart button handling
+    if (e.target.closest('.cart-btn')) {
+      e.preventDefault();
+      const button = e.target.closest('.cart-btn');
+      const productId = button.dataset.id;
+
+      <% if (!user) { %>
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+
+      // User authenticated - redirect to product details for size selection
+      console.log('Redirecting to product details for size selection:', productId);
+
+      // Find the product card to get the slug
+      const productCard = button.closest('.product-card');
+      const productLink = productCard.querySelector('a[href*="/product/"]');
+
+      if (productLink) {
+        // Redirect to product details page for size selection
+        window.location.href = productLink.href;
+      } else {
+        // Fallback: redirect using product ID
+        window.location.href = `/product/${productId}`;
+      }
+    }
+
+    // Wishlist button handling - authentication check only
+    if (e.target.closest('.wishlist-btn')) {
+      <% if (!user) { %>
+        e.preventDefault();
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+      // If user is authenticated, let the wishlist.js handle the functionality
+    }
+  });
+});
+</script>
+
+<style>
+/* Breadcrumb Container - Fix for navbar overlap */
+.breadcrumb-container {
+  margin-top: 20px; /* Add space from the fixed navbar */
+  padding-top: 10px; /* Additional padding for better spacing */
+  position: relative;
+  z-index: 1; /* Ensure it's below the navbar */
+}
+
+/* Brand Filter Dropdown */
+.brand-filter-dropdown {
+  position: relative;
+}
+
+.brand-dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.brand-dropdown-btn:hover {
+  border-color: #e03a2f;
+}
+
+.brand-dropdown-btn:focus {
+  outline: none;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.brand-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.brand-dropdown-menu.show {
+  display: block;
+}
+
+.brand-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.brand-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.brand-option:last-child {
+  border-bottom: none;
+}
+
+.brand-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.brand-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Stock Filter Options */
+.stock-filter {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stock-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.stock-option:hover {
+  border-color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.stock-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.stock-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+  flex: 1;
+}
+
+.stock-option input[type="checkbox"]:checked + label {
+  color: #e03a2f;
+  font-weight: 600;
+}
+</style> 
+ < ! - -   A d d   T o a s t r   M e s s a g e s   f o r   W i s h l i s t   O p e r a t i o n s   - - >  
+ < s c r i p t >  
+ / /   O v e r r i d e   t h e   h a n d l e W i s h l i s t T o g g l e   f u n c t i o n   t o   a d d   t o a s t r   m e s s a g e s  
+ d o c u m e n t . a d d E v e n t L i s t e n e r ( ' D O M C o n t e n t L o a d e d ' ,   f u n c t i o n ( )   {  
+     / /   W a i t   a   b i t   f o r   t h e   o r i g i n a l   f u n c t i o n   t o   b e   d e f i n e d  
+     s e t T i m e o u t ( f u n c t i o n ( )   {  
+         i f   ( t y p e o f   h a n d l e W i s h l i s t T o g g l e   = = =   ' f u n c t i o n ' )   {  
+             c o n s t   o r i g i n a l H a n d l e W i s h l i s t T o g g l e   =   h a n d l e W i s h l i s t T o g g l e ;  
+              
+             w i n d o w . h a n d l e W i s h l i s t T o g g l e   =   a s y n c   f u n c t i o n ( p r o d u c t I d ,   b u t t o n ,   i c o n ,   i s I n W i s h l i s t )   {  
+                 t r y   {  
+                     i f   ( i s I n W i s h l i s t )   {  
+                         / /   R e m o v e   f r o m   w i s h l i s t  
+                         c o n s t   r e s p o n s e   =   a w a i t   f e t c h ( ` / w i s h l i s t / r e m o v e / $ { p r o d u c t I d } ` ,   {  
+                             m e t h o d :   ' D E L E T E ' ,  
+                             h e a d e r s :   {  
+                                 ' C o n t e n t - T y p e ' :   ' a p p l i c a t i o n / j s o n '  
+                             }  
+                         } ) ;  
+  
+                         c o n s t   d a t a   =   a w a i t   r e s p o n s e . j s o n ( ) ;  
+                         i f   ( d a t a . s u c c e s s )   {  
+                             i c o n . c l a s s L i s t . r e m o v e ( ' b i - h e a r t - f i l l ' ) ;  
+                             i c o n . c l a s s L i s t . a d d ( ' b i - h e a r t ' ) ;  
+                             b u t t o n . c l a s s L i s t . r e m o v e ( ' b t n - d a n g e r ' ) ;  
+                             b u t t o n . c l a s s L i s t . a d d ( ' b t n - o u t l i n e - s e c o n d a r y ' ) ;  
+                             b u t t o n . t i t l e   =   ' A d d   t o   W i s h l i s t ' ;  
+                              
+                             / /   S h o w   s u c c e s s   m e s s a g e   w i t h   t o a s t r  
+                             i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                                 t o a s t r . s u c c e s s ( ' P r o d u c t   r e m o v e d   f r o m   y o u r   w i s h l i s t ' ,   ' R e m o v e d   f r o m   W i s h l i s t ' ) ;  
+                             }  
+                         }  
+                     }   e l s e   {  
+                         / /   A d d   t o   w i s h l i s t  
+                         c o n s t   r e s p o n s e   =   a w a i t   f e t c h ( ' / w i s h l i s t / a d d ' ,   {  
+                             m e t h o d :   ' P O S T ' ,  
+                             h e a d e r s :   {  
+                                 ' C o n t e n t - T y p e ' :   ' a p p l i c a t i o n / j s o n '  
+                             } ,  
+                             b o d y :   J S O N . s t r i n g i f y ( {   p r o d u c t I d   } )  
+                         } ) ;  
+  
+                         c o n s t   d a t a   =   a w a i t   r e s p o n s e . j s o n ( ) ;  
+                         i f   ( d a t a . s u c c e s s )   {  
+                             i c o n . c l a s s L i s t . r e m o v e ( ' b i - h e a r t ' ) ;  
+                             i c o n . c l a s s L i s t . a d d ( ' b i - h e a r t - f i l l ' ) ;  
+                             b u t t o n . c l a s s L i s t . r e m o v e ( ' b t n - o u t l i n e - s e c o n d a r y ' ) ;  
+                             b u t t o n . c l a s s L i s t . a d d ( ' b t n - d a n g e r ' ) ;  
+                             b u t t o n . t i t l e   =   ' R e m o v e   f r o m   W i s h l i s t ' ;  
+                              
+                             / /   S h o w   s u c c e s s   m e s s a g e   w i t h   t o a s t r  
+                             i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                                 t o a s t r . s u c c e s s ( ' P r o d u c t   a d d e d   t o   y o u r   w i s h l i s t ' ,   ' A d d e d   t o   W i s h l i s t ' ) ;  
+                             }  
+                         }   e l s e   {  
+                             t h r o w   n e w   E r r o r ( d a t a . m e s s a g e   | |   ' F a i l e d   t o   a d d   t o   w i s h l i s t ' ) ;  
+                         }  
+                     }  
+                 }   c a t c h   ( e r r o r )   {  
+                     c o n s o l e . e r r o r ( ' W i s h l i s t   e r r o r : ' ,   e r r o r ) ;  
+                     / /   S h o w   e r r o r   m e s s a g e   w i t h   t o a s t r  
+                     i f   ( t y p e o f   t o a s t r   ! = =   ' u n d e f i n e d ' )   {  
+                         t o a s t r . e r r o r ( e r r o r . m e s s a g e   | |   ' F a i l e d   t o   u p d a t e   w i s h l i s t .   P l e a s e   t r y   a g a i n . ' ,   ' E r r o r ' ) ;  
+                     }  
+                 }  
+             } ;  
+         }  
+     } ,   1 0 0 ) ;  
+ } ) ;  
+ < / s c r i p t >  
+ 

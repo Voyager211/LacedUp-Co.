@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your OTP Code - LacedUp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .email-wrapper {
+            border: 2px solid #f2f4f7;
+            border-radius: 12px;
+            overflow: hidden;
+            margin: 20px auto;
+            max-width: 600px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        }
+        
+        .email-container {
+            background-color: #ffffff;
+        }
+        
+        .header {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #000000;
+        }
+        
+        .header p {
+            font-size: 16px;
+            color: #000000;
+        }
+        
+        .content {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .greeting {
+            font-size: 20px;
+            color: #000000;
+            margin-bottom: 30px;
+            font-weight: 500;
+        }
+        
+        .otp-section {
+            background-color: #f2f4f7;
+            border-radius: 12px;
+            padding: 30px;
+            margin: 30px 0;
+            box-shadow: 0 8px 25px rgba(242, 244, 247, 0.3);
+        }
+        
+        .otp-label {
+            color: #000000;
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .otp-code {
+            background-color: rgba(255, 255, 255, 0.95);
+            color: #2c3e50;
+            font-size: 36px;
+            font-weight: 700;
+            padding: 20px 30px;
+            border-radius: 8px;
+            letter-spacing: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 0 auto;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .expiry-info {
+            background-color: #f2f4f7;
+            color: #000000;
+            border: 1px solid #f2f4f7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 30px 0;
+        }
+        
+        .expiry-info .icon {
+            font-size: 20px;
+            margin-right: 8px;
+        }
+        
+        .instructions {
+            color: #000000;
+            font-size: 15px;
+            line-height: 1.8;
+            margin: 25px 0;
+        }
+        
+        .footer {
+            background-color: #ffffff;
+            color: #000000;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .footer p {
+            color: #000000;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        
+        .brand-signature {
+            color: #000000;
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .security-note {
+            background-color: #f2f4f7;
+            color: #000000;
+            border-left: 4px solid #d1d5db;
+            padding: 15px 20px;
+            margin: 25px 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .security-note p {
+            color: #000000;
+            font-size: 14px;
+            margin: 0;
+        }
+        
+        @media (max-width: 600px) {
+            .email-wrapper {
+                margin: 10px;
+                border-radius: 8px;
+            }
+            
+            .header, .content, .footer {
+                padding: 25px 20px;
+            }
+            
+            .otp-code {
+                font-size: 28px;
+                letter-spacing: 4px;
+                padding: 15px 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="email-wrapper">
+            <div class="email-container">
+                <div class="header">
+                    <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png" alt="LacedUp Logo" class="logo">
+                    <h1>Verification Code</h1>
+                    <p>Secure access to your account</p>
+                </div>
+                
+                <div class="content">
+                    <div class="greeting">
+                        Hello <%= user.name || 'Valued Customer' %>,
+                    </div>
+                    
+                    <div class="otp-section">
+                        <div class="otp-label">Your OTP Code</div>
+                        <div class="otp-code"><%= otp %></div>
+                    </div>
+                    
+                    <div class="expiry-info">
+                        <span class="icon">⏰</span>
+                        <strong>Important:</strong> This code will expire in 2 minutes for your security.
+                    </div>
+                    
+                    <div class="instructions">
+                        Enter this code on the verification page to complete your authentication. 
+                        If you didn't request this code, please ignore this email.
+                    </div>
+                    
+                    <div class="security-note">
+                        <p><strong>Security Tip:</strong> Never share this code with anyone. LacedUp will never ask for your OTP via phone or email.</p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>This is an automated message, please do not reply to this email.</p>
+                    <p class="brand-signature">— LacedUp Co. Team</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

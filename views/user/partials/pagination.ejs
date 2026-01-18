@@ -1,0 +1,38 @@
+<% if (totalPages && totalPages > 1) { %>
+  <% 
+    const maxButtons = 5;
+    let startPage = 1;
+    let endPage = Math.min(maxButtons, totalPages);
+  %>
+  
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center">
+      <!-- Previous Button -->
+      <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+        <a class="page-link pagination-btn <%= currentPage === 1 ? 'disabled-btn' : '' %>"
+           href="#"
+           data-page="<%= currentPage - 1 %>"
+           <%= currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : '' %>>
+          <i class="bi bi-chevron-left"></i>
+        </a>
+      </li>
+
+      <!-- Page Numbers (max 5) -->
+      <% for (let i = startPage; i <= endPage; i++) { %>
+        <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+          <a class="page-link pagination-btn" href="#" data-page="<%= i %>"><%= i %></a>
+        </li>
+      <% } %>
+
+      <!-- Next Button -->
+      <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+        <a class="page-link pagination-btn <%= currentPage === totalPages ? 'disabled-btn' : '' %>"
+           href="#"
+           data-page="<%= currentPage + 1 %>"
+           <%= currentPage === totalPages ? 'tabindex="-1" aria-disabled="true"' : '' %>>
+          <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+<% } %>

@@ -1,0 +1,29 @@
+<%- include('../user/partials/banner') %>
+
+<div class="container py-5">
+  <!-- New Arrivals -->
+  <section class="mb-5">
+    <h3 class="mb-3 fw-bold">New Arrivals</h3>
+    <div class="row">
+      <% newArrivals.forEach(product => { %>
+        <%- include('../user/partials/product-card', { product, user }) %>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- Best Sellers -->
+  <section class="mb-5">
+    <h3 class="mb-3 fw-bold">Best Sellers</h3>
+    <div class="row">
+      <% bestSellers.forEach(product => { %>
+        <%- include('../user/partials/product-card', { product, user }) %>
+      <% }) %>
+    </div>
+  </section>
+
+  <%- include('./partials/testimonials') %>
+
+</div>
+
+<%- include('./partials/join-community') %>
+

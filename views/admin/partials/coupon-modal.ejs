@@ -1,0 +1,128 @@
+<!-- Coupon Add/Edit Modal -->
+<div class="modal fade" id="couponModal" tabindex="-1" aria-labelledby="couponModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="couponModalLabel">Add New Coupon</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <form id="couponForm" novalidate>
+        <div class="modal-body">
+          <div class="row">
+            <!-- Coupon Code -->
+            <div class="col-md-6 mb-3">
+              <label for="couponCode" class="form-label">Coupon Code *</label>
+              <input type="text" class="form-control" id="couponCode" name="code" required 
+                     placeholder="e.g., SAVE20, WELCOME10" maxlength="20" style="text-transform: uppercase;">
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Coupon Name -->
+            <div class="col-md-6 mb-3">
+              <label for="couponName" class="form-label">Coupon Name *</label>
+              <input type="text" class="form-control" id="couponName" name="name" required 
+                     placeholder="e.g., Summer Sale, Welcome Offer">
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Description -->
+            <div class="col-12 mb-3">
+              <label for="couponDescription" class="form-label">Description</label>
+              <textarea class="form-control" id="couponDescription" name="description" rows="2" 
+                        placeholder="Brief description of the coupon offer"></textarea>
+            </div>
+
+            <!-- Discount Type -->
+            <div class="col-md-6 mb-3">
+              <label for="discountType" class="form-label">Discount Type *</label>
+              <select class="form-select" id="discountType" name="discountType" required>
+                <option value="">Select Discount Type</option>
+                <option value="percentage">Percentage Discount</option>
+                <option value="fixed">Fixed Amount Discount</option>
+              </select>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Discount Value -->
+            <div class="col-md-6 mb-3">
+              <label for="discountValue" class="form-label">Discount Value *</label>
+              <div class="input-group">
+                <span class="input-group-text" id="discountValuePrefix">%</span>
+                <input type="number" class="form-control" id="discountValue" name="discountValue" 
+                       required min="0" step="0.01" placeholder="Enter value">
+              </div>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Maximum Discount Amount (for percentage) -->
+            <div class="col-md-6 mb-3" id="maxDiscountGroup" style="display: none;">
+              <label for="maximumDiscountAmount" class="form-label">Maximum Discount Amount</label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input type="number" class="form-control" id="maximumDiscountAmount" 
+                       name="maximumDiscountAmount" min="0" step="0.01" placeholder="Optional cap">
+              </div>
+              <small class="form-text text-muted">Maximum discount amount (for percentage discounts)</small>
+            </div>
+
+            <!-- Minimum Order Value -->
+            <div class="col-md-6 mb-3">
+              <label for="minimumOrderValue" class="form-label">Minimum Order Value</label>
+              <div class="input-group">
+                <span class="input-group-text">₹</span>
+                <input type="number" class="form-control" id="minimumOrderValue" 
+                       name="minimumOrderValue" min="0" step="0.01" value="0" placeholder="0">
+              </div>
+            </div>
+
+            <!-- Usage Limit -->
+            <div class="col-md-6 mb-3">
+              <label for="usageLimit" class="form-label">Total Usage Limit</label>
+              <input type="number" class="form-control" id="usageLimit" name="usageLimit" 
+                     min="1" placeholder="Leave empty for unlimited">
+            </div>
+
+            <!-- User Limit -->
+            <div class="col-md-6 mb-3">
+              <label for="userLimit" class="form-label">Per User Limit</label>
+              <input type="number" class="form-control" id="userLimit" name="userLimit" 
+                     min="1" value="1" required>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Valid From -->
+            <div class="col-md-6 mb-3">
+              <label for="validFrom" class="form-label">Valid From *</label>
+              <input type="datetime-local" class="form-control" id="validFrom" name="validFrom" required>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Valid To -->
+            <div class="col-md-6 mb-3">
+              <label for="validTo" class="form-label">Valid Until *</label>
+              <input type="datetime-local" class="form-control" id="validTo" name="validTo" required>
+              <div class="invalid-feedback"></div>
+            </div>
+
+            <!-- Is Active -->
+            <div class="col-12 mb-3">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="isActive" name="isActive" checked>
+                <label class="form-check-label" for="isActive">
+                  Active (coupon is ready to use)
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="saveCouponBtn">
+            <span class="btn-text">Create Coupon</span>
+            <span class="spinner-border spinner-border-sm ms-2 d-none" id="saveSpinner"></span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,1859 @@
+<% var title = "Order Management"; %>
+
+<div class="container-fluid py-4">
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="fw-bold text-black mb-1">Order Management</h2>
+          <p class="text-black mb-0">Manage and track all customer orders</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark" id="headerRefreshBtn">
+            <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-bag-check text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Today's Orders</h6>
+              <h3 class="fw-bold text-black mb-0"><%= todayOrders || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-graph-up text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Total Orders</h6>
+              <h3 class="fw-bold text-black mb-0"><%= totalOrders || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-box text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Total Items</h6>
+              <h3 class="fw-bold text-black mb-0"><%= totalItems || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-light rounded-3 p-3">
+                <i class="bi bi-clock text-black fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Pending Items</h6>
+              <h3 class="fw-bold text-black mb-0">
+                <%= orderStats.find(stat => stat._id === ORDER_STATUS.PENDING)?.count || 0 %>
+              </h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <!-- Search Input -->
+            <div class="col-md-8">
+              <label class="form-label text-black">Search Orders</label>
+              <div class="search-input-container position-relative">
+                <input type="text" 
+                      class="form-control search-input" 
+                      id="orderSearch"
+                      name="search" 
+                      placeholder="Order ID, Customer name, Phone..." 
+                      value="<%= filters.search || '' %>">
+                
+                <button type="button" 
+                        id="clearSearchBtn" 
+                        class="clear-search-btn"
+                        title="Clear search"
+                        style="display: none;">
+                  <i class="bi bi-x"></i>
+                </button>
+                
+                <button type="button" 
+                        id="searchSubmitBtn" 
+                        class="search-icon-btn"
+                        title="Search orders">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- View Filters Toggle Button -->
+            <div class="col-md-4 d-flex justify-content-end">
+              <button type="button" 
+                      id="viewFiltersBtn" 
+                      class="btn view-filters-btn"
+                      data-bs-toggle="collapse" 
+                      data-bs-target="#filtersSection" 
+                      aria-expanded="false">
+                <i class="bi bi-funnel me-2"></i>View Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsible Filters Section -->
+  <div class="collapse" id="filtersSection">
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm filters-card">
+          <div class="card-body">
+            <form id="filterForm" class="row g-3">
+              <!-- All Filter Controls -->
+              <div class="col-md-2">
+                <label class="form-label text-black">Item Status</label>
+                <select class="form-select" name="status">
+                  <option value="">All Status</option>
+                  <% orderStatuses.forEach(status => { %>
+                    <option value="<%= status %>" <%= filters.status === status ? 'selected' : '' %>><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Payment Method</label>
+                <select class="form-select" name="paymentMethod">
+                  <option value="">All Methods</option>
+                  <option value="cod" <%= filters.paymentMethod === 'cod' ? 'selected' : '' %>>Cash on Delivery</option>
+                  <option value="razorpay" <%= filters.paymentMethod === 'razorpay' ? 'selected' : '' %>>Razorpay</option>
+                  <option value="wallet" <%= filters.paymentMethod === 'wallet' ? 'selected' : '' %>>Wallet</option>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Payment Status</label>
+                <select class="form-select" name="paymentStatus">
+                  <option value="">All Status</option>
+                  <% paymentStatuses.forEach(status => { %>
+                    <option value="<%= status %>" <%= filters.paymentStatus === status ? 'selected' : '' %>><%= status %></option>
+                  <% }); %>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Sort By</label>
+                <select class="form-select" name="sortBy">
+                  <option value="createdAt" <%= filters.sortBy === 'createdAt' ? 'selected' : '' %>>Order Date</option>
+                  <option value="totalAmount" <%= filters.sortBy === 'totalAmount' ? 'selected' : '' %>>Amount</option>
+                  <option value="status" <%= filters.sortBy === 'status' ? 'selected' : '' %>>Status</option>
+                </select>
+              </div>
+              
+              <div class="col-md-2">
+                <label class="form-label text-black">Order</label>
+                <select class="form-select" name="sortOrder">
+                  <option value="desc" <%= filters.sortOrder === 'desc' ? 'selected' : '' %>>Desc</option>
+                  <option value="asc" <%= filters.sortOrder === 'asc' ? 'selected' : '' %>>Asc</option>
+                </select>
+              </div>
+              
+              <!-- Action Buttons -->
+              <div class="col-md-2 d-flex flex-column">
+                <label class="form-label text-black">&nbsp;</label>
+                <button type="button" 
+                        id="resetFiltersBtn" 
+                        class="btn reset-filters-btn">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Order Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-wrapper">
+            <table class="table table-hover mb-0 orders-table">
+              <thead>
+                <tr>
+                  <th class="border-0 text-black" style="width: 50px;">#</th>
+                  <th class="border-0 text-black">Order ID</th>
+                  <th class="border-0 text-black">Customer</th>
+                  <th class="border-0 text-black">Date</th>
+                  <th class="border-0 text-black">Amount</th>
+                  <th class="border-0 text-black text-center">Payment</th>
+                  <th class="border-0 text-black text-center">Status</th>
+                  <th class="border-0 text-center text-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (orders && orders.length > 0) { %>
+                  <% orders.forEach((order, index) => { %>
+                    <tr class="order-row">
+                      <!-- Row Number -->
+                      <td>
+                        <div class="row-number">
+                          <span class="fw-bold text-black"><%= index + 1 %></span>
+                        </div>
+                      </td>
+
+                      <!-- Order ID -->
+                      <td>
+                        <div class="order-id">
+                          <span class="fw-bold text-black"><%= order.orderId %></span>
+                        </div>
+                      </td>
+
+                      <!-- Customer -->
+                      <td>
+                        <div class="customer-info">
+                          <div class="customer-name text-black"><%= order.user?.name || 'N/A' %></div>
+                          <div class="customer-email text-black"><%= order.user?.email || 'N/A' %></div>
+                        </div>
+                      </td>
+
+                      <!-- Date -->
+                      <td>
+                        <div class="date-info">
+                          <div class="order-date text-black">
+                            <%= new Date(order.createdAt).toLocaleDateString('en-IN', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) %>
+                          </div>
+                          <div class="order-time text-black">
+                            <%= new Date(order.createdAt).toLocaleTimeString('en-IN', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            }) %>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Amount -->
+                      <td>
+                        <div class="amount-info">
+                          <div class="item-amount text-black">
+                            ₹<%= order.totalAmount.toLocaleString('en-IN') %>
+                          </div>
+                          <div class="payment-method text-black">
+                            <%= order.paymentMethod.toUpperCase() %>
+                          </div>
+                        </div>
+                      </td>
+
+                      <!-- Payment Status -->
+                      <td>
+                        <div class="payment-status">
+                          <span class="status-badge payment-<%= (order.paymentStatus || 'unknown').toLowerCase().replace(/ /g, '-') %>">
+                            <%= order.paymentStatus || 'Unknown' %>
+                          </span>
+                        </div>
+                      </td>
+
+                      <!-- Order Status -->
+                      <td>
+                        <div class="order-status">
+                          <span class="status-badge order-<%= order.status.toLowerCase().replace(/ /g, '-') %>">
+                            <%= order.status %>
+                          </span>
+                        </div>
+                      </td>
+
+                      <!-- Actions -->
+                      <td class="text-center">
+                        <a href="/admin/orders/<%= order.orderId %>" class="btn btn-sm view-btn">
+                          <i class="bi bi-eye me-1"></i> View
+                        </a>
+                      </td>
+                    </tr>
+                  <% }); %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="8" class="text-center py-5">
+                      <div class="empty-state">
+                        <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
+                        <h5 class="text-black">No orders found</h5>
+                        <p class="text-black">No orders match your current filters.</p>
+                      </div>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages > 1) { %>
+    <div class="row mt-4">
+      <div class="col-12">
+        <%- include('partials/pagination', { 
+          currentPage: currentPage, 
+          totalPages: totalPages
+        }) %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+
+<style>
+/* ========= GENERAL STYLES ========= */
+.card {
+  border-radius: 12px;
+}
+
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* ========= SPACIOUS TABLE DESIGN ========= */
+.orders-table {
+  font-size: 0.95rem;
+}
+
+.orders-table th {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1.25rem 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.orders-table td {
+  padding: 0;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.order-row {
+  transition: all 0.2s ease;
+  height: auto;
+}
+
+.order-row:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.order-row td {
+  vertical-align: middle;
+}
+
+/* ========= TABLE HEADER CENTER ALIGNMENT ========= */
+.orders-table th:nth-child(6),
+.orders-table th:nth-child(7) {
+  text-align: center !important;
+}
+
+
+
+/* ========= ROW NUMBER STYLING ========= */
+.row-number {
+  text-align: center;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70px;
+  font-weight: 700;
+  color: #6c757d;
+}
+
+/* ========= ORDER ID STYLING ========= */
+.order-id {
+  font-size: 0.85rem;
+  font-weight: 600;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.2;
+  max-width: 100%;
+  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.order-id span {
+  display: block;
+  word-wrap: break-word;
+  word-break: break-all;
+  color: #000000 !important;
+}
+
+/* ========= PRODUCT INFO STYLING (Kept for backward compatibility) ========= */
+.product-info {
+  min-width: 200px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+}
+
+.product-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-thumb-placeholder {
+  width: 50px;
+  height: 50px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+/* ========= CUSTOMER INFO STYLING ========= */
+.customer-info {
+  min-width: 150px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.customer-email {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* ========= ITEMS COUNT STYLING ========= */
+.items-count {
+  min-width: 60px;
+  text-align: center;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.items-count .fw-bold {
+  font-size: 1.1rem;
+  color: #000000 !important;
+}
+
+.items-count small {
+  display: block;
+  color: #6c757d !important;
+  font-size: 0.75rem;
+}
+
+/* ========= DATE INFO STYLING ========= */
+.date-info {
+  min-width: 100px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.order-date {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.order-time {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* ========= AMOUNT INFO STYLING ========= */
+.amount-info {
+  min-width: 100px;
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.item-amount {
+  font-weight: 700;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.payment-method {
+  color: #000000 !important;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========= BADGE CONTAINER ALIGNMENT ========= */
+.payment-status,
+.order-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  min-height: 70px;
+  padding: 1rem 0.5rem;
+}
+
+/* ========= STATUS BADGE STYLING ========= */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 85px;
+  max-width: 130px;
+  text-align: center;
+  line-height: 1.3;
+  flex-wrap: wrap;
+  word-break: break-word;
+  white-space: normal;
+}
+
+/* ========= PAYMENT STATUS COLORS ========= */
+/* Completed - Success (Green) */
+.payment-completed {
+  background-color: #198754;
+  color: #FFFFFF;
+  border: 1px solid #146c43;
+}
+
+/* Pending - Warning (Yellow) */
+.payment-pending {
+  background-color: #ffc107;
+  color: #000000;
+  border: 1px solid #ffb800;
+}
+
+/* Failed - Danger (Red) */
+.payment-failed {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+/* Refunded - Primary (Blue) */
+.payment-refunded {
+  background-color: #0d6efd;
+  color: #FFFFFF;
+  border: 1px solid #0a58ca;
+}
+
+/* Cancelled - Danger (Red) */
+.payment-cancelled {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+/* Partially Completed - Success (Green) */
+.payment-partially-completed {
+  background-color: #198754;
+  color: #FFFFFF;
+  border: 1px solid #146c43;
+}
+
+/* Unknown - Black */
+.payment-unknown {
+  background-color: #000000;
+  color: #FFFFFF;
+  border: 1px solid #333333;
+}
+
+/* ========= ORDER STATUS COLORS ========= */
+/* Pending - Warning (Yellow) */
+.order-pending {
+  background-color: #ffc107;
+  color: #000000;
+  border: 1px solid #ffb800;
+}
+
+/* Processing - Primary (Blue) */
+.order-processing {
+  background-color: #0d6efd;
+  color: #FFFFFF;
+  border: 1px solid #0a58ca;
+}
+
+/* Shipped - Primary (Blue) */
+.order-shipped {
+  background-color: #0d6efd;
+  color: #FFFFFF;
+  border: 1px solid #0a58ca;
+}
+
+/* Delivered - Success (Green) */
+.order-delivered {
+  background-color: #198754;
+  color: #FFFFFF;
+  border: 1px solid #146c43;
+}
+
+/* Cancelled - Danger (Red) */
+.order-cancelled {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+/* Returned - Purple */
+.order-returned {
+  background-color: #6f42c1;
+  color: #FFFFFF;
+  border: 1px solid #5a32a3;
+}
+
+/* Partially Returned - Purple */
+.order-partially-returned {
+  background-color: #6f42c1;
+  color: #FFFFFF;
+  border: 1px solid #5a32a3;
+}
+
+/* Partially Delivered - Success (Green) */
+.order-partially-delivered {
+  background-color: #198754;
+  color: #FFFFFF;
+  border: 1px solid #146c43;
+}
+
+/* Partially Cancelled - Danger (Red) */
+.order-partially-cancelled {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+/* Processing Return - Warning (Yellow) */
+.order-processing-return {
+  background-color: #ffc107;
+  color: #000000;
+  border: 1px solid #ffb800;
+}
+
+/* ========= LEGACY ITEM STATUS COLORS (for backward compatibility) ========= */
+.item-delivered {
+  background-color: #198754;
+  color: #FFFFFF;
+  border: 1px solid #146c43;
+}
+
+.item-shipped {
+  background-color: #0d6efd;
+  color: #FFFFFF;
+  border: 1px solid #0a58ca;
+}
+
+.item-processing {
+  background-color: #0d6efd;
+  color: #FFFFFF;
+  border: 1px solid #0a58ca;
+}
+
+.item-pending {
+  background-color: #ffc107;
+  color: #000000;
+  border: 1px solid #ffb800;
+}
+
+.item-cancelled {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+.item-returned {
+  background-color: #6f42c1;
+  color: #FFFFFF;
+  border: 1px solid #5a32a3;
+}
+
+/* ========= TABLE WRAPPER ========= */
+.table-wrapper {
+  overflow: visible;
+  width: 100%;
+}
+
+.table-wrapper .order-row {
+  position: relative;
+  z-index: 1;
+}
+
+.actions-dropdown.show {
+  z-index: 10001 !important;
+}
+
+/* ========= EMPTY STATE ========= */
+.empty-state {
+  padding: 3rem 2rem;
+}
+
+.empty-state i {
+  color: #6c757d;
+}
+
+/* ========= PAGINATION ========= */
+.pagination .page-link {
+  border-radius: 8px;
+  margin: 0 3px;
+  border: 1px solid #dee2e6;
+  padding: 0.75rem 1rem;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+/* ========= TEXT COLOR OVERRIDES ========= */
+.text-black {
+  color: #000000 !important;
+}
+
+/* ========= VIEW BUTTON STYLING ========= */
+.view-btn {
+  background-color: #000000 !important;
+  border: 1px solid #000000 !important;
+  color: white !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 80px;
+  justify-content: center;
+}
+
+.view-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+  text-decoration: none;
+}
+
+.view-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.view-btn:active {
+  background-color: #b02a37 !important;
+  transform: translateY(0);
+}
+
+/* ========= CONTAINER PADDING ========= */
+.container-fluid {
+  padding-left: 0rem;
+  padding-right: 0rem;
+}
+
+/* ========= SEARCH INPUT STYLING ========= */
+.search-input-container {
+  position: relative;
+}
+
+.search-input {
+  padding-right: 80px !important;
+  padding-left: 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  height: 46px;
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+}
+
+.search-input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+  outline: none;
+}
+
+.search-icon-btn,
+.clear-search-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  color: #6c757d;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.search-icon-btn {
+  right: 40px;
+  color: #000000;
+  font-weight: 600;
+}
+
+.search-icon-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+.clear-search-btn {
+  right: 8px;
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.clear-search-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+.search-input:not(:placeholder-shown) + .search-icon-btn + .clear-search-btn {
+  display: flex !important;
+}
+
+.search-input.searching {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23666' d='M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 50px center;
+  background-size: 20px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ========= SEARCH RESULTS HIGHLIGHTING ========= */
+.search-highlight {
+  background-color: #fff3cd;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.search-status {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.search-status.active {
+  color: #000000;
+  font-weight: 500;
+}
+
+/* ========= RESET FILTERS BUTTON (Small) ========= */
+#resetFiltersBtn {
+  background-color: transparent !important;
+  border: 1px solid #6c757d !important;
+  color: #6c757d !important;
+  font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 140px;
+  justify-content: center;
+}
+
+#resetFiltersBtn:hover {
+  background-color: #6c757d !important;
+  border-color: #6c757d !important;
+  color: white !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+#resetFiltersBtn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(108, 117, 125, 0.25);
+  outline: none;
+}
+
+#resetFiltersBtn:active {
+  background-color: #5a6268 !important;
+  transform: translateY(0);
+}
+
+/* ========= VIEW FILTERS BUTTON ========= */
+.view-filters-btn {
+  background-color: transparent !important;
+  border: 2px solid #dc3545 !important;
+  color: #dc3545 !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 150px;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+}
+
+.view-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.view-filters-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.view-filters-btn:active {
+  background-color: #b02a37 !important;
+  transform: translateY(0);
+}
+
+.view-filters-btn[aria-expanded="true"] {
+  background-color: #dc3545 !important;
+  color: white !important;
+}
+
+.view-filters-btn[aria-expanded="true"] i::before {
+  content: "\f62d";
+}
+
+/* ========= RESET FILTERS BUTTON (Large - in collapse) ========= */
+.reset-filters-btn {
+  background-color: #000000 !important;
+  border: 2px solid #000000 !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.reset-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.reset-filters-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.reset-filters-btn:active {
+  background-color: #b02a37 !important;
+  transform: translateY(0);
+}
+
+/* ========= FILTERS CARD ANIMATION ========= */
+.filters-card {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+}
+
+#filtersSection {
+  transition: all 0.3s ease-in-out;
+}
+
+#filtersSection.collapsing {
+  transition: height 0.3s ease-in-out;
+}
+
+/* ========= FORM CONTROLS STYLING ========= */
+.form-select {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.form-select:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+}
+
+/* ========= RESPONSIVE DESIGN ========= */
+@media (max-width: 1200px) {
+  .table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  
+  .orders-table th,
+  .orders-table td {
+    padding: 0;
+  }
+  
+  .order-id,
+  .product-info,
+  .customer-info,
+  .items-count,
+  .date-info,
+  .amount-info,
+  .payment-status,
+  .order-status {
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .orders-table th,
+  .orders-table td {
+    padding: 0;
+  }
+  
+  .order-id,
+  .product-info,
+  .customer-info,
+  .items-count,
+  .date-info,
+  .amount-info,
+  .payment-status,
+  .order-status {
+    padding: 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .product-info {
+    min-width: 150px;
+  }
+  
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .dropdown-menu {
+    min-width: 180px;
+  }
+  
+  .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+  
+  .view-filters-btn {
+    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+  
+  .reset-filters-btn {
+    margin-top: 1rem;
+  }
+  
+  .items-count .fw-bold {
+    font-size: 1rem;
+  }
+  
+  .status-badge {
+    min-width: 70px;
+    max-width: 110px;
+    padding: 0.5rem 0.6rem;
+  }
+}
+
+/* ========= BUTTON GROUP SPACING ========= */
+.col-12.d-flex button {
+  white-space: nowrap;
+}
+
+/* ========= FAILED STATUS COLOR ========= */
+/* Failed - Danger (Red) */
+.order-failed {
+  background-color: #dc3545;
+  color: #FFFFFF;
+  border: 1px solid #bb2d3b;
+}
+
+/* Partially Failed - Warning (Orange) */
+.order-partially-failed {
+  background-color: #fd7e14;
+  color: #FFFFFF;
+  border: 1px solid #e0680d;
+}
+</style>
+
+
+
+
+
+
+
+
+<script>
+// Global variables for pagination and filtering
+let currentPage = <%= currentPage %>;
+let isLoading = false;
+
+// Set up pagination callback for the shared partial
+window.applyFilters = applyFilters; // Make it globally accessible
+
+// ✅ FIXED: Load system statistics once on page load
+async function loadSystemStatistics() {
+  try {
+    const response = await fetch('/admin/orders/api/statistics');
+    const result = await response.json();
+    
+    if (result.success) {
+      // Update dashboard cards with system-wide data
+      const statsElements = document.querySelectorAll('.card-body h3');
+      
+      // Today's Orders
+      if (statsElements[0]) {
+        statsElements[0].textContent = result.statistics.todayOrders || 0;
+      }
+      
+      // Total Orders  
+      if (statsElements[1]) {
+        statsElements[1].textContent = result.statistics.totalOrders || 0;
+      }
+      
+      // Total Items (system-wide)
+      if (statsElements[2]) {
+        statsElements[2].textContent = result.statistics.totalItems || 0;
+      }
+      
+      // Pending Items
+      if (statsElements[3]) {
+        const pendingStat = result.statistics.orderStats.find(stat => stat._id === 'Pending');
+        statsElements[3].textContent = pendingStat?.count || 0;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading system statistics:', error);
+  }
+}
+
+// Main DOMContentLoaded event listener
+document.addEventListener('DOMContentLoaded', function() {
+  // ✅ Load system statistics once
+  loadSystemStatistics();
+  
+  // ✅ Define callback functions for pagination partial compatibility
+  window.fetchCallback = applyFilters;
+  window.paginationCallback = applyFilters;
+
+  const filterForm = document.getElementById('filterForm');
+  const searchInput = document.getElementById('orderSearch');
+  const searchSubmitBtn = document.getElementById('searchSubmitBtn');
+  const clearSearchBtn = document.getElementById('clearSearchBtn');
+  const viewFiltersBtn = document.getElementById('viewFiltersBtn');
+  const headerRefreshBtn = document.getElementById('headerRefreshBtn');
+
+  // ✅ NEW: Header refresh button functionality
+  if (headerRefreshBtn) {
+    headerRefreshBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      
+      // Add loading state
+      const originalText = headerRefreshBtn.innerHTML;
+      headerRefreshBtn.disabled = true;
+      headerRefreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1 text-white"></i>Refreshing...';
+      
+      // Reload statistics and current view
+      Promise.all([
+        loadSystemStatistics(),
+        applyFilters(currentPage)
+      ]).finally(() => {
+        // Remove loading state
+        headerRefreshBtn.disabled = false;
+        headerRefreshBtn.innerHTML = originalText;
+      });
+    });
+  }
+
+  // ✅ NEW: View Filters button toggle functionality
+  if (viewFiltersBtn) {
+    viewFiltersBtn.addEventListener('click', function() {
+      const filtersSection = document.getElementById('filtersSection');
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      // Update button text and icon immediately for responsiveness
+      if (!isExpanded) {
+        this.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+      } else {
+        this.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+      }
+    });
+    
+    // ✅ Listen to Bootstrap collapse events for accurate state management
+    const filtersSection = document.getElementById('filtersSection');
+    if (filtersSection) {
+      filtersSection.addEventListener('shown.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'true');
+      });
+      
+      filtersSection.addEventListener('hidden.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'false');
+      });
+    }
+  }
+
+  // ✅ PREVENT FORM SUBMISSION entirely
+  if (filterForm) {
+    filterForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      return false;
+    });
+  }
+  
+  // ✅ PREVENT FORM SUBMISSION on Enter key in search input
+  if (searchInput) {
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // ✅ Prevent form submission
+        e.stopPropagation(); // ✅ Stop event bubbling
+        performSearch();
+        return false; // ✅ Extra prevention
+      }
+    });
+  }
+  
+  // ✅ PREVENT FORM SUBMISSION on search button click
+  if (searchSubmitBtn) {
+    searchSubmitBtn.addEventListener('click', function(e) {
+      e.preventDefault(); // ✅ Prevent any form submission
+      e.stopPropagation(); // ✅ Stop event bubbling
+      performSearch();
+      return false; // ✅ Extra prevention
+    });
+  }
+  
+  // ✅ FIXED: Clear search functionality - clears input AND searches
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', function(e) {
+      e.preventDefault(); // ✅ Prevent any form submission
+      e.stopPropagation(); // ✅ Stop event bubbling
+      
+      // Clear the input value
+      searchInput.value = '';
+      
+      // Update clear button visibility
+      toggleClearButton();
+      
+      // Perform search with empty value (shows all results)
+      performSearch();
+      
+      return false; // ✅ Extra prevention
+    });
+  }
+  
+  // ✅ Show/hide clear button based on input value
+  function toggleClearButton() {
+    if (searchInput && clearSearchBtn) {
+      if (searchInput.value.trim().length > 0) {
+        clearSearchBtn.style.display = 'flex';
+      } else {
+        clearSearchBtn.style.display = 'none';
+      }
+    }
+  }
+  
+  // ✅ Show/hide clear button on input (without triggering search)
+  if (searchInput) {
+    searchInput.addEventListener('input', function(e) {
+      toggleClearButton();
+      // Don't trigger search automatically - only on submit
+    });
+  }
+  
+  // ✅ Initialize clear button visibility
+  toggleClearButton();
+  
+  // ✅ Main search function
+  function performSearch() {
+    if (!searchInput || !searchSubmitBtn) return;
+    
+    const searchTerm = searchInput.value.trim();
+    
+    // Visual feedback
+    searchInput.classList.add('searching');
+    searchSubmitBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+    searchSubmitBtn.disabled = true;
+    
+    // Perform the search
+    applyFilters(1).finally(() => {
+      // Remove loading state
+      searchInput.classList.remove('searching');
+      searchSubmitBtn.innerHTML = '<i class="bi bi-search"></i>';
+      searchSubmitBtn.disabled = false;
+    });
+  }
+  
+  // ✅ Auto-submit filters on change
+  if (filterForm) {
+    const formElements = filterForm.querySelectorAll('select');
+    formElements.forEach(element => {
+      element.addEventListener('change', function() {
+        applyFilters(1); // Reset to page 1 when filters change
+      });
+    });
+  }
+
+  // Pagination click handler for the shared partial
+  document.addEventListener('click', function(e) {
+    const paginationLink = e.target.closest('.pagination .page-link');
+    if (!paginationLink || paginationLink.classList.contains('disabled-btn')) return;
+    
+    e.preventDefault();
+    const page = parseInt(paginationLink.dataset.page);
+    
+    if (!isNaN(page) && page >= 1) {
+      applyFilters(page);
+    }
+  });
+
+  // Remove dropdown-open class when dropdown is hidden
+  document.addEventListener('click', function(event) {
+    if (!event.target.closest('.actions-dropdown')) {
+      document.querySelectorAll('.order-row').forEach(row => {
+        row.classList.remove('dropdown-open');
+      });
+    }
+  });
+
+  // Bootstrap dropdown events
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
+
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
+
+  // ✅ Reset filters button with enhanced functionality
+  const resetFiltersBtn = document.getElementById('resetFiltersBtn');
+  if (resetFiltersBtn) {
+    resetFiltersBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      resetFilters();
+      return false;
+    });
+  }
+});
+
+// ✅ Helper function to get payment status CSS class
+function getPaymentStatusClass(status) {
+  if (!status) return 'payment-unknown';
+  return `payment-${status.toLowerCase().replace(/ /g, '-')}`;
+}
+
+// ✅ NEW: Helper function to get order status CSS class
+function getOrderStatusClass(status) {
+  if (!status) return 'order-unknown';
+  // Convert status to lowercase and replace spaces with hyphens
+  return `order-${status.toLowerCase().replace(/ /g, '-')}`;
+}
+
+// Function to apply filters using fetch
+async function applyFilters(page = 1) {
+  if (isLoading) return;
+  
+  isLoading = true;
+  showLoadingState();
+  
+  try {
+    // ✅ Handle both search input and filter form
+    const searchInput = document.getElementById('orderSearch');
+    const filterForm = document.getElementById('filterForm');
+    
+    const params = new URLSearchParams();
+    params.append('page', page);
+    
+    // Add search parameter
+    if (searchInput && searchInput.value.trim() !== '') {
+      params.append('search', searchInput.value.trim());
+    }
+    
+    // Add filter parameters if form exists
+    if (filterForm) {
+      const formData = new FormData(filterForm);
+      for (const [key, value] of formData.entries()) {
+        if (value.trim() !== '' && key !== 'search') { // Exclude search as we handle it separately
+          params.append(key, value);
+        }
+      }
+    }
+    
+    const response = await fetch(`/admin/orders/api/filtered?${params.toString()}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      updateOrdersTable(result.data);
+      updateStatistics(result.data);
+      updatePagination(result.data);
+      
+      currentPage = result.data.currentPage;
+    } else {
+      showToast('error', result.message || 'Error loading orders');
+    }
+  } catch (error) {
+    console.error('Error applying filters:', error);
+    showToast('error', 'Error loading orders');
+  } finally {
+    isLoading = false;
+    hideLoadingState();
+  }
+}
+
+// Function to show loading state
+function showLoadingState() {
+  const tableBody = document.querySelector('.orders-table tbody');
+  if (tableBody) {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-5">
+          <div class="loading-state">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 text-muted">Loading orders...</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Function to hide loading state
+function hideLoadingState() {
+  // Loading state will be replaced by actual content
+}
+
+// ✅ ENHANCED: Reset all filters function with loading states
+function resetFilters() {
+  console.log('🔄 Resetting all filters...');
+  
+  const filterForm = document.getElementById('filterForm');
+  const resetBtn = document.getElementById('resetFiltersBtn');
+  
+  // Add loading state to reset button
+  if (resetBtn) {
+    const originalText = resetBtn.innerHTML;
+    resetBtn.disabled = true;
+    resetBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Resetting...';
+    
+    // Reset after a short delay to show the loading state
+    setTimeout(() => {
+      // Reset form if it exists
+      if (filterForm) {
+        filterForm.reset();
+      }
+      
+      // Clear search input
+      const searchInput = document.getElementById('orderSearch');
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      
+      // Hide the clear search button
+      const clearSearchBtn = document.getElementById('clearSearchBtn');
+      if (clearSearchBtn) {
+        clearSearchBtn.style.display = 'none';
+      }
+      
+      // Reset the "Total Items" label styling if it was changed during filtering
+      const totalItemsLabel = document.querySelector('.col-xl-3:nth-child(3) h6');
+      const totalItemsCard = document.querySelector('.col-xl-3:nth-child(3) .card');
+      if (totalItemsLabel) {
+        totalItemsLabel.textContent = 'Total Items';
+        totalItemsLabel.style.color = '';
+      }
+      if (totalItemsCard) {
+        totalItemsCard.style.borderLeft = '';
+      }
+      
+      // Apply filters with cleared values
+      applyFilters(1).finally(() => {
+        // Remove loading state
+        if (resetBtn) {
+          resetBtn.disabled = false;
+          resetBtn.innerHTML = originalText;
+        }
+      });
+      
+      console.log('✅ Filters reset successfully');
+    }, 100);
+  } else {
+    // Fallback if no reset button found
+    if (filterForm) {
+      filterForm.reset();
+    }
+    
+    const searchInput = document.getElementById('orderSearch');
+    if (searchInput) {
+      searchInput.value = '';
+    }
+    
+    applyFilters(1);
+  }
+}
+
+// Function to update orders table
+function updateOrdersTable(data) {
+  const tableBody = document.querySelector('.orders-table tbody');
+  
+  if (!tableBody) return;
+  
+  if (data.orders && data.orders.length > 0) {
+    let tableHTML = '';
+    data.orders.forEach((order) => {
+      tableHTML += generateOrderRowHTML(order);
+    });
+    tableBody.innerHTML = tableHTML;
+
+    // ✅ Calculate continuous row numbers based on current page
+    const rows = tableBody.querySelectorAll('tr.order-row');
+    const itemsPerPage = data.itemsPerPage || 10; // Default to 10 if not provided
+    const currentPage = data.currentPage || 1;
+    const startNumber = (currentPage - 1) * itemsPerPage + 1;
+
+    rows.forEach((row, index) => {
+      const rowNumberSpan = row.querySelector('[data-row-number]');
+      if (rowNumberSpan) {
+        rowNumberSpan.textContent = startNumber + index;
+      }
+    });
+  } else {
+    tableBody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-5">
+          <div class="empty-state">
+            <i class="bi bi-inbox display-1 d-block mb-3 text-black"></i>
+            <h5 class="text-black">No orders found</h5>
+            <p class="text-black">No orders match your current filters.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+}
+
+// Function to generate order row HTML with proper badge classes
+function generateOrderRowHTML(order) {
+  const orderDate = new Date(order.createdAt);
+  const formattedDate = orderDate.toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+  const formattedTime = orderDate.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  // ✅ Generate proper CSS classes for badges
+  const paymentStatusClass = getPaymentStatusClass(order.paymentStatus);
+  const orderStatusClass = getOrderStatusClass(order.status);
+
+  return `
+    <tr class="order-row">
+      <!-- Row Number - Will be set by updateOrdersTable -->
+      <td>
+        <div class="row-number">
+          <span class="fw-bold text-black" data-row-number></span>
+        </div>
+      </td>
+
+      <!-- Order ID -->
+      <td>
+        <div class="order-id">
+          <span class="fw-bold text-black">${order.orderId}</span>
+        </div>
+      </td>
+
+      <!-- Customer -->
+      <td>
+        <div class="customer-info">
+          <div class="customer-name text-black">${order.user?.name || 'N/A'}</div>
+          <div class="customer-email text-black">${order.user?.email || 'N/A'}</div>
+        </div>
+      </td>
+
+      <!-- Date -->
+      <td>
+        <div class="date-info">
+          <div class="order-date text-black">${formattedDate}</div>
+          <div class="order-time text-black">${formattedTime}</div>
+        </div>
+      </td>
+
+      <!-- Amount -->
+      <td>
+        <div class="amount-info">
+          <div class="item-amount text-black">₹${order.totalAmount.toLocaleString('en-IN')}</div>
+          <div class="payment-method text-black">${order.paymentMethod.toUpperCase()}</div>
+        </div>
+      </td>
+
+      <!-- Payment Status -->
+      <td>
+        <div class="payment-status">
+          <span class="status-badge ${paymentStatusClass}">
+            ${order.paymentStatus || 'Unknown'}
+          </span>
+        </div>
+      </td>
+
+      <!-- Order Status -->
+      <td>
+        <div class="order-status">
+          <span class="status-badge ${orderStatusClass}">
+            ${order.status}
+          </span>
+        </div>
+      </td>
+
+      <!-- Actions -->
+      <td class="text-center">
+        <a href="/admin/orders/${order.orderId}" class="btn btn-sm view-btn">
+          <i class="bi bi-eye me-1"></i> View
+        </a>
+      </td>
+    </tr>
+  `;
+}
+
+
+// Only show filtered results count (don't update dashboard cards)
+function updateStatistics(data) {
+  // Console log for debugging
+  console.log(`Showing ${data.filteredOrdersCount} filtered results`);
+}
+
+// Update pagination function
+function updatePagination(data) {
+  const paginationContainer = document.querySelector('.pagination');
+  if (!paginationContainer || data.totalPages <= 1) {
+    const paginationNav = document.querySelector('nav[aria-label="Orders pagination"]');
+    if (paginationNav) {
+      paginationNav.style.display = 'none';
+    }
+    return;
+  }
+  
+  const paginationNav = document.querySelector('nav[aria-label="Orders pagination"]');
+  if (paginationNav) {
+    paginationNav.style.display = 'block';
+  }
+  
+  let paginationHTML = '';
+  
+  // Previous button
+  paginationHTML += `
+    <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
+      <a class="page-link text-black" href="#" data-page="${data.currentPage - 1}">
+        <i class="bi bi-chevron-left text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  // Page numbers
+  const startPage = Math.max(1, data.currentPage - 2);
+  const endPage = Math.min(data.totalPages, data.currentPage + 2);
+  
+  for (let i = startPage; i <= endPage; i++) {
+    paginationHTML += `
+      <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+        <a class="page-link ${i === data.currentPage ? 'text-white' : 'text-black'}" href="#" data-page="${i}">
+          ${i}
+        </a>
+      </li>
+    `;
+  }
+  
+  // Next button
+  paginationHTML += `
+    <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
+      <a class="page-link text-black" href="#" data-page="${data.currentPage + 1}">
+        <i class="bi bi-chevron-right text-black"></i>
+      </a>
+    </li>
+  `;
+  
+  paginationContainer.innerHTML = paginationHTML;
+}
+
+// Add missing function for dropdown events
+function attachDropdownEventListeners() {
+  document.querySelectorAll('.dropdown').forEach(dropdown => {
+    dropdown.addEventListener('shown.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.add('dropdown-open');
+      }
+    });
+
+    dropdown.addEventListener('hidden.bs.dropdown', function() {
+      const row = this.closest('.order-row');
+      if (row) {
+        row.classList.remove('dropdown-open');
+      }
+    });
+  });
+}
+
+// ✅ UPDATED: Refresh orders function (used by header button)
+function refreshOrders() {
+  // Reload system statistics and refresh the current view
+  loadSystemStatistics();
+  applyFilters(currentPage);
+}
+
+// Toast notification function
+function showToast(type, message) {
+  // Create toast element
+  const toastHtml = `
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body">
+          ${message}
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  `;
+  
+  // Add to toast container
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    toastContainer.style.zIndex = '9999';
+    document.body.appendChild(toastContainer);
+  }
+  
+  toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+  
+  // Show toast
+  const toastElement = toastContainer.lastElementChild;
+  const toast = new bootstrap.Toast(toastElement);
+  toast.show();
+  
+  // Remove toast element after it's hidden
+  toastElement.addEventListener('hidden.bs.toast', () => {
+    toastElement.remove();
+  });
+}
+</script>
+
+
+
+

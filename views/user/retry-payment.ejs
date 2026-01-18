@@ -1,0 +1,353 @@
+<% var title = "Retry Payment" %>
+
+<!-- Retry Payment Page Specific CSS -->
+<link rel="stylesheet" href="/css/checkout.css">
+
+<!-- Breadcrumbs -->
+<div class="container my-4">
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Cart', href: '/cart' },
+      { label: 'Retry Payment' }
+    ]
+  }) %>
+</div>
+
+<!-- Main Retry Payment Container -->
+<div class="container pb-4 checkout-content">
+    <!-- Header Bar -->
+    <div class="checkout-header-bar">
+        <h1 class="checkout-title">
+            <i class="bi bi-arrow-clockwise me-2"></i>Retry Payment
+        </h1>
+    </div>
+
+    <!-- Main Content - Two Column Layout -->
+    <div class="main-checkout-content">
+        <!-- LEFT SECTION - SINGLE CARD -->
+        <div class="checkout-left">
+            <div class="section-card">
+              
+              <!-- Delivery Address -->
+              <div class="section-header">
+                <h3 class="section-title">
+                  <i class="bi bi-geo-alt me-2"></i>Delivery Address
+                </h3>
+              </div>
+              <div class="section-content pb-3 border-bottom">
+                <% if (orderData.deliveryAddress) { %>
+                  <div class="address-detail">
+                    <p class="mb-1"><strong><%= orderData.deliveryAddress.name %></strong></p>
+                    <p class="mb-1"><small class="text-muted"><%= orderData.deliveryAddress.addressType %></small></p>
+                    <p class="mb-1"><%= orderData.deliveryAddress.street || '' %></p>
+                    <% if (orderData.deliveryAddress.landMark) { %>
+                      <p class="mb-1"><%= orderData.deliveryAddress.landMark %></p>
+                    <% } %>
+                    <p class="mb-1"><%= orderData.deliveryAddress.city %>, <%= orderData.deliveryAddress.state %></p>
+                    <p class="mb-1">PIN: <%= orderData.deliveryAddress.pincode %></p>
+                    <p class="mb-0"><i class="bi bi-telephone me-2"></i><%= orderData.deliveryAddress.phone %></p>
+                  </div>
+                <% } else { %>
+                  <p class="text-muted">Address not available</p>
+                <% } %>
+              </div>
+
+              <!-- Applied Coupon -->
+              <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                <div class="section-content py-3 border-bottom">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-ticket me-2 text-success"></i>
+                    <div>
+                      <h6 class="mb-0">Applied Coupon</h6>
+                      <p class="mb-0 text-success small"><strong>₹<%= orderData.couponDiscount %></strong> discount</p>
+                    </div>
+                  </div>
+                </div>
+              <% } %>
+
+              <!-- Payment Method -->
+              <div class="section-content py-3 border-bottom">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-credit-card me-2"></i>
+                  <div>
+                    <h6 class="mb-0">Payment Method</h6>
+                    <p class="mb-0 text-muted small">UPI / Digital Wallet</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Retry Payment Buttons - Centered and Smaller -->
+              <div class="section-content pt-3">
+                <div class="d-flex gap-2 justify-content-center">
+                  <button id="retry-payment-btn" class="btn btn-warning px-4 py-2">
+                    <i class="bi bi-arrow-clockwise me-2"></i>Retry Payment
+                  </button>
+                  <a href="/cart" class="btn btn-outline-secondary px-4 py-2">
+                    <i class="bi bi-arrow-left me-2"></i>Return to Cart
+                  </a>
+                </div>
+              </div>
+
+            </div>
+        </div>
+
+        <!-- RIGHT SECTION - SINGLE CARD -->
+        <div class="checkout-right">
+            <div class="section-card">
+              
+              <!-- Order Items -->
+              <div class="section-header">
+                <h3 class="section-title">
+                  <i class="bi bi-bag me-2"></i>Order Items (<%= orderData.totalItemCount || 0 %>)
+                </h3>
+              </div>
+              <div class="section-content pb-3 border-bottom">
+                <% if (orderData.items && orderData.items.length > 0) { %>
+                  <% orderData.items.forEach((item, index) => { %>
+                    <div class="cart-item-summary <%= index > 0 ? 'border-top pt-3' : '' %>">
+                      <div class="row g-3">
+                        <div class="col-md-3">
+                          <img src="<%= item.productId.mainImage || '/images/placeholder.png' %>" 
+                               alt="<%= item.productId.productName %>" 
+                               class="img-fluid rounded">
+                        </div>
+                        <div class="col-md-5">
+                          <h6 class="mb-2"><%= item.productId.productName %></h6>
+                          <small class="text-muted d-block">Size: <%= item.size %></small>
+                          <small class="text-muted d-block">SKU: <%= item.sku %></small>
+                          <small class="text-muted d-block">Qty: <%= item.quantity %></small>
+                        </div>
+                        <div class="col-md-4 text-end">
+                          <p class="mb-0"><strong>₹<%= item.price %></strong></p>
+                          <small class="text-muted">Total: ₹<%= item.totalPrice %></small>
+                        </div>
+                      </div>
+                    </div>
+                  <% }); %>
+                <% } else { %>
+                  <p class="text-muted">No items in order</p>
+                <% } %>
+              </div>
+
+              <!-- Price Details -->
+              <div class="section-content pt-3">
+                <h6 class="mb-3"><i class="bi bi-receipt me-2"></i>Price Details</h6>
+                <div class="price-summary">
+                  <!-- Subtotal -->
+                  <div class="summary-row">
+                    <span class="price-label">Subtotal</span>
+                    <span class="price-value">₹<%= orderData.subtotal || 0 %></span>
+                  </div>
+
+                  <!-- Product Discount -->
+                  <% if (orderData.totalDiscount && orderData.totalDiscount > 0) { %>
+                    <div class="summary-row text-success">
+                      <span class="price-label">Product Discount</span>
+                      <span class="price-value">-₹<%= orderData.totalDiscount %></span>
+                    </div>
+                  <% } %>
+
+                  <!-- Coupon Discount -->
+                  <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                    <div class="summary-row text-success">
+                      <span class="price-label">Coupon Discount</span>
+                      <span class="price-value">-₹<%= orderData.couponDiscount %></span>
+                    </div>
+                  <% } %>
+
+                  <!-- Shipping -->
+                  <div class="summary-row">
+                    <span class="price-label">Shipping</span>
+                    <% if (orderData.shipping === 0 || orderData.shipping === '0' || orderData.shipping === 'FREE') { %>
+                      <span class="price-value text-success">FREE</span>
+                    <% } else { %>
+                      <span class="price-value">₹<%= orderData.shipping %></span>
+                    <% } %>
+                  </div>
+
+                  <!-- Total -->
+                  <div class="summary-row border-top pt-3 mt-3 total-row">
+                    <span class="price-label"><strong>Total Amount</strong></span>
+                    <span class="price-value"><strong>₹<%= orderData.total || 0 %></strong></span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include Razorpay SDK -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+<!-- Retry Payment Script -->
+<script>
+document.getElementById('retry-payment-btn').addEventListener('click', async function() {
+  try {
+    Swal.fire({
+      title: 'Processing Payment',
+      html: 'Please wait while we prepare your payment gateway...',
+      allowOutsideClick: false,
+      didOpen: () => Swal.showLoading()
+    });
+
+    const deliveryAddressId = '<%= orderData.deliveryAddressId %>';
+    const addressIndex = '<%= orderData.addressIndex %>';
+
+    if (!deliveryAddressId || deliveryAddressId === 'undefined') {
+      throw new Error('Delivery Address ID is missing!');
+    }
+
+    if (addressIndex === 'undefined' || addressIndex === '') {
+      throw new Error('Address Index is missing!');
+    }
+
+    const orderResponse = await fetch('/checkout/create-razorpay-order-retry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        deliveryAddressId: deliveryAddressId,
+        addressIndex: parseInt(addressIndex),
+        paymentMethod: 'upi'
+      })
+    });
+
+    if (!orderResponse.ok) {
+      throw new Error('Failed to create payment order');
+    }
+
+    const orderData = await orderResponse.json();
+    if (!orderData.success) {
+      throw new Error(orderData.message || 'Failed to create Razorpay order');
+    }
+
+    const razorpayOrderId = orderData.data.razorpayOrderId;
+
+    const options = {
+      key: '<%= razorpayKeyId %>',
+      amount: orderData.data.amount,
+      currency: orderData.data.currency || 'INR',
+      name: 'LacedUp',
+      description: orderData.data.description,
+      order_id: razorpayOrderId,
+      prefill: {
+        name: orderData.data.userName,
+        email: orderData.data.userEmail,
+        contact: orderData.data.userPhone
+      },
+      theme: {
+        color: '#FFC400'
+      },
+      handler: async function(response) {
+        try {
+          Swal.fire({
+            title: 'Verifying Payment',
+            html: 'Please wait...',
+            allowOutsideClick: false,
+            didOpen: () => Swal.showLoading()
+          });
+
+          const verifyResponse = await fetch('/checkout/verify-retry-razorpay-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature
+            })
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (verifyData.success) {
+            Swal.fire({
+              icon: 'success',
+              title: 'Payment Successful',
+              text: 'Your order has been placed successfully!',
+              confirmButtonColor: '#28a745'
+            }).then(() => {
+              window.location.href = verifyData.data.redirectUrl;
+            });
+          } else {
+            throw new Error(verifyData.message || 'Payment verification failed');
+          }
+        } catch (error) {
+          console.error('Payment verification error:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Verification Failed',
+            text: error.message,
+            confirmButtonColor: '#dc3545'
+          });
+        }
+      },
+      modal: {
+        ondismiss: async function() {
+          console.log('User closed Razorpay modal during retry payment');
+          
+          try {
+            // ✅ CORRECTED: Use retry-payment-failure endpoint for retries
+            await fetch('/checkout/retry-payment-failure', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayOrderId: razorpayOrderId,
+                error: {
+                  description: 'User closed payment modal',
+                  reason: 'Modal dismissed'
+                }
+              })
+            });
+
+            window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+          } catch (error) {
+            console.error('Error:', error);
+            window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+          }
+        }
+      }
+    };
+
+    const rzp = new Razorpay(options);
+    
+    // ✅ CORRECTED: Catch payment failures from the gateway during retry
+    rzp.on('payment.failed', async function(response) {
+      try {
+        console.error('❌ Retry payment failed:', response.error);
+        
+        // ✅ CORRECTED: Use retry-payment-failure endpoint for retries
+        await fetch('/checkout/retry-payment-failure', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpayOrderId: razorpayOrderId,
+            error: {
+              description: response.error.description || 'Payment failed',
+              reason: response.error.reason || 'Unknown error'
+            }
+          })
+        });
+
+        // Redirect to failure page
+        window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+      } catch (error) {
+        console.error('Error handling retry payment failure:', error);
+        window.location.href = '/checkout/order-failure/' + razorpayOrderId;
+      }
+    });
+    
+    rzp.open();
+
+  } catch (error) {
+    console.error('Error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: error.message,
+      confirmButtonColor: '#dc3545'
+    });
+  }
+});
+</script>

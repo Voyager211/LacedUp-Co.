@@ -1,0 +1,1210 @@
+<% var title = "Return Management"; %>
+
+<div class="container-fluid py-4">
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="d-flex justify-content-between align-items-center">
+        <div>
+          <h2 class="fw-bold text-black mb-1">Return Management</h2>
+          <p class="text-black mb-0">Manage and process customer return requests</p>
+        </div>
+        <div class="d-flex gap-2">
+          <button class="btn btn-dark" id="headerRefreshBtn">
+            <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Return Statistics Cards -->
+  <div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-warning bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-clock-history text-warning fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Pending Returns</h6>
+              <h3 class="fw-bold text-black mb-0"><%= pendingReturns || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-check-circle text-success fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Approved Returns</h6>
+              <h3 class="fw-bold text-black mb-0"><%= approvedReturns || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-info bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-arrow-return-left text-info fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Total Returns</h6>
+              <h3 class="fw-bold text-black mb-0"><%= totalReturns || 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6 mb-3">
+      <div class="card border-0 shadow-sm h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="flex-shrink-0">
+              <div class="bg-primary bg-opacity-10 rounded-3 p-3">
+                <i class="bi bi-currency-rupee text-primary fs-4"></i>
+              </div>
+            </div>
+            <div class="flex-grow-1 ms-3">
+              <h6 class="text-black mb-1">Refund Amount</h6>
+              <h3 class="fw-bold text-black mb-0">₹<%= totalRefundAmount ? totalRefundAmount.toLocaleString('en-IN') : 0 %></h3>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters and Search -->
+  <%- include('partials/filters-bar', {
+    searchPlaceholder: 'Return ID, Order ID, Customer name, Product name...',
+    searchLabel: 'Search Returns',
+    formId: 'returnFilterForm',
+    apiEndpoint: '/admin/returns/api/filtered',
+    tableSelector: '.returns-table tbody',
+    updateTableCallback: 'updateReturnsTable',
+    updateStatsCallback: 'updateStatistics',
+    filterValues: filters,
+    filters: [
+      {
+        name: 'status',
+        label: 'Return Status',
+        type: 'select',
+        colSize: 2,
+        allOption: 'All Status',
+        options: returnStatuses.map(status => ({ value: status, label: status }))
+      },
+      {
+        name: 'dateRange',
+        label: 'Date Range',
+        type: 'daterange',
+        colSize: 2
+      },
+      {
+        name: 'sortBy',
+        label: 'Sort By',
+        type: 'select',
+        colSize: 2,
+        options: [
+          { value: 'requestDate', label: 'Request Date' },
+          { value: 'totalPrice', label: 'Amount' },
+          { value: 'status', label: 'Status' }
+        ]
+      },
+      {
+        name: 'sortOrder',
+        label: 'Order',
+        type: 'select',
+        colSize: 2,
+        options: [
+          { value: 'desc', label: 'Desc' },
+          { value: 'asc', label: 'Asc' }
+        ]
+      }
+    ]
+  }) %>
+
+
+  <!-- Returns Table -->
+  <div class="row">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body p-0">
+          <div class="table-wrapper">
+            <table class="table table-hover mb-0 returns-table">
+              <thead>
+                <tr>
+                  <th class="border-0 text-black">Return._Id</th>
+                  <th class="border-0 text-black">Product</th>
+                  <th class="border-0 text-black">Customer/Order</th>
+                  <!-- <th class="border-0 text-black">Order ID</th> -->
+                  <th class="border-0 text-black">Date</th>
+                  <th class="border-0 text-black">Amount</th>
+                  <th class="border-0 text-black">Reason</th>
+                  <th class="border-0 text-black">Status</th>
+                  <!-- <th class="border-0 text-black">Refund Status</th> -->
+                  <th class="border-0 text-center text-black">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% if (returns && returns.length > 0) { %>
+                  <% returns.forEach(returnItem => { %>
+                    <tr class="return-row">
+                      <td>
+                        <div class="return-id">
+                          <span class="fw-bold text-black">#<%= returnItem.returnId %></span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="product-info d-flex align-items-center">
+                          <% if (returnItem.productImage) { %>
+                            <img src="<%= returnItem.productImage %>" 
+                                 alt="<%= returnItem.productName %>" 
+                                 class="product-thumb me-3">
+                          <% } else { %>
+                            <div class="product-thumb-placeholder me-3">
+                              <i class="bi bi-image"></i>
+                            </div>
+                          <% } %>
+                          <div class="product-details">
+                            <div class="product-name text-black"><%= returnItem.productName %></div>
+                            <small class="text-muted">Size: <%= returnItem.size %> | Qty: <%= returnItem.quantity %></small>
+                            <br><small class="text-muted">SKU: <%= returnItem.sku %></small>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="customer-info">
+                          <div class="order-info">
+                            <span class="fw-bold text-black">#<%= returnItem.orderId %></span>
+                          </div>
+                          <div class="customer-name text-black"><%= returnItem.userId?.name || 'N/A' %></div>
+                          <div class="customer-email text-black"><%= returnItem.userId?.email || 'N/A' %></div>
+
+                        </div>
+                      </td>
+                      <!-- <td>
+                        <div class="order-info">
+                          <span class="fw-bold text-black">#<%= returnItem.orderId %></span>
+                        </div>
+                      </td> -->
+                      <td>
+                        <div class="date-info">
+                          <div class="request-date text-black">
+                            <%= new Date(returnItem.requestDate).toLocaleDateString('en-IN', { 
+                              day: 'numeric', 
+                              month: 'short', 
+                              year: 'numeric' 
+                            }) %>
+                          </div>
+                          <div class="request-time text-black">
+                            <%= new Date(returnItem.requestDate).toLocaleTimeString('en-IN', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            }) %>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="amount-info">
+                          <div class="return-amount text-black fw-bold">₹<%= returnItem.totalPrice.toLocaleString('en-IN') %></div>
+                          <% if (returnItem.refundAmount && returnItem.refundAmount !== returnItem.totalPrice) { %>
+                            <div class="refund-amount text-muted">Refund: ₹<%= returnItem.refundAmount.toLocaleString('en-IN') %></div>
+                          <% } %>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="reason-info">
+                          <span class="text-black" title="<%= returnItem.reason %>">
+                            <%= returnItem.reason.length > 30 ? returnItem.reason.substring(0, 30) + '...' : returnItem.reason %>
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div class="return-status">
+                          <span class="status-badge return-<%= returnItem.status.toLowerCase() %>">
+                            <%= returnItem.status %>
+                          </span>
+                        </div>
+                        <br>
+                        <!-- <div class="refund-status">
+                          <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
+                            <%= returnItem.refundStatus %>
+                          </span>
+                        </div> -->
+                      </td>
+                      <!-- <td> -->
+                        <!-- <div class="refund-status">
+                          <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
+                            <%= returnItem.refundStatus %>
+                          </span>
+                        </div> -->
+                      <!-- </td> -->
+                      <td class="text-center">
+                        <% if (returnItem.status === RETURN_STATUS.PENDING) { %>
+                          <!-- Show dropdown with actions for PENDING returns -->
+                          <div class="actions-dropdown">
+                            <div class="dropdown">
+                              <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                                      data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-three-dots-vertical text-black"></i>
+                              </button>
+                              <ul class="dropdown-menu dropdown-menu-end">
+                                <li>
+                                  <button class="dropdown-item text-black" onclick="approveReturn('<%= returnItem._id %>')">
+                                    <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
+                                  </button>
+                                </li>
+                                <li>
+                                  <button class="dropdown-item text-black" onclick="rejectReturn('<%= returnItem._id %>')">
+                                    <i class="bi bi-x-circle me-2 text-danger"></i>Reject Return
+                                  </button>
+                                </li>
+                              </ul>
+                            </div>
+                          </div>
+                        <% } else { %>
+                          <!-- Show "None" for non-pending returns -->
+                          <span class="text-muted fst-italic">None</span>
+                        <% } %>
+                      </td>
+                    </tr>
+                  <% }) %>
+                <% } else { %>
+                  <tr>
+                    <td colspan="10" class="text-center py-5">
+                      <div class="empty-state">
+                        <i class="bi bi-arrow-return-left display-1 d-block mb-3 text-black"></i>
+                        <h5 class="text-black">No return requests found</h5>
+                        <p class="text-black">No return requests match your current filters.</p>
+                      </div>
+                    </td>
+                  </tr>
+                <% } %>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <% if (totalPages >= 1) { %>
+    <div class="row mt-4">
+      <div class="col-12">
+        <%- include('partials/pagination', {
+          currentPage: currentPage,
+          totalPages: totalPages,
+          paginationCallbackName: 'applyFilters'
+        }) %>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- Approve Return Modal -->
+<div class="modal fade" id="approveReturnModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Approve Return Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="approveReturnForm">
+        <div class="modal-body">
+          <input type="hidden" id="approveReturnId" name="returnId">
+          
+          <!-- ✅ CHANGED: Read-only refund amount display -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Refund Amount:</label>
+            <div class="p-2 bg-light border rounded">
+              <span class="fw-bold text-success fs-5" id="displayRefundAmount">₹0</span>
+            </div>
+            <small class="form-text text-muted">
+              <i class="bi bi-info-circle me-1"></i>
+              This amount is calculated based on the original item price and cannot be modified.
+            </small>
+            <!-- Hidden input to send the value -->
+            <input type="hidden" id="refundAmount" name="refundAmount">
+          </div>
+          
+          <div class="mb-3">
+            <label for="approveNotes" class="form-label">Admin Notes (Optional):</label>
+            <textarea class="form-control" id="approveNotes" name="notes" rows="3" 
+                      placeholder="Add any notes about this approval..."></textarea>
+          </div>
+          
+          <div class="alert alert-info mb-0">
+            <i class="bi bi-check-circle me-2"></i>
+            <strong>Approval Action:</strong> This will approve the return request and initiate the refund process.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-success" onclick="submitApproveReturn()">
+            <i class="bi bi-check-circle me-1"></i>Approve Return
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reject Return Modal -->
+<div class="modal fade" id="rejectReturnModal" tabindex="-1" aria-labelledby="rejectReturnModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title text-black" id="rejectReturnModalLabel">Reject Return Request</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <form id="rejectReturnForm">
+          <input type="hidden" id="rejectReturnId" name="returnId">
+          <div class="mb-3">
+            <label for="rejectReason" class="form-label text-black">Rejection Reason</label>
+            <textarea class="form-control" id="rejectReason" name="reason" rows="3" 
+                      placeholder="Please provide a reason for rejecting this return request..." required></textarea>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-danger" onclick="submitRejectReturn()">Reject Return</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+
+<style>
+
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+/* Returns Table Design */
+.returns-table {
+  position: relative;
+  z-index: 1;
+}
+
+.returns-table tbody tr {
+  position: relative;
+  z-index: 2;
+}
+
+.returns-table tbody tr:hover {
+  z-index: 10 !important;
+}
+
+
+.returns-table th {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1.25rem 1rem;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.returns-table td {
+  padding: 1.5rem 1rem;
+  vertical-align: middle;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.return-row {
+  transition: background-color 0.2s ease;
+  transform: none !important;
+}
+
+.return-row:hover {
+  background-color: #f8f9fa;
+  transform: none !important;
+}
+
+/* Return ID Styling */
+.return-id {
+  font-size: 0.85rem;
+  font-weight: 600;
+  word-wrap: break-word;
+  word-break: break-all;
+  line-height: 1.2;
+  max-width: 100%;
+}
+
+.return-id span {
+  display: block;
+  word-wrap: break-word;
+  word-break: break-all;
+  color: #000000 !important;
+}
+
+/* Product Info Styling */
+.product-info {
+  min-width: 200px;
+}
+
+.product-thumb {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-thumb-placeholder {
+  width: 50px;
+  height: 50px;
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+  line-height: 1.3;
+}
+
+/* Customer Info Styling */
+.customer-info {
+  min-width: 150px;
+}
+
+.customer-name {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.customer-email {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* Date Info Styling */
+.date-info {
+  min-width: 100px;
+}
+
+.request-date {
+  font-weight: 600;
+  color: #000000 !important;
+  font-size: 0.9rem;
+  margin-bottom: 2px;
+}
+
+.request-time {
+  color: #000000 !important;
+  font-size: 0.8rem;
+}
+
+/* Amount Info Styling */
+.amount-info {
+  min-width: 100px;
+}
+
+.return-amount {
+  font-weight: 700;
+  color: #000000 !important;
+  font-size: 0.95rem;
+  margin-bottom: 2px;
+}
+
+.refund-amount {
+  color: #6c757d !important;
+  font-size: 0.8rem;
+}
+
+/* Status Badge Styling */
+.status-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 70px;
+  text-align: center;
+}
+
+/* Return Status Colors */
+.return-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.return-approved {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.return-rejected {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.return-processing {
+  background-color: #cce7ff;
+  color: #004085;
+  border: 1px solid #b3d7ff;
+}
+
+.return-completed {
+  background-color: #d1ecf1;
+  color: #0c5460;
+  border: 1px solid #bee5eb;
+}
+
+/* Refund Status Colors */
+.refund-pending {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.refund-processed {
+  background-color: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.refund-failed {
+  background-color: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Action Button Styling */
+.action-btn {
+  position: relative;
+  z-index: 10;
+  border: 1px solid #dee2e6 !important;
+  background: #ffffff !important;
+  color: #6c757d !important;
+  padding: 0.5rem;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px !important;
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover,
+.action-btn:focus,
+.action-btn.show {
+  background-color: #f8f9fa !important;
+  border-color: #adb5bd !important;
+  color: #495057 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  z-index: 100 !important;
+}
+
+.action-btn:focus {
+  box-shadow: none !important;
+  background-color: #f8f9fa !important;
+  color: #000000 !important;
+}
+
+.action-btn::after {
+  display: none;
+}
+
+/* Dropdown Menu Styling */
+.dropdown-menu {
+  position: absolute !important;
+  top: 100% !important;
+  left: auto !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  min-width: 200px;
+  max-width: 250px;
+  padding: 0.5rem 0;
+  margin: 0.125rem 0 0;
+  background-color: #ffffff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  transform: translateY(0) !important;
+  will-change: transform;
+}
+
+.dropdown-menu.show {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  z-index: 9999 !important;
+}
+
+.actions-dropdown {
+  position: relative;
+  z-index: 100;
+}
+
+.actions-dropdown .dropdown {
+  position: relative;
+  z-index: 100;
+}
+
+.actions-dropdown .dropdown.show {
+  z-index: 9999 !important;
+}
+
+.actions-dropdown .dropdown.show .dropdown-menu {
+  z-index: 9999 !important;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.dropdown-item {
+  display: flex !important;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #495057 !important;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: #f8f9fa !important;
+  color: #16181b !important;
+}
+
+.dropdown-item i {
+  width: 16px;
+  height: 16px;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Table wrapper */
+.table-wrapper {
+  overflow: visible !important;
+  width: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* Fix for dropdown z-index issues */
+.table-wrapper .return-row {
+  position: relative;
+  z-index: 1;
+}
+
+.table-wrapper .return-row.dropdown-open {
+  z-index: 10000 !important;
+}
+
+.actions-dropdown.show {
+  z-index: 10001 !important;
+}
+
+/* Empty State */
+.empty-state {
+  padding: 3rem 2rem;
+}
+
+/* Pagination */
+.pagination .page-link {
+  border-radius: 8px;
+  margin: 0 3px;
+  border: 1px solid #dee2e6;
+  padding: 0.75rem 1rem;
+}
+
+.pagination .page-item.active .page-link {
+  background-color: #000000;
+  border-color: #000000;
+  color: #ffffff;
+}
+
+/* Text color overrides */
+.text-black {
+  color: #000000 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .table-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+  
+  .returns-table th,
+  .returns-table td {
+    padding: 1rem 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .returns-table th,
+  .returns-table td {
+    padding: 0.75rem 0.5rem;
+    font-size: 0.85rem;
+  }
+  
+  .product-info {
+    min-width: 150px;
+  }
+  
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .dropdown-menu {
+    min-width: 180px;
+  }
+  
+  .dropdown-item {
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+  }
+}
+
+.filters-card,
+.table-card {
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.filters-card .card-body,
+.table-card .card-body {
+  padding: 1.5rem !important;
+}
+
+/* Ensure the row and columns take full width */
+.filters-row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  width: 100% !important;
+}
+
+/* ✅ SOLUTION: Match filters and table card widths exactly */
+.filters-content {
+  padding: 1.5rem !important;
+}
+
+/* Ensure both cards have identical borders and shadows */
+.card {
+  border: none !important;
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+  border-radius: 12px !important;
+  overflow: visible !important;
+}
+
+.card-body {
+  overflow: visible !important;
+}
+
+/* Remove any margin differences that could cause width variations */
+.row.mb-4,
+.row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.col-12 {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+/* Ensure form takes full width */
+#filterForm {
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+</style>
+
+<script>
+// Global variables
+let currentPage = <%= currentPage %>;
+
+// ✅ Callback functions for the filters bar
+function updateReturnsTable(data) {
+  const tbody = document.querySelector('.returns-table tbody');
+  const returns = data.returns || [];
+  
+  if (!returns || returns.length === 0) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="text-center py-5">
+          <div class="empty-state">
+            <i class="bi bi-arrow-return-left display-1 d-block mb-3 text-black"></i>
+            <h5 class="text-black">No return requests found</h5>
+            <p class="text-black">No return requests match your current filters.</p>
+          </div>
+        </td>
+      </tr>
+    `;
+    return;
+  }
+  
+  const rowsHtml = returns.map(returnItem => `
+    <tr class="return-row">
+      <td>
+        <div class="return-id">
+          <span class="fw-bold text-black">#${returnItem.returnId}</span>
+        </div>
+      </td>
+      <td>
+        <div class="product-info d-flex align-items-center">
+          ${returnItem.productImage ? 
+            `<img src="${returnItem.productImage}" alt="${returnItem.productName}" class="product-thumb me-3">` :
+            `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`
+          }
+          <div class="product-details">
+            <div class="product-name text-black">${returnItem.productName}</div>
+            <small class="text-muted">Size: ${returnItem.size} | Qty: ${returnItem.quantity}</small>
+            <br><small class="text-muted">SKU: ${returnItem.sku}</small>
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="customer-info">
+          <div class="order-info">
+            <span class="fw-bold text-black">#${returnItem.orderId}</span>
+          </div>
+          <div class="customer-name text-black">${returnItem.userId?.name || 'N/A'}</div>
+          <div class="customer-email text-black">${returnItem.userId?.email || 'N/A'}</div>
+        </div>
+      </td>
+      <td>
+        <div class="date-info">
+          <div class="request-date text-black">
+            ${new Date(returnItem.requestDate).toLocaleDateString('en-IN', { 
+              day: 'numeric', 
+              month: 'short', 
+              year: 'numeric' 
+            })}
+          </div>
+          <div class="request-time text-black">
+            ${new Date(returnItem.requestDate).toLocaleTimeString('en-IN', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
+        </div>
+      </td>
+      <td>
+        <div class="amount-info">
+          <div class="return-amount text-black fw-bold">₹${returnItem.totalPrice.toLocaleString('en-IN')}</div>
+          ${returnItem.refundAmount && returnItem.refundAmount !== returnItem.totalPrice ? 
+            `<div class="refund-amount text-muted">Refund: ₹${returnItem.refundAmount.toLocaleString('en-IN')}</div>` : 
+            ''
+          }
+        </div>
+      </td>
+      <td>
+        <div class="reason-info">
+          <span class="text-black" title="${returnItem.reason}">
+            ${returnItem.reason.length > 30 ? returnItem.reason.substring(0, 30) + '...' : returnItem.reason}
+          </span>
+        </div>
+      </td>
+      <td>
+        <div class="return-status">
+          <span class="status-badge return-${returnItem.status.toLowerCase()}">
+            ${returnItem.status}
+          </span>
+        </div>
+      </td>
+      <td class="text-center">
+        ${returnItem.status === 'Pending' ? `
+          <div class="actions-dropdown">
+            <div class="dropdown">
+              <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                      data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-three-dots-vertical text-black"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li>
+                  <button class="dropdown-item text-black" onclick="approveReturn('${returnItem._id}')">
+                    <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
+                  </button>
+                </li>
+                <li>
+                  <button class="dropdown-item text-black" onclick="rejectReturn('${returnItem._id}')">
+                    <i class="bi bi-x-circle me-2 text-danger"></i>Reject Return
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+        ` : `
+          <span class="text-muted fst-italic">None</span>
+        `}
+      </td>
+    </tr>
+  `).join('');
+  
+  tbody.innerHTML = rowsHtml;
+}
+
+function updateStatistics(data) {
+  const pendingElement = document.querySelector('.col-xl-3:nth-child(1) h3');
+  const approvedElement = document.querySelector('.col-xl-3:nth-child(2) h3');
+  const totalElement = document.querySelector('.col-xl-3:nth-child(3) h3');
+  const refundElement = document.querySelector('.col-xl-3:nth-child(4) h3');
+  
+  if (pendingElement) pendingElement.textContent = data.pendingReturns || 0;
+  if (approvedElement) approvedElement.textContent = data.approvedReturns || 0;
+  if (totalElement) totalElement.textContent = data.totalReturns || 0;
+  if (refundElement) refundElement.textContent = `₹${(data.totalRefundAmount || 0).toLocaleString('en-IN')}`;
+}
+
+// ✅ Keep all your existing return-specific functions (no changes needed)
+function approveReturn(returnId) {
+  const returnRow = document.querySelector(`button[onclick*="${returnId}"]`).closest('.return-row');
+  const amountElement = returnRow.querySelector('.return-amount');
+  const amountText = amountElement.textContent.replace('₹', '').replace(/,/g, '');
+  const originalAmount = parseFloat(amountText) || 0;
+  
+  document.getElementById('approveReturnId').value = returnId;
+  document.getElementById('displayRefundAmount').textContent = `₹${originalAmount.toLocaleString('en-IN')}`;
+  document.getElementById('refundAmount').value = originalAmount;
+  document.getElementById('approveNotes').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('approveReturnModal'));
+  modal.show();
+}
+
+function submitApproveReturn() {
+  const form = document.getElementById('approveReturnForm');
+  const formData = new FormData(form);
+  const returnId = formData.get('returnId');
+  
+  fetch(`/admin/returns/${returnId}/approve`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      refundAmount: parseFloat(formData.get('refundAmount')),
+      notes: formData.get('notes')
+    })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('success', data.message);
+      setTimeout(() => applyFilters(currentPage), 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('error', 'Error approving return');
+  });
+  
+  bootstrap.Modal.getInstance(document.getElementById('approveReturnModal')).hide();
+}
+
+function rejectReturn(returnId) {
+  document.getElementById('rejectReturnId').value = returnId;
+  document.getElementById('rejectReason').value = '';
+  
+  const modal = new bootstrap.Modal(document.getElementById('rejectReturnModal'));
+  modal.show();
+}
+
+function submitRejectReturn() {
+  const form = document.getElementById('rejectReturnForm');
+  const formData = new FormData(form);
+  const returnId = formData.get('returnId');
+  
+  fetch(`/admin/returns/${returnId}/reject`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ rejectionReason: formData.get('reason') })
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      showToast('success', data.message);
+      setTimeout(() => applyFilters(currentPage), 1000);
+    } else {
+      showToast('error', data.message);
+    }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    showToast('error', 'Error rejecting return');
+  });
+  
+  bootstrap.Modal.getInstance(document.getElementById('rejectReturnModal')).hide();
+}
+
+function showToast(type, message) {
+  const toastHtml = `
+    <div class="toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `;
+  
+  let toastContainer = document.querySelector('.toast-container');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+    document.body.appendChild(toastContainer);
+  }
+  
+  toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+  
+  const toastElement = toastContainer.lastElementChild;
+  const toast = new bootstrap.Toast(toastElement);
+  toast.show();
+  
+  toastElement.addEventListener('hidden.bs.toast', () => toastElement.remove());
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Fix dropdown positioning and z-index issues
+  const dropdowns = document.querySelectorAll('.actions-dropdown .dropdown');
+  
+  dropdowns.forEach(dropdown => {
+    const button = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+    const menu = dropdown.querySelector('.dropdown-menu');
+    
+    if (button && menu) {
+      // ✅ Handle dropdown show event
+      button.addEventListener('show.bs.dropdown', function() {
+        console.log('🔍 Dropdown showing...');
+        
+        // Boost z-index when showing
+        dropdown.style.zIndex = '9999';
+        menu.style.zIndex = '9999';
+        menu.style.position = 'absolute';
+        
+        // Ensure the parent row has higher z-index
+        const parentRow = button.closest('tr');
+        if (parentRow) {
+          parentRow.style.zIndex = '10000';
+          parentRow.classList.add('dropdown-open');
+        }
+      });
+      
+      // ✅ Handle dropdown hide event  
+      button.addEventListener('hide.bs.dropdown', function() {
+        console.log('🔍 Dropdown hiding...');
+        
+        const parentRow = button.closest('tr');
+        if (parentRow) {
+          // Reset z-index after a delay
+          setTimeout(() => {
+            parentRow.style.zIndex = '';
+            parentRow.classList.remove('dropdown-open');
+          }, 150);
+        }
+      });
+      
+      // ✅ Handle dropdown shown event
+      button.addEventListener('shown.bs.dropdown', function() {
+        console.log('✅ Dropdown shown successfully');
+        
+        // Force display and positioning
+        menu.style.display = 'block';
+        menu.style.visibility = 'visible';
+        menu.style.opacity = '1';
+        
+        // Check if menu is visible
+        const rect = menu.getBoundingClientRect();
+        console.log('🔍 Dropdown menu position:', {
+          top: rect.top,
+          left: rect.left,
+          width: rect.width,
+          height: rect.height,
+          visible: rect.width > 0 && rect.height > 0
+        });
+      });
+    }
+  });
+  
+  // ✅ Debug: Click handler to test dropdown
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.action-btn')) {
+      console.log('🔍 Action button clicked');
+      const button = e.target.closest('.action-btn');
+      const dropdown = button.closest('.dropdown');
+      const menu = dropdown?.querySelector('.dropdown-menu');
+      
+      if (menu) {
+        console.log('🔍 Dropdown menu found:', {
+          display: getComputedStyle(menu).display,
+          visibility: getComputedStyle(menu).visibility,
+          zIndex: getComputedStyle(menu).zIndex,
+          position: getComputedStyle(menu).position
+        });
+      }
+    }
+  });
+});
+
+// ✅ Additional fix for Bootstrap 5 dropdown issues
+document.addEventListener('DOMContentLoaded', function() {
+  // Ensure Bootstrap dropdowns are properly initialized
+  const dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
+  const dropdownList = dropdownElementList.map(function (dropdownToggleEl) {
+    return new bootstrap.Dropdown(dropdownToggleEl);
+  });
+  
+  console.log('✅ Initialized', dropdownList.length, 'dropdowns');
+});
+</script>
+
+
+

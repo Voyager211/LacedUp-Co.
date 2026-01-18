@@ -1,0 +1,538 @@
+<nav class="navbar navbar-expand-lg navbar-dark fixed-top" style="background-color: #000;">
+  <div class="container">
+    <!-- Brand Logo -->
+    <a class="navbar-brand fw-bold d-flex align-items-center me-4" href="/">
+      <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749818108/laceduplogoblackbg_new-removebg-preview_i3keeo.png" alt="LacedUp Logo" height="60" class="me-2" />
+    </a>
+
+    <!-- Toggler for mobile -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
+      aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Links & Search -->
+    <div class="collapse navbar-collapse justify-content-between" id="navbarNavDropdown">
+      <!-- Center Nav Links -->
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-4">
+        <li class="nav-item">
+          <a class="nav-link <% if (active === 'home') { %>active fw-bold<% } %>" href="/">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link <% if (active === 'shop') { %>active fw-bold<% } %>" href="/shop">Shop</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/about">About</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link" href="/contact">Contact</a>
+        </li>
+      </ul>
+
+      <!-- Search + Auth Buttons -->
+      <div class="d-flex align-items-center">
+        <!-- Search Input with Dropdown -->
+        <div class="navbar-search-container position-relative me-3">
+          <form id="navbar-search-form" class="position-relative" role="search" method="GET" action="/shop">
+            <div class="input-group">
+              <input
+                type="text"
+                class="form-control pe-5"
+                name="q"
+                id="navbar-search-input"
+                placeholder="Search sneakers..."
+                value="<%= typeof searchQuery !== 'undefined' ? searchQuery : '' %>"
+                autocomplete="off"
+              >
+
+              <!-- Clear 'X' button -->
+              <button
+                type="button"
+                id="navbar-clear-x"
+                class="btn btn-sm position-absolute top-50 end-0 translate-middle-y me-5"
+                style="z-index: 1005; display: none;">
+                <i class="bi bi-x-lg"></i>
+              </button>
+
+              <!-- Search icon button -->
+              <button class="btn btn-outline-light" type="submit">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
+          </form>
+
+          <!-- Search Suggestions Dropdown -->
+          <div id="navbar-search-suggestions" class="navbar-search-suggestions-dropdown">
+            <div class="suggestions-loading" style="display: none;">
+              <div class="d-flex align-items-center justify-content-center py-3">
+                <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+                <span>Searching...</span>
+              </div>
+            </div>
+            <div class="suggestions-list"></div>
+            <div class="suggestions-empty" style="display: none;">
+              <div class="text-center py-3 text-muted">
+                <i class="bi bi-search me-2"></i>
+                No products found
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <% if (user) { %>
+          <!-- Wishlist Button -->
+          <a href="/wishlist" class="navbar-icon-btn me-3" title="Wishlist">
+            <i class="bi bi-heart"></i>
+          </a>
+
+          <!-- Cart Button -->
+          <a href="/cart" class="navbar-icon-btn me-3 position-relative" title="Cart">
+            <i class="bi bi-cart"></i>
+            <span id="cartCount" class="cart-count-badge position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style="display: none;">0</span>
+          </a>
+
+          <!-- Profile Dropdown -->
+          <div class="dropdown">
+            <button class="navbar-icon-btn dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false" title="Profile">
+              <i class="bi bi-person"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end profile-dropdown" aria-labelledby="profileDropdown">
+              <li class="dropdown-header">
+                <strong><%= user.name %></strong>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item" href="#" onclick="console.log('Profile clicked'); window.location.href='/profile'; return false;" id="profile-link">
+                  <i class="bi bi-person-circle me-2"></i>Profile
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item logout-btn" href="/logout" id="user-logout-btn">
+                  <i class="bi bi-box-arrow-right me-2"></i>Logout
+                </a>
+              </li>
+            </ul>
+          </div>
+        <% } else { %>
+          <a href="/login" class="btn btn-outline-light me-2">Login</a>
+          <a href="/signup" class="btn btn-light text-dark fw-semibold">Sign Up</a>
+        <% } %>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Navbar search functionality
+  const navbarSearchInput = document.getElementById('navbar-search-input');
+  const navbarSearchForm = document.getElementById('navbar-search-form');
+  const navbarClearBtn = document.getElementById('navbar-clear-x');
+  const navbarSearchSuggestions = document.getElementById('navbar-search-suggestions');
+  const suggestionsLoading = navbarSearchSuggestions.querySelector('.suggestions-loading');
+  const suggestionsList = navbarSearchSuggestions.querySelector('.suggestions-list');
+  const suggestionsEmpty = navbarSearchSuggestions.querySelector('.suggestions-empty');
+
+  let currentSuggestionIndex = -1;
+  let searchTimeout;
+
+  // Clear search function
+  function clearNavbarSearch() {
+    navbarSearchInput.value = '';
+    navbarClearBtn.style.display = 'none';
+    hideNavbarSuggestions();
+  }
+
+  // Toggle clear button visibility
+  function toggleNavbarClearButton() {
+    navbarClearBtn.style.display = navbarSearchInput.value.trim() ? 'block' : 'none';
+  }
+
+  // Show suggestions dropdown
+  function showNavbarSuggestions() {
+    navbarSearchSuggestions.classList.add('show');
+  }
+
+  // Hide suggestions dropdown
+  function hideNavbarSuggestions() {
+    navbarSearchSuggestions.classList.remove('show');
+    currentSuggestionIndex = -1;
+  }
+
+  // Fetch search suggestions
+  async function fetchNavbarSuggestions(query) {
+    if (!query || query.length < 2) {
+      hideNavbarSuggestions();
+      return;
+    }
+
+    // Show loading state
+    suggestionsLoading.style.display = 'block';
+    suggestionsList.innerHTML = '';
+    suggestionsEmpty.style.display = 'none';
+    showNavbarSuggestions();
+
+    try {
+      const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      suggestionsLoading.style.display = 'none';
+
+      if (data.success && data.suggestions && data.suggestions.length > 0) {
+        renderNavbarSuggestions(data.suggestions);
+      } else {
+        suggestionsEmpty.style.display = 'block';
+      }
+    } catch (error) {
+      console.error('Error fetching navbar suggestions:', error);
+      suggestionsLoading.style.display = 'none';
+      suggestionsEmpty.style.display = 'block';
+    }
+  }
+
+  // Render suggestions in dropdown - SIMPLIFIED VERSION (only product names)
+  function renderNavbarSuggestions(suggestions) {
+    suggestionsList.innerHTML = suggestions.map((product, index) => `
+      <div class="suggestion-item" data-index="${index}" data-name="${product.productName}">
+        <div class="suggestion-name">${product.productName}</div>
+      </div>
+    `).join('');
+
+    // Add click listeners to suggestions
+    suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const productName = item.dataset.name;
+        navbarSearchInput.value = productName;
+        hideNavbarSuggestions();
+        navbarSearchForm.submit();
+      });
+    });
+  }
+
+  // Event listeners
+  navbarSearchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    toggleNavbarClearButton();
+
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      fetchNavbarSuggestions(query);
+    }, 300); // Debounce for 300ms
+  });
+
+  navbarSearchInput.addEventListener('focus', function() {
+    const query = this.value.trim();
+    if (query.length >= 2) {
+      fetchNavbarSuggestions(query);
+    }
+  });
+
+  navbarSearchInput.addEventListener('keydown', function(e) {
+    const suggestions = suggestionsList.querySelectorAll('.suggestion-item');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      currentSuggestionIndex = Math.min(currentSuggestionIndex + 1, suggestions.length - 1);
+      updateSuggestionHighlight(suggestions);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      currentSuggestionIndex = Math.max(currentSuggestionIndex - 1, -1);
+      updateSuggestionHighlight(suggestions);
+    } else if (e.key === 'Enter') {
+      if (currentSuggestionIndex >= 0 && suggestions[currentSuggestionIndex]) {
+        e.preventDefault();
+        suggestions[currentSuggestionIndex].click();
+      }
+    } else if (e.key === 'Escape') {
+      hideNavbarSuggestions();
+    }
+  });
+
+  function updateSuggestionHighlight(suggestions) {
+    suggestions.forEach((item, index) => {
+      item.classList.toggle('highlighted', index === currentSuggestionIndex);
+    });
+  }
+
+  navbarClearBtn.addEventListener('click', clearNavbarSearch);
+
+  // Hide suggestions when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!navbarSearchInput.contains(e.target) && !navbarSearchSuggestions.contains(e.target)) {
+      hideNavbarSuggestions();
+    }
+  });
+
+  // Hide suggestions when navbar collapses on mobile
+  const navbarToggler = document.querySelector('.navbar-toggler');
+  if (navbarToggler) {
+    navbarToggler.addEventListener('click', function() {
+      hideNavbarSuggestions();
+    });
+  }
+
+  // Form submission
+  navbarSearchForm.addEventListener('submit', function(e) {
+    hideNavbarSuggestions();
+    // Let the form submit naturally to /shop with the search query
+  });
+
+  // Logout transition effect
+  const userLogoutBtn = document.getElementById('user-logout-btn');
+  if (userLogoutBtn) {
+    userLogoutBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+
+      // Start fade out transition
+      if (window.PageTransition) {
+        PageTransition.fadeOut(() => {
+          // Redirect to logout after fade out completes
+          window.location.href = '/logout';
+        }, 'Logging out...');
+      } else {
+        // Fallback if PageTransition is not available
+        window.location.href = '/logout';
+      }
+    });
+  }
+
+  // Cart count functionality
+  const cartCountBadge = document.getElementById('cartCount');
+  
+  // Function to update cart count in navbar
+  function updateNavbarCartCount(count) {
+    if (cartCountBadge) {
+      if (count > 0) {
+        cartCountBadge.textContent = count;
+        cartCountBadge.style.display = 'flex';
+        cartCountBadge.classList.add('updated');
+        setTimeout(() => {
+          cartCountBadge.classList.remove('updated');
+        }, 400);
+      } else {
+        cartCountBadge.style.display = 'none';
+      }
+    }
+  }
+
+  // Function to fetch cart count from server
+  async function fetchCartCount() {
+    try {
+      const response = await fetch('/cart/count');
+      if (response.ok) {
+        const data = await response.json();
+        updateNavbarCartCount(data.count || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching cart count:', error);
+    }
+  }
+
+  // Fetch cart count on page load (only if user is logged in)
+  <% if (user) { %>
+    fetchCartCount();
+    
+    // Set up periodic cart count refresh every 30 seconds
+    setInterval(fetchCartCount, 30000);
+    
+    // Also refresh cart count when page becomes visible again
+    document.addEventListener('visibilitychange', function() {
+      if (!document.hidden) {
+        fetchCartCount();
+      }
+    });
+  <% } %>
+
+  // Make updateNavbarCartCount globally available for other scripts
+  window.updateNavbarCartCount = updateNavbarCartCount;
+  window.fetchCartCount = fetchCartCount;
+});
+</script>
+
+<style>
+/* Navbar Search Suggestions Dropdown - SIMPLIFIED STYLES */
+.navbar-search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 300px;
+  overflow-y: auto;
+  display: none;
+  width: 100%;
+}
+
+.navbar-search-suggestions-dropdown.show {
+  display: block;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:hover,
+.navbar-search-suggestions-dropdown .suggestion-item.highlighted {
+  background-color: rgba(224, 58, 47, 0.05);
+  border-left: 3px solid #e03a2f;
+  padding-left: 13px;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-name {
+  font-weight: 600;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading,
+.navbar-search-suggestions-dropdown .suggestions-empty {
+  padding: 16px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading .spinner-border {
+  width: 1rem;
+  height: 1rem;
+}
+
+/* Navbar Icon Buttons */
+.navbar-icon-btn {
+  color: white;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+}
+
+.navbar-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+/* Profile Dropdown */
+.profile-dropdown {
+  min-width: 200px;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.profile-dropdown .dropdown-item {
+  padding: 10px 16px;
+  transition: all 0.3s ease;
+}
+
+.profile-dropdown .dropdown-item:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+  color: #e03a2f;
+}
+
+/* Navbar Search Container */
+.navbar-search-container {
+  min-width: 300px;
+}
+
+@media (max-width: 768px) {
+  .navbar-search-container {
+    min-width: 250px;
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-search-container {
+    min-width: 200px;
+  }
+}
+
+/* Navbar link hover animations are handled in user.css - removed duplicates */
+
+/* Clear button styling */
+#navbar-clear-x {
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 14px;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+#navbar-clear-x:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+
+/* Cart Count Badge */
+.cart-count-badge {
+  font-size: 0.5rem;
+  font-weight: 700;
+  min-width: 16px;
+  width: 16px;
+  height: 16px;
+  line-height: 1;
+  text-align: center;
+  padding: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: -4px;
+  right: -4px;
+  transform: translate(50%, -50%);
+  animation: cartBadgeAppear 0.3s ease-out;
+}
+
+@keyframes cartBadgeAppear {
+  0% {
+    transform: translate(50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(50%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.cart-count-badge.updated {
+  animation: cartBadgeUpdate 0.4s ease-out;
+}
+
+@keyframes cartBadgeUpdate {
+  0% {
+    transform: translate(50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(50%, -50%) scale(1.3);
+    background-color: #28a745 !important;
+  }
+  100% {
+    transform: translate(50%, -50%) scale(1);
+  }
+}
+</style>

@@ -1,0 +1,754 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile', href: '/profile' },
+      { label: 'My Orders', href: '/orders' },
+      { label: 'Order Details' }
+    ]
+  }) %>
+
+  <!-- Main Content -->
+  <div class="order-details-content">
+    <div class="row g-4">
+      <!-- Left Column: Order Details -->
+      <div class="col-lg-8">
+        <div class="order-details-card">
+          <!-- Order Header -->
+          <div class="order-header mb-4">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <h2 class="content-title mb-2">Order Details</h2>
+                <h4 class="fw-bold text-dark mb-1">Order #<%= order.orderId %></h4>
+                <p class="text-muted mb-0">
+                  <i class="bi bi-calendar3 me-1"></i>
+                  Placed on <%= new Date(order.createdAt).toLocaleDateString('en-IN', { 
+                    weekday: 'long',
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  }) %>
+                </p>
+              </div>
+              <div class="text-end">
+                <span class="badge bg-<%= 
+                  order.status === 'Delivered' ? 'success' : 
+                  order.status === 'Shipped' ? 'info' : 
+                  order.status === 'Processing' ? 'warning' : 
+                  order.status === 'Cancelled' ? 'danger' : 
+                  order.status === 'Returned' ? 'secondary' : 'secondary' 
+                %> fs-6 px-3 py-2 mb-2">
+                  <%= order.status %>
+                </span>
+                <div class="fw-bold text-dark fs-4">₹<%= order.totalAmount.toLocaleString('en-IN') %></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Actions -->
+          <div class="order-actions-bar mb-4">
+            <div class="d-flex gap-2 flex-wrap">
+              
+              <!-- ✅ NEW: Retry Payment Button - Only for PENDING orders with FAILED payment -->
+              <% if (order.status === 'Pending' && order.paymentStatus === 'Failed') { %>
+                <a href="/checkout/retry-payment/<%= order.orderId %>" class="btn btn-warning">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
+                </a>
+              <% } %>
+              
+              <!-- Cancel Order Button -->
+              <% if (order.status === 'Pending' || order.status === 'Processing') { %>
+                <button class="btn btn-outline-danger" onclick="cancelOrder('<%= order.orderId %>')">
+                  <i class="bi bi-x-circle me-1"></i>Cancel Order
+                </button>
+              <% } %>
+              
+              <!-- Track Order Button -->
+              <% if (order.status === 'Shipped') { %>
+                <button class="btn btn-outline-info" onclick="trackOrder('<%= order.orderId %>')">
+                  <i class="bi bi-truck me-1"></i>Track Order
+                </button>
+              <% } %>
+              
+              <!-- Return Order Button -->
+              <% if (order.status === 'Delivered') { %>
+                <button class="btn btn-outline-warning" onclick="returnOrder('<%= order.orderId %>')">
+                  <i class="bi bi-arrow-return-left me-1"></i>Return Order
+                </button>
+              <% } %>
+              
+              <!-- Download Invoice Button - Only for DELIVERED orders -->
+              <% if (order.status === 'Delivered' && order.paymentStatus === 'Completed') { %>
+                <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
+                  <i class="bi bi-download me-1"></i>Download Invoice
+                </button>
+              <% } %>
+                           
+              <!-- Back to Orders Button -->
+              <a href="/orders" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i>Back to Orders
+              </a>
+            </div>
+          </div>
+
+          <!-- Order Items Section -->
+          <div class="order-section mb-4">
+            <h5 class="section-title">Items Ordered (<%= order.totalItemCount %> items)</h5>
+            <div class="order-items-detailed">
+              <% order.items.forEach((item, index) => { %>
+                <div class="order-item-card mb-3">
+                  <div class="row align-items-center">
+                    <div class="col-md-2">
+                      <% if (item.productId && item.productId.mainImage) { %>
+                        <img src="<%= item.productId.mainImage %>" 
+                             alt="<%= item.productId.productName %>" 
+                             class="product-image-large">
+                      <% } else { %>
+                        <div class="product-image-placeholder">
+                          <i class="bi bi-image"></i>
+                        </div>
+                      <% } %>
+                    </div>
+                    <div class="col-md-4">
+                      <h6 class="fw-bold mb-1">
+                        <%= item.productId ? item.productId.productName : 'Product Name' %>
+                      </h6>
+                      <div class="product-details">
+                        <span class="detail-item">Size: <strong><%= item.size %></strong></span>
+                        <span class="detail-item">Quantity: <strong><%= item.quantity %></strong></span>
+                        <% if (item.status) { %>
+                          <span class="detail-item">Status: 
+                            <span class="badge bg-<%= 
+                              item.status === 'Delivered' ? 'success' : 
+                              item.status === 'Shipped' ? 'info' : 
+                              item.status === 'Processing' ? 'warning' : 
+                              item.status === 'Cancelled' ? 'danger' : 
+                              item.status === 'Returned' ? 'secondary' : 'secondary' 
+                            %> text-white"><%= item.status %></span>
+                          </span>
+                        <% } %>
+                      </div>
+                    </div>
+                    <div class="col-md-2 text-center">
+                      <div class="price-per-item">
+                        <div class="fw-bold">₹<%= item.price.toLocaleString('en-IN') %></div>
+                        <small class="text-muted">per item</small>
+                      </div>
+                    </div>
+                    <div class="col-md-2 text-center">
+                      <div class="total-price">
+                        <div class="fw-bold fs-5">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+                        <small class="text-muted">total</small>
+                      </div>
+                    </div>
+                    <div class="col-md-2 text-center">
+                      <div class="item-actions">
+                        <% if (item.status === 'Pending' || item.status === 'Processing' || (!item.status && (order.status === 'Pending' || order.status === 'Processing'))) { %>
+                          <button class="btn btn-outline-danger btn-sm" onclick="cancelItem('<%= order.orderId %>', '<%= item._id %>')">
+                            <i class="bi bi-x-circle me-1"></i>Cancel
+                          </button>
+                        <% } %>
+                        <% if (item.status === 'Delivered' || (!item.status && order.status === 'Delivered')) { %>
+                          <% if (item.returnRequest) { %>
+                            <span class="badge bg-<%= 
+                              item.returnRequest.status === 'Pending' ? 'warning' : 
+                              item.returnRequest.status === 'Approved' ? 'success' : 
+                              item.returnRequest.status === 'Rejected' ? 'danger' : 'secondary' 
+                            %> text-white">
+                              <i class="bi bi-arrow-return-left me-1"></i>
+                              Return <%= item.returnRequest.status %>
+                            </span>
+                            <% if (item.returnRequest.status === 'Approved') { %>
+                              <small class="text-success d-block mt-1">
+                                <i class="bi bi-check-circle me-1"></i>
+                                Refund: ₹<%= item.returnRequest.refundAmount.toLocaleString('en-IN') %>
+                              </small>
+                            <% } %>
+                          <% } else { %>
+                            <button class="btn btn-outline-warning btn-sm" onclick="returnItem('<%= order.orderId %>', '<%= item._id %>')">
+                              <i class="bi bi-arrow-return-left me-1"></i>Return
+                            </button>
+                          <% } %>
+                        <% } %>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            </div>
+          </div>
+
+          <!-- Delivery Address -->
+          <div class="order-section mb-4">
+            <h5 class="section-title">Delivery Address</h5>
+            <div class="address-card">
+              <div class="fw-bold mb-2"><%= order.deliveryAddress.name %></div>
+              <div class="address-details">
+                <%= order.deliveryAddress.addressType %><br>
+                <%= order.deliveryAddress.landMark %><br>
+                <%= order.deliveryAddress.city %>, <%= order.deliveryAddress.state %><br>
+                PIN: <%= order.deliveryAddress.pincode %><br>
+                <div class="mt-2">
+                  <i class="bi bi-telephone me-1"></i><%= order.deliveryAddress.phone %>
+                  <% if (order.deliveryAddress.altPhone) { %>
+                    <br><i class="bi bi-telephone me-1"></i><%= order.deliveryAddress.altPhone %>
+                  <% } %>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Payment Information -->
+          <div class="order-section mb-4">
+            <h5 class="section-title">Payment Information</h5>
+            <div class="payment-card">
+              <div class="payment-method">
+                <div class="fw-bold">Payment Method</div>
+                <div class="text-uppercase">
+                  <%= order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod %>
+                </div>
+              </div>
+              <div class="payment-status mt-3">
+                <div class="fw-bold">Payment Status</div>
+                <span class="status-badge payment-<%= order.paymentStatus.toLowerCase() %>">
+                  <%= order.paymentStatus %>
+                  <% if (order.paymentMethod === 'cod') { %>
+                    <% if (order.paymentStatus === 'Pending') { %>
+                      <small class="text-muted">(Cash on Delivery)</small>
+                    <% } else if (order.paymentStatus === 'Completed') { %>
+                      <small class="text-muted">(Cash Collected)</small>
+                    <% } else if (order.paymentStatus === 'Refunded') { %>
+                      <small class="text-muted">(Cash Returned)</small>
+                    <% } %>
+                  <% } %>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comprehensive Order Status History -->
+          <% if (order.comprehensiveStatusHistory && order.comprehensiveStatusHistory.length > 0) { %>
+            <div class="order-section mb-4">
+              <h5 class="section-title">Order Status History</h5>
+              <div class="order-timeline">
+                <% order.comprehensiveStatusHistory.forEach((statusEntry, index) => { %>
+                  <div class="timeline-item completed">
+                    <div class="timeline-marker <%= statusEntry.type === 'item' ? 'item-marker' : 'order-marker' %>"></div>
+                    <div class="timeline-content">
+                      <h6>
+                        <% if (statusEntry.type === 'item') { %>
+                          <span class="badge bg-info me-2">Item</span>
+                        <% } else { %>
+                          <span class="badge bg-primary me-2">Order</span>
+                        <% } %>
+                        <% if (statusEntry.status === 'Returned') { %>
+                          Return Request
+                        <% } else { %>
+                          <%= statusEntry.status %>
+                        <% } %>
+                      </h6>
+                      <p class="text-muted mb-1">
+                        <%= new Date(statusEntry.updatedAt).toLocaleDateString('en-IN', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        }) %>
+                      </p>
+                      <% if (statusEntry.notes) { %>
+                        <small class="text-muted d-block"><%= statusEntry.notes %></small>
+                      <% } %>
+                      <% if (statusEntry.itemName) { %>
+                        <small class="text-info d-block mt-1">
+                          <i class="bi bi-box me-1"></i><%= statusEntry.itemName %>
+                        </small>
+                      <% } %>
+                    </div>
+                  </div>
+                <% }) %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Right Column: Order Summary -->
+      <div class="col-lg-4">
+        <div class="order-summary-sidebar">
+          <!-- Order Summary Box -->
+          <div class="order-summary-box mb-4">
+            <h5 class="section-title">Order Summary</h5>
+            <div class="summary-content">
+              <div class="summary-row">
+                <span>Subtotal:</span>
+                <span>₹<%= order.subtotal.toLocaleString('en-IN') %></span>
+              </div>
+              <% if (order.totalDiscount && order.totalDiscount > 0) { %>
+                <div class="summary-row text-success">
+                  <span><i class="bi bi-tag-fill me-1"></i>Product Discount</span>
+                  <span>-₹<%= order.totalDiscount.toLocaleString('en-IN') %></span>
+                </div>
+              <% } %>
+
+              <% if (order.couponDiscount && order.couponDiscount > 0) { %>
+                <div class="summary-row text-success">
+                  <span>
+                    <i class="bi bi-percent me-1"></i>Coupon Discount
+                    <% if (order.couponCode) { %>
+                      (<%= order.couponCode %>)
+                    <% } %>
+                  </span>
+                  <span>-₹<%= order.couponDiscount.toLocaleString('en-IN') %></span>
+                </div>
+              <% } %>
+
+              <div class="summary-row">
+                <span>Shipping</span>
+                <span><%= order.shipping && order.shipping > 0 ? '₹' + order.shipping.toLocaleString('en-IN') : 'Free' %></span>
+              </div>
+
+              <hr class="my-3">
+
+              <div class="summary-row total-row">
+                <span class="fw-bold">Total:</span>
+                <span class="fw-bold fs-5">₹<%= order.totalAmount.toLocaleString('en-IN') %></span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Need Help Section -->
+          <div class="help-section-box">
+            <h5 class="section-title">Need Help?</h5>
+            <div class="help-content">
+              <div class="help-item">
+                <i class="bi bi-headset me-2"></i>
+                <span>Contact Support</span>
+              </div>
+              <div class="help-item">
+                <i class="bi bi-arrow-return-left me-2"></i>
+                <span>Return Policy</span>
+              </div>
+              <div class="help-item">
+                <i class="bi bi-question-circle me-2"></i>
+                <span>FAQ</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Order Details Content */
+.order-details-content {
+  margin-top: 1rem;
+}
+
+.order-details-card {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  padding: 2rem;
+  margin-bottom: 2rem;
+}
+
+.order-summary-sidebar {
+  position: sticky;
+  top: 2rem;
+}
+
+.content-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Order Header */
+.order-header {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Order Actions Bar */
+.order-actions-bar {
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+/* Section Titles */
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+/* Order Items */
+.order-item-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.product-image-large {
+  width: 80px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.product-image-placeholder {
+  width: 80px;
+  height: 80px;
+  background-color: #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  font-size: 1.5rem;
+}
+
+.product-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.detail-item {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.price-per-item,
+.total-price {
+  text-align: center;
+}
+
+.item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.item-actions .btn {
+  font-size: 0.8rem;
+  padding: 0.4rem 0.8rem;
+}
+
+/* Order Timeline */
+.order-timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 2rem;
+}
+
+.timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.timeline-item::before {
+  content: '';
+  position: absolute;
+  left: -2rem;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background-color: #e9ecef;
+}
+
+.timeline-item.completed::before {
+  background-color: #28a745;
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -2.5rem;
+  top: 0.25rem;
+  width: 1rem;
+  height: 1rem;
+  background-color: #e9ecef;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #e9ecef;
+}
+
+.timeline-item.completed .timeline-marker {
+  background-color: #28a745;
+  box-shadow: 0 0 0 2px #28a745;
+}
+
+/* Different markers for order vs item events */
+.timeline-marker.order-marker {
+  background-color: #007bff;
+  box-shadow: 0 0 0 2px #007bff;
+}
+
+.timeline-marker.item-marker {
+  background-color: #17a2b8;
+  box-shadow: 0 0 0 2px #17a2b8;
+}
+
+.timeline-content h6 {
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+/* Order Summary Box */
+.order-summary-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+}
+
+.order-summary-box .section-title {
+  background: #f8f9fa;
+  margin: 0;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.summary-content {
+  padding: 1.5rem;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  align-items: center;
+}
+
+.summary-row:last-child {
+  margin-bottom: 0;
+}
+
+.total-row {
+  font-size: 1.1rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e9ecef;
+  margin-top: 0.75rem;
+}
+
+/* Help Section Box */
+.help-section-box {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+}
+
+.help-section-box .section-title {
+  background: #f8f9fa;
+  margin: 0;
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.help-content {
+  padding: 1.5rem;
+}
+
+/* Address Card */
+.address-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.address-details {
+  color: #6c757d;
+  line-height: 1.6;
+}
+
+/* Payment Card */
+.payment-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+/* Help Card */
+.help-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  border: 1px solid #e9ecef;
+}
+
+.help-item {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem 0;
+  color: #6c757d;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.help-item:hover {
+  color: #000;
+}
+
+/* Badge Styles */
+.badge {
+  font-weight: 500;
+  letter-spacing: 0.5px;
+}
+
+/* Button Styles */
+.btn {
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .content-card {
+    padding: 1.5rem;
+  }
+  
+  .order-header {
+    text-align: center;
+  }
+  
+  .order-header .d-flex {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .order-actions-bar .d-flex {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .order-item-card .row > div {
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  .order-item-card .row > div:last-child {
+    margin-bottom: 0;
+  }
+  
+  .product-details {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .timeline-item {
+    padding-left: 1rem;
+  }
+  
+  .timeline-item::before {
+    left: -1rem;
+  }
+  
+  .timeline-marker {
+    left: -1.5rem;
+  }
+  
+  .item-actions {
+    flex-direction: row;
+    justify-content: center;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .order-actions-bar,
+  .profile-sidebar,
+  .breadcrumb,
+  .item-actions {
+    display: none !important;
+  }
+  
+  .content-card {
+    box-shadow: none;
+    border: 1px solid #000;
+  }
+}
+</style>
+
+
+<script>
+  // ✅ Initialize global variables for the common module
+  window.cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
+  window.returnReasons = <%- JSON.stringify(returnReasons) %>;
+
+  // ✅ DEBUG: Log what we received
+  console.log('Raw cancellation reasons from server:', <%- JSON.stringify(cancellationReasons) %>);
+  console.log('Processed cancellation reasons:', window.cancellationReasons);
+  console.log('Type of cancellation reasons:', typeof window.cancellationReasons);
+  console.log('Is cancellation reasons array:', Array.isArray(window.cancellationReasons));
+</script>
+
+<!-- ✅ Load the common orders module -->
+<script src="/js/user/orders-common.js"></script>
+
+<script>
+  // ✅ Page-specific wrapper functions that use the common module
+  function cancelOrder(orderId) {
+    cancelOrderCommon(orderId, () => {
+      window.location.href = '/orders';
+    });
+  }
+
+  function cancelItem(orderId, itemId) {
+    cancelItemCommon(orderId, itemId, () => {
+      location.reload();
+    });
+  }
+
+  function returnOrder(orderId) {
+    returnOrderCommon(orderId, () => {
+      location.reload();
+    });
+  }
+
+  function returnItem(orderId, itemId) {
+    returnItemCommon(orderId, itemId, () => {
+      location.reload();
+    });
+  }
+
+  function trackOrder(orderId) {
+    trackOrderCommon(orderId);
+  }
+
+  function downloadInvoice(orderId) {
+    downloadInvoiceCommon(orderId);
+  }
+</script>

@@ -1,0 +1,1121 @@
+﻿<% var title = "My Cart" %>
+
+<!-- Breadcrumbs - Positioned correctly below navbar -->
+<div class="container my-4">
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'Cart' }
+    ]
+  }) %>
+</div>
+
+<!-- Main Cart Container -->
+<div class="container pb-4">
+  <% if (cartItems && cartItems.length > 0) { %>
+    <%
+      // Calculate cart statistics using the separated arrays
+      const outOfStockItems = outOfStockCartItems || [];
+      const unavailableItems = unavailableCartItems || [];
+      const availableItems = availableCartItems || [];
+      
+      let subtotal = 0;
+      let totalDiscount = 0;
+      let totalItemCount = 0;
+      let availableItemsCount = 0;
+      let availableQuantity = 0;
+      let outOfStockQuantity = 0;
+      let unavailableQuantity = 0;
+      let amountAfterDiscount = 0;
+
+      // Calculate totals for available items only
+      availableItems.forEach(item => {
+        const regularPrice = item.productId.regularPrice;
+        const salePrice = item.price;
+        const quantity = item.quantity;
+        
+        subtotal += regularPrice * quantity;
+        amountAfterDiscount += item.totalPrice;
+        availableItemsCount++;
+        availableQuantity += quantity;
+
+        const itemDiscount = (regularPrice - salePrice) * quantity;
+        totalDiscount += itemDiscount;
+      });
+
+      // Calculate totals for out of stock items (for display purposes)
+      outOfStockItems.forEach(item => {
+        outOfStockQuantity += item.quantity;
+      });
+
+      // Calculate totals for unavailable items (for display purposes)
+      unavailableItems.forEach(item => {
+        unavailableQuantity += item.quantity;
+      });
+
+      // Total item count includes available, out of stock, and unavailable
+      totalItemCount = availableQuantity + outOfStockQuantity + unavailableQuantity;
+
+      const shipping = amountAfterDiscount > 500 ? 0 : 50;
+      const total = amountAfterDiscount + shipping;
+      const outOfStockItemsCount = outOfStockItems.length;
+      const unavailableItemsCount = unavailableItems.length;
+      const totalUnavailableItems = outOfStockItemsCount + unavailableItemsCount;
+    %>
+
+    <!-- Cart Header - Styled like top controls bar -->
+    <div class="cart-header-bar">
+      <h1 class="cart-title">Cart (<%= totalItemCount %>)</h1>
+    </div>
+
+    <!-- Unavailable Items Alert -->
+    <% if (totalUnavailableItems > 0) { %>
+      <div class="alert-container" id="unavailableBanner">
+        <div class="alert-content">
+          <div class="alert-info">
+            <i class="bi bi-exclamation-triangle-fill"></i>
+            <div class="alert-text">
+              <h6><%= totalUnavailableItems %> item<%= totalUnavailableItems > 1 ? 's' : '' %> unavailable</h6>
+              <p>
+                <% if (outOfStockItemsCount > 0 && unavailableItemsCount > 0) { %>
+                  <%= outOfStockItemsCount %> out of stock, <%= unavailableItemsCount %> unavailable - won't be included in checkout
+                <% } else if (outOfStockItemsCount > 0) { %>
+                  These items are out of stock and won't be included in checkout
+                <% } else { %>
+                  These items are unavailable and won't be included in checkout
+                <% } %>
+              </p>
+            </div>
+          </div>
+          <div class="alert-actions">
+            <button class="btn btn-danger btn-sm remove-all-unavailable-btn">
+              <i class="bi bi-trash me-1"></i>Remove All
+            </button>
+            <a href="/shop" class="btn btn-primary btn-sm">
+              <i class="bi bi-plus-circle me-1"></i>Shop More
+            </a>
+          </div>
+        </div>
+      </div>
+    <% } %>
+
+    <!-- Main Cart Layout -->
+    <div class="row g-4">
+      <!-- Cart Items Section -->
+      <div class="col-lg-8">
+        <div class="cart-items-section">
+
+          <!-- Cart Items -->
+          <div class="cart-items-container">
+            <% cartItems.forEach((item, index) => { %>
+              <%- include('partials/cart-item-card', { item }) %>
+            <% }) %>
+          </div>
+
+          <!-- Continue Shopping -->
+          <div class="continue-shopping">
+            <a href="/shop" class="btn btn-outline-primary">
+              <i class="bi bi-arrow-left me-2"></i>Continue Shopping
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Order Summary Sidebar -->
+      <div class="col-lg-4">
+        <div class="order-summary-card">
+          <!-- Summary Header -->
+          <div class="summary-header">
+            <h5 class="summary-title">
+              <i class="bi bi-receipt me-2"></i>Order Summary
+            </h5>
+          </div>
+
+          <!-- Summary Content -->
+          <div class="summary-content">
+            <!-- Availability Breakdown -->
+            <% if (totalUnavailableItems > 0) { %>
+              <div class="availability-section">
+                <h6 class="section-subtitle">Cart Status</h6>
+                <div class="availability-item">
+                  <span class="availability-label">
+                    <i class="bi bi-check-circle text-success me-1"></i>Available
+                  </span>
+                  <span class="availability-count">
+                    <%= availableItemsCount %> items (<%= availableQuantity %> qty)
+                  </span>
+                </div>
+                <% if (outOfStockItemsCount > 0) { %>
+                  <div class="availability-item">
+                    <span class="availability-label">
+                      <i class="bi bi-x-circle text-danger me-1"></i>Out of Stock
+                    </span>
+                    <span class="availability-count">
+                      <%= outOfStockItemsCount %> items (<%= outOfStockQuantity %> qty)
+                    </span>
+                  </div>
+                <% } %>
+                <% if (unavailableItemsCount > 0) { %>
+                  <div class="availability-item">
+                    <span class="availability-label">
+                      <i class="bi bi-ban text-secondary me-1"></i>Unavailable
+                    </span>
+                    <span class="availability-count">
+                      <%= unavailableItemsCount %> items (<%= unavailableQuantity %> qty)
+                    </span>
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+
+            <!-- Price Breakdown -->
+            <div class="price-breakdown">
+              <div class="price-row">
+                <span class="price-label">Subtotal (<%= totalItemCount %> items)</span>
+                <span class="price-value">₹<%= Math.round(subtotal) %></span>
+              </div>
+              
+              <% if (totalDiscount > 0) { %>
+                <div class="price-row discount-row">
+                  <span class="price-label">
+                    <i class="bi bi-tag me-1"></i>Discount
+                  </span>
+                  <span class="price-value text-success">₹<%= Math.round(totalDiscount) %></span>
+                </div>
+              <% } %>
+
+              <div class="price-row">
+                <span class="price-label">
+                  <i class="bi bi-truck me-1"></i>Shipping
+                </span>
+                <span class="price-value">
+                  <% if (shipping === 0) { %>
+                    <span class="text-success fw-bold">FREE</span>
+                  <% } else { %>
+                    ₹<%= Math.round(shipping) %>
+                  <% } %>
+                </span>
+              </div>
+
+              <div class="price-divider"></div>
+
+              <div class="price-row total-row">
+                <span class="price-label">Total</span>
+                <span class="price-value">₹<%= Math.round(total) %></span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="checkout-actions text-center">
+              <% if (availableItemsCount > 0) { %>
+                <button class="btn btn-primary btn-lg checkout-btn">
+                  <i class="bi bi-credit-card me-2"></i>
+                  Checkout
+                </button>
+              <% } else { %>
+                <button class="btn btn-secondary btn-lg checkout-btn" disabled>
+                  <i class="bi bi-x-circle me-2"></i>
+                  No Available Items
+                </button>
+              <% } %>
+
+              <!-- Secondary Actions -->
+              <div class="secondary-actions text-center">
+                <button class="btn btn-clear-cart btn-sm">
+                  <i class="bi bi-trash me-1"></i>Clear Cart
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <% } else { %>
+    <!-- Empty Cart State -->
+    <div class="empty-cart-section">
+      <div class="empty-cart-content">
+        <div class="empty-cart-icon">
+          <i class="bi bi-cart-x"></i>
+        </div>
+        <h2 class="empty-cart-title">Your Cart is Empty</h2>
+        <p class="empty-cart-subtitle">
+          Looks like you haven't added any sneakers to your cart yet.<br>
+          Discover our amazing collection and find your perfect pair!
+        </p>
+        <div class="empty-cart-actions">
+          <a href="/shop" class="btn btn-primary btn-lg">
+            <i class="bi bi-bag me-2"></i>Start Shopping
+          </a>
+          <a href="/" class="btn btn-outline-secondary btn-lg">
+            <i class="bi bi-house me-2"></i>Go Home
+          </a>
+        </div>
+      </div>
+    </div>
+  <% } %>
+</div>
+
+<!-- SweetAlert2 JavaScript -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+<style>
+/* ========= CLEAN CART DESIGN ========= */
+
+/* === GLOBAL STYLES === */
+.container {
+  max-width: 1200px;
+}
+
+/* === CART HEADER BAR (styled like top controls bar) === */
+.cart-header-bar {
+  background-color: white;
+  border-radius: 12px;
+  border-top: 4px solid #E03A2F;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+  z-index: 100;
+}
+
+.cart-header-bar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.cart-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 0;
+  letter-spacing: -0.5px;
+}
+
+/* === ALERT BANNER === */
+.alert-container {
+  margin-bottom: 2rem;
+}
+
+.alert-content {
+  background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 15px rgba(255, 193, 7, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.alert-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.alert-info i {
+  font-size: 1.5rem;
+  color: #856404;
+}
+
+.alert-text h6 {
+  color: #856404;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+}
+
+.alert-text p {
+  color: #856404;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.alert-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* === SECTION HEADERS === */
+.section-subtitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #495057;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* === CART ITEM CARDS === */
+.cart-item-card {
+  background: white;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+  border: 1px solid #f1f3f4;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.cart-item-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border-color: #e9ecef;
+}
+
+.cart-item-card.item-out-of-stock {
+  border-color: #dc3545;
+  background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
+}
+
+.cart-item-card.item-out-of-stock::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: #dc3545;
+}
+
+.cart-item-card.item-unavailable {
+  border-color: #6c757d;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.cart-item-card.item-unavailable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: #6c757d;
+}
+
+/* === PRODUCT IMAGE === */
+.product-image-container {
+  position: relative;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f8f9fa;
+}
+
+.product-image {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  border-radius: 6px;
+}
+
+.product-image-container:hover .product-image {
+  transform: scale(1.03);
+}
+
+.stock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(220, 53, 69, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+}
+
+.stock-badge {
+  background: white;
+  color: #dc3545;
+  padding: 0.25rem 0.75rem;
+  border-radius: 15px;
+  font-weight: 600;
+  font-size: 0.75rem;
+}
+
+.stock-badge.unavailable-badge {
+  color: #6c757d;
+}
+
+/* === PRODUCT DETAILS === */
+.product-brand {
+  color: #6c757d;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.25rem;
+}
+
+.product-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 0.5rem;
+  line-height: 1.3;
+}
+
+.product-link {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.product-link:hover {
+  color: #dc3545;
+  text-decoration: none;
+}
+
+.product-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.spec-item {
+  font-size: 0.8rem;
+  color: #6c757d;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+}
+
+.spec-item i {
+  color: #495057;
+  font-size: 0.75rem;
+}
+
+/* === PRICE SECTION === */
+.price-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.current-price {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #dc3545;
+}
+
+.original-price {
+  font-size: 0.85rem;
+  color: #6c757d;
+  text-decoration: line-through;
+  font-weight: 500;
+}
+
+.discount-badge {
+  background: #28a745;
+  color: white;
+  padding: 0.15rem 0.4rem;
+  border-radius: 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+/* === STOCK STATUS === */
+.stock-status {
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+/* === ITEM ACTIONS === */
+.item-actions {
+  background: #f8f9fa;
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+/* === QUANTITY CONTROLS === */
+.quantity-section {
+  margin-bottom: 0.75rem;
+}
+
+.quantity-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.quantity-controls {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  overflow: hidden;
+  max-width: 110px;
+}
+
+.qty-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  background: #000;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.qty-btn:hover:not(:disabled) {
+  background: #dc3545;
+  transform: scale(1.05);
+}
+
+.qty-btn:disabled {
+  background: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.qty-input {
+  width: 50px;
+  height: 30px;
+  border: none;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: white;
+  color: #000;
+}
+
+.qty-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.quantity-warning {
+  margin-top: 0.4rem;
+}
+
+.quantity-warning small {
+  font-size: 0.7rem;
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+/* === ITEM TOTAL === */
+.item-total-section {
+  text-align: center;
+  background: white;
+  border-radius: 6px;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  margin-bottom: 0.75rem;
+}
+
+.item-total {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 0.2rem;
+}
+
+.item-total-label {
+  font-size: 0.7rem;
+  color: #6c757d;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* === ITEM BUTTONS === */
+.item-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.save-later-btn,
+.remove-btn {
+  flex: 1;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 0.85rem;
+}
+
+.save-later-btn {
+  background: #000;
+  border-color: #000;
+  color: white;
+}
+
+.save-later-btn:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.remove-btn:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* === CONTINUE SHOPPING === */
+.continue-shopping {
+  margin-top: 2rem;
+}
+
+.continue-shopping .btn {
+  background: #000;
+  border-color: #000;
+  color: white;
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.continue-shopping .btn:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  transform: translateY(-1px);
+}
+
+/* === ORDER SUMMARY CARD (styled like filter sidebar) === */
+.order-summary-card {
+  background: white;
+  border-radius: 12px;
+  border: 3px solid #E03A2F;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  position: sticky;
+  top: 100px;
+  overflow: hidden;
+}
+
+.order-summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.15);
+}
+
+.summary-header {
+  background: linear-gradient(135deg, #000 0%, #333 100%);
+  color: white;
+  padding: 1.5rem;
+}
+
+.summary-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.summary-content {
+  padding: 1.5rem;
+}
+
+/* === AVAILABILITY SECTION === */
+.availability-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+  border: 1px solid #e9ecef;
+  margin-bottom: 1.5rem;
+}
+
+.availability-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.availability-item:last-child {
+  margin-bottom: 0;
+}
+
+.availability-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.availability-count {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #495057;
+}
+
+/* === PRICE BREAKDOWN === */
+.price-breakdown {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1.25rem;
+  background: #fafafa;
+  margin-bottom: 1.5rem;
+}
+
+.price-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.price-row:last-child {
+  margin-bottom: 0;
+}
+
+.price-label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.price-value {
+  font-weight: 600;
+  color: #000;
+  font-size: 0.95rem;
+}
+
+.discount-row .price-value {
+  color: #28a745;
+  font-weight: 700;
+}
+
+.price-divider {
+  height: 2px;
+  background: #e9ecef;
+  margin: 1rem 0;
+  border-radius: 1px;
+}
+
+.total-row {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+  border: 2px solid #000;
+  margin-top: 1rem;
+}
+
+.total-row .price-label,
+.total-row .price-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #000;
+}
+
+/* === CHECKOUT ACTIONS === */
+.checkout-actions {
+  margin-bottom: 1.5rem;
+}
+
+.checkout-btn {
+  background: #000;
+  border-color: #000;
+  color: white;
+  font-weight: 700;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  width: auto;
+  min-width: 200px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 1rem;
+}
+
+.checkout-btn:hover:not(:disabled) {
+  background: #dc3545;
+  border-color: #dc3545;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+.secondary-actions .btn {
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.secondary-actions .btn:hover {
+  transform: translateY(-1px);
+}
+
+/* === CLEAR CART BUTTON (styled exactly like view filters button) === */
+.btn-clear-cart {
+  background: white;
+  border: 3px solid #E03A2F;
+  color: #E03A2F;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 !important;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+}
+
+.btn-clear-cart:hover {
+  background: #E03A2F;
+  border-color: #E03A2F;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(224, 58, 47, 0.3);
+}
+
+.btn-clear-cart:active {
+  transform: translateY(0);
+}
+
+/* === EMPTY CART STATE === */
+.empty-cart-section {
+  min-height: 60vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-cart-content {
+  text-align: center;
+  background: white;
+  border-radius: 12px;
+  padding: 3rem 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 100%;
+}
+
+.empty-cart-icon {
+  font-size: 5rem;
+  color: #6c757d;
+  margin-bottom: 1.5rem;
+}
+
+.empty-cart-title {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #000;
+  margin-bottom: 1rem;
+}
+
+.empty-cart-subtitle {
+  font-size: 1.1rem;
+  color: #6c757d;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.empty-cart-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.empty-cart-actions .btn {
+  font-weight: 600;
+  padding: 0.75rem 2rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.empty-cart-actions .btn-primary {
+  background: #000;
+  border-color: #000;
+}
+
+.empty-cart-actions .btn-primary:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  transform: translateY(-2px);
+}
+
+.empty-cart-actions .btn-outline-secondary:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* === BUTTON SYSTEM === */
+.btn-primary {
+  background: #000;
+  border-color: #000;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+  border-color: #000;
+  color: #000;
+  background: transparent;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+  background: #000;
+  border-color: #000;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+  border-color: #c82333;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-outline-danger:hover {
+  background: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.btn-outline-secondary:hover {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: white;
+  transform: translateY(-1px);
+}
+
+/* === ANIMATIONS === */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cart-item-card {
+  animation: fadeInUp 0.6s ease forwards;
+}
+
+/* === RESPONSIVE DESIGN === */
+@media (max-width: 992px) {
+  .order-summary-card {
+    position: static;
+    margin-top: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .cart-title {
+    font-size: 1.75rem;
+  }
+  
+  .cart-item-card {
+    padding: 1rem;
+  }
+  
+  .product-image {
+    height: 100px;
+  }
+  
+  .item-actions {
+    margin-top: 1rem;
+  }
+
+  .alert-content {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .alert-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 576px) {
+  .cart-title {
+    font-size: 1.5rem;
+  }
+  
+  .empty-cart-content {
+    padding: 2rem 1rem;
+  }
+  
+  .empty-cart-actions {
+    flex-direction: column;
+  }
+  
+  .empty-cart-actions .btn {
+    width: 100%;
+  }
+  
+  .item-buttons {
+    flex-direction: column;
+  }
+  
+  .quantity-controls {
+    max-width: 120px;
+  }
+  
+  .qty-btn {
+    width: 35px;
+    height: 35px;
+  }
+  
+  .qty-input {
+    width: 50px;
+    height: 35px;
+  }
+}
+
+/* === ACCESSIBILITY === */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+</style>

@@ -1,0 +1,1730 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile' } 
+    ]
+  }) %>
+
+  <!-- Main Layout: Sidebar + Content -->
+  <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <%- include('partials/profile-sidebar.ejs', { user: user, active: 'profile' }) %>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="profile-content">
+        <!-- Personal Information Section -->
+        <div class="content-card">
+          <h2 class="content-title">Personal Information</h2>
+          
+          <!-- Profile Image Section -->
+          <div class="profile-image-section">
+            <div class="profile-image-container">
+              <% if (user.profilePhoto) { %>
+                <img src="/uploads/profiles/<%= user.profilePhoto %>" 
+                     alt="Profile Photo" 
+                     class="profile-image"
+                     id="profileImage">
+              <% } else { %>
+                <div class="profile-avatar" id="profileAvatar">
+                  <%= user.name ? user.name.charAt(0).toUpperCase() : '👤' %>
+                </div>
+              <% } %>
+              <button type="button" class="image-upload-btn" onclick="showPhotoOptionsModal()">
+                <i class="bi bi-camera"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Profile Form -->
+          <form id="profileForm" class="profile-form" novalidate>
+            <div class="form-group">
+              <label for="fullName" class="form-label">Full Name <span class="text-danger">*</span></label>
+              <input type="text" 
+                     id="fullName" 
+                     name="fullName" 
+                     class="form-control" 
+                     value="<%= user.name || '' %>"
+                     placeholder="Enter your full name"
+                     required
+                     minlength="2"
+                     maxlength="50"
+                     pattern="^[a-zA-Z\s\-']+$">
+              <div class="invalid-feedback" id="fullName-error"></div>
+              <div class="form-text" id="fullName-help" style="display: none;">Only letters, spaces, hyphens, and apostrophes are allowed</div>
+            </div>
+
+            <div class="form-group">
+              <label for="email" class="form-label">Email Address <span class="text-danger">*</span></label>
+              <div class="email-input-group">
+                <input type="email" 
+                       id="email" 
+                       name="email" 
+                       class="form-control" 
+                       value="<%= user.email || '' %>"
+                       readonly>
+                <button type="button" class="btn-update-email" onclick="updateEmail()">
+                  Edit Email
+                </button>
+              </div>
+              <div class="invalid-feedback" id="email-error"></div>
+            </div>
+
+            <div class="form-group">
+              <label for="phone" class="form-label">Phone Number</label>
+              <input type="tel" 
+                     id="phone" 
+                     name="phone" 
+                     class="form-control" 
+                     value="<%= user.phone || '' %>"
+                     placeholder="Enter your 10-digit phone number"
+                     pattern="^[6-9]\d{9}$"
+                     maxlength="10">
+              <div class="invalid-feedback" id="phone-error"></div>
+              <div class="form-text" id="phone-help" style="display: none;">Phone number should start with 6, 7, 8, or 9 and be 10 digits long</div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="form-actions">
+              <button type="submit" class="btn-save">
+                <i class="bi bi-check-circle me-2"></i>
+                Save Changes
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden file input for profile photo upload -->
+<input type="file" id="profilePhotoInput" accept="image/*" style="display: none;">
+
+<style>
+/* Profile Content Styles */
+.profile-content {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.content-card {
+  padding: 2rem;
+}
+
+.content-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.profile-image-section {
+  margin-bottom: 2rem;
+}
+
+.profile-image-container {
+  position: relative;
+  display: inline-block;
+}
+
+.profile-image {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #f8f9fa;
+}
+
+.profile-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  font-weight: 600;
+  border: 3px solid #f8f9fa;
+}
+
+.image-upload-btn {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background-color: #000;
+  color: #fff;
+  border: 2px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.image-upload-btn:hover {
+  background-color: #dc3545;
+  transform: scale(1.1);
+}
+
+.image-upload-btn i {
+  font-size: 0.8rem;
+}
+
+.profile-form {
+  max-width: 500px;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: #333;
+  font-size: 0.95rem;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.3s ease;
+  background-color: #fff;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-control:read-only {
+  background-color: #f8f9fa;
+  color: #6c757d;
+}
+
+/* Validation Styles */
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.form-control.is-valid {
+  border-color: #28a745;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+}
+
+.invalid-feedback {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #dc3545;
+}
+
+.form-text {
+  margin-top: 0.25rem;
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.email-input-group {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.email-input-group .form-control {
+  flex: 1;
+}
+
+.btn-update-email {
+  background-color: #6c757d;
+  color: #fff;
+  border: none;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.btn-update-email:hover {
+  background-color: #dc3545;
+}
+
+.form-actions {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.btn-save {
+  background-color: #000;
+  color: #fff;
+  border: none;
+  padding: 0.875rem 2rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+}
+
+.btn-save:hover {
+  background-color: #dc3545;
+  transform: translateY(-1px);
+}
+
+.btn-save:active {
+  transform: translateY(0);
+}
+
+.btn-save:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Photo Options Modal Styles */
+.photo-options-modal {
+  max-width: 300px;
+}
+
+.photo-options-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.photo-option-btn {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 1rem 1.5rem;
+  border: none;
+  background: none;
+  color: #333;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.photo-option-btn:hover {
+  background-color: #dc3545;
+  color: #fff;
+}
+
+.photo-option-btn i {
+  font-size: 1.1rem;
+  margin-right: 0.75rem;
+  width: 20px;
+  text-align: center;
+}
+
+.photo-option-btn:not(:last-child) {
+  border-bottom: 1px solid #e9ecef;
+}
+
+/* Cropper Modal Styles */
+.cropper-modal-custom {
+  max-width: 600px;
+  width: 95vw;
+}
+
+.cropper-modal-content {
+  height: 600px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.cropper-modal-content .modal-header {
+  flex-shrink: 0;
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+.cropper-modal-content .modal-footer {
+  flex-shrink: 0;
+  height: 70px;
+  display: flex;
+  align-items: center;
+}
+
+.cropper-modal-content .modal-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+}
+
+.cropper-image-container {
+  width: 100%;
+  height: 100%;
+  max-width: 500px;
+  max-height: 450px;
+  position: relative;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cropper-image-container img {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  display: block;
+}
+
+/* Enhanced cropper elements for circular crop */
+.cropper-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cropper-canvas {
+  max-width: 100% !important;
+  max-height: 100% !important;
+}
+
+.cropper-crop-box {
+  border-radius: 50% !important;
+  border: 3px solid #000 !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.5), 0 0 0 9999px rgba(0, 0, 0, 0.5) !important;
+}
+
+.cropper-view-box {
+  border-radius: 50% !important;
+  outline: none !important;
+}
+
+.cropper-point {
+  width: 12px !important;
+  height: 12px !important;
+  background-color: #000 !important;
+  border: 2px solid #fff !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+}
+
+.cropper-line {
+  background-color: #000 !important;
+  opacity: 0.8 !important;
+}
+
+.cropper-point.point-se,
+.cropper-point.point-nw,
+.cropper-point.point-ne,
+.cropper-point.point-sw {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* Hide center and edge points for cleaner circular crop */
+.cropper-point.point-n,
+.cropper-point.point-s,
+.cropper-point.point-e,
+.cropper-point.point-w {
+  display: none !important;
+}
+
+.cropper-line.line-n,
+.cropper-line.line-s,
+.cropper-line.line-e,
+.cropper-line.line-w {
+  display: none !important;
+}
+
+/* OTP Verification Modal Styles - Black and White Theme */
+.otp-modal-custom {
+  max-width: 450px;
+  width: 95vw;
+}
+
+.otp-modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+.otp-input {
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: 0.5rem;
+  padding: 1rem;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.otp-input:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.1);
+  outline: none;
+}
+
+.otp-info {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  border-left: 4px solid #000;
+}
+
+.otp-timer {
+  font-size: 0.9rem;
+}
+
+.resend-section {
+  min-height: 24px;
+}
+
+/* Global button hover effects - All buttons turn red on hover */
+button:hover,
+.btn:hover,
+.btn-outline-secondary:hover,
+.btn-outline-dark:hover,
+.btn-dark:hover,
+.btn-secondary:hover,
+#crop-cancel:hover,
+#crop-save:hover,
+#otpCancelBtn:hover,
+#otpVerifyBtn:hover,
+#resendOtpBtn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .content-card {
+    padding: 1.5rem;
+  }
+  
+  .content-title {
+    font-size: 1.3rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .profile-form {
+    max-width: 100%;
+  }
+  
+  .email-input-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .btn-update-email {
+    margin-top: 0.5rem;
+  }
+  
+  .profile-nav .nav-link {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .cropper-modal-custom {
+    max-width: 95vw;
+  }
+  
+  .cropper-modal-content {
+    height: 500px;
+  }
+  
+  .cropper-image-container {
+    max-width: 350px;
+    max-height: 350px;
+  }
+  
+  .otp-modal-custom {
+    max-width: 95vw;
+  }
+  
+  .otp-input {
+    font-size: 1.2rem;
+    letter-spacing: 0.3rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-image,
+  .profile-avatar {
+    width: 70px;
+    height: 70px;
+  }
+  
+  .profile-avatar {
+    font-size: 1.5rem;
+  }
+  
+  .image-upload-btn {
+    width: 24px;
+    height: 24px;
+  }
+  
+  .image-upload-btn i {
+    font-size: 0.7rem;
+  }
+  
+  .cropper-modal-content {
+    height: 450px;
+  }
+  
+  .cropper-image-container {
+    max-width: 300px;
+    max-height: 300px;
+  }
+  
+  .otp-input {
+    font-size: 1rem;
+    letter-spacing: 0.2rem;
+    padding: 0.8rem;
+  }
+}
+</style>
+
+<script>
+// Cropper variables
+let cropper;
+let cropModal;
+
+// Email editing functionality
+let isEditingEmail = false;
+
+// Validation functions
+function validateName(name) {
+  const trimmedName = name.trim();
+  
+  if (!trimmedName) {
+    return { isValid: false, error: 'Full name is required' };
+  }
+  
+  if (trimmedName.length < 2) {
+    return { isValid: false, error: 'Full name must be at least 2 characters long' };
+  }
+  
+  if (trimmedName.length > 50) {
+    return { isValid: false, error: 'Full name cannot exceed 50 characters' };
+  }
+  
+  if (/\d/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name should not contain numbers' };
+  }
+  
+  if (!/^[a-zA-Z\s\-']+$/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name can only contain letters, spaces, hyphens, and apostrophes' };
+  }
+  
+  if (/\s{2,}/.test(trimmedName)) {
+    return { isValid: false, error: 'Full name cannot contain multiple consecutive spaces' };
+  }
+  
+  return { isValid: true };
+}
+
+function validatePhone(phone) {
+  const trimmedPhone = phone.trim();
+  
+  if (!trimmedPhone) {
+    return { isValid: true }; // Phone is optional
+  }
+  
+  const digitsOnly = trimmedPhone.replace(/\D/g, '');
+  
+  if (digitsOnly.length !== 10) {
+    return { isValid: false, error: 'Phone number must be exactly 10 digits' };
+  }
+  
+  if (!/^[6-9]\d{9}$/.test(digitsOnly)) {
+    return { isValid: false, error: 'Phone number must start with 6, 7, 8, or 9' };
+  }
+  
+  return { isValid: true };
+}
+
+function validateEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const trimmedEmail = email.trim().toLowerCase();
+  
+  if (!trimmedEmail) {
+    return { isValid: false, error: 'Email is required' };
+  }
+  
+  if (!emailRegex.test(trimmedEmail)) {
+    return { isValid: false, error: 'Please enter a valid email address' };
+  }
+  
+  return { isValid: true };
+}
+
+function showFieldError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  const errorDiv = document.getElementById(fieldId + '-error');
+  const helpDiv = document.getElementById(fieldId + '-help');
+  
+  field.classList.add('is-invalid');
+  field.classList.remove('is-valid');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+  }
+  
+  // Show help text when there's an error
+  if (helpDiv) {
+    helpDiv.style.display = 'block';
+  }
+}
+
+function showFieldSuccess(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorDiv = document.getElementById(fieldId + '-error');
+  const helpDiv = document.getElementById(fieldId + '-help');
+  
+  field.classList.add('is-valid');
+  field.classList.remove('is-invalid');
+  if (errorDiv) {
+    errorDiv.textContent = '';
+  }
+  
+  // Hide help text when field is valid
+  if (helpDiv) {
+    helpDiv.style.display = 'none';
+  }
+}
+
+function clearFieldValidation(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorDiv = document.getElementById(fieldId + '-error');
+  const helpDiv = document.getElementById(fieldId + '-help');
+  
+  field.classList.remove('is-invalid', 'is-valid');
+  if (errorDiv) {
+    errorDiv.textContent = '';
+  }
+  
+  // Hide help text when clearing validation
+  if (helpDiv) {
+    helpDiv.style.display = 'none';
+  }
+}
+
+// Real-time validation
+document.addEventListener('DOMContentLoaded', function() {
+  const fullNameInput = document.getElementById('fullName');
+  const phoneInput = document.getElementById('phone');
+  const emailInput = document.getElementById('email');
+
+  // Full name validation
+  fullNameInput.addEventListener('input', function() {
+    const validation = validateName(this.value);
+    if (this.value.trim() === '') {
+      clearFieldValidation('fullName');
+    } else if (validation.isValid) {
+      showFieldSuccess('fullName');
+    } else {
+      showFieldError('fullName', validation.error);
+    }
+  });
+
+  // Phone validation
+  phoneInput.addEventListener('input', function() {
+    // Only allow digits
+    this.value = this.value.replace(/\D/g, '');
+    
+    const validation = validatePhone(this.value);
+    if (this.value.trim() === '') {
+      clearFieldValidation('phone');
+    } else if (validation.isValid) {
+      showFieldSuccess('phone');
+    } else {
+      showFieldError('phone', validation.error);
+    }
+  });
+
+  // Email validation (when editing)
+  emailInput.addEventListener('input', function() {
+    if (!this.readOnly) {
+      const validation = validateEmail(this.value);
+      if (validation.isValid) {
+        showFieldSuccess('email');
+      } else {
+        showFieldError('email', validation.error);
+      }
+    }
+  });
+});
+
+// Photo options modal functionality
+function showPhotoOptionsModal() {
+  const hasPhoto = document.getElementById('profileImage') !== null;
+  
+  // Create modal HTML
+  const modalHtml = `
+    <div class="modal fade" id="photoOptionsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered photo-options-modal">
+        <div class="modal-content photo-options-content">
+          <div class="modal-body p-0">
+            ${hasPhoto ? `
+              <button type="button" class="photo-option-btn" onclick="viewPhoto()">
+                <i class="bi bi-eye"></i>
+                View Photo
+              </button>
+              <button type="button" class="photo-option-btn" onclick="removePhoto()">
+                <i class="bi bi-trash"></i>
+                Remove Photo
+              </button>
+            ` : ''}
+            <button type="button" class="photo-option-btn" onclick="addPhoto()">
+              <i class="bi bi-plus-circle"></i>
+              ${hasPhoto ? 'Change Photo' : 'Add Photo'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Remove existing modal if any
+  const existingModal = document.getElementById('photoOptionsModal');
+  if (existingModal) existingModal.remove();
+
+  // Add modal to DOM
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('photoOptionsModal'));
+  modal.show();
+
+  // Clean up modal when hidden
+  document.getElementById('photoOptionsModal').addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+function viewPhoto() {
+  const profileImage = document.getElementById('profileImage');
+  if (!profileImage) {
+    Swal.fire({
+      icon: 'info',
+      title: 'No Photo',
+      text: 'No profile photo to view.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  // Close options modal first
+  const optionsModal = bootstrap.Modal.getInstance(document.getElementById('photoOptionsModal'));
+  if (optionsModal) optionsModal.hide();
+
+  // Show image in a larger modal
+  const imageViewHtml = `
+    <div class="modal fade" id="imageViewModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header border-0">
+            <h5 class="modal-title">Profile Photo</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body text-center">
+            <img src="${profileImage.src}" alt="Profile Photo" class="img-fluid rounded" style="max-height: 400px;">
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.insertAdjacentHTML('beforeend', imageViewHtml);
+  const imageModal = new bootstrap.Modal(document.getElementById('imageViewModal'));
+  imageModal.show();
+
+  // Clean up when hidden
+  document.getElementById('imageViewModal').addEventListener('hidden.bs.modal', function() {
+    this.remove();
+  });
+}
+
+function addPhoto() {
+  // Close options modal first
+  const optionsModal = bootstrap.Modal.getInstance(document.getElementById('photoOptionsModal'));
+  if (optionsModal) optionsModal.hide();
+
+  // Trigger file input
+  document.getElementById('profilePhotoInput').click();
+}
+
+function removePhoto() {
+  // Close options modal first
+  const optionsModal = bootstrap.Modal.getInstance(document.getElementById('photoOptionsModal'));
+  if (optionsModal) optionsModal.hide();
+
+  // Show confirmation dialog
+  Swal.fire({
+    title: 'Remove Profile Photo?',
+    text: 'Are you sure you want to remove your profile photo? This action cannot be undone.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc3545',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'Yes, Remove',
+    cancelButtonText: 'Cancel'
+  }).then(async (result) => {
+    if (result.isConfirmed) {
+      try {
+        // Show loading
+        Swal.fire({
+          title: 'Removing...',
+          text: 'Please wait while we remove your photo.',
+          allowOutsideClick: false,
+          allowEscapeKey: false,
+          showConfirmButton: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        const response = await fetch('/profile/photo', {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Update the profile photo display to show avatar
+          const userName = '<%= user.name || "" %>';
+          const userInitial = userName ? userName.charAt(0).toUpperCase() : '👤';
+          
+          // Update main profile image container
+          const mainContainer = document.querySelector('.profile-image-container');
+          mainContainer.innerHTML = `
+            <div class="profile-avatar" id="profileAvatar">
+              ${userInitial}
+            </div>
+            <button type="button" class="image-upload-btn" onclick="showPhotoOptionsModal()">
+              <i class="bi bi-camera"></i>
+            </button>
+          `;
+
+          // Update sidebar profile cards
+          const containers = document.querySelectorAll('.profile-card-image');
+          containers.forEach(container => {
+            const img = container.querySelector('img');
+            if (img) {
+              img.outerHTML = `<div class="profile-card-avatar-placeholder">
+                                ${userInitial}
+                              </div>`;
+            }
+          });
+
+          Swal.fire({
+            icon: 'success',
+            title: 'Photo Removed!',
+            text: data.message,
+            confirmButtonColor: '#000'
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Remove Failed',
+            text: data.message,
+            confirmButtonColor: '#000'
+          });
+        }
+      } catch (error) {
+        console.error('Error removing photo:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Remove Error',
+          text: 'Something went wrong. Please try again.',
+          confirmButtonColor: '#000'
+        });
+      }
+    }
+  });
+}
+
+// Show cropper modal
+function showCropModal(imageSrc) {
+  // Remove any existing modal
+  const existingModal = document.getElementById('cropModal');
+  if (existingModal) existingModal.remove();
+
+  // Create the cropping modal
+  const modalHtml = `
+    <div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered cropper-modal-custom">
+        <div class="modal-content cropper-modal-content">
+          <div class="modal-header border-0 pb-2">
+            <h5 class="modal-title mx-auto mb-0">
+              <i class="bi bi-scissors me-2"></i>Crop Profile Picture
+            </h5>
+            <small class="text-muted d-block text-center mt-1">
+              Adjust the circular crop area and click "Save" to update your profile picture
+            </small>
+          </div>
+          <div class="modal-body p-3">
+            <div class="cropper-image-container">
+              <img id="crop-image" src="${imageSrc}" />
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-2 justify-content-center">
+            <button class="btn btn-outline-secondary px-4" id="crop-cancel">
+              <i class="bi bi-x-lg me-1"></i>Cancel
+            </button>
+            <button class="btn btn-dark px-4" id="crop-save">
+              <i class="bi bi-check-lg me-1"></i>Save Profile Picture
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add modal to DOM
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  const modalEl = document.getElementById('cropModal');
+  cropModal = new bootstrap.Modal(modalEl, {
+    backdrop: 'static',
+    keyboard: false
+  });
+
+  // Show the modal
+  cropModal.show();
+
+  const imageEl = document.getElementById('crop-image');
+
+  // Initialize cropper when image loads
+  imageEl.onload = () => {
+    // Initialize the cropper with circular crop settings
+    cropper = new Cropper(imageEl, {
+      aspectRatio: 1, // Square aspect ratio for circular crop
+      viewMode: 1,
+      dragMode: 'move',
+      autoCropArea: 0.8,
+      restore: false,
+      guides: false,
+      center: true,
+      highlight: false,
+      cropBoxMovable: true,
+      cropBoxResizable: true,
+      toggleDragModeOnDblclick: false,
+      responsive: true,
+      checkCrossOrigin: false,
+      checkOrientation: false,
+      modal: true,
+      background: false,
+      minContainerWidth: 300,
+      minContainerHeight: 300,
+      minCanvasWidth: 200,
+      minCanvasHeight: 200,
+      minCropBoxWidth: 150,
+      minCropBoxHeight: 150,
+      scalable: true,
+      zoomable: true,
+      zoomOnTouch: true,
+      zoomOnWheel: true,
+      wheelZoomRatio: 0.1,
+      ready: function () {
+        // Set initial crop area to be centered and optimal size
+        this.cropper.reset();
+        const containerData = this.cropper.getContainerData();
+        const imageData = this.cropper.getImageData();
+
+        // Calculate optimal scale to fit image in container
+        const scaleX = containerData.width / imageData.naturalWidth;
+        const scaleY = containerData.height / imageData.naturalHeight;
+        const scale = Math.min(scaleX, scaleY) * 0.9;
+
+        // Center and scale the image optimally
+        this.cropper.zoomTo(scale);
+        this.cropper.center();
+      }
+    });
+  };
+
+  // Handle cancel button
+  const cancelBtn = modalEl.querySelector('#crop-cancel');
+  cancelBtn.onclick = (e) => {
+    e.preventDefault();
+    handleCropCancel();
+    cropModal.hide();
+  };
+
+  // Handle modal hidden event for cleanup
+  modalEl.addEventListener('hidden.bs.modal', (e) => {
+    if (!e.target.classList.contains('crop-completed')) {
+      handleCropCancel();
+    }
+    modalEl.remove();
+    const backdrop = document.querySelector('.modal-backdrop');
+    if (backdrop) backdrop.remove();
+  });
+
+  // Handle save button
+  const saveBtn = modalEl.querySelector('#crop-save');
+  saveBtn.onclick = async (e) => {
+    e.preventDefault();
+    
+    // Disable button to prevent double-clicking
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Uploading...';
+
+    try {
+      // Generate the cropped image as a circle
+      const croppedCanvas = cropper.getCroppedCanvas({
+        width: 200,
+        height: 200,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      });
+
+      // Convert to blob for upload
+      croppedCanvas.toBlob(async (blob) => {
+        const formData = new FormData();
+        formData.append('profilePhoto', blob, 'profile.jpg');
+
+        try {
+          const response = await fetch('/profile/photo', {
+            method: 'POST',
+            body: formData
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Update the profile photo display in both main content and sidebar
+            const containers = document.querySelectorAll('.profile-image-container, .profile-card-image');
+            containers.forEach(container => {
+              const img = container.querySelector('img');
+              if (img) {
+                img.src = `/uploads/profiles/${data.filename}?t=${Date.now()}`;
+              } else {
+                // Replace placeholder with image
+                const placeholder = container.querySelector('.profile-avatar, .profile-card-avatar-placeholder');
+                if (placeholder) {
+                  placeholder.outerHTML = `<img src="/uploads/profiles/${data.filename}?t=${Date.now()}" 
+                                                alt="Profile Photo" 
+                                                class="profile-image profile-card-avatar"
+                                                id="profileImage">`;
+                }
+              }
+            });
+
+            // Update the main profile image container
+            const mainContainer = document.querySelector('.profile-image-container');
+            mainContainer.innerHTML = `
+              <img src="/uploads/profiles/${data.filename}?t=${Date.now()}" 
+                   alt="Profile Photo" 
+                   class="profile-image"
+                   id="profileImage">
+              <button type="button" class="image-upload-btn" onclick="showPhotoOptionsModal()">
+                <i class="bi bi-camera"></i>
+              </button>
+            `;
+
+            // Mark as completed
+            modalEl.classList.add('crop-completed');
+            
+            // Hide modal
+            cropModal.hide();
+
+            // Show success message
+            Swal.fire({
+              icon: 'success',
+              title: 'Profile Picture Updated!',
+              text: data.message,
+              confirmButtonColor: '#000'
+            });
+
+          } else {
+            throw new Error(data.message || 'Upload failed');
+          }
+        } catch (error) {
+          console.error('Error uploading photo:', error);
+          Swal.fire({
+            icon: 'error',
+            title: 'Upload Failed',
+            text: error.message || 'Something went wrong. Please try again.',
+            confirmButtonColor: '#000'
+          });
+        }
+      }, 'image/jpeg', 0.9);
+
+    } catch (error) {
+      console.error('Error during image cropping:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Crop Error',
+        text: 'Failed to process the image. Please try again.',
+        confirmButtonColor: '#000'
+      });
+    } finally {
+      // Re-enable button
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Save Profile Picture';
+    }
+  };
+}
+
+function handleCropCancel() {
+  // Clean up cropper instance
+  if (cropper) {
+    cropper.destroy();
+    cropper = null;
+  }
+}
+
+// Profile photo upload functionality
+function triggerPhotoUpload() {
+  document.getElementById('profilePhotoInput').click();
+}
+
+// Handle file input change - now with cropper
+document.getElementById('profilePhotoInput').addEventListener('change', async function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Validate file type
+  if (!file.type.startsWith('image/')) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Invalid File',
+      text: 'Please select an image file.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  // Validate file size (5MB limit)
+  if (file.size > 5 * 1024 * 1024) {
+    Swal.fire({
+      icon: 'error',
+      title: 'File Too Large',
+      text: 'Please select an image smaller than 5MB.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  // Read file and show cropper
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    showCropModal(event.target.result);
+  };
+  reader.readAsDataURL(file);
+
+  // Clear the input
+  e.target.value = '';
+});
+
+// Email editing functionality
+function updateEmail() {
+  const emailInput = document.getElementById('email');
+  const emailButton = document.querySelector('.btn-update-email');
+  
+  if (!isEditingEmail) {
+    // Enable editing mode
+    isEditingEmail = true;
+    emailInput.removeAttribute('readonly');
+    emailInput.focus();
+    emailInput.style.backgroundColor = '#fff';
+    emailInput.style.color = '#333';
+    emailButton.textContent = 'Update Email';
+    emailButton.style.backgroundColor = '#000';
+    emailButton.style.color = '#fff';
+    clearFieldValidation('email');
+  } else {
+    // Submit email update
+    submitEmailUpdate();
+  }
+}
+
+async function submitEmailUpdate() {
+  const emailInput = document.getElementById('email');
+  const emailButton = document.querySelector('.btn-update-email');
+  const newEmail = emailInput.value.trim();
+  
+  // Validate email
+  const emailValidation = validateEmail(newEmail);
+  if (!emailValidation.isValid) {
+    showFieldError('email', emailValidation.error);
+    return;
+  }
+  
+  try {
+    // Show loading
+    emailButton.disabled = true;
+    emailButton.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sending OTP...';
+    
+    const response = await fetch('/profile/email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email: newEmail })
+    });
+    
+    const result = await response.json();
+    console.log('Server response:', result);
+    
+    // Reset button state first
+    emailButton.disabled = false;
+    emailButton.textContent = 'Update Email';
+    
+    // Check response and handle accordingly
+    if (result.success && result.requiresOtp) {
+      console.log('Showing OTP modal');
+      clearFieldValidation('email');
+      // Show OTP verification modal - this should be the main path
+      showOtpVerificationModal(result.currentEmail, result.newEmail);
+    } else if (result.success) {
+      console.log('Direct email update (unexpected):', result);
+      // This shouldn't happen with OTP flow, but handle it just in case
+      completeEmailUpdate(result);
+    } else {
+      console.log('Error response:', result.message);
+      showFieldError('email', result.message);
+    }
+  } catch (error) {
+    console.error('Error updating email:', error);
+    
+    // Reset button state
+    emailButton.disabled = false;
+    emailButton.textContent = 'Update Email';
+    
+    showFieldError('email', error.message || 'Something went wrong. Please try again.');
+  }
+}
+
+// Show OTP verification modal
+function showOtpVerificationModal(currentEmail, newEmail) {
+  console.log('Creating OTP modal for:', currentEmail, 'to', newEmail);
+  
+  // Remove any existing modal
+  const existingModal = document.getElementById('otpVerificationModal');
+  if (existingModal) existingModal.remove();
+
+  // Create OTP verification modal
+  const modalHtml = `
+    <div class="modal fade" id="otpVerificationModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+      <div class="modal-dialog modal-dialog-centered otp-modal-custom">
+        <div class="modal-content otp-modal-content">
+          <div class="modal-header border-0 pb-2">
+            <h5 class="modal-title mx-auto mb-0">
+              <i class="bi bi-shield-check me-2"></i>Verify Email Change
+            </h5>
+          </div>
+          <div class="modal-body p-4 text-center">
+            <div class="otp-info mb-4">
+              <p class="mb-2">We've sent a verification code to:</p>
+              <strong class="text-dark">${currentEmail}</strong>
+              <p class="text-muted mt-2 mb-0">Enter the 6-digit code to change your email to:</p>
+              <strong class="text-dark">${newEmail}</strong>
+            </div>
+            
+            <div class="otp-input-container mb-4">
+              <input type="text" 
+                     id="otpInput" 
+                     class="form-control otp-input" 
+                     placeholder="Enter 6-digit OTP"
+                     maxlength="6"
+                     autocomplete="off">
+            </div>
+            
+            <div class="otp-timer mb-3">
+              <span class="text-muted">Code expires in: </span>
+              <span id="otpTimer" class="fw-bold text-dark">1:00</span>
+            </div>
+            
+            <div class="resend-section" style="display: none;">
+              <button type="button" id="resendOtpBtn" class="btn btn-link p-0 text-decoration-none text-dark">
+                <i class="bi bi-arrow-clockwise me-1"></i>Resend Code
+              </button>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-0 justify-content-center">
+            <button class="btn btn-outline-dark px-4" id="otpCancelBtn">
+              <i class="bi bi-x-lg me-1"></i>Cancel
+            </button>
+            <button class="btn btn-dark px-4" id="otpVerifyBtn" disabled>
+              <i class="bi bi-check-lg me-1"></i>Verify & Update
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Add modal to DOM
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+  const modalEl = document.getElementById('otpVerificationModal');
+  const otpModal = new bootstrap.Modal(modalEl, {
+    backdrop: 'static',
+    keyboard: false
+  });
+
+  // Show the modal
+  console.log('Showing OTP modal');
+  otpModal.show();
+
+  // Initialize OTP functionality
+  initializeOtpModal(otpModal, modalEl, newEmail);
+}
+
+// Initialize OTP modal functionality
+function initializeOtpModal(otpModal, modalEl, newEmail) {
+  const otpInput = modalEl.querySelector('#otpInput');
+  const verifyBtn = modalEl.querySelector('#otpVerifyBtn');
+  const cancelBtn = modalEl.querySelector('#otpCancelBtn');
+  const resendBtn = modalEl.querySelector('#resendOtpBtn');
+  const timerEl = modalEl.querySelector('#otpTimer');
+  const resendSection = modalEl.querySelector('.resend-section');
+
+  // Focus on OTP input
+  setTimeout(() => otpInput.focus(), 500);
+
+  // Start countdown timer (1 minute)
+  let timeLeft = 60; // 1 minute
+  
+  const timer = setInterval(() => {
+    timeLeft--;
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      timerEl.textContent = 'Expired';
+      timerEl.className = 'fw-bold text-dark';
+      
+      // Show resend section when timer expires
+      resendSection.style.display = 'block';
+      resendBtn.disabled = false;
+    }
+  }, 1000);
+
+  // Handle OTP input
+  otpInput.addEventListener('input', function(e) {
+    // Only allow numbers
+    this.value = this.value.replace(/[^0-9]/g, '');
+    
+    // Enable verify button if 6 digits entered
+    verifyBtn.disabled = this.value.length !== 6;
+  });
+
+  // Handle Enter key in OTP input
+  otpInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && this.value.length === 6) {
+      verifyOtp();
+    }
+  });
+
+  // Handle verify button
+  verifyBtn.onclick = verifyOtp;
+
+  // Handle cancel button
+  cancelBtn.onclick = () => {
+    clearInterval(timer);
+    cancelEmailEdit();
+    otpModal.hide();
+  };
+
+  // Handle resend button
+  resendBtn.onclick = async () => {
+    try {
+      resendBtn.disabled = true;
+      resendBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sending...';
+
+      const response = await fetch('/profile/resend-email-update-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Reset timer to 1 minute
+        timeLeft = 60;
+        resendBtn.disabled = true;
+        resendBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Resend Code';
+        
+        // Hide resend section again
+        resendSection.style.display = 'none';
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Resent!',
+          text: result.message,
+          confirmButtonColor: '#000',
+          timer: 2000,
+          showConfirmButton: false
+        });
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      resendBtn.disabled = false;
+      resendBtn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Resend Code';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Resend Failed',
+        text: error.message || 'Failed to resend OTP',
+        confirmButtonColor: '#000'
+      });
+    }
+  };
+
+  // Verify OTP function
+  async function verifyOtp() {
+    const otp = otpInput.value.trim();
+    
+    if (otp.length !== 6) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Invalid OTP',
+        text: 'Please enter a 6-digit OTP.',
+        confirmButtonColor: '#000'
+      });
+      return;
+    }
+
+    try {
+      verifyBtn.disabled = true;
+      verifyBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Verifying...';
+
+      const response = await fetch('/profile/verify-email-update-otp', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ otp })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        clearInterval(timer);
+        otpModal.hide();
+        completeEmailUpdate(result);
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error) {
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Verify & Update';
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Verification Failed',
+        text: error.message || 'Invalid OTP. Please try again.',
+        confirmButtonColor: '#000'
+      });
+    }
+  }
+
+  // Clean up on modal hidden
+  modalEl.addEventListener('hidden.bs.modal', () => {
+    clearInterval(timer);
+    modalEl.remove();
+  });
+}
+
+// Complete email update after successful OTP verification
+function completeEmailUpdate(result) {
+  const emailInput = document.getElementById('email');
+  const emailButton = document.querySelector('.btn-update-email');
+  
+  // Update the email input with new email
+  emailInput.value = result.user.email;
+  
+  // Reset to readonly mode
+  isEditingEmail = false;
+  emailInput.setAttribute('readonly', true);
+  emailInput.style.backgroundColor = '#f8f9fa';
+  emailInput.style.color = '#6c757d';
+  emailButton.textContent = 'Edit Email';
+  emailButton.style.backgroundColor = '#6c757d';
+  emailButton.style.color = '#fff';
+  emailButton.disabled = false;
+  
+  clearFieldValidation('email');
+  
+  Swal.fire({
+    icon: 'success',
+    title: 'Email Updated!',
+    text: result.message,
+    confirmButtonColor: '#000'
+  });
+}
+
+// Handle escape key to cancel email editing
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' && isEditingEmail) {
+    cancelEmailEdit();
+  }
+});
+
+function cancelEmailEdit() {
+  const emailInput = document.getElementById('email');
+  const emailButton = document.querySelector('.btn-update-email');
+  
+  // Reset to original email value
+  emailInput.value = '<%= user.email || "" %>';
+  
+  // Reset to readonly mode
+  isEditingEmail = false;
+  emailInput.setAttribute('readonly', true);
+  emailInput.style.backgroundColor = '#f8f9fa';
+  emailInput.style.color = '#6c757d';
+  emailButton.textContent = 'Edit Email';
+  emailButton.style.backgroundColor = '#6c757d';
+  emailButton.style.color = '#fff';
+  emailButton.disabled = false;
+  
+  clearFieldValidation('email');
+}
+
+// Profile form submission with validation
+document.getElementById('profileForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const formData = new FormData(this);
+  const fullname = formData.get('fullName');
+  const phone = formData.get('phone');
+  
+  // Clear previous validation states
+  clearFieldValidation('fullName');
+  clearFieldValidation('phone');
+  
+  let hasErrors = false;
+
+  // Validate fullname
+  const nameValidation = validateName(fullname);
+  if (!nameValidation.isValid) {
+    showFieldError('fullName', nameValidation.error);
+    hasErrors = true;
+  }
+
+  // Validate phone
+  const phoneValidation = validatePhone(phone);
+  if (!phoneValidation.isValid) {
+    showFieldError('phone', phoneValidation.error);
+    hasErrors = true;
+  }
+
+  // If there are validation errors, don't submit
+  if (hasErrors) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Validation Error',
+      text: 'Please fix the errors in the form before submitting.',
+      confirmButtonColor: '#000'
+    });
+    return;
+  }
+
+  const data = {
+    fullname: fullname,
+    phone: phone
+  };
+
+  try {
+    // Show loading
+    const submitBtn = this.querySelector('.btn-save');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Saving...';
+
+    const response = await fetch('/profile/edit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      // Show success validation states
+      showFieldSuccess('fullName');
+      if (phone.trim()) showFieldSuccess('phone');
+      
+      Swal.fire({
+        icon: 'success',
+        title: 'Profile Updated!',
+        text: result.message,
+        confirmButtonColor: '#000'
+      });
+    } else {
+      // Handle backend validation errors
+      if (result.errors) {
+        Object.keys(result.errors).forEach(field => {
+          showFieldError(field, result.errors[field]);
+        });
+      }
+      
+      Swal.fire({
+        icon: 'error',
+        title: 'Update Failed',
+        text: result.message || 'Please fix the errors and try again.',
+        confirmButtonColor: '#000'
+      });
+    }
+  } catch (error) {
+    console.error('Error updating profile:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Update Error',
+      text: 'Something went wrong. Please try again.',
+      confirmButtonColor: '#000'
+    });
+  } finally {
+    // Reset button state
+    const submitBtn = this.querySelector('.btn-save');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Save Changes';
+  }
+});
+</script>

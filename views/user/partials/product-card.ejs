@@ -1,0 +1,113 @@
+<div class="col-6 col-md-4 col-lg-3 mb-4">
+  <div class="card h-100 border-0 shadow-sm product-card bg-white" style="<%= product.totalStock === 0 ? 'position: relative; overflow: hidden;' : '' %>">
+    <a href="/product/<%= product.slug %>" class="text-decoration-none text-dark" style="<%= product.totalStock === 0 ? 'position: relative; z-index: 5;' : '' %>">
+      <img src="<%= product.mainImage %>" class="card-img-top img-fluid" alt="<%= product.productName %>" style="object-fit: cover; height: 200px;">
+    </a>
+    <!-- Out of Stock Overlay -->
+    <% if (product.totalStock === 0) { %>
+      <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
+      <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
+    <% } %>
+    <div class="card-body d-flex flex-column justify-content-between">
+      <div>
+        <h6 class="fw-bold mb-1"><%= product.productName %></h6>
+        <p class="text-muted mb-1"><%= product.brand ? product.brand.name : 'Unknown Brand' %></p>
+        <div class="d-flex align-items-center gap-2">
+          <% if (product.variants && product.variants.length > 0) { %>
+            <%
+              let avgPrice;
+              if (typeof product.averageFinalPrice !== 'undefined') {
+                avgPrice = product.averageFinalPrice;
+              } else {
+                const finalPrices = product.variants.map(v => {
+                  const basePrice = v.basePrice || product.regularPrice;
+                  const categoryOffer = (product.category && product.category.categoryOffer) || 0;
+                  const brandOffer = (product.brand && product.brand && product.brand.brandOffer) || 0;
+                  const productOffer = product.productOffer || 0;
+                  const variantOffer = v.variantSpecificOffer || 0;
+                  const maxOffer = Math.max(categoryOffer, brandOffer, productOffer, variantOffer);
+                  return basePrice * (1 - maxOffer / 100);
+                });
+                avgPrice = finalPrices.reduce((sum, price) => sum + price, 0) / finalPrices.length;
+              }
+              const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
+                ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
+                : 0;
+            %>
+            <p class="mb-0 fw-semibold text-danger">₹<%= Math.round(avgPrice) %></p>
+          <% } else { %>
+            <p class="mb-0 fw-semibold text-danger">₹0</p>
+            <% const discountPercentage = 0; %>
+          <% } %>
+          <p class="mb-0 text-muted text-decoration-line-through small">₹<%= product.regularPrice %></p>
+        </div>
+        <% if (typeof discountPercentage !== 'undefined' && discountPercentage > 0) { %>
+          <div class="d-flex align-items-center gap-2 mt-1">
+            <span class="badge bg-success small"><%= discountPercentage %>% OFF</span>
+            <p class="mb-0 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+          </div>
+        <% } else { %>
+          <p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+        <% } %>
+
+        <!-- ✅ NEW: Size Dropdown - Only show on wishlist page -->
+        <% if (typeof isWishlistPage !== 'undefined' && isWishlistPage) { %>
+          <% if (product.variants && product.variants.length > 0) { %>
+            <div class="mt-2">
+              <label class="form-label small text-muted mb-1">Size:</label>
+              <select class="form-select form-select-sm size-dropdown" 
+                      data-product-id="<%= product._id %>"
+                      title="Select Size">
+                <option value="">Select Size</option>
+                <% 
+                // Filter variants with stock > 0 and sort by size
+                const availableVariants = product.variants
+                  .filter(variant => variant.stock > 0)
+                  .sort((a, b) => {
+                    const aNum = parseInt(a.size);
+                    const bNum = parseInt(b.size);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                      return aNum - bNum;
+                    }
+                    return a.size.localeCompare(b.size);
+                  });
+                %>
+                <% availableVariants.forEach(variant => { %>
+                  <option value="<%= variant._id %>" 
+                          data-stock="<%= variant.stock %>"
+                          data-size="<%= variant.size %>">
+                    <%= variant.size.toString().toLowerCase().includes('uk') ? variant.size : 'UK ' + variant.size %>
+                    <% if (variant.stock <= 5) { %> (Only <%= variant.stock %> left)<% } %>
+                  </option>
+                <% }) %>
+                <% if (availableVariants.length === 0) { %>
+                  <option value="" disabled>Out of Stock</option>
+                <% } %>
+              </select>
+            </div>
+          <% } %>
+        <% } %>
+      </div>
+      
+      <div class="d-flex justify-content-end gap-2">
+        <%
+          const isInWishlist = typeof userWishlistProductIds !== 'undefined' && 
+                              userWishlistProductIds.includes(product._id.toString());
+        %>
+        <button class="btn btn-sm <%= isInWishlist ? 'btn-danger' : 'btn-outline-secondary' %> wishlist-btn" 
+                data-id="<%= product._id %>" 
+                data-in-wishlist="<%= isInWishlist %>"
+                title="<%= isInWishlist ? 'Remove from Wishlist' : 'Add to Wishlist' %>">
+          <i class="bi <%= isInWishlist ? 'bi-heart-fill' : 'bi-heart' %>"></i>
+        </button>
+        <button class="btn btn-sm btn-dark cart-btn" 
+                data-id="<%= product._id %>" 
+                data-slug="<%= product.slug %>"
+                data-requires-size="true"
+                title="Add to Cart">
+          <i class="bi bi-cart-plus"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

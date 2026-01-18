@@ -1,0 +1,1708 @@
+<style>
+/* ============================================
+   LACEDUP CO ADMIN DASHBOARD STYLES
+   ============================================ */
+
+/* Container & Layout */
+.dashboard-container {
+    padding: 2rem 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    line-height: 1.6;
+}
+
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.header-left h1 {
+    color: white;
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.header-left p {
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0.5rem 0 0 0;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ledger-btn-header {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.ledger-btn-header:hover {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.date-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    color: white;
+    font-weight: 600;
+}
+
+/* Breadcrumbs */
+.breadcrumb {
+    background: none;
+    padding: 0;
+    margin-bottom: 1rem;
+}
+
+.breadcrumb-item a {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.2s;
+}
+
+.breadcrumb-item a:hover {
+    color: #2563eb;
+}
+
+.breadcrumb-item.active {
+    color: #6b7280;
+}
+
+/* ✅ Metrics Grid - BLACK THEME WITH RED HOVER */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    transition: all 0.3s ease;
+    border: 1px solid #f3f4f6;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ✅ All icons have black background */
+.metric-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    background-color: #111827;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+/* ✅ Icons turn red on card hover */
+.metric-card:hover .metric-icon {
+    background-color: #ef4444;
+    color: white;
+    transform: scale(1.1);
+}
+
+.metric-content {
+    flex: 1;
+}
+
+.metric-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+}
+
+.metric-label {
+    color: #6b7280;
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-trend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #9ca3af;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+}
+
+/* ============================================
+   ANALYTICS CONTAINER - FIXED HEIGHT
+   ============================================ */
+.analytics-container {
+    margin-bottom: 2rem;
+}
+
+/* ✅ Equal height for all cards */
+.analytics-container .row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.analytics-container .row > div {
+    display: flex;
+}
+
+.analytics-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 600px;
+}
+
+.analytics-card .card-header {
+    background-color: #f9fafb;
+    flex-shrink: 0;
+}
+
+.analytics-card .card-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.analytics-card .card-header p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.period-selector {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 0.5rem 2rem 0.5rem 1rem;
+    font-weight: 600;
+    color: #374151;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: white;
+}
+
+.period-selector:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    outline: none;
+}
+
+/* ✅ Chart Wrapper - Fills available space */
+.chart-wrapper {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ✅ Chart Container - Fills wrapper */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    max-height: 400px;
+}
+
+/* ✅ Chart Canvas Smoothing */
+.chart-container canvas {
+    border-radius: 8px;
+}
+
+/* ✅ Revenue Legend - Fixed height */
+.revenue-legend {
+    border-top: 1px solid #e5e7eb;
+    padding: 1.5rem;
+    min-height: 150px;
+    flex-shrink: 0;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.legend-item:last-child {
+    border-bottom: none;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.legend-label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.no-data {
+    text-align: center;
+    padding: 2rem;
+    color: #9ca3af;
+}
+
+.no-data i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    display: block;
+    color: #e5e7eb;
+}
+
+/* ============================================
+   INTELLIGENCE DASHBOARD - EQUAL HEIGHT FIX
+   ============================================ */
+.intelligence-dashboard {
+    margin-bottom: 2rem;
+}
+
+/* ✅ Equal height for all intelligence cards */
+.intelligence-dashboard .row {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.intelligence-dashboard .row > div {
+    display: flex;
+}
+
+.intelligence-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+}
+
+.intelligence-card .card-header {
+    background-color: #f9fafb;
+    flex-shrink: 0;
+}
+
+/* ✅ ALL header icons have BLACK background with WHITE icons */
+.intelligence-card .header-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    background-color: #111827;
+    color: white;
+    flex-shrink: 0;
+}
+
+/* ✅ Remove colored backgrounds - all stay black */
+.intelligence-card .header-icon.category-icon,
+.intelligence-card .header-icon.brand-icon {
+    background-color: #111827;
+}
+
+.intelligence-card .header-content h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0;
+}
+
+.intelligence-card .header-content p {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+/* ✅ Body fills remaining space with equal height */
+.intelligence-body {
+    min-height: 450px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ✅ Product list container */
+#bestProductsList {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+/* Loading State */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #9ca3af;
+}
+
+.loading-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* Error State */
+.error-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: #ef4444;
+}
+
+.error-state i {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+/* ============================================
+   PRODUCT ITEM - SIMPLE NUMBERING
+   ============================================ */
+.product-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 1rem;
+    border-bottom: 1px solid #f3f4f6;
+    transition: background-color 0.2s;
+}
+
+.product-item:last-child {
+    border-bottom: none;
+}
+
+.product-item:hover {
+    background-color: #f9fafb;
+}
+
+/* ✅ Simple text numbering instead of blocks */
+.product-rank {
+    font-weight: 700;
+    color: #111827;
+    font-size: 1rem;
+    line-height: 1.5;
+    padding-top: 0.1rem;
+    flex-shrink: 0;
+    min-width: 1.5rem;
+}
+
+.product-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.product-name {
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.product-brand {
+    color: #6b7280;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.product-metrics {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.product-metrics .metric {
+    color: #374151;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.product-metrics .revenue {
+    color: #10b981;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+/* ✅ Category & Brand Showcase - Fill available space */
+.category-showcase,
+.brand-showcase {
+    padding: 2rem;
+    text-align: center;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.category-name,
+.brand-name {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 1.5rem;
+}
+
+.category-metrics,
+.brand-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.metric-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: #f9fafb;
+    border-radius: 8px;
+}
+
+.metric-label {
+    color: #6b7280;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.metric-value {
+    color: #111827;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+/* ============================================
+   QUICK ACTIONS PANEL - RED HOVER
+   ============================================ */
+.actions-panel {
+    margin-bottom: 2rem;
+}
+
+.actions-header {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 0.5rem;
+}
+
+.section-subtitle {
+    color: #6b7280;
+    font-size: 1rem;
+}
+
+.actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.action-card {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    border: 1px solid #f3f4f6;
+}
+
+.action-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #111827;
+}
+
+.action-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    background-color: #111827;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+/* ✅ Icon turns RED on card hover */
+.action-card:hover .action-icon {
+    background-color: #ef4444;
+    transform: scale(1.1);
+}
+
+.action-content {
+    flex: 1;
+}
+
+.action-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.25rem 0;
+}
+
+.action-description {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0;
+}
+
+.action-arrow {
+    color: #9ca3af;
+    font-size: 1.25rem;
+    transition: transform 0.2s;
+}
+
+.action-card:hover .action-arrow {
+    transform: translateX(4px);
+    color: #111827;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .header-right {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .ledger-btn-header,
+    .date-display {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .actions-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .metric-number {
+        font-size: 1.75rem;
+    }
+
+    /* ✅ Auto height on mobile */
+    .analytics-card {
+        min-height: auto;
+    }
+    
+    .chart-container {
+        max-height: 300px;
+    }
+    
+    /* ✅ Disable flex on mobile for better stacking */
+    .analytics-container .row > div {
+        display: block;
+    }
+    
+    .intelligence-dashboard .row > div {
+        display: block;
+    }
+    
+    .intelligence-body {
+        min-height: auto;
+    }
+}
+
+/* ✅ Desktop Chart Enhancement */
+@media (min-width: 992px) {
+    .analytics-card {
+        min-height: 650px;
+    }
+    
+    .chart-container {
+        max-height: 450px;
+    }
+}
+
+/* ============================================
+   ANIMATIONS
+   ============================================ */
+.fa-spinner,
+.bi-arrow-clockwise {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>
+
+
+
+
+
+<!-- Main Content -->
+<div class="dashboard-container">
+    <!-- Breadcrumbs -->
+    <%- include('./partials/breadcrumbs', {
+        breadcrumbs: [
+            { label: 'Dashboard', url: '/admin/dashboard', icon: 'house-door' },
+            { label: 'Overview', icon: 'bar-chart-line' }
+        ]
+    }) %>
+
+
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div class="header-content">
+            <div class="header-left">
+                <h1>Dashboard Overview</h1>
+                <p>Real-time business insights and analytics for LacedUp Co</p>
+            </div>
+            <div class="header-right">
+                <button class="ledger-btn-header" onclick="downloadLedgerReportDirect()" title="Download Ledger Report">
+                    <i class="fas fa-file-download"></i>
+                    Ledger Report
+                </button>
+                <div class="date-display">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="currentDate"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Grid -->
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div class="metric-icon">
+                <i class="bi bi-people-fill"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-number" id="totalCustomers">0</div>
+                <div class="metric-label">Total Customers</div>
+                <div class="metric-trend">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Live Data</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon">
+                <i class="bi bi-cart-fill"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-number" id="totalOrders">0</div>
+                <div class="metric-label">Total Orders</div>
+                <div class="metric-trend">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Live Data</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon">
+                <i class="bi bi-currency-rupee"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-number" id="totalRevenue">₹0</div>
+                <div class="metric-label">Net Revenue</div>
+                <div class="metric-trend">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Live Data</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="metric-card">
+            <div class="metric-icon">
+                <i class="bi bi-hourglass-split"></i>
+            </div>
+            <div class="metric-content">
+                <div class="metric-number" id="pendingOrders">0</div>
+                <div class="metric-label">Pending Orders</div>
+                <div class="metric-trend">
+                    <i class="bi bi-info-circle"></i>
+                    <span>Live Data</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Dynamic Analytics Section -->
+    <div class="analytics-container">
+        <div class="row g-4">
+            <!-- Dynamic Sales Chart -->
+            <div class="col-lg-8">
+                <div class="analytics-card">
+                    <div class="card-header p-3 border-bottom">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="header-left">
+                                <h3 class="mb-1 fw-bold">
+                                    <i class="fas fa-chart-line me-2"></i>
+                                    Dynamic Sales Analytics
+                                </h3>
+                                <p class="mb-0 text-muted">Real-time sales performance tracking</p>
+                            </div>
+                            <div class="header-right">
+                                <select class="form-select period-selector" id="salesPeriod">
+                                    <option value="monthly">Monthly View</option>
+                                    <option value="weekly">Weekly View</option>
+                                    <option value="yearly">Yearly View</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-wrapper">
+                        <!-- ✅ FIXED: Added proper container -->
+                        <div class="chart-container">
+                            <canvas id="dynamicSalesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Revenue Distribution -->
+            <div class="col-lg-4">
+                <div class="analytics-card">
+                    <div class="card-header p-3 border-bottom">
+                        <h3 class="mb-1 fw-bold">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Revenue Distribution
+                        </h3>
+                        <p class="mb-0 text-muted">Payment method breakdown</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <!-- ✅ ADD with-legend CLASS HERE -->
+                        <div class="chart-container with-legend">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="revenue-legend" id="revenueLegend">
+                        <!-- Dynamic legend will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Business Intelligence Dashboard -->
+    <div class="intelligence-dashboard">
+        <div class="row g-4">
+            <!-- Best Selling Products -->
+            <div class="col-lg-4">
+                <div class="intelligence-card">
+                    <div class="card-header p-3 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="header-icon me-3">
+                                <i class="bi bi-trophy-fill"></i>
+                            </div>
+                            <div class="header-content">
+                                <h3 class="mb-1 fw-bold">Best Selling Products</h3>
+                                <p class="mb-0 text-muted">Top 5 performers by quantity</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="intelligence-body p-3" id="bestProductsList">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading products...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Best Selling Category -->
+            <div class="col-lg-4">
+                <div class="intelligence-card">
+                    <div class="card-header p-3 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="header-icon me-3">
+                                <i class="bi bi-tags-fill"></i>
+                            </div>
+                            <div class="header-content">
+                                <h3 class="mb-1 fw-bold">Top Category</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="intelligence-body p-3" id="bestCategoryCard">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading category data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Best Selling Brand -->
+            <div class="col-lg-4">
+                <div class="intelligence-card">
+                    <div class="card-header p-3 border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="header-icon me-3">
+                                <i class="bi bi-award-fill"></i>
+                            </div>
+                            <div class="header-content">
+                                <h3 class="mb-1 fw-bold">Top Brand</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="intelligence-body p-3" id="bestBrandCard">
+                        <div class="loading-state">
+                            <i class="fas fa-spinner fa-spin"></i>
+                            <p>Loading brand data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Panel -->
+    <div class="actions-panel">
+        <div class="actions-header text-center mb-4">
+            <h3 class="section-title">Quick Actions</h3>
+            <p class="section-subtitle">Streamlined admin operations</p>
+        </div>
+        <div class="actions-grid">
+            <a href="/admin/products" class="action-card">
+                <div class="action-icon">
+                    <i class="bi bi-box-seam-fill"></i>
+                </div>
+                <div class="action-content">
+                    <h4 class="action-title">Product Management</h4>
+                    <p class="action-description">Add, edit, and manage products</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+
+            <a href="/admin/coupons" class="action-card">
+                <div class="action-icon">
+                    <i class="bi bi-ticket-perforated-fill"></i>
+                </div>
+                <div class="action-content">
+                    <h4 class="action-title">Coupon Management</h4>
+                    <p class="action-description">Create and manage discount coupons</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+
+            <a href="/admin/sales-report" class="action-card">
+                <div class="action-icon">
+                    <i class="bi bi-bar-chart-fill"></i>
+                </div>
+                <div class="action-content">
+                    <h4 class="action-title">Sales Reports</h4>
+                    <p class="action-description">Detailed analytics and reports</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+
+            <a href="/admin/categories" class="action-card">
+                <div class="action-icon">
+                    <i class="bi bi-layers-fill"></i>
+                </div>
+                <div class="action-content">
+                    <h4 class="action-title">Category Management</h4>
+                    <p class="action-description">Organize product categories</p>
+                </div>
+                <div class="action-arrow">
+                    <i class="bi bi-arrow-right"></i>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // GLOBAL VARIABLES
+    // ============================================
+    let dynamicSalesChart = null;
+    let revenueChart = null;
+    let currentPeriod = 'monthly'; // Track current period
+
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    document.addEventListener('DOMContentLoaded', function () {
+        // Check if Chart.js is loaded
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js is not loaded! Please add Chart.js CDN to your layout.');
+            return;
+        }
+
+        console.log('✅ Chart.js loaded successfully');
+        
+        // Set current date
+        updateCurrentDate();
+        
+        // Initialize dashboard
+        initializeDashboard();
+        
+        // Set up event listeners
+        setupEventListeners();
+    });
+
+    // ============================================
+    // UPDATE CURRENT DATE
+    // ============================================
+    function updateCurrentDate() {
+        const currentDate = new Date();
+        const options = { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        };
+        const dateElement = document.getElementById('currentDate');
+        if (dateElement) {
+            dateElement.textContent = currentDate.toLocaleDateString('en-US', options);
+        }
+    }
+
+    // ============================================
+    // SETUP EVENT LISTENERS
+    // ============================================
+    function setupEventListeners() {
+        // ✅ Sales period change handler - UPDATE ALL DATA
+        const salesPeriodSelect = document.getElementById('salesPeriod');
+        if (salesPeriodSelect) {
+            salesPeriodSelect.addEventListener('change', function(e) {
+                currentPeriod = e.target.value;
+                console.log('📊 Period changed to:', currentPeriod);
+                
+                // Reload ALL dashboard data with new period
+                loadAllDashboardData(currentPeriod);
+            });
+        }
+
+        // Handle sidebar navigation (if exists)
+        const navItems = document.querySelectorAll('.nav-item[data-route]');
+        const mobileToggle = document.getElementById('mobileToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        // Set Dashboard as active
+        const dashboardNav = document.querySelector('[data-route="dashboard"]');
+        if (dashboardNav) {
+            dashboardNav.classList.add('active');
+        }
+
+        navItems.forEach(item => {
+            item.addEventListener('click', function (e) {
+                navItems.forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+
+                if (window.innerWidth <= 768 && sidebar) {
+                    sidebar.classList.remove('show');
+                }
+            });
+        });
+
+        if (mobileToggle && sidebar) {
+            mobileToggle.addEventListener('click', function () {
+                sidebar.classList.toggle('show');
+            });
+
+            document.addEventListener('click', function (e) {
+                if (window.innerWidth <= 768) {
+                    if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                }
+            });
+        }
+
+        // Logout functionality (if exists)
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Are you sure?',
+                        text: "You will be logged out of the admin panel",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#111827',
+                        cancelButtonColor: '#6c757d',
+                        confirmButtonText: 'Yes, logout',
+                        cancelButtonText: 'Cancel'
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = '/admin/logout';
+                        }
+                    });
+                } else {
+                    if (confirm('Are you sure you want to logout?')) {
+                        window.location.href = '/admin/logout';
+                    }
+                }
+            });
+        }
+    }
+
+    // ============================================
+    // INITIALIZE DASHBOARD
+    // ============================================
+    async function initializeDashboard() {
+        await loadAllDashboardData(currentPeriod);
+    }
+
+    // ============================================
+    // ✅ LOAD ALL DASHBOARD DATA (CENTRALIZED)
+    // ============================================
+    async function loadAllDashboardData(period = 'monthly') {
+        try {
+            console.log('🔄 Loading all dashboard data for period:', period);
+            
+            // Load all dashboard data in parallel
+            await Promise.all([
+                loadDashboardStats(period),
+                loadDynamicSalesChart(period),
+                loadRevenueDistribution(period),
+                loadBestSellingProducts(period),
+                loadBestSellingCategory(period),
+                loadBestSellingBrand(period)
+            ]);
+            
+            console.log('✅ Dashboard data loaded successfully');
+        } catch (error) {
+            console.error('❌ Error loading dashboard data:', error);
+            showErrorMessage('Failed to load dashboard data');
+        }
+    }
+
+    // ============================================
+    // LOAD DASHBOARD STATS (WITH PERIOD FILTER)
+    // ============================================
+    async function loadDashboardStats(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/stats?period=${period}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                document.getElementById('totalCustomers').textContent = data.data.totalCustomers.toLocaleString();
+                document.getElementById('totalOrders').textContent = data.data.totalOrders.toLocaleString();
+                document.getElementById('totalRevenue').textContent = '₹' + data.data.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                document.getElementById('pendingOrders').textContent = data.data.pendingOrders.toLocaleString();
+                console.log('✅ Stats loaded for', period);
+            }
+        } catch (error) {
+            console.error('❌ Error loading dashboard stats:', error);
+        }
+    }
+
+    // ============================================
+    // LOAD DYNAMIC SALES CHART (WITH PERIOD FILTER)
+    // ============================================
+    async function loadDynamicSalesChart(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/sales?period=${period}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateDynamicSalesChart(data.data.labels, data.data.salesData);
+                console.log('✅ Sales chart loaded for', period);
+            }
+        } catch (error) {
+            console.error('❌ Error loading sales chart:', error);
+        }
+    }
+
+    // ============================================
+    // UPDATE DYNAMIC SALES CHART
+    // ============================================
+    function updateDynamicSalesChart(labels, salesData) {
+        const canvas = document.getElementById('dynamicSalesChart');
+        if (!canvas) {
+            console.error('Canvas element not found');
+            return;
+        }
+
+        const ctx = canvas.getContext('2d');
+        
+        // Destroy existing chart
+        if (dynamicSalesChart) {
+            dynamicSalesChart.destroy();
+        }
+
+        // Create smooth gradient fill
+        const gradient = ctx.createLinearGradient(0, 0, 0, 350);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.15)');
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.08)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0.01)');
+
+        // Create new chart
+        dynamicSalesChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Sales Revenue',
+                    data: salesData,
+                    borderColor: '#000000',
+                    borderWidth: 2.5,
+                    fill: true,
+                    backgroundColor: gradient,
+                    tension: 0.4,
+                    pointBackgroundColor: '#000000',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    pointHoverBackgroundColor: '#000000',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 3,
+                    pointHitRadius: 10
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: '#000000',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        titleFont: {
+                            size: 13,
+                            weight: '600'
+                        },
+                        bodyFont: {
+                            size: 12
+                        },
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return 'Revenue: ₹' + context.parsed.y.toLocaleString('en-IN', { 
+                                    minimumFractionDigits: 2, 
+                                    maximumFractionDigits: 2 
+                                });
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            font: {
+                                size: 11,
+                                weight: '500'
+                            },
+                            padding: 8
+                        }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.05)',
+                            borderDash: [3, 3],
+                            drawBorder: false
+                        },
+                        border: {
+                            display: false
+                        },
+                        ticks: {
+                            callback: function(value) {
+                                if (value >= 100000) {
+                                    return '₹' + (value / 100000) + 'L';
+                                } else if (value >= 1000) {
+                                    return '₹' + (value / 1000) + 'k';
+                                }
+                                return '₹' + value;
+                            },
+                            color: '#6b7280',
+                            font: {
+                                size: 11,
+                                weight: '500'
+                            },
+                            padding: 8,
+                            maxTicksLimit: 6
+                        }
+                    }
+                },
+                animation: {
+                    duration: 750,
+                    easing: 'easeInOutQuart'
+                }
+            }
+        });
+
+        console.log('✅ Sales chart rendered with', salesData.length, 'data points');
+    }
+
+    // ============================================
+    // LOAD REVENUE DISTRIBUTION (WITH PERIOD FILTER)
+    // ============================================
+    async function loadRevenueDistribution(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/revenue-distribution?period=${period}`);
+            const data = await response.json();
+            
+            const canvas = document.getElementById('revenueChart');
+            if (!canvas) {
+                console.error('Revenue chart canvas not found');
+                return;
+            }
+
+            const ctx = canvas.getContext('2d');
+            
+            // Destroy existing chart
+            if (revenueChart) {
+                revenueChart.destroy();
+            }
+
+            if (data.success && data.data.length > 0) {
+                const labels = data.data.map(item => item.paymentMethod);
+                const percentages = data.data.map(item => parseFloat(item.percentage));
+                const colors = ['#111827', '#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
+
+                revenueChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: percentages,
+                            backgroundColor: colors.slice(0, labels.length),
+                            borderWidth: 0,
+                            hoverOffset: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                backgroundColor: '#111827',
+                                titleColor: '#ffffff',
+                                bodyColor: '#ffffff',
+                                padding: 12,
+                                callbacks: {
+                                    label: function(context) {
+                                        return context.label + ': ' + context.parsed + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                updateRevenueLegend(data.data, colors);
+                console.log('✅ Revenue chart loaded for', period);
+            } else {
+                // Show default chart if no data
+                revenueChart = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['No Data'],
+                        datasets: [{
+                            data: [100],
+                            backgroundColor: ['#e9ecef'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        }
+                    }
+                });
+
+                updateRevenueLegend([], []);
+            }
+        } catch (error) {
+            console.error('❌ Error loading revenue chart:', error);
+        }
+    }
+
+    // ============================================
+    // UPDATE REVENUE LEGEND
+    // ============================================
+    function updateRevenueLegend(data, colors) {
+        const legendContainer = document.getElementById('revenueLegend');
+        if (!legendContainer) return;
+
+        if (data && data.length > 0) {
+            legendContainer.innerHTML = data.map((item, index) => `
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: ${colors[index]}"></div>
+                    <span class="legend-label">${item.paymentMethod}: ${item.percentage}%</span>
+                </div>
+            `).join('');
+        } else {
+            legendContainer.innerHTML = `
+                <div class="no-data">
+                    <i class="fas fa-chart-pie"></i>
+                    <p>No revenue data available</p>
+                </div>
+            `;
+        }
+    }
+
+    // ============================================
+    // LOAD BEST SELLING PRODUCTS (WITH PERIOD FILTER)
+    // ============================================
+    async function loadBestSellingProducts(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/best-selling-products?period=${period}`);
+            const data = await response.json();
+            
+            const container = document.getElementById('bestProductsList');
+            if (!container) return;
+
+            if (data.success && data.data.length > 0) {
+                container.innerHTML = '';
+                data.data.forEach((product, index) => {
+                    const productElement = document.createElement('div');
+                    productElement.className = 'product-item';
+                    productElement.innerHTML = `
+                        <span class="product-rank">${index + 1}.</span>
+                        <div class="product-details">
+                            <div class="product-name">${product.productName}</div>
+                            <div class="product-brand"><i class="fas fa-copyright me-1"></i>${product.brand}</div>
+                            <div class="product-metrics">
+                                <span class="metric"><i class="fas fa-cube me-1"></i>${product.totalQuantity} units</span>
+                                <span class="revenue">₹${product.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(productElement);
+                });
+                console.log('✅ Products loaded for', period);
+            } else {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-box-open"></i>
+                        <p>No product sales data available</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('❌ Error loading best selling products:', error);
+            const container = document.getElementById('bestProductsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load products</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // ============================================
+    // LOAD BEST SELLING CATEGORY (WITH PERIOD FILTER)
+    // ============================================
+    async function loadBestSellingCategory(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/best-selling-category?period=${period}`);
+            const data = await response.json();
+            
+            const container = document.getElementById('bestCategoryCard');
+            if (!container) return;
+
+            if (data.success && data.data) {
+                container.innerHTML = `
+                    <div class="category-showcase">
+                        <div class="category-name">${data.data.categoryName}</div>
+                        <div class="category-metrics">
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-rupee-sign me-1"></i>Revenue</span>
+                                <span class="metric-value">₹${data.data.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-cube me-1"></i>Units Sold</span>
+                                <span class="metric-value">${data.data.totalQuantity.toLocaleString()}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-shopping-cart me-1"></i>Orders</span>
+                                <span class="metric-value">${data.data.totalOrders.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                console.log('✅ Category loaded for', period);
+            } else {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-tags"></i>
+                        <p>No category data available</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('❌ Error loading best selling category:', error);
+            const container = document.getElementById('bestCategoryCard');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load category</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // ============================================
+    // LOAD BEST SELLING BRAND (WITH PERIOD FILTER)
+    // ============================================
+    async function loadBestSellingBrand(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/best-selling-brand?period=${period}`);
+            const data = await response.json();
+            
+            const container = document.getElementById('bestBrandCard');
+            if (!container) return;
+
+            if (data.success && data.data) {
+                container.innerHTML = `
+                    <div class="brand-showcase">
+                        <div class="brand-name">${data.data.brandName}</div>
+                        <div class="brand-metrics">
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-rupee-sign me-1"></i>Revenue</span>
+                                <span class="metric-value">₹${data.data.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-cube me-1"></i>Units Sold</span>
+                                <span class="metric-value">${data.data.totalQuantity.toLocaleString()}</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-label"><i class="fas fa-box me-1"></i>Products</span>
+                                <span class="metric-value">${data.data.totalProducts.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                console.log('✅ Brand loaded for', period);
+            } else {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-award"></i>
+                        <p>No brand data available</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('❌ Error loading best selling brand:', error);
+            const container = document.getElementById('bestBrandCard');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load brand</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    // ============================================
+    // SHOW ERROR MESSAGE
+    // ============================================
+    function showErrorMessage(message) {
+        console.error(message);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: message,
+                confirmButtonColor: '#111827'
+            });
+        } else {
+            alert(message);
+        }
+    }
+
+    // ============================================
+    // DOWNLOAD LEDGER REPORT - IMPROVED VERSION
+    // ============================================
+    function downloadLedgerReportDirect() {
+        try {
+            // Generate filename with date
+            const today = new Date();
+            const dateString = today.toISOString().split('T')[0];
+            const filename = `LacedUp-Ledger-Report-${dateString}.pdf`;
+            
+            // Build download URL with force-download parameter
+            const downloadUrl = `/admin/dashboard/ledger-report/export-pdf?timePeriod=monthly&paymentMethod=all&orderStatus=all&download=true`;
+            
+            // Create XMLHttpRequest for better control
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', downloadUrl, true);
+            xhr.responseType = 'blob';
+            
+            // Handle loading states
+            xhr.onload = function() {
+                if (xhr.status === 200) {
+                    // Create blob from response
+                    const blob = new Blob([xhr.response], { type: 'application/pdf' });
+                    const blobUrl = window.URL.createObjectURL(blob);
+                    
+                    // Create download link
+                    const link = document.createElement('a');
+                    link.href = blobUrl;
+                    link.download = filename;
+                    link.style.display = 'none';
+                    
+                    // Trigger download
+                    document.body.appendChild(link);
+                    link.click();
+                    
+                    // Cleanup
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(blobUrl);
+                    
+                    console.log('✅ PDF downloaded successfully:', filename);
+                } else {
+                    throw new Error(`HTTP Error: ${xhr.status}`);
+                }
+            };
+            
+            // Handle errors
+            xhr.onerror = function() {
+                console.error('❌ Network error while downloading PDF');
+                showDownloadError('Network error. Please try again.');
+            };
+            
+            xhr.ontimeout = function() {
+                console.error('❌ PDF download request timed out');
+                showDownloadError('Request timed out. Please try again.');
+            };
+            
+            // Set timeout to 30 seconds
+            xhr.timeout = 30000;
+            
+            // Send request
+            xhr.send();
+            
+        } catch (error) {
+            console.error('❌ Error downloading PDF:', error);
+            showDownloadError('Failed to download PDF. Please try again.');
+        }
+    }
+
+    // ============================================
+    // SHOW DOWNLOAD ERROR
+    // ============================================
+    function showDownloadError(message) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Download Failed',
+                text: message,
+                confirmButtonColor: '#111827'
+            });
+        } else {
+            alert('Download Failed: ' + message);
+        }
+    }
+</script>

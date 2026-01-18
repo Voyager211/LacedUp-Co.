@@ -1,0 +1,680 @@
+<% var title = "Order Failed" %>
+
+<!-- Main Order Failure Container -->
+<div class="order-failure-container py-5">
+    <!-- Single Section with All Content -->
+    <div class="order-failure-section">
+        <!-- Failure Animation -->
+        <div class="failure-animation-container text-center">
+            <div class="failure-xmark">
+                <svg class="xmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="xmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="xmark-cross" fill="none" d="M16 16 L36 36 M36 16 L16 36"/>
+                </svg>
+            </div>
+            
+            <div class="failure-content">
+                <h1 class="failure-title">Order Failed!</h1>
+                <p class="failure-subtitle">Unfortunately, your order could not be processed.</p>
+                <div class="failure-number">
+                    <strong>Transaction ID: #<%= transactionId || 'TXN' + Date.now() %></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Address (if applicable) -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-geo-alt"></i> Delivery Address
+            </h5>
+            <% if (orderData && orderData.deliveryAddress) { %>
+                <div class="address-info">
+                    <p><strong><%= orderData.deliveryAddress.name %></strong></p>
+                    <p><%= orderData.deliveryAddress.addressType %></p>
+                    <p><%= orderData.deliveryAddress.landMark %></p>
+                    <p><%= orderData.deliveryAddress.city %>, <%= orderData.deliveryAddress.state %></p>
+                    <p>PIN: <%= orderData.deliveryAddress.pincode %></p>
+                    <p><i class="bi bi-telephone"></i> <%= orderData.deliveryAddress.phone %></p>
+                </div>
+            <% } else { %>
+                <p class="text-muted">Address information not available</p>
+            <% } %>
+        </div>
+
+        <!-- Ordered Items (if applicable) -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-bag-check"></i> Ordered Items
+            </h5>
+            <% if (orderData && orderData.items && orderData.items.length > 0) { %>
+                <% orderData.items.forEach(item => { %>
+                    <div class="order-item">
+                        <div class="item-image">
+                            <% 
+                                let imageSrc = '/images/placeholder.svg';
+                                let productName = 'Product Name';
+                                if (item.productId && item.productId.mainImage) {
+                                    imageSrc = item.productId.mainImage.startsWith('/') ? 
+                                               item.productId.mainImage : 
+                                               '/uploads/products/' + item.productId.mainImage;
+                                    productName = item.productId.productName || 'Product Name';
+                                } else if (item.productId && item.productId.subImages && item.productId.subImages.length > 0) {
+                                    const subImage = item.productId.subImages[0];
+                                    imageSrc = subImage.startsWith('/') ? 
+                                               subImage : 
+                                               '/uploads/products/' + subImage;
+                                    productName = item.productId.productName || 'Product Name';
+                                }
+                            %>
+                            <img src="<%= imageSrc %>" 
+                                 alt="<%= productName %>"
+                                 onerror="this.onerror=null; this.src='/images/placeholder.svg';"
+                                 loading="lazy">
+                        </div>
+                        <div class="item-details">
+                            <h6><%= productName %></h6>
+                            <p>Size: <%= item.size || 'N/A' %> | SKU: <%= item.sku || 'N/A' %> | Qty: <%= item.quantity || 0 %></p>
+                        </div>
+                        <div class="item-price">
+                            <span class="price">₹<%= Math.round(item.totalPrice || 0) %></span>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p class="text-muted">Order items not available</p>
+            <% } %>
+        </div>
+
+        <!-- Payment Method (if applicable) -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-credit-card"></i> Payment Method
+            </h5>
+            <div class="payment-method-info">
+                <% if (orderData && orderData.paymentMethod) { %>
+                    <div class="payment-details">
+                        <p><strong><%= orderData.paymentMethod.toUpperCase() %></strong></p>
+                        <p>Payment processing failed</p>
+                        <span class="payment-status failed">Payment Failed</span>
+                    </div>
+                <% } else { %>
+                    <div class="payment-details">
+                        <p><strong>Payment Method Not Available</strong></p>
+                        <p>Payment processing failed</p>
+                        <span class="payment-status failed">Payment Failed</span>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Price Details (if applicable) -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-receipt"></i> Price Details
+            </h5>
+            <div class="price-breakdown">
+                <div class="price-row">
+                    <span class="price-label">Subtotal (<%= (orderData && orderData.totalItemCount) || 0 %> items)</span>
+                    <span class="price-value">₹<%= (orderData && orderData.subtotal) || 0 %></span>
+                </div>
+                <% if (orderData && orderData.totalDiscount && orderData.totalDiscount > 0) { %>
+                    <div class="price-row">
+                        <span class="price-label">Discount</span>
+                        <span class="price-value discount">-₹<%= orderData.totalDiscount %></span>
+                    </div>
+                <% } %>
+                <div class="price-row">
+                    <span class="price-label">Shipping</span>
+                    <span class="price-value">
+                        <% if (orderData && orderData.shipping && orderData.shipping > 0) { %>
+                            ₹<%= orderData.shipping %>
+                        <% } else { %>
+                            <span class="free-shipping">FREE</span>
+                        <% } %>
+                    </span>
+                </div>
+                
+                <div class="price-divider"></div>
+                
+                <div class="price-row total-row">
+                    <span class="price-label"><strong>Total Amount</strong></span>
+                    <span class="price-value total"><strong>₹<%= (orderData && orderData.total) || 0 %></strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Failure Reason / Status -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-exclamation-triangle"></i> What Happened?
+            </h5>
+            <div class="failure-reason">
+                <p class="text-muted"><%= failureReason || "We're sorry, but there was an issue processing your order. Please try again or contact support." %></p>
+            </div>
+        </div>
+
+        <!-- ✅ NEW: Order Payment Failed Alert (when order status is FAILED) -->
+        <% if (canRetry === false) { %>
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert-content">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                    <div class="alert-text">
+                        <h6 class="alert-title">Payment Failed - Maximum Retry Attempts Exceeded</h6>
+                        <p class="alert-message">
+                            Your payment has failed on multiple attempts. Unfortunately, we cannot process this order further. 
+                            <strong>Please place a new order</strong> to continue your purchase. Your items remain available in your cart.
+                        </p>
+                        <small class="text-muted">If you continue to experience issues, please contact our support team for assistance.</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        <% } %>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons text-center">
+            <!-- ✅ CONDITIONAL: Show Retry Button Only if Order Status is NOT Failed -->
+            <% if (canRetry !== false) { %>
+                <a href="/checkout/retry-payment/<%= transactionId %>" class="btn btn-warning">
+                    <i class="bi bi-arrow-clockwise"></i> Retry Payment
+                </a>
+            <% } %>
+            
+            <!-- Always show Place New Order button -->
+            <a href="/cart" class="btn btn-primary">
+                <i class="bi bi-bag-plus"></i> Place New Order
+            </a>
+            
+            <a href="/support" class="btn btn-outline-danger">
+                <i class="bi bi-headset"></i> Contact Support
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<style>
+/* ========= ORDER FAILURE PAGE STYLES ========= */
+
+/* Force hide loading overlay on this page */
+#page-transition-overlay {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Ensure main content is always visible */
+#main-content {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.order-failure-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Main Section */
+.order-failure-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Failure Animation - Clean SVG X Mark */
+.failure-animation-container {
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+}
+
+.failure-xmark {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem;
+    display: block;
+    position: relative;
+}
+
+.xmark {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    stroke-width: 3;
+    stroke: #dc3545;
+    stroke-miterlimit: 10;
+    box-shadow: 0 0 0 #dc3545;
+    animation: xmark-fill 0.4s ease-in-out 0.4s forwards, xmark-scale 0.3s ease-in-out 0.9s both;
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    border-radius: 50%;
+    padding: 10px;
+}
+
+.xmark-circle {
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    stroke-width: 3;
+    stroke-miterlimit: 10;
+    stroke: #dc3545;
+    fill: none;
+    animation: xmark-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.xmark-cross {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    stroke-width: 3;
+    stroke: #FFFFFF;
+    animation: xmark-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+/* Keyframe Animations */
+@keyframes xmark-stroke {
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes xmark-scale {
+    0%, 100% {
+        transform: none;
+    }
+    50% {
+        transform: scale3d(1.1, 1.1, 1);
+    }
+}
+
+@keyframes xmark-fill {
+    100% {
+        box-shadow: inset 0px 0px 0px 50px #dc3545;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Failure Content */
+.failure-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #dc3545;
+    margin-bottom: 0.5rem;
+}
+
+.failure-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.failure-number {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    display: inline-block;
+    font-size: 1rem;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+/* Content Sections */
+.content-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.content-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Address Info */
+.address-info p {
+    margin: 0.25rem 0;
+    color: #495057;
+    line-height: 1.4;
+}
+
+/* Order Items */
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-image {
+    width: 60px;
+    height: 60px;
+    margin-right: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-details h6 {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #000;
+}
+
+.item-details p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.item-price .price {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #000;
+}
+
+/* Payment Method */
+.payment-details p {
+    margin: 0.25rem 0;
+    color: #495057;
+}
+
+.payment-status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.payment-status.failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+/* Price Breakdown */
+.price-breakdown {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.price-row:last-child {
+    margin-bottom: 0;
+}
+
+.price-label {
+    color: #495057;
+}
+
+.price-value {
+    color: #000;
+    font-weight: 500;
+}
+
+.price-value.discount {
+    color: #28a745;
+}
+
+.price-value.free-shipping {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.price-divider {
+    height: 1px;
+    background: #dee2e6;
+    margin: 0.75rem 0;
+}
+
+.total-row {
+    font-size: 1.1rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid #dee2e6;
+}
+
+/* Failure Reason / Suggestions */
+.failure-reason p {
+    margin: 0.25rem 0;
+    color: #495057;
+}
+
+/* ✅ NEW: Alert Styles for Failed Order */
+.alert-danger {
+    background: #f8d7da;
+    border: 2px solid #f5c6cb;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    padding: 1.5rem;
+}
+
+.alert-content {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.alert-content i {
+    font-size: 1.5rem;
+    color: #dc3545;
+    flex-shrink: 0;
+    margin-top: 0.25rem;
+}
+
+.alert-text {
+    flex: 1;
+}
+
+.alert-title {
+    color: #721c24;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.alert-message {
+    color: #721c24;
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
+.alert-message strong {
+    font-weight: 600;
+    color: #bd2130;
+}
+
+/* Action Buttons */
+.action-buttons {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.action-buttons .btn {
+    margin: 0 0.5rem;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 123, 255, 0.3);
+}
+
+.action-buttons .btn-warning {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-warning:hover {
+    background: linear-gradient(135deg, #f57c00 0%, #ef6c00 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(255, 152, 0, 0.3);
+}
+
+.action-buttons .btn-outline-danger {
+    border: 2px solid #dc3545;
+    color: #dc3545;
+}
+
+.action-buttons .btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .order-failure-section {
+        padding: 1.5rem;
+    }
+    
+    .failure-title {
+        font-size: 1.75rem;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        display: block;
+        margin: 0.5rem auto;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .failure-xmark {
+        width: 80px;
+        height: 80px;
+    }
+
+    .alert-content {
+        flex-direction: column;
+    }
+
+    .alert-content i {
+        margin-top: 0;
+    }
+}
+</style>
+
+<script>
+// Add some interactive effects and force hide loading overlay
+document.addEventListener('DOMContentLoaded', function() {
+    // Force hide any loading overlays immediately
+    if (window.PageTransition) {
+        window.PageTransition.forceReset();
+    }
+    
+    // Also manually hide any loading overlays
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    // Ensure main content is visible
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+    
+    // Add hover effects to the main section
+    const section = document.querySelector('.order-failure-section');
+    if (section) {
+        section.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.boxShadow = '0 8px 30px rgba(220, 53, 69, 0.15)';
+        });
+        
+        section.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+        });
+    }
+});
+
+// Also add a backup to ensure page loads properly
+window.addEventListener('load', function() {
+    // Force hide loading overlay after page fully loads
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    // Ensure main content is visible
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+});
+
+// Additional safety check - run after a short delay
+setTimeout(function() {
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+}, 500);
+</script>

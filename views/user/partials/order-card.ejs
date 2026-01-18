@@ -1,0 +1,108 @@
+<div class="order-card mb-3" data-status="<%= item.status %>">
+  <div class="card border-0 shadow-sm">
+    <div class="card-body p-4">
+      <div class="row align-items-center">
+        <!-- Order Info -->
+        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+          <div class="order-info">
+            <h6 class="mb-1 fw-bold text-dark">Order #<%= item.orderId %></h6>
+            <small class="text-muted">
+              <i class="bi bi-calendar3 me-1"></i>
+              <%= new Date(item.orderDate).toLocaleDateString('en-IN', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric' 
+              }) %>
+            </small>
+            <div class="mt-1">
+              <small class="text-muted">Size: <%= item.size %> | Qty: <%= item.quantity %></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Product Preview -->
+        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+          <div class="product-preview d-flex align-items-center">
+            <% if (item.productImage) { %>
+              <img src="<%= item.productImage %>" 
+                   alt="<%= item.productName %>" 
+                   class="product-thumb me-3">
+            <% } else { %>
+              <div class="product-thumb-placeholder me-3">
+                <i class="bi bi-image"></i>
+              </div>
+            <% } %>
+            <div class="product-info">
+              <div class="fw-semibold text-dark">
+                <%= item.productName %>
+              </div>
+              <small class="text-muted">SKU: <%= item.sku %></small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Status & Amount -->
+        <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
+          <div class="status-amount text-center">
+            <span class="badge bg-<%= 
+                item.status === 'Delivered' ? 'success' : 
+                item.status === 'Shipped' ? 'info' : 
+                item.status === 'Processing' ? 'warning' : 
+                item.status === 'Processing Return' ? 'warning' :
+                item.status === 'Cancelled' ? 'danger' : 
+                item.status === 'Returned' ? 'secondary' : 'secondary' %> fs-6 px-3 py-2 mb-2">
+                <%= item.status %>
+              </span>
+            <div class="fw-bold text-dark fs-5">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+            <small class="text-muted text-uppercase">
+              <%= item.paymentMethod === 'cod' ? 'Cash on Delivery' : item.paymentMethod %>
+            </small>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="col-lg-3 col-md-6">
+          <div class="order-actions d-flex flex-column gap-2">
+            <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('<%= item.orderId %>')">
+              <i class="bi bi-eye me-1"></i>View Details
+            </button>
+            
+            <div class="d-flex gap-2">
+              <% if (item.status === 'Pending' || item.status === 'Processing') { %>
+                <button class="btn btn-outline-danger btn-sm flex-fill" onclick="cancelItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                  <i class="bi bi-x-circle me-1"></i>Cancel
+                </button>
+              <% } %>
+              
+              <% if (item.status === 'Shipped') { %>
+                <button class="btn btn-outline-info btn-sm flex-fill" onclick="trackOrder('<%= item.orderId %>')">
+                  <i class="bi bi-truck me-1"></i>Track
+                </button>
+              <% } %>
+              
+              <% if (item.status === 'Delivered') { %>
+                <% if (item.returnRequest) { %>
+                  <span class="badge bg-<%= 
+                    item.returnRequest.status === 'Pending' ? 'warning' : 
+                    item.returnRequest.status === 'Approved' ? 'success' : 
+                    item.returnRequest.status === 'Rejected' ? 'danger' : 'secondary' 
+                  %> flex-fill text-center py-2">
+                    <i class="bi bi-arrow-return-left me-1"></i>
+                    Return <%= item.returnRequest.status %>
+                  </span>
+                <% } else { %>
+                  <button class="btn btn-outline-warning btn-sm flex-fill" onclick="returnItem('<%= item.orderId %>', '<%= item.itemId %>')">
+                    <i class="bi bi-arrow-return-left me-1"></i>Return
+                  </button>
+                <% } %>
+                <button class="btn btn-outline-success btn-sm flex-fill" onclick="downloadInvoice('<%= item.orderId %>')">
+                  <i class="bi bi-download me-1"></i>Invoice
+                </button>
+              <% } %>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,703 @@
+<% var title = "Order Placed Successfully" %>
+
+<!-- Main Order Success Container -->
+<div class="order-success-container py-5">
+    <!-- Single Section with All Content -->
+    <div class="order-success-section">
+        <!-- Success Animation -->
+        <div class="success-animation-container text-center">
+            <div class="success-checkmark">
+                <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                    <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+                    <path class="checkmark-check" fill="none" d="m14.1 27.2l7.1 7.2 16.7-16.8"/>
+                </svg>
+            </div>
+            
+            <div class="success-content">
+                <h1 class="success-title">Order Placed Successfully!</h1>
+                <p class="success-subtitle">Thank you for your purchase. Your order has been confirmed.</p>
+                <div class="order-number">
+                    <strong>Order ID: #<%= orderData.orderId || 'ORD' + Date.now() %></strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delivery Address -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-geo-alt"></i> Delivery Address
+            </h5>
+            <% if (orderData.deliveryAddress) { %>
+                <div class="address-info">
+                    <p><strong><%= orderData.deliveryAddress.name %></strong></p>
+                    <p><%= orderData.deliveryAddress.addressType %></p>
+                    <p><%= orderData.deliveryAddress.landMark %></p>
+                    <p><%= orderData.deliveryAddress.city %>, <%= orderData.deliveryAddress.state %></p>
+                    <p>PIN: <%= orderData.deliveryAddress.pincode %></p>
+                    <p><i class="bi bi-telephone"></i> <%= orderData.deliveryAddress.phone %></p>
+                </div>
+            <% } else { %>
+                <p class="text-muted">Address information not available</p>
+            <% } %>
+        </div>
+
+        <!-- Ordered Items -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-bag-check"></i> Ordered Items
+            </h5>
+            <% if (orderData.items && orderData.items.length > 0) { %>
+                <% orderData.items.forEach(item => { %>
+                    <div class="order-item">
+                        <div class="item-image">
+                            <% 
+                                // Multiple fallback options for product image
+                                let imageSrc = '/images/placeholder.svg';
+                                let productName = 'Product Name';
+                                
+                                // Try to get image from productId (main fallback)
+                                if (item.productId && item.productId.mainImage) {
+                                    // Check if mainImage already contains the full path
+                                    imageSrc = item.productId.mainImage.startsWith('/') ? 
+                                               item.productId.mainImage : 
+                                               '/uploads/products/' + item.productId.mainImage;
+                                    productName = item.productId.productName || 'Product Name';
+                                }
+                                // Try to get image from product (additional fallback)
+                                else if (item.product && item.product.mainImage) {
+                                    imageSrc = item.product.mainImage.startsWith('/') ? 
+                                               item.product.mainImage : 
+                                               '/uploads/products/' + item.product.mainImage;
+                                    productName = item.product.productName || 'Product Name';
+                                }
+                                // Try to get image from subImages if mainImage is not available
+                                else if (item.productId && item.productId.subImages && item.productId.subImages.length > 0) {
+                                    const subImage = item.productId.subImages[0];
+                                    imageSrc = subImage.startsWith('/') ? 
+                                               subImage : 
+                                               '/uploads/products/' + subImage;
+                                    productName = item.productId.productName || 'Product Name';
+                                }
+                                else if (item.product && item.product.subImages && item.product.subImages.length > 0) {
+                                    const subImage = item.product.subImages[0];
+                                    imageSrc = subImage.startsWith('/') ? 
+                                               subImage : 
+                                               '/uploads/products/' + subImage;
+                                    productName = item.product.productName || 'Product Name';
+                                }
+                            %>
+                            <img src="<%= imageSrc %>" 
+                                 alt="<%= productName %>"
+                                 onerror="this.onerror=null; this.src='/images/placeholder.svg';"
+                                 loading="lazy">
+                        </div>
+                        <div class="item-details">
+                            <h6><%= productName %></h6>
+                            <p>Size: <%= item.size %> | SKU: <%= item.sku %> | Qty: <%= item.quantity %></p>
+                        </div>
+                        <div class="item-price">
+                            <span class="price">₹<%= Math.round(item.totalPrice) %></span>
+                        </div>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <p class="text-muted">No items found</p>
+            <% } %>
+        </div>
+
+        <!-- Payment Method -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-credit-card"></i> Payment Method
+            </h5>
+            <div class="payment-method-info">
+                <% if (orderData.paymentMethod === 'cod') { %>
+                    <div class="payment-details">
+                        <p><strong>Cash on Delivery</strong></p>
+                        <p>Pay when your order is delivered to your doorstep</p>
+                        <span class="payment-status pending">Payment Pending</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'card') { %>
+                    <div class="payment-details">
+                        <p><strong>Credit/Debit Card</strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'upi') { %>
+                    <div class="payment-details">
+                        <p><strong>UPI Payment</strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'wallet') { %>
+                    <!-- ✅ NEW: Add wallet payment condition -->
+                    <div class="payment-details">
+                        <p><strong><i class="bi bi-wallet2"></i> Wallet Payment</strong></p>
+                        <p>Payment deducted from your wallet successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'netbanking') { %>
+                    <div class="payment-details">
+                        <p><strong>Net Banking</strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else { %>
+                    <!-- Fallback for unknown payment methods -->
+                    <div class="payment-details">
+                        <p><strong>Payment Method: <%= orderData.paymentMethod %></strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+
+        <!-- Price Details -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-receipt"></i> Price Details
+            </h5>
+            <div class="price-breakdown">
+                <!-- Subtotal -->
+                <div class="price-row">
+                    <span class="price-label">Subtotal (<%= orderData.totalItemCount || 0 %> items)</span>
+                    <span class="price-value">₹<%= orderData.subtotal || 0 %></span>
+                </div>
+                
+                <!-- Product Discount -->
+                <% if (orderData.totalDiscount && orderData.totalDiscount > 0) { %>
+                    <div class="price-row discount-row">
+                        <span class="price-label">
+                            <i class="bi bi-tag-fill text-success me-1"></i>Product Discount
+                        </span>
+                        <span class="price-value discount">-₹<%= orderData.totalDiscount %></span>
+                    </div>
+                <% } %>
+                
+                <!-- Coupon Discount (NEW - SEPARATE ROW) -->
+                <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                    <div class="price-row discount-row">
+                        <span class="price-label">
+                            <i class="bi bi-percent text-success me-1"></i>Coupon Discount
+                            <% if (orderData.couponCode) { %>
+                                (<%= orderData.couponCode %>)
+                            <% } %>
+                        </span>
+                        <span class="price-value discount">-₹<%= orderData.couponDiscount %></span>
+                    </div>
+                <% } %>
+                
+                <!-- Shipping -->
+                <div class="price-row">
+                    <span class="price-label">
+                        <i class="bi bi-truck me-1"></i>Shipping
+                    </span>
+                    <span class="price-value">
+                        <% if (orderData.shipping && orderData.shipping > 0) { %>
+                            ₹<%= orderData.shipping %>
+                        <% } else { %>
+                            <span class="free-shipping">FREE</span>
+                        <% } %>
+                    </span>
+                </div>
+                
+                <div class="price-divider"></div>
+                
+                <!-- Total -->
+                <div class="price-row total-row">
+                    <span class="price-label"><strong>Total Amount</strong></span>
+                    <span class="price-value total"><strong>₹<%= orderData.total || 0 %></strong></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Estimated Delivery -->
+        <div class="content-section">
+            <h5 class="section-title">
+                <i class="bi bi-truck"></i> Estimated Delivery
+            </h5>
+            <div class="delivery-info">
+                <% 
+                    const deliveryDate = new Date();
+                    deliveryDate.setDate(deliveryDate.getDate() + 5);
+                    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                %>
+                <p class="delivery-date"><strong><%= deliveryDate.toLocaleDateString('en-US', options) %></strong></p>
+                <p class="delivery-note">Your order will be delivered within 3-5 business days</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="action-buttons text-center">
+            <a href="/orders/<%= orderData.orderId || orderData._id %>" class="btn btn-success">
+                <i class="bi bi-eye"></i> View Order
+            </a>
+            <a href="/shop" class="btn btn-outline-primary">
+                <i class="bi bi-arrow-left"></i> Continue Shopping
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+/* ========= ORDER SUCCESS PAGE STYLES ========= */
+
+/* Force hide loading overlay on this page */
+#page-transition-overlay {
+    display: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+}
+
+/* Ensure main content is always visible */
+#main-content {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+.order-success-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Main Section */
+.order-success-section {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    padding: 2rem;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+/* Success Animation - Clean SVG Checkmark */
+.success-animation-container {
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+}
+
+.success-checkmark {
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 1.5rem;
+    display: block;
+    position: relative;
+}
+
+.checkmark {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: block;
+    stroke-width: 3;
+    stroke: #4CAF50;
+    stroke-miterlimit: 10;
+    box-shadow: 0 0 0 #4CAF50;
+    animation: checkmark-fill 0.4s ease-in-out 0.4s forwards, checkmark-scale 0.3s ease-in-out 0.9s both;
+    background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+    border-radius: 50%;
+    padding: 10px;
+}
+
+.checkmark-circle {
+    stroke-dasharray: 166;
+    stroke-dashoffset: 166;
+    stroke-width: 3;
+    stroke-miterlimit: 10;
+    stroke: #4CAF50;
+    fill: none;
+    animation: checkmark-stroke 0.6s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+
+.checkmark-check {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48;
+    stroke-dashoffset: 48;
+    stroke-width: 3;
+    stroke: #FFFFFF;
+    animation: checkmark-stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+
+/* Keyframe Animations */
+@keyframes checkmark-stroke {
+    100% {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes checkmark-scale {
+    0%, 100% {
+        transform: none;
+    }
+    50% {
+        transform: scale3d(1.1, 1.1, 1);
+    }
+}
+
+@keyframes checkmark-fill {
+    100% {
+        box-shadow: inset 0px 0px 0px 50px #4CAF50;
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Success Content */
+.success-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #4CAF50;
+    margin-bottom: 0.5rem;
+}
+
+.success-subtitle {
+    font-size: 1.1rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.order-number {
+    background: linear-gradient(135deg, #4CAF50, #45a049);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 25px;
+    display: inline-block;
+    font-size: 1rem;
+    box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+}
+
+/* Content Sections */
+.content-section {
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.content-section:last-of-type {
+    border-bottom: none;
+    margin-bottom: 1rem;
+}
+
+.section-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #000;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Address Info */
+.address-info p {
+    margin: 0.25rem 0;
+    color: #495057;
+    line-height: 1.4;
+}
+
+/* Order Items */
+.order-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid #f8f9fa;
+}
+
+.order-item:last-child {
+    border-bottom: none;
+}
+
+.item-image {
+    width: 60px;
+    height: 60px;
+    margin-right: 1rem;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.item-details {
+    flex: 1;
+}
+
+.item-details h6 {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: #000;
+}
+
+.item-details p {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.item-price .price {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #000;
+}
+
+/* Payment Method */
+.payment-details p {
+    margin: 0.25rem 0;
+    color: #495057;
+}
+
+.payment-status {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.payment-status.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.payment-status.paid {
+    background: #d4edda;
+    color: #155724;
+}
+
+/* Price Breakdown */
+.price-breakdown {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 8px;
+}
+
+.price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.price-row:last-child {
+    margin-bottom: 0;
+}
+
+.price-label {
+    color: #495057;
+}
+
+.price-value {
+    color: #000;
+    font-weight: 500;
+}
+
+.price-value.discount {
+    color: #28a745;
+}
+
+.price-value.free-shipping {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.price-divider {
+    height: 1px;
+    background: #dee2e6;
+    margin: 0.75rem 0;
+}
+
+.total-row {
+    font-size: 1.1rem;
+    padding-top: 0.5rem;
+    border-top: 2px solid #dee2e6;
+}
+
+/* Delivery Info */
+.delivery-date {
+    font-size: 1.1rem;
+    color: #000;
+    margin-bottom: 0.5rem;
+}
+
+.delivery-note {
+    margin: 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+/* Action Buttons */
+.action-buttons {
+    margin-top: 1rem;
+}
+
+.action-buttons .btn {
+    margin: 0 0.5rem;
+    padding: 0.75rem 2rem;
+    font-weight: 600;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.action-buttons .btn-primary {
+    background: linear-gradient(135deg, #000 0%, #333 100%);
+    border: none;
+}
+
+.action-buttons .btn-primary:hover {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+.action-buttons .btn-outline-primary {
+    border: 2px solid #000;
+    color: #000;
+}
+
+.action-buttons .btn-success {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+}
+
+.action-buttons .btn-success:hover {
+    background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+}
+
+.action-buttons .btn-outline-primary:hover {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .order-success-section {
+        padding: 1.5rem;
+    }
+    
+    .success-title {
+        font-size: 1.75rem;
+    }
+    
+    .order-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 0.5rem;
+    }
+    
+    .action-buttons .btn {
+        display: block;
+        margin: 0.5rem auto;
+        width: 100%;
+        max-width: 300px;
+    }
+    
+    .success-checkmark {
+        width: 80px;
+        height: 80px;
+    }
+}
+
+/* Discount Row Styling */
+.price-row.discount-row {
+    background: #f0fff4;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.price-row.discount-row .price-label {
+    color: #22543d;
+    font-weight: 500;
+}
+
+.price-row.discount-row .price-label i {
+    font-size: 0.9rem;
+}
+</style>
+
+<script>
+// Add some interactive effects and force hide loading overlay
+document.addEventListener('DOMContentLoaded', function() {
+    // Force hide any loading overlays immediately
+    if (window.PageTransition) {
+        window.PageTransition.forceReset();
+    }
+    
+    // Also manually hide any loading overlays
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    // Ensure main content is visible
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+    
+    // Add hover effects to the main section
+    const section = document.querySelector('.order-success-section');
+    if (section) {
+        section.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-5px)';
+            this.style.boxShadow = '0 8px 30px rgba(0, 0, 0, 0.15)';
+        });
+        
+        section.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.1)';
+        });
+    }
+});
+
+// Also add a backup to ensure page loads properly
+window.addEventListener('load', function() {
+    // Force hide loading overlay after page fully loads
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    // Ensure main content is visible
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+});
+
+// Additional safety check - run after a short delay
+setTimeout(function() {
+    const overlay = document.getElementById('page-transition-overlay');
+    if (overlay) {
+        overlay.classList.remove('show');
+        overlay.style.display = 'none';
+    }
+    
+    const mainContent = document.getElementById('main-content');
+    if (mainContent) {
+        mainContent.style.opacity = '1';
+    }
+}, 500);
+</script>

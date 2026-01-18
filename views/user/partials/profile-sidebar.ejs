@@ -1,0 +1,198 @@
+<!-- Profile Sidebar Navigation -->
+<div class="profile-sidebar">
+  <!-- Include Profile Card -->
+  <%- include('profile-card.ejs', { user: user }) %>
+  
+  <!-- Navigation Menu -->
+  <nav class="profile-nav">
+    <ul class="nav flex-column">
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'profile' ? 'active' : '' %>" href="/profile">
+          <i class="bi bi-person-circle me-2"></i>
+          My Profile
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'addresses' ? 'active' : '' %>" href="/addresses">
+          <i class="bi bi-geo-alt me-2"></i>
+          Address Book
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'orders' ? 'active' : '' %>" href="/orders">
+          <i class="bi bi-bag-check me-2"></i>
+          My Orders
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'wallet' ? 'active' : '' %>" href="/wallet">
+          <i class="bi bi-wallet2 me-2"></i>
+          Wallet
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'coupons' ? 'active' : '' %>" href="/coupons">
+          <i class="bi bi-ticket-perforated me-2"></i>
+          Coupons
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'referrals' ? 'active' : '' %>" href="/referrals">
+          <i class="bi bi-people me-2"></i>
+          Referrals
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link <%= active === 'change-password' ? 'active' : '' %>" href="/profile/change-password">
+          <i class="bi bi-shield-lock me-2"></i>
+          Change Password
+        </a>
+      </li>
+    </ul>
+  </nav>
+</div>
+
+<style>
+/* Profile Sidebar Styles */
+.profile-sidebar {
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.profile-nav {
+  padding: 0;
+}
+
+.profile-nav .nav {
+  padding: 0;
+  margin: 0;
+}
+
+.profile-nav .nav-item {
+  border-bottom: 1px solid #f8f9fa;
+}
+
+.profile-nav .nav-item:last-child {
+  border-bottom: none;
+}
+
+.profile-nav .nav-link {
+  color: #6c757d;
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border: none;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Vertical Animation Border - Similar to navbar horizontal animation */
+.profile-nav .nav-link::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 4px;
+  height: 0;
+  background-color: #dc3545; /* Red color matching the hover effects */
+  transition: height 0.3s ease;
+  z-index: 1;
+}
+
+.profile-nav .nav-link:hover {
+  background-color: #f8f9fa;
+  color: #000;
+  transform: translateX(2px);
+}
+
+.profile-nav .nav-link:hover::before {
+  height: 100%;
+}
+
+.profile-nav .nav-link.active {
+  background-color: #000;
+  color: #fff;
+  font-weight: 600;
+}
+
+.profile-nav .nav-link.active::before {
+  height: 100%;
+  background-color: #fff; /* White border for active state */
+}
+
+.profile-nav .nav-link i {
+  font-size: 1.1rem;
+  width: 20px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* Enhanced hover effect with subtle shadow */
+.profile-nav .nav-link:hover {
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.15);
+}
+
+.profile-nav .nav-link.active {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Design for Sidebar */
+@media (max-width: 768px) {
+  .profile-nav .nav-link {
+    padding: 0.875rem 1rem;
+    font-size: 0.9rem;
+  }
+  
+  .profile-nav .nav-link i {
+    font-size: 1rem;
+    width: 18px;
+  }
+  
+  .profile-nav .nav-link::before {
+    width: 3px;
+  }
+}
+
+@media (max-width: 576px) {
+  .profile-sidebar {
+    border-radius: 8px;
+  }
+  
+  .profile-nav .nav-link {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.85rem;
+  }
+  
+  .profile-nav .nav-link i {
+    font-size: 0.9rem;
+    width: 16px;
+  }
+  
+  .profile-nav .nav-link::before {
+    width: 3px;
+  }
+}
+
+/* Additional smooth animation for better UX */
+.profile-nav .nav-link {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Subtle pulse effect on active item */
+@keyframes subtle-pulse {
+  0% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2); }
+  50% { box-shadow: 0 2px 16px rgba(0, 0, 0, 0.25); }
+  100% { box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2); }
+}
+
+.profile-nav .nav-link.active {
+  animation: subtle-pulse 2s ease-in-out infinite;
+}
+</style>

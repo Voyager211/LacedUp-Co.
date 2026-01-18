@@ -1,0 +1,648 @@
+<% var title = "My Wishlist"; %>
+
+<div class="container-fluid">
+  <!-- Breadcrumbs -->
+  <div class="breadcrumb-container">
+    <%- include('partials/breadcrumb', {
+      breadcrumbs: [
+        { label: 'Home', href: '/' },
+        { label: 'My Wishlist' }
+      ]
+    }) %>
+  </div>
+
+  <div class="row">
+    <!-- Main Section -->
+    <section class="col-12">
+      <!-- Top Controls Bar -->
+      <div class="top-controls-bar">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <!-- Left Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Product Count -->
+            <div class="product-count">
+              <i class="bi bi-heart-fill text-danger me-2"></i>
+              Wishlist (<span id="product-count"><%= products.length %></span>)
+            </div>
+          </div>
+
+          <!-- Right Side Controls -->
+          <div class="d-flex align-items-center gap-3 flex-wrap">
+            <!-- Search Input -->
+            <div class="search-input-container" style="min-width: 250px;">
+              <form id="search-form" class="position-relative">
+                <input type="text" id="search-input" class="form-control pe-5" placeholder="Search wishlist..." value="<%= search %>" autocomplete="off">
+                <button type="button" id="clear-search" class="clear-btn" style="<%= search ? 'display: block;' : 'display: none;' %>">
+                  <i class="bi bi-x-lg"></i>
+                </button>
+                <button type="submit" class="search-icon-btn">
+                  <i class="bi bi-search search-icon"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Product Grid -->
+      <div class="row" id="product-grid">
+        <% if (products.length > 0) { %>
+          <% products.forEach(product => { %>
+            <%- include('partials/product-card', { 
+              product: product, 
+              isWishlistPage: isWishlistPage,
+              userWishlistProductIds: userWishlistProductIds 
+            }) %>
+          <% }) %>
+        <% } %>
+      </div>
+
+
+      <!-- Empty Wishlist Message -->
+      <div id="empty-wishlist" class="text-center my-5 <% if (products.length > 0) { %>d-none<% } %>">
+        <div class="empty-state">
+          <i class="bi bi-heart display-1 text-muted mb-3"></i>
+          <h4 class="text-muted mb-3">Your wishlist is empty</h4>
+          <p class="text-muted mb-4">Save items you love by clicking the heart icon on products</p>
+          <a href="/shop" class="btn btn-primary">
+            <i class="bi bi-shop me-2"></i>
+            Continue Shopping
+          </a>
+        </div>
+      </div>
+
+      <!-- No Search Results -->
+      <div id="no-results" class="text-center my-5 d-none">
+        <div class="empty-state">
+          <i class="bi bi-search display-1 text-muted mb-3"></i>
+          <h5 class="text-muted mb-3">No products found</h5>
+          <p class="text-muted mb-4">Try adjusting your search terms</p>
+          <button id="clear-search-btn" class="btn btn-outline-primary">
+            <i class="bi bi-x-circle me-2"></i>
+            Clear Search
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- Wishlist JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const searchInput = document.getElementById('search-input');
+  const clearBtn = document.getElementById('clear-search');
+  const searchForm = document.getElementById('search-form');
+  const productGrid = document.getElementById('product-grid');
+  const productCount = document.getElementById('product-count');
+  const emptyWishlist = document.getElementById('empty-wishlist');
+  const noResults = document.getElementById('no-results');
+  const clearSearchBtn = document.getElementById('clear-search-btn');
+
+  // Debounce function for search
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  // Function to render products
+  function renderProducts(products) {
+    if (!products || products.length === 0) {
+      productGrid.innerHTML = '';
+      return;
+    }
+
+    productGrid.innerHTML = products.map(product => `
+      <div class="col-6 col-md-4 col-lg-3 mb-4">
+        <div class="card h-100 border-0 shadow-sm product-card bg-white" style="${product.totalStock === 0 ? 'position: relative; overflow: hidden;' : ''}">
+          <a href="/product/${product.slug || product._id}" class="text-decoration-none text-dark" style="${product.totalStock === 0 ? 'position: relative; z-index: 5;' : ''}">
+            <img src="${product.mainImage}" class="card-img-top img-fluid" alt="${product.productName}" style="object-fit: cover; height: 200px;">
+          </a>
+          ${product.totalStock === 0 ? `
+            <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(128, 128, 128, 0.7); z-index: 10; border-radius: inherit; pointer-events: none;"></div>
+            <div style="position: absolute; top: 15px; left: -30px; background-color: #dc3545; color: white; padding: 8px 40px; font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; transform: rotate(-45deg); box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3); z-index: 20; pointer-events: none;">Sold Out</div>
+          ` : ''}
+          <div class="card-body d-flex flex-column justify-content-between">
+            <div>
+              <h6 class="fw-bold mb-1">${product.productName}</h6>
+              <p class="text-muted mb-1">${product.brand?.name || 'Unknown Brand'}</p>
+              <div class="d-flex align-items-center gap-2">
+                ${product.variants && product.variants.length > 0 ? (() => {
+                  const avgPrice = product.averageFinalPrice || 0;
+                  return `<p class="mb-0 fw-semibold text-danger">₹${Math.round(avgPrice)}</p>`;
+                })() : '<p class="mb-0 fw-semibold text-danger">₹0</p>'}
+                <p class="mb-0 text-muted text-decoration-line-through small">₹${product.regularPrice || 0}</p>
+              </div>
+              ${product.variants && product.variants.length > 0 ? (() => {
+                const avgPrice = product.averageFinalPrice || 0;
+                const discountPercentage = product.regularPrice > 0 && avgPrice < product.regularPrice
+                  ? Math.round(((product.regularPrice - avgPrice) / product.regularPrice) * 100)
+                  : 0;
+
+                if (discountPercentage > 0) {
+                  return `
+                    <div class="d-flex align-items-center gap-2 mt-1">
+                      <span class="badge bg-success small">${discountPercentage}% OFF</span>
+                      <p class="mb-0 text-success small fw-semibold">LacedUp Monsoon Sale</p>
+                    </div>
+                  `;
+                } else {
+                  return `<p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>`;
+                }
+              })() : '<p class="mb-0 mt-1 text-success small fw-semibold">LacedUp Monsoon Sale</p>'}
+            </div>
+            <div class="d-flex justify-content-end gap-2">
+              <button class="btn btn-sm btn-danger wishlist-btn" data-id="${product._id}" title="Remove from Wishlist">
+                <i class="bi bi-heart-fill"></i>
+              </button>
+              <button class="btn btn-sm btn-dark cart-btn" data-id="${product._id}" data-slug="${product.slug}" title="Add to Cart">
+                <i class="bi bi-cart-plus"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // Function to perform search
+  async function performSearch(query) {
+    try {
+      const response = await fetch(`/wishlist/search?q=${encodeURIComponent(query)}`);
+      const data = await response.json();
+
+      if (data.success) {
+        renderProducts(data.products);
+        productCount.textContent = data.totalCount;
+
+        // Show/hide appropriate messages
+        const hasProducts = data.products.length > 0;
+        const hasQuery = query.trim().length > 0;
+
+        emptyWishlist.classList.toggle('d-none', hasProducts || hasQuery);
+        noResults.classList.toggle('d-none', hasProducts || !hasQuery);
+
+        // Update URL without page reload
+        const url = new URL(window.location);
+        if (query.trim()) {
+          url.searchParams.set('q', query.trim());
+        } else {
+          url.searchParams.delete('q');
+        }
+        window.history.pushState({}, '', url);
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    }
+  }
+
+  // Debounced search function
+  const debouncedSearch = debounce((query) => {
+    performSearch(query);
+  }, 300);
+
+  // Search input event listener
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
+    clearBtn.style.display = query ? 'block' : 'none';
+    debouncedSearch(query);
+  });
+
+  // Search form submission
+  searchForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    performSearch(searchInput.value.trim());
+  });
+
+  // Clear search
+  function clearSearch() {
+    searchInput.value = '';
+    clearBtn.style.display = 'none';
+    performSearch('');
+  }
+
+  clearBtn.addEventListener('click', clearSearch);
+  clearSearchBtn.addEventListener('click', clearSearch);
+
+  // Handle size dropdown change
+  document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('size-dropdown')) {
+      const productId = e.target.dataset.productId;
+      const selectedVariantId = e.target.value;
+      const selectedOption = e.target.options[e.target.selectedIndex];
+      const selectedSize = selectedOption.dataset.size;
+      
+      // Find the product card and cart button
+      const productCard = e.target.closest('.product-card');
+      const cartBtn = productCard.querySelector('.cart-btn');
+      const cartBtnText = cartBtn.querySelector('.cart-btn-text');
+      
+      if (selectedVariantId) {
+        // Update button text and store variant info
+        if (cartBtnText) {
+          cartBtnText.textContent = `Add ${selectedSize}`;
+        } else {
+          // If no span, update the entire button text while keeping the icon
+          cartBtn.innerHTML = `<i class="bi bi-cart-plus"></i> Add ${selectedSize}`;
+        }
+        cartBtn.dataset.selectedVariant = selectedVariantId;
+        cartBtn.dataset.selectedSize = selectedSize;
+      } else {
+        // Reset button text
+        if (cartBtnText) {
+          cartBtnText.textContent = 'Add to Cart';
+        } else {
+          cartBtn.innerHTML = `<i class="bi bi-cart-plus"></i> Add to Cart`;
+        }
+        delete cartBtn.dataset.selectedVariant;
+        delete cartBtn.dataset.selectedSize;
+      }
+    }
+  });
+
+  // ✅ SINGLE, CLEAN EVENT HANDLER FOR ALL BUTTONS
+  document.addEventListener('click', function(e) {
+    // Wishlist button (remove from wishlist)
+    if (e.target.closest('.wishlist-btn')) {
+      e.preventDefault();
+      const button = e.target.closest('.wishlist-btn');
+      const productId = button.dataset.id;
+
+      // Show loading state
+      button.disabled = true;
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<i class="spinner-border spinner-border-sm"></i>';
+
+      // Remove from wishlist
+      fetch(`/wishlist/remove/${productId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      })
+      .then(response => response.json())
+      .then(data => {
+        // Reset button state
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+
+        if (data.success) {
+          if (window.toastr) {
+            toastr.success('Product removed from wishlist successfully!');
+          }
+
+          // Remove the product card from DOM
+          const productCard = button.closest('.col-6, .col-md-4, .col-lg-3');
+          if (productCard) {
+            productCard.remove();
+          }
+
+          // Update product count
+          const currentCount = parseInt(productCount.textContent) - 1;
+          productCount.textContent = currentCount;
+
+          // Show empty wishlist message if no products left
+          if (currentCount === 0) {
+            emptyWishlist.classList.remove('d-none');
+            noResults.classList.add('d-none');
+          }
+        } else {
+          if (window.toastr) {
+            toastr.error(data.message || 'Unable to remove product from wishlist');
+          }
+          console.error('Failed to remove from wishlist:', data.message);
+        }
+      })
+      .catch(error => {
+        // Reset button state
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+
+        if (window.toastr) {
+          toastr.error('Unable to remove product from wishlist');
+        }
+        console.error('Error removing from wishlist:', error);
+      });
+    }
+
+    // ✅ Cart button - SINGLE HANDLER (no duplicates)
+    if (e.target.closest('.cart-btn') && e.target.closest('.cart-btn').dataset.requiresSize === "true") {
+      e.preventDefault();
+      
+      // Prevent multiple rapid clicks
+      if (e.target.closest('.cart-btn').disabled) return;
+      
+      const button = e.target.closest('.cart-btn');
+      const productId = button.dataset.id;
+      const selectedVariant = button.dataset.selectedVariant;
+      const selectedSize = button.dataset.selectedSize;
+      
+      if (!selectedVariant) {
+        if (window.toastr) {
+          toastr.warning('Please select a size before adding to cart');
+        }
+        return;
+      }
+      
+      // Show loading state
+      button.disabled = true;
+      const originalHTML = button.innerHTML;
+      button.innerHTML = '<i class="spinner-border spinner-border-sm"></i> Adding...';
+      
+      // Add to cart
+      fetch('/cart/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          productId: productId,
+          variantId: selectedVariant,
+          quantity: 1
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          if (window.toastr) {
+            toastr.success(`${selectedSize} added to cart successfully!`);
+          }
+          
+          // ✅ ADD THIS: Update navbar cart count immediately
+          if (window.updateNavbarCartCount && data.cartCount !== undefined) {
+            window.updateNavbarCartCount(data.cartCount);
+          }
+
+          // Remove from wishlist DOM
+          const productCard = button.closest('.col-6, .col-md-4, .col-lg-3');
+          if (productCard) {
+            productCard.remove();
+          }
+          
+          // Update count
+          const currentCount = parseInt(productCount.textContent) - 1;
+          productCount.textContent = currentCount;
+          
+          if (currentCount === 0) {
+            emptyWishlist.classList.remove('d-none');
+            noResults.classList.add('d-none');
+          }
+        } else {
+          // Reset button
+          button.disabled = false;
+          button.innerHTML = originalHTML;
+          
+          if (window.toastr) {
+            toastr.error(data.message || 'Failed to add item to cart');
+          }
+        }
+      })
+      .catch(error => {
+        // Reset button
+        button.disabled = false;
+        button.innerHTML = originalHTML;
+        
+        if (window.toastr) {
+          toastr.error('Error adding item to cart');
+        }
+        console.error('Error adding to cart:', error);
+      });
+    }
+  });
+
+  // Initialize clear button state
+  clearBtn.style.display = searchInput.value.trim() ? 'block' : 'none';
+});
+</script>
+
+
+<!-- Styles -->
+<style>
+/* Breadcrumb Container */
+.breadcrumb-container {
+  margin-top: 20px;
+  padding-top: 10px;
+  position: relative;
+  z-index: 1;
+}
+
+/* Top Controls Bar */
+.top-controls-bar {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+/* Product Count */
+.product-count {
+  font-weight: 600;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+/* Search Input Styling */
+.search-input-container {
+  position: relative;
+}
+
+.search-icon-btn {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  z-index: 2;
+}
+
+.search-icon-btn:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+
+.clear-btn {
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  display: none;
+  z-index: 2;
+}
+
+.clear-btn:hover {
+  color: #e03a2f;
+  background-color: rgba(224, 58, 47, 0.1);
+}
+
+/* Empty State Styling */
+.empty-state {
+  padding: 3rem 2rem;
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.empty-state i {
+  opacity: 0.5;
+}
+
+.empty-state h4,
+.empty-state h5 {
+  font-weight: 600;
+}
+
+.empty-state p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+/* Product Card Hover Effects */
+.product-card {
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  border-color: #e03a2f;
+}
+
+/* Wishlist Button Styling */
+.wishlist-btn.btn-danger {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+}
+
+.wishlist-btn.btn-danger:hover {
+  background-color: #c82333;
+  border-color: #bd2130;
+  transform: scale(1.1);
+}
+
+/* Cart Button Styling */
+.cart-btn:hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  transform: scale(1.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .top-controls-bar .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  .search-input-container {
+    min-width: 100% !important;
+    margin-top: 10px;
+  }
+
+  .empty-state {
+    padding: 2rem 1rem;
+  }
+
+  .empty-state i {
+    font-size: 4rem !important;
+  }
+}
+
+/* Loading animation for smooth transitions */
+.product-card {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+
+/* Size dropdown styling */
+.size-dropdown {
+  border: 1px solid #e03a2f;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.size-dropdown:focus {
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.size-dropdown option[data-stock="0"] {
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Wishlist page specific button styling */
+.wishlist-page .cart-btn {
+  min-width: 80px;
+}
+
+/* Wishlist Product Card Spacing Adjustments */
+.product-card .card-body {
+  padding: 15px 12px; /* Reduced padding */
+}
+
+.product-card .card-body > div:first-child {
+  margin-bottom: 12px; /* Reduced margin between content and buttons */
+}
+
+/* Size dropdown specific spacing */
+.product-card .size-dropdown {
+  margin-top: 8px; /* Reduced top margin */
+  font-size: 0.8rem; /* Slightly smaller font */
+}
+
+.product-card .form-label.small {
+  margin-bottom: 4px; /* Reduced label margin */
+  font-size: 0.75rem; /* Smaller label text */
+  font-weight: 600;
+}
+
+/* Adjust price and discount section spacing */
+.product-card .d-flex.align-items-center.gap-2 {
+  margin-bottom: 6px; /* Reduced margin */
+}
+
+.product-card .badge.bg-success.small {
+  font-size: 0.7rem; /* Smaller badge */
+  padding: 2px 6px;
+}
+
+/* Button section spacing */
+.product-card .d-flex.justify-content-end.gap-2 {
+  margin-top: 8px; /* Reduced top margin */
+}
+
+
+</style>

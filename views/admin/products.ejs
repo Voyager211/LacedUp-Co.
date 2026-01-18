@@ -1,0 +1,1175 @@
+<!-- <h1><%= title %></h1> -->
+
+<div class="container product-management">
+  <h2 class="mb-4 fw-bold">All Products</h2>
+
+  <!-- Admin Top Controls Bar -->
+  <div class="admin-top-controls-bar">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <!-- Left Side Controls -->
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <!-- Product Count -->
+        <div class="admin-product-count">
+          Products (<span id="admin-product-count"><%= totalProductCount || products.length %></span>)
+        </div>
+
+        <!-- Search Form with Clear Button -->
+        <form method="GET" action="/admin/products" class="d-flex position-relative" style="max-width: 300px;">
+          <div class="search-input-container position-relative">
+            <input
+              type="text"
+              name="q"
+              id="admin-search-input"
+              value="<%= searchQuery || '' %>"
+              class="form-control pe-5"
+              placeholder="Search products..."
+            />
+            <button type="button" id="admin-clear-search" class="clear-btn <%= searchQuery ? '' : 'd-none' %>">
+              <i class="bi bi-x-lg"></i>
+            </button>
+            <button class="btn btn-outline-secondary search-btn" type="submit">
+              <i class="bi bi-search"></i>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Side Controls -->
+      <div class="d-flex align-items-center gap-3 flex-wrap">
+        <!-- Filter and Sort Buttons -->
+        <div class="d-flex gap-2">
+          <button type="button" id="filter-btn" class="btn btn-dark btn-sm">
+            <i class="bi bi-funnel me-1"></i> Filter
+          </button>
+          <button type="button" id="sort-btn" class="btn btn-dark btn-sm">
+            <i class="bi bi-sort-down me-1"></i> Sort
+          </button>
+        </div>
+
+        <!-- Add Product Button -->
+        <a href="/admin/products/add" class="btn btn-dark">
+          + Add Product
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="table-responsive">
+    <table class="table table-bordered align-middle">
+      <thead class="admin-table-header">
+        <tr>
+          <th>#</th>
+          <th>Product</th>
+          <th>Brand</th>
+          <th>Category</th>
+          <th>Main Image</th>
+          <th>Regular Price</th>
+          <th>Total Stock</th>
+          <th>Status</th>
+          <th>Created Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="product-table-body">
+        <% products.forEach((product, index) => { %>
+          <tr>
+            <td><%= index + 1 + ((currentPage - 1) * 10) %></td>
+            <td><%= product.productName %></td>
+            <td><%= product.brand?.name || '—' %></td>
+            <td><%= product.category?.name || '—' %></td>
+            <td>
+              <img src="<%= product.mainImage %>" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" />
+            </td>
+            <td>₹<%= product.regularPrice || 0 %></td>
+            <td><%= product.totalStock || 0 %></td>
+            <td>
+            <div class="form-check form-switch d-flex justify-content-center">
+              <input 
+                class="form-check-input toggle-status" 
+                type="checkbox" 
+                data-id="<%= product._id %>" 
+                <%= product.isListed ? 'checked' : '' %>
+              >
+            </div>
+            </td>
+            <td><%= product.createdAt.toISOString().split('T')[0] %></td>
+            <td>
+              <a href="/admin/products/<%= product._id %>/edit" class="btn btn-sm btn-edit me-1">
+                <i class="bi bi-pencil-square me-1"></i> Edit
+              </a>
+              <button class="btn btn-sm text-danger btn-delete" data-id="<%= product._id %>">
+                <i class="bi bi-trash"></i> Delete
+              </button>
+            </td>
+          </tr>
+        <% }) %>
+      </tbody>
+
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div id="pagination-wrapper">
+    <%- include('partials/pagination', { currentPage, totalPages }) %>
+  </div>
+
+  <!-- Filter Dropdown Modal -->
+  <div id="filter-dropdown" class="dropdown-modal" style="display: none;">
+    <div class="dropdown-content">
+      <div class="dropdown-header">
+        <h6 class="mb-0">Filter Products</h6>
+        <button type="button" class="btn-close-dropdown" id="close-filter">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="dropdown-body">
+        <div class="row">
+          <!-- Category Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Category</label>
+            <select id="filter-category" class="form-select">
+              <option value="">All Categories</option>
+              <% categories.forEach(cat => { %>
+              <option value="<%= cat._id %>"><%= cat.name %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <!-- Brand Filter -->
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Brand</label>
+              <div class="admin-brand-filter-dropdown">
+                <button type="button" class="form-select admin-brand-dropdown-btn" id="admin-brand-dropdown-btn">
+                  <span class="selected-text">All Brands</span>
+                  <i class="bi bi-chevron-down ms-auto"></i>
+                </button>
+                <div class="admin-brand-dropdown-menu" id="admin-brand-dropdown-menu">
+                  <div class="admin-brand-option">
+                    <input type="checkbox" id="admin-brand-all" class="admin-brand-checkbox" value="" checked>
+                    <label for="admin-brand-all">All Brands</label>
+                  </div>
+                  <% brands.forEach((brand, index) => { %>
+                  <div class="admin-brand-option">
+                    <input type="checkbox" id="admin-brand-<%= index %>" class="admin-brand-checkbox" value="<%= brand._id %>">
+                    <label for="admin-brand-<%= index %>"><%= brand.name %></label>
+                  </div>
+                  <% }) %>
+                </div>
+              </div>
+            </div>
+
+          <!-- Price Range -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Min Price</label>
+            <input type="number" id="filter-min-price" class="form-control" placeholder="Min price">
+          </div>
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Max Price</label>
+            <input type="number" id="filter-max-price" class="form-control" placeholder="Max price">
+          </div>
+
+          <!-- Status Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Status</label>
+            <select id="filter-status" class="form-select">
+              <option value="">All Status</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </div>
+
+          <!-- Stock Filter -->
+          <div class="col-md-6 mb-3">
+            <label class="form-label">Stock</label>
+            <select id="filter-stock" class="form-select">
+              <option value="">All Stock</option>
+              <option value="in-stock">In Stock</option>
+              <option value="low-stock">Low Stock (< 10)</option>
+              <option value="out-of-stock">Out of Stock</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dropdown-footer">
+          <button type="button" class="btn btn-outline-secondary" id="reset-filters">Reset</button>
+          <button type="button" class="btn btn-apply-filters" id="apply-filters">Apply Filters</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sort Dropdown Modal -->
+  <div id="sort-dropdown" class="dropdown-modal" style="display: none;">
+    <div class="dropdown-content">
+      <div class="dropdown-header">
+        <h6 class="mb-0">Sort Products</h6>
+        <button type="button" class="btn-close-dropdown" id="close-sort">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="dropdown-body">
+        <div class="sort-options">
+          <div class="sort-option" data-sort="name-asc">
+            <i class="bi bi-sort-alpha-down me-2"></i>
+            Name: A - Z
+          </div>
+          <div class="sort-option" data-sort="name-desc">
+            <i class="bi bi-sort-alpha-up me-2"></i>
+            Name: Z - A
+          </div>
+          <div class="sort-option" data-sort="price-asc">
+            <i class="bi bi-sort-numeric-down me-2"></i>
+            Price: Low to High
+          </div>
+          <div class="sort-option" data-sort="price-desc">
+            <i class="bi bi-sort-numeric-up me-2"></i>
+            Price: High to Low
+          </div>
+          <div class="sort-option" data-sort="date-newest">
+            <i class="bi bi-calendar-plus me-2"></i>
+            Date: Newest First
+          </div>
+          <div class="sort-option" data-sort="date-oldest">
+            <i class="bi bi-calendar-minus me-2"></i>
+            Date: Oldest First
+          </div>
+          <div class="sort-option" data-sort="status">
+            <i class="bi bi-toggle-on me-2"></i>
+            Status: Active First
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Add Product Modal
+<div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form method="POST" action="/admin/products" enctype="multipart/form-data">
+        <div class="modal-header">
+          <h5 class="modal-title" id="addProductModalLabel">Add New Product</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Product Name</label>
+              <input type="text" name="name" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Price</label>
+              <input type="number" name="price" class="form-control" required>
+            </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Description</label>
+              <textarea name="description" class="form-control" rows="3" required></textarea>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Stock</label>
+              <input type="number" name="stock" class="form-control" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-select" required>
+                <% categories.forEach(cat => { %>
+                  <option value="<%= cat._id %>"><%= cat.name %></option>
+                <% }) %>
+              </select>
+            </div>
+            <div class="col-md-12 mb-3">
+              <label class="form-label">Upload Images (Min: 3)</label>
+              <input type="file" name="images" accept="image/*" multiple class="form-control" required>
+              <small class="text-muted">Hold Ctrl (or Cmd) to select multiple images</small>
+            </div>
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-dark">Add Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div> -->
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const searchInput = document.querySelector('input[name="q"]');
+    const clearBtn = document.getElementById('admin-clear-search');
+
+    // Enhanced pagination function
+    function renderEnhancedPagination(currentPage, totalPages, onClick) {
+      const paginationWrapper = document.getElementById('pagination-wrapper');
+      if (!paginationWrapper) return;
+
+      if (totalPages <= 1) {
+        paginationWrapper.innerHTML = '';
+        return;
+      }
+
+      let paginationHTML = `
+        <nav class="mt-4">
+          <ul class="pagination justify-content-center" id="pagination-container">
+            <!-- Previous Button -->
+            <li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+              <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}"
+                 href="#"
+                 data-page="${currentPage - 1}"
+                 ${currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                <i class="bi bi-chevron-left"></i> Previous
+              </a>
+            </li>
+
+            <!-- Page Numbers -->
+      `;
+
+      for (let i = 1; i <= totalPages; i++) {
+        paginationHTML += `
+          <li class="page-item ${i === currentPage ? 'active' : ''}">
+            <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+          </li>
+        `;
+      }
+
+      paginationHTML += `
+            <!-- Next Button -->
+            <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+              <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}"
+                 href="#"
+                 data-page="${currentPage + 1}"
+                 ${currentPage === totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
+                Next <i class="bi bi-chevron-right"></i>
+              </a>
+            </li>
+          </ul>
+        </nav>
+
+        <!-- Enhanced Pagination Styles -->
+        <style>
+          .pagination {
+            margin-bottom: 0;
+          }
+
+          .pagination .page-item.active .page-link {
+            background-color: #1a1a1a;
+            border-color: #1a1a1a;
+            color: white;
+            font-weight: 600;
+          }
+
+          .pagination .page-link {
+            color: #333;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            margin: 0 2px;
+            padding: 8px 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+          }
+
+          /* Red hover effect for enabled buttons */
+          .pagination .page-link:not(.disabled-btn):hover {
+            background-color: #e03a2f;
+            border-color: #e03a2f;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+          }
+
+          /* Disabled button styles */
+          .pagination .page-item.disabled .page-link,
+          .pagination .page-link.disabled-btn {
+            color: #6c757d;
+            background-color: #f8f9fa;
+            border-color: #dee2e6;
+            cursor: not-allowed;
+            opacity: 0.6;
+            pointer-events: none;
+          }
+
+          /* Active page styling */
+          .pagination .page-item.active .page-link:hover {
+            background-color: #1a1a1a;
+            border-color: #1a1a1a;
+            color: white;
+            transform: none;
+            box-shadow: none;
+          }
+
+          /* Icon spacing */
+          .pagination .page-link i {
+            font-size: 0.9em;
+          }
+        </style>
+      `;
+
+      paginationWrapper.innerHTML = paginationHTML;
+
+      // Add click handlers for pagination
+      paginationWrapper.querySelectorAll('.page-link').forEach(link => {
+        link.addEventListener('click', e => {
+          e.preventDefault();
+          if (link.classList.contains('disabled-btn')) return;
+
+          const page = parseInt(link.dataset.page);
+          if (!isNaN(page) && page >= 1 && page <= totalPages && page !== currentPage) {
+            onClick(page);
+          }
+        });
+      });
+    }
+
+    // ✅ Search input clear button functionality
+    searchInput.addEventListener('input', function() {
+      if (this.value.trim()) {
+        clearBtn.classList.remove('d-none');
+      } else {
+        clearBtn.classList.add('d-none');
+      }
+    });
+
+    clearBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      clearBtn.classList.add('d-none');
+      // Trigger search to reset results
+      fetchProducts('', 1);
+    });
+
+    // ✅ Filter and Sort dropdown functionality
+    const filterBtn = document.getElementById('filter-btn');
+    const sortBtn = document.getElementById('sort-btn');
+    const filterDropdown = document.getElementById('filter-dropdown');
+    const sortDropdown = document.getElementById('sort-dropdown');
+    const closeFilterBtn = document.getElementById('close-filter');
+    const closeSortBtn = document.getElementById('close-sort');
+    const applyFiltersBtn = document.getElementById('apply-filters');
+    const resetFiltersBtn = document.getElementById('reset-filters');
+
+    // Current filter state
+    let currentFilters = {
+      category: '',
+      brand: '',
+      minPrice: '',
+      maxPrice: '',
+      status: '',
+      stock: '',
+      sort: ''
+    };
+
+    // Show/hide dropdown functions
+    function showDropdown(dropdown) {
+      dropdown.style.display = 'flex';
+      setTimeout(() => dropdown.classList.add('show'), 10);
+    }
+
+    function hideDropdown(dropdown) {
+      dropdown.classList.remove('show');
+      setTimeout(() => dropdown.style.display = 'none', 300);
+    }
+
+    // Event listeners for dropdown buttons
+    filterBtn.addEventListener('click', () => showDropdown(filterDropdown));
+    sortBtn.addEventListener('click', () => showDropdown(sortDropdown));
+    closeFilterBtn.addEventListener('click', () => hideDropdown(filterDropdown));
+    closeSortBtn.addEventListener('click', () => hideDropdown(sortDropdown));
+
+    // Close dropdowns when clicking outside
+    [filterDropdown, sortDropdown].forEach(dropdown => {
+      dropdown.addEventListener('click', (e) => {
+        if (e.target === dropdown) {
+          hideDropdown(dropdown);
+        }
+      });
+    });
+
+    // Sort option selection
+    document.querySelectorAll('.sort-option').forEach(option => {
+      option.addEventListener('click', function() {
+        // Remove active class from all options
+        document.querySelectorAll('.sort-option').forEach(opt => opt.classList.remove('active'));
+        // Add active class to clicked option
+        this.classList.add('active');
+
+        currentFilters.sort = this.dataset.sort;
+        hideDropdown(sortDropdown);
+
+        // Apply sort immediately
+        fetchProductsWithFilters();
+      });
+    });
+
+    // Apply filters functionality
+    applyFiltersBtn.addEventListener('click', function() {
+      currentFilters.category = document.getElementById('filter-category').value;
+      currentFilters.brand = window.getSelectedAdminBrands ? window.getSelectedAdminBrands() : '';
+      currentFilters.minPrice = document.getElementById('filter-min-price').value;
+      currentFilters.maxPrice = document.getElementById('filter-max-price').value;
+      currentFilters.status = document.getElementById('filter-status').value;
+      currentFilters.stock = document.getElementById('filter-stock').value;
+
+      hideDropdown(filterDropdown);
+      fetchProductsWithFilters();
+    });
+
+    // Reset filters functionality
+    resetFiltersBtn.addEventListener('click', function() {
+      // Clear all filter inputs
+      document.getElementById('filter-category').value = '';
+      // Reset brand filter checkboxes
+      const adminBrandCheckboxes = document.querySelectorAll('.admin-brand-checkbox');
+      adminBrandCheckboxes.forEach(cb => {
+        if (cb.value === '') {
+          cb.checked = true; // Check 'All Brands'
+        } else {
+          cb.checked = false; // Uncheck individual brands
+        }
+      });
+      if (window.updateAdminBrandDropdownText) window.updateAdminBrandDropdownText();
+      document.getElementById('filter-min-price').value = '';
+      document.getElementById('filter-max-price').value = '';
+      document.getElementById('filter-status').value = '';
+      document.getElementById('filter-stock').value = '';
+
+      // Clear search input
+      searchInput.value = '';
+      clearBtn.classList.add('d-none');
+
+      // Remove active sort
+      document.querySelectorAll('.sort-option').forEach(opt => opt.classList.remove('active'));
+
+      // Reset filter state
+      currentFilters = {
+        category: '',
+        brand: '',
+        minPrice: '',
+        maxPrice: '',
+        status: '',
+        stock: '',
+        sort: ''
+      };
+
+      hideDropdown(filterDropdown);
+      fetchProductsWithFilters();
+    });
+
+    // Enhanced fetch function with filters
+    async function fetchProductsWithFilters(page = 1) {
+      const params = new URLSearchParams();
+
+      // Add search query
+      if (searchInput.value.trim()) {
+        params.append('q', searchInput.value.trim());
+      }
+
+      // Add filters
+      Object.keys(currentFilters).forEach(key => {
+        if (currentFilters[key]) {
+          params.append(key, currentFilters[key]);
+        }
+      });
+
+      params.append('page', page);
+
+      const res = await fetch(`/admin/products/api?${params.toString()}`);
+      const data = await res.json();
+
+      updateProductTable(data);
+    }
+
+    // Legacy function for backward compatibility
+    async function fetchProducts(query = '', page = 1) {
+      const params = new URLSearchParams();
+      if (query) params.append('q', query);
+      params.append('page', page);
+
+      const res = await fetch(`/admin/products/api?${params.toString()}`);
+      const data = await res.json();
+
+      updateProductTable(data);
+    }
+
+    // Function to update the product table
+    function updateProductTable(data) {
+      const tableBody = document.getElementById('product-table-body');
+
+      const rows = data.products.map((product, index) => `
+        <tr>
+          <td>${index + 1 + ((data.currentPage - 1) * 10)}</td>
+          <td>${product.productName}</td>
+          <td>${product.brand?.name || '—'}</td>
+          <td>${product.category?.name || '—'}</td>
+          <td><img src="${product.mainImage}" alt="main image" style="width: 50px; height: 50px; object-fit: cover;" /></td>
+          <td>₹${product.regularPrice || 0}</td>
+          <td>${product.totalStock || 0}</td>
+          <td>
+            <div class="form-check form-switch d-flex justify-content-center">
+              <input class="form-check-input toggle-status" type="checkbox" data-id="${product._id}" ${product.isListed ? 'checked' : ''}>
+            </div>
+          </td>
+          <td>${new Date(product.createdAt).toISOString().split('T')[0]}</td>
+          <td>
+            <a href="/admin/products/${product._id}/edit" class="btn btn-sm btn-edit me-1">
+              <i class="bi bi-pencil-square me-1"></i> Edit
+            </a>
+            <button class="btn btn-sm text-danger btn-delete" data-id="${product._id}">
+              <i class="bi bi-trash"></i> Delete
+            </button>
+          </td>
+        </tr>
+      `).join('');
+
+      tableBody.innerHTML = rows;
+
+      // ✅ Re-bind toggle switch listeners with SweetAlert confirmation
+      document.querySelectorAll('.toggle-status').forEach(input => {
+        input.addEventListener('change', async (e) => {
+          const id = e.target.getAttribute('data-id');
+          const isCurrentlyListed = e.target.checked;
+          const action = isCurrentlyListed ? 'unblock' : 'block';
+          const actionText = isCurrentlyListed ? 'unblock' : 'block';
+
+          // Show confirmation dialog
+          const confirmed = await Swal.fire({
+            icon: 'question',
+            title: `Are you sure you want to ${actionText} this product?`,
+            text: `This will ${isCurrentlyListed ? 'show' : 'hide'} the product on the shop page.`,
+            showCancelButton: true,
+            confirmButtonText: `Yes, ${actionText} it!`,
+            confirmButtonColor: isCurrentlyListed ? '#28a745' : '#dc3545',
+            cancelButtonColor: '#6c757d',
+            reverseButtons: true
+          });
+
+          if (!confirmed.isConfirmed) {
+            // Revert the toggle if user cancels
+            e.target.checked = !e.target.checked;
+            return;
+          }
+
+          // Show loading state
+          const originalText = e.target.parentElement.innerHTML;
+          e.target.disabled = true;
+
+          try {
+            const res = await fetch(`/admin/products/api/${id}/toggle`, {
+              method: 'PATCH'
+            });
+            const data = await res.json();
+
+            if (!data.success) throw new Error(data.message || 'Toggle failed');
+
+            // Show success message
+            await Swal.fire({
+              icon: 'success',
+              title: 'Success!',
+              text: `Product has been ${actionText}ed successfully.`,
+              confirmButtonColor: '#111',
+              timer: 2000,
+              showConfirmButton: false
+            });
+
+          } catch (err) {
+            // Show error and revert toggle
+            Swal.fire({
+              icon: 'error',
+              title: 'Toggle Failed',
+              text: err.message || 'Something went wrong',
+              confirmButtonColor: '#d33'
+            });
+            e.target.checked = !e.target.checked;
+          } finally {
+            e.target.disabled = false;
+          }
+        });
+      });
+
+      // ✅ Update product count
+      if (data.totalProductCount !== undefined) {
+        const productCountElement = document.getElementById('admin-product-count');
+        if (productCountElement) {
+          productCountElement.textContent = data.totalProductCount;
+        }
+      }
+
+      // ✅ Enhanced Pagination
+      renderEnhancedPagination(data.currentPage, data.totalPages, (newPage) => {
+        // Check if we have active filters
+        const hasFilters = Object.values(currentFilters).some(value => value !== '');
+        if (hasFilters || searchInput.value.trim()) {
+          fetchProductsWithFilters(newPage);
+        } else {
+          fetchProducts(searchInput.value, newPage);
+        }
+      });
+    }
+
+    // Initial fetch
+    if (searchInput.value.trim()) {
+      fetchProducts(searchInput.value);
+    } else {
+      fetchProductsWithFilters();
+    }
+  });
+</script>
+
+
+<!-- Soft Delete Script -->
+<script>
+  document.addEventListener('click', async (e) => {
+    if (e.target.closest('.btn-delete')) {
+      const btn = e.target.closest('.btn-delete');
+      const productId = btn.dataset.id;
+
+      const confirmed = await Swal.fire({
+        icon: 'warning',
+        title: 'Are you sure?',
+        text: 'This product will be moved to trash.',
+        showCancelButton: true,
+        confirmButtonText: 'Yes, delete it!',
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d'
+      });
+
+      if (!confirmed.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/admin/products/api/${productId}/delete`, {
+          method: 'PATCH'
+        });
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Invalid response from server. Expected JSON.");
+        }
+
+        const data = await res.json();
+        if (data.success) {
+          await Swal.fire({
+            icon: 'success',
+            title: 'Deleted!',
+            text: 'The product has been soft deleted.',
+            confirmButtonColor: '#111'
+          });
+          window.location.reload();
+        } else {
+          throw new Error(data.message || 'Delete failed.');
+        }
+      } catch (err) {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops!',
+          text: err.message || 'Something went wrong.',
+          confirmButtonColor: '#d33'
+        });
+      }
+    }
+  });
+</script>
+
+<style>
+/* Admin Top Controls Bar Styles */
+.admin-top-controls-bar {
+  background-color: #1a1a1a;
+  border-top: 4px solid #e03a2f;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.admin-product-count {
+  color: white;
+  font-weight: 600;
+  font-size: 1rem;
+  padding: 0.5rem 0;
+}
+
+.admin-top-controls-bar .form-control {
+  background-color: white;
+  border: 1px solid #dee2e6;
+  color: #333;
+}
+
+.admin-top-controls-bar .form-control:focus {
+  background-color: white;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.admin-top-controls-bar .btn-dark {
+  background-color: #333;
+  border-color: #333;
+  transition: all 0.3s ease;
+}
+
+.admin-top-controls-bar .btn-dark:hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  transform: translateY(-1px);
+}
+
+.admin-top-controls-bar .btn-outline-secondary {
+  background-color: white;
+  border-color: #dee2e6;
+  color: #333;
+}
+
+.admin-top-controls-bar .btn-outline-secondary:hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+}
+
+.admin-top-controls-bar .search-input-container {
+  position: relative;
+}
+
+.admin-top-controls-bar .clear-btn {
+  position: absolute;
+  right: 45px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #6c757d;
+  font-size: 0.8rem;
+  padding: 0.25rem;
+  cursor: pointer;
+  z-index: 3;
+}
+
+.admin-top-controls-bar .clear-btn:hover {
+  color: #e03a2f;
+}
+
+.admin-top-controls-bar .search-btn {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .admin-top-controls-bar {
+    padding: 1rem;
+  }
+
+  .admin-top-controls-bar .d-flex {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 1rem !important;
+  }
+
+  .admin-top-controls-bar .search-input-container {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .admin-top-controls-bar .btn {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+  }
+}
+
+/* ========= TABLE HEADER FONT WEIGHT ENHANCEMENT ========= */
+/* Increase font weight for table header text */
+.admin-table-header th {
+  font-weight: 1000 !important; /* Bold font weight for header text */
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+</style>
+
+
+<script>
+// Admin Brand Filter Dropdown JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+  // Admin Brand filter dropdown functionality
+  const adminBrandDropdownBtn = document.getElementById('admin-brand-dropdown-btn');
+  const adminBrandDropdownMenu = document.getElementById('admin-brand-dropdown-menu');
+  const adminBrandCheckboxes = document.querySelectorAll('.admin-brand-checkbox');
+  const adminBrandAllCheckbox = document.getElementById('admin-brand-all');
+
+  // Toggle admin brand dropdown
+  if (adminBrandDropdownBtn) {
+    adminBrandDropdownBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      adminBrandDropdownMenu.classList.toggle('show');
+    });
+  }
+
+  // Close admin brand dropdown when clicking outside
+  document.addEventListener('click', function(e) {
+    if (adminBrandDropdownBtn && adminBrandDropdownMenu && 
+        !adminBrandDropdownBtn.contains(e.target) && !adminBrandDropdownMenu.contains(e.target)) {
+      adminBrandDropdownMenu.classList.remove('show');
+    }
+  });
+
+  // Handle admin brand checkbox changes
+  adminBrandCheckboxes.forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      if (this.value === '') {
+        // 'All Brands' checkbox clicked
+        if (this.checked) {
+          // Uncheck all other brand checkboxes
+          adminBrandCheckboxes.forEach(cb => {
+            if (cb.value !== '') {
+              cb.checked = false;
+            }
+          });
+        }
+      } else {
+        // Individual brand checkbox clicked
+        if (this.checked) {
+          // Uncheck 'All Brands'
+          adminBrandAllCheckbox.checked = false;
+        } else {
+          // If no individual brands are selected, check 'All Brands'
+          const anyBrandSelected = Array.from(adminBrandCheckboxes).some(cb => cb.value !== '' && cb.checked);
+          if (!anyBrandSelected) {
+            adminBrandAllCheckbox.checked = true;
+          }
+        }
+      }
+
+      // Update dropdown button text
+      updateAdminBrandDropdownText();
+    });
+  });
+
+  // Function to update admin brand dropdown button text
+  window.updateAdminBrandDropdownText = function() {
+    const selectedBrands = Array.from(adminBrandCheckboxes)
+      .filter(cb => cb.value !== '' && cb.checked)
+      .map(cb => cb.nextElementSibling.textContent);
+
+    const selectedText = adminBrandDropdownBtn.querySelector('.selected-text');
+    
+    if (selectedBrands.length === 0 || adminBrandAllCheckbox.checked) {
+      selectedText.textContent = 'All Brands';
+    } else if (selectedBrands.length === 1) {
+      selectedText.textContent = selectedBrands[0];
+    } else {
+      selectedText.textContent = `${selectedBrands.length} Brands Selected`;
+    }
+  }
+
+  // Function to get selected admin brand IDs
+  window.getSelectedAdminBrands = function() {
+    if (adminBrandAllCheckbox.checked) {
+      return '';
+    }
+    return Array.from(adminBrandCheckboxes)
+      .filter(cb => cb.value !== '' && cb.checked)
+      .map(cb => cb.value)
+      .join(',');
+  };
+});
+</script>
+
+<style>
+/* Filter Dropdown Modal Styles */
+.dropdown-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.dropdown-modal.show {
+  opacity: 1;
+}
+
+.dropdown-content {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  border-radius: 8px 8px 0 0;
+}
+
+.dropdown-body {
+  padding: 1.5rem;
+}
+
+.dropdown-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  border-radius: 0 0 8px 8px;
+}
+
+.btn-close-dropdown {
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0.25rem;
+}
+
+.btn-close-dropdown:hover {
+  color: #e03a2f;
+}
+
+.btn-apply-filters {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.btn-apply-filters:hover {
+  background-color: #c8342a;
+  border-color: #c8342a;
+  transform: translateY(-1px);
+}
+
+/* Admin Brand Filter Dropdown */
+.admin-brand-filter-dropdown {
+  position: relative;
+}
+
+.admin-brand-dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: left;
+}
+
+.admin-brand-dropdown-btn:hover {
+  border-color: #e03a2f;
+}
+
+.admin-brand-dropdown-btn:focus {
+  outline: none;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 0.2rem rgba(224, 58, 47, 0.25);
+}
+
+.admin-brand-dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 2px solid #e03a2f;
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.admin-brand-dropdown-menu.show {
+  display: block;
+}
+
+.admin-brand-option {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.admin-brand-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+}
+
+.admin-brand-option:last-child {
+  border-bottom: none;
+}
+
+.admin-brand-option input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: #e03a2f;
+}
+
+.admin-brand-option label {
+  cursor: pointer;
+  margin: 0;
+  font-weight: 500;
+  color: #333;
+}
+
+/* Sort Options Styles */
+.sort-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.sort-option:hover {
+  background-color: rgba(224, 58, 47, 0.05);
+  border-color: rgba(224, 58, 47, 0.2);
+}
+
+.sort-option.active {
+  background-color: #e03a2f;
+  color: white;
+  border-color: #e03a2f;
+}
+
+.sort-option.active:hover {
+  background-color: #c8342a;
+  border-color: #c8342a;
+}
+</style>

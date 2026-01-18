@@ -1,0 +1,739 @@
+<%
+// Default configuration
+const config = {
+  searchPlaceholder: locals.searchPlaceholder || 'Search...',
+  searchLabel: locals.searchLabel || 'Search',
+  filters: locals.filters || [],
+  formId: locals.formId || 'filterForm',
+  filterValues: locals.filterValues || {},
+  apiEndpoint: locals.apiEndpoint || '/admin/api/filtered',
+  tableSelector: locals.tableSelector || '.table tbody',
+  updateTableCallback: locals.updateTableCallback || 'updateTable',
+  updateStatsCallback: locals.updateStatsCallback || 'updateStats'
+};
+%>
+
+<!-- ✅ CSS Styles - Self-contained within partial -->
+<style>
+/* ========= FILTERS BAR COMPONENT STYLES ========= */
+.filters-bar-<%= config.formId %> .view-filters-btn {
+  background-color: transparent !important;
+  border: 2px solid #dc3545 !important;
+  color: #dc3545 !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  min-width: 150px;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn:focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  outline: none;
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn[aria-expanded="true"] {
+  background-color: #dc3545 !important;
+  color: white !important;
+}
+
+.filters-bar-<%= config.formId %> .reset-filters-btn {
+  background-color: #000000 !important;
+  border: 2px solid #000000 !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.filters-bar-<%= config.formId %> .reset-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+}
+
+.filters-bar-<%= config.formId %> .search-input-container {
+  position: relative;
+}
+
+.filters-bar-<%= config.formId %> .search-input {
+  padding-right: 80px !important;
+  padding-left: 12px;
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  height: 46px;
+  transition: all 0.3s ease;
+  background-color: #ffffff;
+}
+
+.filters-bar-<%= config.formId %> .search-input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+  outline: none;
+}
+
+.filters-bar-<%= config.formId %> .search-icon-btn,
+.filters-bar-<%= config.formId %> .clear-search-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+}
+
+.filters-bar-<%= config.formId %> .search-icon-btn {
+  right: 40px;
+  color: #000000;
+  font-weight: 600;
+}
+
+.filters-bar-<%= config.formId %> .search-icon-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+.filters-bar-<%= config.formId %> .clear-search-btn {
+  right: 8px;
+  color: #6c757d;
+  font-size: 16px;
+}
+
+.filters-bar-<%= config.formId %> .clear-search-btn:hover {
+  color: #dc3545;
+  background-color: rgba(220, 53, 69, 0.1);
+  border-radius: 4px;
+}
+
+/* ========= ENHANCED SMOOTH ANIMATIONS ========= */
+.filters-bar-<%= config.formId %> .filters-card {
+  border-left: 4px solid #dc3545;
+  background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+  transform: translateY(0);
+  opacity: 1;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Smooth collapse animations with height transition */
+.filters-bar-<%= config.formId %> #filtersSection-<%= config.formId %> {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filters-bar-<%= config.formId %> #filtersSection-<%= config.formId %>.collapsing {
+  transition: height 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.3s ease-in-out;
+}
+
+/* ========= CLEAN SLIDE ANIMATION (NO FADE) ========= */
+/* Smooth collapse animations - height transition only */
+.filters-bar-<%= config.formId %> #filtersSection-<%= config.formId %> {
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.filters-bar-<%= config.formId %> #filtersSection-<%= config.formId %>.collapsing {
+  transition: height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+
+
+
+/* Enhanced button animations */
+.filters-bar-<%= config.formId %> .view-filters-btn {
+  background-color: transparent !important;
+  border: 2px solid #dc3545 !important;
+  color: #dc3545 !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  min-width: 150px;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 0.9rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn:hover::before {
+  left: 100%;
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: white !important;
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
+}
+
+.filters-bar-<%= config.formId %> .view-filters-btn:active {
+  transform: translateY(0) scale(0.98);
+  transition: all 0.1s ease;
+}
+
+/* Micro-interactions for form controls */
+.filters-bar-<%= config.formId %> .form-select:hover,
+.filters-bar-<%= config.formId %> .search-input:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.filters-bar-<%= config.formId %> .form-select:focus,
+.filters-bar-<%= config.formId %> .search-input:focus {
+  transform: translateY(-1px) scale(1.01);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Ripple effect for reset button */
+.filters-bar-<%= config.formId %> .reset-filters-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.filters-bar-<%= config.formId %> .reset-filters-btn::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255,255,255,0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s ease, height 0.3s ease;
+}
+
+.filters-bar-<%= config.formId %> .reset-filters-btn:active::after {
+  width: 200%;
+  height: 200%;
+}
+
+.filters-bar-<%= config.formId %> .form-select {
+  border: 2px solid #dee2e6;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  transition: all 0.3s ease;
+}
+
+.filters-bar-<%= config.formId %> .form-select:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+}
+
+@keyframes filters-spin-<%= config.formId %> {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.filters-bar-<%= config.formId %> .spin {
+  animation: filters-spin-<%= config.formId %> 1s linear infinite;
+}
+
+@media (max-width: 768px) {
+  .filters-bar-<%= config.formId %> .view-filters-btn {
+    min-width: 120px;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+  }
+}
+</style>
+
+<!-- ✅ HTML Structure with unique CSS class -->
+<div class="filters-bar-<%= config.formId %>">
+  <!-- Search Bar and View Filters Toggle -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="row g-3 align-items-end">
+            <!-- Search Input -->
+            <div class="col-md-8">
+              <label class="form-label text-black"><%= config.searchLabel %></label>
+              <div class="search-input-container position-relative">
+                <input type="text" 
+                      class="form-control search-input" 
+                      id="<%= config.formId.replace('Form', '') %>Search"
+                      name="search" 
+                      placeholder="<%= config.searchPlaceholder %>" 
+                      value="<%= config.filterValues.search || '' %>">
+                
+                <button type="button" 
+                        id="clearSearchBtn-<%= config.formId %>" 
+                        class="clear-search-btn"
+                        title="Clear search"
+                        style="display: none;">
+                  <i class="bi bi-x"></i>
+                </button>
+                
+                <button type="button" 
+                        id="searchSubmitBtn-<%= config.formId %>" 
+                        class="search-icon-btn"
+                        title="Search">
+                  <i class="bi bi-search"></i>
+                </button>
+              </div>
+            </div>
+            
+            <!-- View Filters Toggle Button -->
+            <div class="col-md-4 d-flex justify-content-end">
+              <button type="button" 
+                      id="viewFiltersBtn-<%= config.formId %>" 
+                      class="btn view-filters-btn"
+                      data-bs-toggle="collapse" 
+                      data-bs-target="#filtersSection-<%= config.formId %>" 
+                      aria-expanded="false">
+                <i class="bi bi-funnel me-2"></i>View Filters
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Collapsible Filters Section -->
+  <div class="collapse" id="filtersSection-<%= config.formId %>">
+    <div class="row mb-4">
+      <div class="col-12">
+        <div class="card border-0 shadow-sm filters-card">
+          <div class="card-body">
+            <form id="<%= config.formId %>" class="row g-3">
+              <!-- Dynamic Filter Controls -->
+              <% config.filters.forEach((filter, index) => { %>
+                <div class="col-md-<%= filter.colSize || 2 %>">
+                  <label class="form-label text-black"><%= filter.label %></label>
+                  
+                  <% if (filter.type === 'select') { %>
+                    <select class="form-select" name="<%= filter.name %>">
+                      <option value=""><%= filter.allOption || 'All' %></option>
+                      <% filter.options.forEach(option => { %>
+                        <option value="<%= option.value %>" 
+                                <%= config.filterValues[filter.name] === option.value ? 'selected' : '' %>>
+                          <%= option.label %>
+                        </option>
+                      <% }); %>
+                    </select>
+                    
+                  <% } else if (filter.type === 'daterange') { %>
+                    <select class="form-select" name="<%= filter.name %>">
+                      <option value="">All Time</option>
+                      <option value="today" <%= config.filterValues[filter.name] === 'today' ? 'selected' : '' %>>Today</option>
+                      <option value="week" <%= config.filterValues[filter.name] === 'week' ? 'selected' : '' %>>This Week</option>
+                      <option value="month" <%= config.filterValues[filter.name] === 'month' ? 'selected' : '' %>>This Month</option>
+                    </select>
+                    
+                  <% } else if (filter.type === 'date') { %>
+                    <input type="date" class="form-control" name="<%= filter.name %>" 
+                           value="<%= config.filterValues[filter.name] || '' %>">
+                  <% } %>
+                </div>
+              <% }); %>
+              
+              <!-- Reset Button -->
+              <div class="col-md-2 d-flex flex-column">
+                <label class="form-label text-black">&nbsp;</label>
+                <button type="button" 
+                        id="resetFiltersBtn-<%= config.formId %>" 
+                        class="btn reset-filters-btn">
+                  <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ JavaScript - Self-contained within partial -->
+<script>
+(function() {
+  'use strict';
+  
+  const FORM_ID = '<%= config.formId %>';
+  const API_ENDPOINT = '<%= config.apiEndpoint %>';
+  const TABLE_SELECTOR = '<%= config.tableSelector %>';
+  const UPDATE_TABLE_CALLBACK = '<%= config.updateTableCallback %>';
+  const UPDATE_STATS_CALLBACK = '<%= config.updateStatsCallback %>';
+  
+  let currentPage = 1;
+  let isLoading = false;
+
+  // Wait for DOM to be ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initFiltersBar);
+  } else {
+    initFiltersBar();
+  }
+
+  function initFiltersBar() {
+    // Set up global callbacks for pagination
+    window.applyFilters = applyFilters;
+    window.fetchCallback = applyFilters;
+    window.paginationCallback = applyFilters;
+    
+    attachEventListeners();
+    initializeUI();
+  }
+
+  function attachEventListeners() {
+    const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+    const searchBtn = document.getElementById('searchSubmitBtn-' + FORM_ID);
+    const clearBtn = document.getElementById('clearSearchBtn-' + FORM_ID);
+    const viewFiltersBtn = document.getElementById('viewFiltersBtn-' + FORM_ID);
+    const resetBtn = document.getElementById('resetFiltersBtn-' + FORM_ID);
+    const headerRefreshBtn = document.getElementById('headerRefreshBtn');
+    const filterForm = document.getElementById(FORM_ID);
+
+    // Header refresh button
+    if (headerRefreshBtn) {
+      headerRefreshBtn.addEventListener('click', handleRefresh);
+    }
+
+    // View filters toggle
+    if (viewFiltersBtn) {
+      setupViewFiltersToggle(viewFiltersBtn);
+    }
+
+    // Search functionality
+    if (searchInput) {
+      searchInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          performSearch();
+        }
+      });
+      
+      searchInput.addEventListener('input', toggleClearButton);
+    }
+
+    if (searchBtn) {
+      searchBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        performSearch();
+      });
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        clearSearch();
+      });
+    }
+
+    // Filter form
+    if (filterForm) {
+      filterForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+      });
+      
+      // Auto-submit on filter change
+      const selects = filterForm.querySelectorAll('select');
+      selects.forEach(select => {
+        select.addEventListener('change', function() {
+          applyFilters(1);
+        });
+      });
+    }
+
+    // Reset button
+    if (resetBtn) {
+      resetBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        resetFilters();
+      });
+    }
+
+    // Pagination handler
+    document.addEventListener('click', function(e) {
+      const paginationLink = e.target.closest('.pagination .page-link');
+      if (!paginationLink || paginationLink.classList.contains('disabled-btn')) return;
+      
+      e.preventDefault();
+      const page = parseInt(paginationLink.dataset.page);
+      
+      if (!isNaN(page) && page >= 1) {
+        applyFilters(page);
+      }
+    });
+  }
+
+  function setupViewFiltersToggle(viewFiltersBtn) {
+    const filtersSection = document.getElementById('filtersSection-' + FORM_ID);
+    
+    viewFiltersBtn.addEventListener('click', function() {
+      const isExpanded = this.getAttribute('aria-expanded') === 'true';
+      
+      if (!isExpanded) {
+        // Opening animation
+        this.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+        this.style.transform = 'scale(1.05)';
+        setTimeout(() => {
+          this.style.transform = 'scale(1)';
+        }, 150);
+      } else {
+        // Closing animation  
+        this.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+        this.style.transform = 'scale(0.95)';
+        setTimeout(() => {
+          this.style.transform = 'scale(1)';
+        }, 150);
+      }
+    });
+    
+    // Clean Bootstrap collapse events (no fade effects)
+    if (filtersSection) {
+      // Before showing
+      filtersSection.addEventListener('show.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel-fill me-2"></i>Hide Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'true');
+      });
+      
+      // After showing
+      filtersSection.addEventListener('shown.bs.collapse', function() {
+        // Optional: Add a subtle bounce effect
+        const card = this.querySelector('.filters-card');
+        if (card) {
+          card.style.transform = 'scale(1.01)';
+          setTimeout(() => {
+            card.style.transform = 'scale(1)';
+          }, 200);
+        }
+      });
+      
+      // After hiding
+      filtersSection.addEventListener('hidden.bs.collapse', function() {
+        viewFiltersBtn.innerHTML = '<i class="bi bi-funnel me-2"></i>View Filters';
+        viewFiltersBtn.setAttribute('aria-expanded', 'false');
+      });
+    }
+  }
+
+
+  function initializeUI() {
+    toggleClearButton();
+  }
+
+  function toggleClearButton() {
+    const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+    const clearBtn = document.getElementById('clearSearchBtn-' + FORM_ID);
+    
+    if (searchInput && clearBtn) {
+      if (searchInput.value.trim().length > 0) {
+        clearBtn.style.display = 'flex';
+      } else {
+        clearBtn.style.display = 'none';
+      }
+    }
+  }
+
+  function handleRefresh(e) {
+    e.preventDefault();
+    const btn = e.target.closest('button');
+    const originalText = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1 text-white"></i>Refreshing...';
+    
+    applyFilters(currentPage).finally(() => {
+      btn.disabled = false;
+      btn.innerHTML = originalText;
+    });
+  }
+
+  function performSearch() {
+    const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+    const searchBtn = document.getElementById('searchSubmitBtn-' + FORM_ID);
+    
+    if (!searchInput || !searchBtn) return;
+    
+    searchInput.classList.add('searching');
+    searchBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+    searchBtn.disabled = true;
+    
+    applyFilters(1).finally(() => {
+      searchInput.classList.remove('searching');
+      searchBtn.innerHTML = '<i class="bi bi-search"></i>';
+      searchBtn.disabled = false;
+    });
+  }
+
+  function clearSearch() {
+    const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+    
+    if (searchInput) {
+      searchInput.value = '';
+      toggleClearButton();
+      performSearch();
+    }
+  }
+
+  function resetFilters() {
+    console.log('🔄 Resetting all filters...');
+    
+    const filterForm = document.getElementById(FORM_ID);
+    const resetBtn = document.getElementById('resetFiltersBtn-' + FORM_ID);
+    
+    if (resetBtn) {
+      const originalText = resetBtn.innerHTML;
+      resetBtn.disabled = true;
+      resetBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Resetting...';
+      
+      setTimeout(() => {
+        if (filterForm) {
+          filterForm.reset();
+        }
+        
+        const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+        if (searchInput) {
+          searchInput.value = '';
+        }
+        
+        toggleClearButton();
+        
+        applyFilters(1).finally(() => {
+          if (resetBtn) {
+            resetBtn.disabled = false;
+            resetBtn.innerHTML = originalText;
+          }
+        });
+        
+        console.log('✅ Filters reset successfully');
+      }, 100);
+    }
+  }
+
+  async function applyFilters(page = 1) {
+    if (isLoading) return;
+    
+    isLoading = true;
+    showLoadingState();
+    
+    try {
+      const params = buildFilterParams(page);
+      const response = await fetch(`${API_ENDPOINT}?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        // Use callback functions for updating UI
+        if (window[UPDATE_TABLE_CALLBACK]) {
+          window[UPDATE_TABLE_CALLBACK](result.data);
+        }
+        
+        if (window[UPDATE_STATS_CALLBACK]) {
+          window[UPDATE_STATS_CALLBACK](result.data);
+        }
+        
+        currentPage = result.data.currentPage;
+      } else {
+        showToast('error', result.message || 'Error loading data');
+      }
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      showToast('error', 'Error loading data');
+    } finally {
+      isLoading = false;
+      hideLoadingState();
+    }
+  }
+
+  function buildFilterParams(page) {
+    const params = new URLSearchParams();
+    params.append('page', page);
+    
+    // Add search parameter
+    const searchInput = document.getElementById(FORM_ID.replace('Form', '') + 'Search');
+    if (searchInput && searchInput.value.trim()) {
+      params.append('search', searchInput.value.trim());
+    }
+    
+    // Add filter parameters
+    const filterForm = document.getElementById(FORM_ID);
+    if (filterForm) {
+      const formData = new FormData(filterForm);
+      for (const [key, value] of formData.entries()) {
+        if (value.trim() !== '' && key !== 'search') {
+          params.append(key, value);
+        }
+      }
+    }
+    
+    return params;
+  }
+
+  function showLoadingState() {
+    const tableBody = document.querySelector(TABLE_SELECTOR);
+    if (tableBody) {
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="8" class="text-center py-5">
+            <div class="loading-state">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <p class="mt-3 text-muted">Loading...</p>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  }
+
+  function hideLoadingState() {
+    // Loading state will be replaced by actual content
+  }
+
+  function showToast(type, message) {
+    console.log(`${type.toUpperCase()}: ${message}`);
+    // You can implement your toast function here
+  }
+
+})();
+</script>

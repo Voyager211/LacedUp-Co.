@@ -1,0 +1,1000 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile', href: '/profile' },
+      { label: 'My Wallet' }
+    ]
+  }) %>
+
+  <!-- Main Layout: Sidebar + Content -->
+  <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <%- include('partials/profile-sidebar.ejs', { user: user, active: 'wallet' }) %>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="wallet-content">
+        <!-- Wallet Balance Card -->
+        <div class="wallet-balance-card mb-4">
+          <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+              <div class="row align-items-center">
+                <div class="col-md-8">
+                  <h3 class="wallet-title mb-2">
+                    <i class="bi bi-wallet2 me-2 text-primary"></i>
+                    My Wallet
+                  </h3>
+                  <div class="balance-display">
+                    <span class="balance-label">Available Balance</span>
+                    <div class="balance-amount">₹<%= wallet.balance.toLocaleString('en-IN') %></div>
+                  </div>
+                </div>
+                <div class="col-md-4 text-end">
+                  <button class="btn btn-primary btn-lg" onclick="showAddMoneyModal()">
+                    <i class="bi bi-plus-circle me-2"></i>Add Money
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="transaction-history-card">
+          <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom">
+              <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                  <i class="bi bi-clock-history me-2"></i>
+                  Transaction History
+                </h5>
+                <div class="d-flex gap-2">
+                  <select class="form-select form-select-sm" id="transactionFilter" style="width: auto;">
+                    <option value="">All Transactions</option>
+                    <option value="credit">Credits</option>
+                    <option value="debit">Debits</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            
+            <!-- ✅ TRANSACTIONS CONTAINER: Will be updated via fetch -->
+            <div class="card-body p-0" id="transactionsContainer">
+              <!-- Initial loading state -->
+              <div class="text-center py-5" id="initialLoading">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Loading transactions...</p>
+              </div>
+            </div>
+
+            <!-- ✅ PAGINATION: Use the consistent pagination partial -->
+            <% if (totalPages > 1) { %>
+              <div class="card-footer bg-white" id="paginationContainer">
+                <%- include('partials/pagination', {
+                  currentPage: currentPage,
+                  totalPages: totalPages
+                }) %>
+              </div>
+            <% } else { %>
+              <div class="card-footer bg-white" id="paginationContainer" style="display: none;">
+                <!-- Pagination will be inserted here dynamically -->
+              </div>
+            <% } %>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Add Money Modal -->
+<div class="modal fade" id="addMoneyModal" tabindex="-1" aria-labelledby="addMoneyLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-bottom-0">
+        <h5 class="modal-title" id="addMoneyLabel">
+          <i class="bi bi-plus-circle me-2"></i>Add Money to Wallet
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <form id="addMoneyForm" class="needs-validation">
+        <div class="modal-body">
+          <!-- Amount Input -->
+          <div class="mb-4">
+            <label for="amount" class="form-label fw-600">Amount</label>
+            <div class="input-group">
+              <span class="input-group-text">₹</span>
+              <input 
+                type="number" 
+                class="form-control" 
+                id="amount" 
+                name="amount" 
+                placeholder="5000" 
+                value="500"
+                min="1" 
+                max="50000" 
+                required
+              >
+            </div>
+            <small class="text-muted d-block mt-2">Minimum: ₹1, Maximum: ₹50,000</small>
+          </div>
+
+          <!-- Description (Optional) -->
+          <div class="mb-4">
+            <label for="description" class="form-label fw-600">Description (Optional)</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="description" 
+              name="description" 
+              placeholder="e.g., Adding money for shopping"
+            >
+          </div>
+
+          <!-- Quick Add Buttons -->
+          <div class="mb-4">
+            <label class="fw-600 d-block mb-3">Quick Add</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(500)">₹500</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(1000)">₹1,000</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(2000)">₹2,000</button>
+              <button type="button" class="btn btn-outline-danger rounded-pill" onclick="setAmount(5000)">₹5,000</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer border-top-0">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" onclick="processDirectRazorpayTopUp()">
+            <i class="bi bi-lightning-charge me-2"></i>Add Money
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ✅ NEW: PayPal Button Container (hidden by default) -->
+<div id="paypal-wallet-container" class="d-none"></div>
+
+<style>
+/* Wallet Styles */
+.wallet-content {
+  background: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.wallet-balance-card .card {
+  background: #000000 !important;
+  color: white;
+  border: none !important;
+  border-top: 4px solid #dc3545 !important;
+}
+
+.wallet-title {
+  color: white;
+  font-weight: 600;
+}
+
+.balance-label {
+  font-size: 0.9rem;
+  opacity: 0.9;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.balance-amount {
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ✅ RED THEME: Change all blue (primary) elements to red */
+.wallet-balance-card .text-primary {
+  color: #dc3545 !important;
+}
+
+.btn-primary {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-primary:hover {
+  background-color: #c82333 !important;
+  border-color: #bd2130 !important;
+}
+
+.btn-primary:focus, .btn-primary.focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.btn-outline-primary {
+  color: #dc3545 !important;
+  border-color: #dc3545 !important;
+}
+
+.btn-outline-primary:hover {
+  background-color: #dc3545 !important;
+  border-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+.btn-outline-primary:focus, .btn-outline-primary.focus {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+
+.text-primary {
+  color: #dc3545 !important;
+}
+
+/* Transaction Styles */
+.transaction-item {
+  border-bottom: 1px solid #e9ecef;
+  transition: background-color 0.2s ease;
+}
+
+.transaction-item:hover {
+  background-color: #f8f9fa;
+}
+
+.transaction-item:last-child {
+  border-bottom: none;
+}
+
+.transaction-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+}
+
+.transaction-icon.credit {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.transaction-icon.debit {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.transaction-description {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.transaction-meta {
+  font-size: 0.8rem;
+  color: #6c757d;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.transaction-date {
+  font-size: 0.9rem;
+  color: #6c757d;
+  text-align: center;
+}
+
+.transaction-time {
+  font-size: 0.8rem;
+  color: #adb5bd;
+}
+
+.transaction-amount {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.transaction-amount.credit {
+  color: #28a745;
+}
+
+.transaction-amount.debit {
+  color: #dc3545;
+}
+
+.balance-after {
+  font-size: 0.8rem;
+  color: #6c757d;
+  margin-top: 0.25rem;
+}
+
+/* Quick amounts */
+.quick-amounts .btn {
+  border-radius: 20px;
+}
+
+/* Empty state */
+.empty-transactions {
+  padding: 3rem 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .balance-amount {
+    font-size: 2rem;
+  }
+  
+  .transaction-item .row > div {
+    margin-bottom: 0.5rem;
+    text-align: center;
+  }
+  
+  .transaction-item .row > div:last-child {
+    margin-bottom: 0;
+  }
+  
+  .transaction-meta {
+    justify-content: center;
+    gap: 0.5rem;
+  }
+}
+
+/* Filter animation */
+.transaction-item {
+  transition: all 0.3s ease;
+}
+
+.transaction-item.hidden {
+  display: none;
+}
+
+/* ✅ Enhanced Payment Method Selection Styles */
+.payment-methods {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.payment-method-option {
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 16px;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.payment-method-option:hover {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.payment-method-option input:checked + label {
+  color: #dc3545;
+}
+
+.payment-method-option:has(input:checked) {
+  border-color: #dc3545;
+  background-color: #fff5f5;
+}
+
+.form-check-input:checked {
+  background-color: #dc3545;
+  border-color: #dc3545;
+}
+
+.form-check-input:focus {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
+}
+</style>
+
+
+
+<script>
+  // ✅ ENHANCED: Wallet functionality with payment gateway integration
+  let currentPage = 1;
+  let currentTotalPages = 1;
+  let isLoading = false;
+  let currentFilter = '';
+  let isProcessing = false;
+
+  // Initialize on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    window.fetchCallback = loadTransactions;
+    window.paginationCallback = loadTransactions;
+    
+    loadTransactions(1);
+    
+    const filterSelect = document.getElementById('transactionFilter');
+    filterSelect.addEventListener('change', function() {
+      currentFilter = this.value;
+      loadTransactions(1);
+    });
+
+    Promise.all([
+      loadPayPalSDK().catch(console.error),
+      loadRazorpaySDK().catch(console.error)
+    ]).then(() => {
+      console.log('✅ Payment SDKs loaded successfully');
+    });
+  });
+
+  // Transaction loading functionality
+  async function loadTransactions(page = 1) {
+    if (isLoading) return;
+    
+    isLoading = true;
+    currentPage = page;
+    showLoadingState();
+    
+    try {
+      const params = new URLSearchParams();
+      params.append('page', page);
+      if (currentFilter) params.append('type', currentFilter);
+      
+      const response = await fetch(`/wallet/transactions/paginated?${params.toString()}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        renderTransactions(result.data.transactions);
+        updatePaginationPartial(result.data);
+      } else {
+        throw new Error(result.message || 'Failed to load transactions');
+      }
+    } catch (error) {
+      console.error('Error loading transactions:', error);
+      showError('Error loading transactions. Please try again.');
+    } finally {
+      isLoading = false;
+    }
+  }
+
+  // Pagination functionality
+  function updatePaginationPartial(data) {
+    const paginationContainer = document.getElementById('paginationContainer');
+    currentTotalPages = data.totalPages;
+    
+    if (data.totalPages <= 1) {
+      paginationContainer.style.display = 'none';
+      return;
+    }
+    
+    paginationContainer.style.display = 'block';
+    
+    let paginationHTML = `
+      <nav class="mt-4">
+        <ul class="pagination justify-content-center" id="pagination-container" data-total-pages="${data.totalPages}">
+          <li class="page-item ${data.currentPage === 1 ? 'disabled' : ''}">
+            <a class="page-link pagination-btn ${data.currentPage === 1 ? 'disabled-btn' : ''}"
+               href="#"
+               data-page="${data.currentPage - 1}"
+               ${data.currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : ''}>
+              <i class="bi bi-chevron-left"></i>
+            </a>
+          </li>
+    `;
+    
+    for (let i = 1; i <= data.totalPages; i++) {
+      paginationHTML += `
+        <li class="page-item ${i === data.currentPage ? 'active' : ''}">
+          <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+        </li>
+      `;
+    }
+    
+    paginationHTML += `
+          <li class="page-item ${data.currentPage === data.totalPages ? 'disabled' : ''}">
+            <a class="page-link pagination-btn ${data.currentPage === data.totalPages ? 'disabled-btn' : ''}"
+               href="#"
+               data-page="${data.currentPage + 1}"
+               ${data.currentPage === data.totalPages ? 'tabindex="-1" aria-disabled="true"' : ''}>
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          </li>
+        </ul>
+      </nav>
+    `;
+    
+    paginationContainer.innerHTML = paginationHTML;
+    
+    const paginationButtons = paginationContainer.querySelectorAll('.pagination-btn');
+    paginationButtons.forEach(button => {
+      button.addEventListener('click', (e) => {
+        e.preventDefault();
+        const page = parseInt(button.getAttribute('data-page'));
+        if (page > 0 && page <= data.totalPages) {
+          loadTransactions(page);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+    });
+  }
+
+  // Transaction rendering
+  function renderTransactions(transactions) {
+    const container = document.getElementById('transactionsContainer');
+    
+    if (!transactions || transactions.length === 0) {
+      container.innerHTML = `
+        <div class="empty-transactions text-center py-5">
+          <div class="mb-4">
+            <i class="bi bi-receipt display-1 text-muted"></i>
+          </div>
+          <h4 class="text-muted mb-3">No Transactions Found</h4>
+          <p class="text-muted mb-4">${currentFilter ? 'No transactions match the selected filter.' : 'Your transaction history will appear here once you start using your wallet.'}</p>
+          ${currentFilter ? 
+            '<button class="btn btn-outline-primary" onclick="clearFilter()"><i class="bi bi-arrow-clockwise me-2"></i>Clear Filter</button>' :
+            '<button class="btn btn-primary" onclick="showAddMoneyModal()"><i class="bi bi-plus-circle me-2"></i>Add Money to Get Started</button>'
+          }
+        </div>
+      `;
+      return;
+    }
+    
+    let transactionsHTML = '<div class="transaction-list">';
+    transactions.forEach(transaction => {
+      transactionsHTML += generateTransactionHTML(transaction);
+    });
+    transactionsHTML += '</div>';
+    
+    container.innerHTML = transactionsHTML;
+  }
+
+  function generateTransactionHTML(transaction) {
+    const transactionDate = new Date(transaction.date);
+    const formattedDate = transactionDate.toLocaleDateString('en-IN', { 
+      day: '2-digit',
+      month: 'short', 
+      year: 'numeric' 
+    });
+    const formattedTime = transactionDate.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    return `
+      <div class="transaction-item" data-type="${transaction.type}">
+        <div class="row align-items-center py-3 px-4">
+          <div class="col-md-1">
+            <div class="transaction-icon ${transaction.type}">
+              <i class="bi bi-${transaction.type === 'credit' ? 'arrow-down-circle' : 'arrow-up-circle'}"></i>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="transaction-details">
+              <div class="transaction-description">${transaction.description}</div>
+              <div class="transaction-meta">
+                <span class="transaction-id">ID: ${transaction.transactionId}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2 text-center">
+            <div class="transaction-date">
+              ${formattedDate}
+              <div class="transaction-time">${formattedTime}</div>
+            </div>
+          </div>
+          <div class="col-md-3 text-end">
+            <div class="transaction-amount ${transaction.type}">
+              ${transaction.type === 'credit' ? '+' : '-'}₹${transaction.amount.toLocaleString('en-IN')}
+            </div>
+            <div class="balance-after">
+              Balance: ₹${transaction.balanceAfter.toLocaleString('en-IN')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Utility functions
+  function showLoadingState() {
+    const container = document.getElementById('transactionsContainer');
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-3 text-muted">Loading transactions...</p>
+      </div>
+    `;
+  }
+
+  function clearFilter() {
+    document.getElementById('transactionFilter').value = '';
+    currentFilter = '';
+    loadTransactions(1);
+  }
+
+  function showError(message) {
+    const container = document.getElementById('transactionsContainer');
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <div class="mb-4">
+          <i class="bi bi-exclamation-triangle display-1 text-danger"></i>
+        </div>
+        <h4 class="text-danger mb-3">Error</h4>
+        <p class="text-muted mb-4">${message}</p>
+        <button class="btn btn-primary" onclick="loadTransactions(currentPage)">
+          <i class="bi bi-arrow-clockwise me-2"></i>Try Again
+        </button>
+      </div>
+    `;
+  }
+
+  // Wallet functions
+  function showAddMoneyModal() {
+    const modal = new bootstrap.Modal(document.getElementById('addMoneyModal'));
+    modal.show();
+  }
+
+  function setAmount(amount) {
+    document.getElementById('amount').value = amount;
+  }
+
+
+  async function processDirectRazorpayTopUp() {
+    const form = document.getElementById('addMoneyForm');
+    const formData = new FormData(form);
+    const amount = parseFloat(formData.get('amount'));
+    const description = formData.get('description');
+    
+    // Validation
+    if (!amount || amount <= 0) {
+      showAlert('error', 'Invalid Amount', 'Please enter a valid amount');
+      return;
+    }
+    
+    if (amount > 50000) {
+      showAlert('error', 'Amount Too High', 'Maximum amount allowed is ₹50,000');
+      return;
+    }
+
+    if (isProcessing) return;
+    isProcessing = true;
+    
+    try {
+      await processUPIWalletTopUp(amount, description);
+    } catch (error) {
+      console.error('Wallet top-up error:', error);
+      showAlert('error', 'Error', error.message || 'Failed to process wallet top-up');
+    } finally {
+      isProcessing = false;
+    }
+  }
+
+
+  // UPI wallet top-up processing
+  async function processUPIWalletTopUp(amount, description) {
+    showLoading('Setting up UPI Payment', 'Please wait while we prepare your payment...');
+    
+    try {
+      if (typeof Razorpay === 'undefined') {
+        console.log('⚠️ Razorpay SDK not loaded, attempting to load...');
+        await loadRazorpaySDK();
+      }
+
+      const response = await fetch('/wallet/topup/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          amount: amount,
+          paymentMethod: 'razorpay',
+          description: description || `Add ₹${amount} to wallet`
+        })
+      });
+
+      const data = await response.json();
+      Swal.close();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create payment order');
+      }
+
+      if (typeof Razorpay === 'undefined') {
+        throw new Error('Failed to load Razorpay SDK. Please refresh the page and try again.');
+      }
+
+      const options = {
+        key: data.keyId,
+        amount: data.amount * 100,
+        currency: data.currency || 'INR',
+        name: 'LacedUp Wallet',
+        description: `Add ₹${amount} to wallet`,
+        order_id: data.razorpayOrderId,
+        handler: function(response) {
+          console.log('✅ UPI wallet top-up payment successful:', response);
+          verifyUPIWalletTopUp({
+            razorpayPaymentId: response.razorpay_payment_id,
+            razorpayOrderId: response.razorpay_order_id,
+            razorpaysignature: response.razorpay_signature,
+            transactionId: data.transactionId
+          }, amount);
+        },
+        prefill: {
+          name: window.userData?.name || '',
+          email: window.userData?.email || '',
+          contact: window.userData?.phone || ''
+        },
+        theme: {
+          color: '#dc3545'
+        },
+        modal: {
+          ondismiss: function() {
+            console.log('⚠️ UPI wallet top-up payment dismissed');
+            showAlert('info', 'Payment Cancelled', 'You cancelled the payment. Please try again.');
+          }
+        }
+      };
+
+      const razorpay = new Razorpay(options);
+      razorpay.on('payment.failed', function(response) {
+        console.error('❌ UPI wallet top-up payment failed:', response);
+        showAlert('error', 'Payment Failed', response.error.description || 'Payment failed. Please try again.');
+      });
+
+      razorpay.open();
+
+    } catch (error) {
+      Swal.close();
+      throw error;
+    }
+  }
+
+  // PayPal wallet top-up processing
+  async function processPayPalWalletTopUp(amount, description) {
+    showLoading('Setting up PayPal Payment', 'Please wait while we prepare your payment...');
+    
+    try {
+      const response = await fetch('/wallet/topup/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          amount: amount,
+          paymentMethod: 'paypal',
+          description: description || `Add ₹${amount} to wallet`
+        })
+      });
+
+      const data = await response.json();
+      Swal.close();
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create PayPal order');
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
+      renderPayPalWalletButtons(data.razorpayOrderId, data.transactionId, amount);
+
+    } catch (error) {
+      Swal.close();
+      throw error;
+    }
+  }
+
+  // ✅ FIXED: Verify UPI wallet top-up payment
+  async function verifyUPIWalletTopUp(paymentData, amount) {
+    showLoading('Verifying Payment', 'Please wait while we verify your payment...');
+    
+    try {
+      const response = await fetch('/wallet/topup/verify-razorpay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(paymentData)
+      });
+
+      const data = await response.json();
+      Swal.close();
+
+      if (data.success) {
+        updateBalance(data.newBalance);
+        
+        // ✅ Small delay to ensure database write completes
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // ✅ Load transactions
+        await loadTransactions(1);
+        
+        showAlert('success', 'Success!', `₹${amount.toLocaleString('en-IN')} added to wallet successfully`);
+        bootstrap.Modal.getInstance(document.getElementById('addMoneyModal')).hide();
+        document.getElementById('addMoneyForm').reset();
+      } else {
+        throw new Error(data.message || 'Payment verification failed');
+      }
+
+    } catch (error) {
+      Swal.close();
+      showAlert('error', 'Verification Failed', error.message);
+    }
+  }
+
+  // Render PayPal wallet top-up buttons
+  function renderPayPalWalletButtons(paypalOrderId, transactionId, amount) {
+    const container = document.getElementById('paypal-wallet-container');
+    if (container) {
+      container.classList.remove('d-none');
+      container.innerHTML = '<div id="paypal-wallet-buttons"></div>';
+    }
+
+    Swal.fire({
+      title: 'PayPal Payment',
+      html: `
+        <div class="text-center">
+          <p>Complete your wallet top-up payment using PayPal</p>
+          <p class="fw-bold">Amount: ₹${amount.toLocaleString('en-IN')}</p>
+          <div id="paypal-swal-container"></div>
+        </div>
+      `,
+      showConfirmButton: false,
+      showCancelButton: true,
+      cancelButtonText: 'Cancel Payment',
+      allowOutsideClick: false,
+      width: 600,
+      didOpen: () => {
+        renderPayPalButtonsInSwal(paypalOrderId, transactionId, amount);
+      }
+    }).then((result) => {
+      if (result.dismiss === Swal.DismissReason.cancel) {
+        if (container) container.classList.add('d-none');
+      }
+    });
+  }
+
+  function renderPayPalButtonsInSwal(paypalOrderId, transactionId, amount) {
+    if (!window.paypal) {
+      console.error('PayPal SDK not loaded');
+      showAlert('error', 'PayPal Error', 'PayPal is not available. Please try UPI payment.');
+      return;
+    }
+
+    window.paypal.Buttons({
+      createOrder: () => paypalOrderId,
+      onApprove: async (data, actions) => {
+        try {
+          showLoading('Processing PayPal Payment', 'Please wait...');
+          
+          const response = await fetch('/wallet/topup/capture-paypal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              paypalOrderId: data.orderID,
+              transactionId: transactionId
+            })
+          });
+
+          const result = await response.json();
+          Swal.close();
+
+          if (result.success) {
+            updateBalance(result.newBalance);
+            await loadTransactions(1);
+            showAlert('success', 'Success!', `₹${amount.toLocaleString('en-IN')} added to wallet via PayPal`);
+            const container = document.getElementById('paypal-wallet-container');
+            if (container) container.classList.add('d-none');
+          } else {
+            throw new Error(result.message || 'PayPal payment processing failed');
+          }
+
+        } catch (error) {
+          Swal.close();
+          showAlert('error', 'Payment Failed', error.message);
+        }
+      },
+      onCancel: () => {
+        showAlert('info', 'Payment Cancelled', 'You cancelled the PayPal payment.');
+        const container = document.getElementById('paypal-wallet-container');
+        if (container) container.classList.add('d-none');
+      },
+      onError: (err) => {
+        console.error('PayPal error:', err);
+        showAlert('error', 'PayPal Error', 'There was an issue with PayPal. Please try again.');
+        const container = document.getElementById('paypal-wallet-container');
+        if (container) container.classList.add('d-none');
+      }
+    }).render('#paypal-swal-container');
+  }
+
+  // Load PayPal SDK dynamically
+  function loadPayPalSDK() {
+    return new Promise((resolve, reject) => {
+      if (window.paypal) {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://www.paypal.com/sdk/js?client-id=YOUR_PAYPAL_CLIENT_ID&currency=USD&intent=capture&disable-funding=credit,card';
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  // Load Razorpay SDK dynamically
+  function loadRazorpaySDK() {
+    return new Promise((resolve, reject) => {
+      if (window.Razorpay) {
+        resolve();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  }
+
+  // Helper functions
+  function updateBalance(newBalance) {
+    const balanceElement = document.querySelector('.balance-amount');
+    if (balanceElement) {
+      balanceElement.style.transform = 'scale(1.1)';
+      balanceElement.style.color = '#28a745';
+      balanceElement.textContent = `₹${newBalance.toLocaleString('en-IN')}`;
+      
+      setTimeout(() => {
+        balanceElement.style.transform = 'scale(1)';
+        balanceElement.style.color = '';
+      }, 300);
+    }
+  }
+
+  function showAlert(icon, title, text) {
+    if (icon === 'success') {
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: text,
+        toast: true,
+        position: 'top-right',
+        showConfirmButton: false,
+        timer: 4000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.addEventListener('mouseenter', Swal.stopTimer)
+          toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+      });
+    } else {
+      Swal.fire({
+        icon: icon,
+        title: title,
+        text: text,
+        confirmButtonColor: '#dc3545'
+      });
+    }
+  }
+
+
+  function showLoading(title, text) {
+    Swal.fire({
+      title: title,
+      text: text,
+      allowOutsideClick: false,
+      allowEscapeKey: false,
+      showConfirmButton: false,
+      didOpen: () => Swal.showLoading()
+    });
+  }
+
+  // Store user data for Razorpay prefill
+  window.userData = {
+    name: '<%= user.name || "" %>',
+    email: '<%= user.email || "" %>',
+    phone: '<%= user.phone || "" %>'
+  };
+</script>
+
+
+

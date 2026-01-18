@@ -1,0 +1,200 @@
+<%
+// Coupon Card - Modern Styling
+// INPUTS: coupon (object), currentTotal (number), clickable (bool)
+// Defaults
+const clickable = typeof locals.clickable !== 'undefined' ? locals.clickable : true;
+const currentTotal = locals.currentTotal || 0;
+const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
+const isApplicable = meetsMinOrder && coupon.isActive;
+const discountLabel = coupon.discountType === 'percentage'
+    ? `${coupon.discountValue}% OFF`
+    : `FLAT ₹${coupon.discountValue} OFF`;
+const badgeLabel = coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `FLAT OFF`;
+%>
+<div class="coupon-card-modern <%= !isApplicable ? 'coupon-disabled' : 'coupon-eligible' %>"
+    <%= clickable && isApplicable ? `onclick="applyCouponFromModal('${coupon.code}')" style='cursor:pointer;'` : '' %>>
+    
+    <!-- Vertical Badge -->
+    <div class="coupon-badge <%= isApplicable ? 'coupon-badge-active' : '' %>">
+      <div class="badge-label">FLAT OFF</div>
+    </div>
+    
+    <!-- Main body -->
+    <div class="coupon-card-main">
+      <div class="coupon-card-header">
+        <span class="coupon-code"><%= coupon.code %></span>
+        <button class="apply-btn <%= !isApplicable ? 'apply-btn-disabled' : '' %>">
+          <%= isApplicable ? 'APPLY' : 'N/A' %>
+        </button>
+      </div>
+      <% if (!meetsMinOrder && coupon.minimumOrderValue) { %>
+      <div class="min-order-warning">
+        Add ₹<%= (coupon.minimumOrderValue - currentTotal) %> more to avail this offer
+      </div>
+      <% } %>
+      <div class="coupon-desc"><%= coupon.description || coupon.name %></div>
+      <div class="dotted-separator"></div>
+      <div class="coupon-footer">
+        Use code <strong><%= coupon.code %></strong> & get <%= discountLabel %>
+        <% if (coupon.minimumOrderValue) { %> off orders above ₹<%= coupon.minimumOrderValue %>.<% } %>
+      </div>
+    </div>
+</div>
+
+<style>
+.coupon-card-modern {
+  display: flex;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1px solid #ececec;
+  margin: 18px 0;
+  transition: all 0.3s ease;
+}
+
+
+.coupon-card-modern.coupon-eligible:hover {
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.25);
+  border-color: #28a745;
+}
+
+.coupon-card-modern:hover { 
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.coupon-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.coupon-badge {
+  background: #ececec;
+  min-width: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px 0 0 10px;
+  padding: 0 5px;
+  transition: all 0.3s ease;
+}
+
+
+.coupon-badge-active {
+  background: linear-gradient(135deg, #28a745, #218838) !important;
+}
+
+.coupon-badge-active .badge-label {
+  color: #ffffff !important;
+}
+
+.badge-label {
+  transform: rotate(-90deg);
+  font-size: 17px;
+  color: #858585;
+  letter-spacing: 2.5px;
+  font-weight: 800;
+  font-family: Arial Black, Arial, sans-serif;
+  transition: color 0.3s ease;
+}
+
+.coupon-card-main {
+  flex: 1;
+  padding: 16px 24px 14px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.coupon-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 7px;
+}
+
+.coupon-code {
+  font-size: 25px;
+  font-weight: 700;
+  color: #272829;
+}
+
+.apply-btn {
+  border: 1.5px solid #bdbdbd;
+  border-radius: 18px;
+  background: #f5f5f5;
+  font-size: 15px;
+  font-weight: 700;
+  color: #858585;
+  padding: 6px 19px;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  margin-left: 12px;
+  transition: all 0.3s ease;
+}
+
+.apply-btn:hover { 
+  background: #28a745; 
+  color: #ffffff; 
+  border-color: #28a745;
+}
+
+.apply-btn-disabled { 
+  color: #aaa; 
+  border-color: #eee; 
+  cursor: not-allowed;
+}
+
+.apply-btn-disabled:hover {
+  background: #f5f5f5;
+  color: #aaa;
+  border-color: #eee;
+}
+
+.min-order-warning {
+  color: #e53935;
+  background: #fff1f1;
+  border-left: 3px solid #e53935;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  padding: 5px 12px;
+  border-radius: 0 5px 5px 0;
+}
+
+.coupon-desc {
+  color: #4f4f4f;
+  font-size: 15px;
+  margin-bottom: 10px;
+  margin-top: 2px;
+}
+
+.dotted-separator {
+  border-bottom: 1.5px dotted #cccccc;
+  margin: 9px 0 7px;
+}
+
+.coupon-footer {
+  color: #888;
+  font-size: 13.5px;
+}
+
+/* Responsive fix for smaller screens */
+@media (max-width: 576px) {
+  .coupon-card-modern {
+    flex-direction: column;
+  }
+  .coupon-badge {
+    min-width: 100%;
+    border-radius: 10px 10px 0 0;
+    padding: 6px 0;
+  }
+  .badge-label {
+    transform: none;
+    font-size: 16px;
+    text-align: center;
+  }
+  .coupon-card-main {
+    padding: 15px 10px 13px 10px;
+  }
+}
+</style>

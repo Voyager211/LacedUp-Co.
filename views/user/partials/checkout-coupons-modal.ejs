@@ -1,0 +1,297 @@
+<!-- Available Coupons Modal -->
+<div class="modal fade" id="availableCouponsModal" tabindex="-1" aria-labelledby="availableCouponsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <!-- Modal Header -->
+      <div class="modal-header modal-header-custom">
+        <h5 class="modal-title text-white" id="availableCouponsModalLabel">
+          <i class="bi bi-tags me-2"></i>Available Coupons
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-0">
+        <!-- Loading State -->
+        <div id="coupons-loading" class="text-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="mt-3 text-muted mb-0">Loading available coupons...</p>
+        </div>
+        
+        <!-- Coupons Container -->
+        <div id="available-coupons-container" class="d-none">
+          <div class="p-3">
+            <!-- Coupon cards will be dynamically inserted here -->
+          </div>
+        </div>
+        
+        <!-- No Coupons State -->
+        <div id="no-coupons-found" class="text-center py-5 d-none">
+          <div class="text-center">
+            <i class="bi bi-emoji-frown display-1 text-muted opacity-50"></i>
+            <h5 class="text-muted mt-3 mb-2">No Coupons Available</h5>
+            <p class="text-muted mb-0">There are no active coupons available at the moment.</p>
+            <p class="text-muted"><small>Check back later for exciting offers!</small></p>
+          </div>
+        </div>
+
+        <!-- Error State -->
+        <div id="coupons-error" class="text-center py-5 d-none">
+          <div class="text-center">
+            <i class="bi bi-exclamation-triangle display-1 text-warning opacity-50"></i>
+            <h5 class="text-warning mt-3 mb-2">Unable to Load Coupons</h5>
+            <p class="text-muted mb-3">Something went wrong while fetching coupons.</p>
+            <button class="btn btn-outline-primary" onclick="loadAvailableCoupons()">
+              <i class="bi bi-arrow-clockwise me-1"></i>Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer bg-light">
+        <small class="text-muted me-auto">
+          <i class="bi bi-info-circle me-1"></i>
+          Click on any coupon to apply it to your order
+        </small>
+        <button type="button" class="btn btn-close-custom" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Styling -->
+<style>
+.modal-header-custom {
+  background-color: #000000 !important;
+  border-bottom: 1px solid #333333;
+  padding: 16px 24px;
+}
+
+.modal-header-custom .modal-title {
+  color: #ffffff !important;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.modal-header-custom .modal-title i {
+  color: #ffffff !important;
+}
+
+.modal-header-custom .btn-close-white {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.modal-header-custom .btn-close-white:hover {
+  opacity: 1;
+}
+
+.btn-close-custom {
+  background-color: #000000;
+  color: #ffffff;
+  border: 2px solid #000000;
+  padding: 8px 24px;
+  font-weight: 600;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-size: 15px;
+}
+
+.btn-close-custom:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+}
+
+.btn-close-custom:active {
+  transform: translateY(0);
+}
+
+.modal-lg {
+  max-width: 700px;
+}
+
+#availableCouponsModal .modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* Custom scrollbar for the modal */
+#availableCouponsModal .modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+#availableCouponsModal .modal-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+#availableCouponsModal .modal-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 10px;
+}
+
+#availableCouponsModal .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.coupon-card-modern {
+  display: flex;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+  border: 1px solid #ececec;
+  margin: 18px 0;
+  transition: all 0.3s ease;
+}
+
+.coupon-card-modern.coupon-eligible:hover {
+  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.25);
+  border-color: #28a745;
+  transform: translateY(-2px);
+}
+
+.coupon-card-modern:hover { 
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+}
+
+.coupon-disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.coupon-badge {
+  background: #ececec;
+  min-width: 54px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 10px 0 0 10px;
+  padding: 0 5px;
+  transition: all 0.3s ease;
+}
+
+.coupon-badge-active {
+  background: linear-gradient(135deg, #28a745, #218838) !important;
+}
+
+.coupon-badge-active .badge-label {
+  color: #ffffff !important;
+}
+
+.badge-label {
+  transform: rotate(-90deg);
+  font-size: 17px;
+  color: #858585;
+  letter-spacing: 2.5px;
+  font-weight: 800;
+  font-family: Arial Black, Arial, sans-serif;
+  transition: color 0.3s ease;
+}
+
+.coupon-card-main {
+  flex: 1;
+  padding: 16px 24px 14px 18px;
+  display: flex;
+  flex-direction: column;
+}
+
+.coupon-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 7px;
+}
+
+.coupon-code {
+  font-size: 25px;
+  font-weight: 700;
+  color: #272829;
+}
+
+.apply-btn {
+  border: 1.5px solid #bdbdbd;
+  border-radius: 18px;
+  background: #f5f5f5;
+  font-size: 15px;
+  font-weight: 700;
+  color: #858585;
+  padding: 6px 19px;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+  margin-left: 12px;
+  transition: all 0.3s ease;
+}
+
+.apply-btn:hover { 
+  background: #28a745; 
+  color: #ffffff; 
+  border-color: #28a745;
+}
+
+.apply-btn-disabled { 
+  color: #aaa; 
+  border-color: #eee; 
+  cursor: not-allowed;
+}
+
+.apply-btn-disabled:hover {
+  background: #f5f5f5;
+  color: #aaa;
+  border-color: #eee;
+}
+
+.min-order-warning {
+  color: #e53935;
+  background: #fff1f1;
+  border-left: 3px solid #e53935;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  padding: 5px 12px;
+  border-radius: 0 5px 5px 0;
+}
+
+.coupon-desc {
+  color: #4f4f4f;
+  font-size: 15px;
+  margin-bottom: 10px;
+  margin-top: 2px;
+}
+
+.dotted-separator {
+  border-bottom: 1.5px dotted #cccccc;
+  margin: 9px 0 7px;
+}
+
+.coupon-footer {
+  color: #888;
+  font-size: 13.5px;
+}
+
+/* Responsive fix for smaller screens */
+@media (max-width: 576px) {
+  .coupon-card-modern {
+    flex-direction: column;
+  }
+  .coupon-badge {
+    min-width: 100%;
+    border-radius: 10px 10px 0 0;
+    padding: 6px 0;
+  }
+  .badge-label {
+    transform: none;
+    font-size: 16px;
+    text-align: center;
+  }
+  .coupon-card-main {
+    padding: 15px 10px 13px 10px;
+  }
+}
+</style>

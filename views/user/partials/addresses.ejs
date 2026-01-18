@@ -1,0 +1,922 @@
+<!-- Address Form Container -->
+<div class="address-container">
+    <form class="address-form" id="addressForm" novalidate>
+            <!-- Personal Information Section -->
+            <div class="form-section">
+                <h5><i class="fas fa-user"></i> Personal Information</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="fullName" class="form-label">Full Name *</label>
+                        <input type="text" class="form-control" id="fullName" name="fullName" value="<%= typeof address !== 'undefined' && address ? address.name : '' %>">
+                        <div class="error-message" id="fullName-error">Full name must be at least 4 characters long</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="mobileNumber" class="form-label">Mobile Number *</label>
+                        <input type="tel" class="form-control" id="mobileNumber" name="mobileNumber" value="<%= typeof address !== 'undefined' && address ? address.phone : '' %>">
+                        <div class="error-message" id="mobileNumber-error">Please enter a valid phone number</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="altPhone" class="form-label">Alternative Phone (Optional)</label>
+                        <input type="tel" class="form-control" id="altPhone" name="altPhone" value="<%= typeof address !== 'undefined' && address ? address.altPhone || '' : '' %>">
+                        <div class="error-message" id="altPhone-error">Please enter a valid alternative phone number</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Details Section -->
+            <div class="form-section">
+                <h5><i class="fas fa-home"></i> Address Details</h5>
+                <div class="row">
+                    <div class="col-12 mb-3">
+                        <label for="addressDetails" class="form-label">Address Details *</label>
+                        <input type="text" class="form-control" id="addressDetails" name="addressDetails"
+                            placeholder="Start typing your address..."
+                            value="<%= typeof address !== 'undefined' && address ? address.landMark : '' %>">
+                        <div class="error-message" id="addressDetails-error">Address details are required</div>
+                        <!-- <small class="text-muted">Start typing for address suggestions</small> -->
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="state" class="form-label">State *</label>
+                        <select class="form-select" id="state" name="state">
+                            <option value="">Select State</option>
+                        </select>
+                        <div class="error-message" id="state-error">Please select a state</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="district" class="form-label">District *</label>
+                        <select class="form-select" id="district" name="district" disabled>
+                            <option value="">Select District</option>
+                        </select>
+                        <div class="error-message" id="district-error">Please select a district</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="city" class="form-label">City *</label>
+                        <input type="text" class="form-control" id="city" name="city" value="<%= typeof address !== 'undefined' && address ? address.city : '' %>">
+                        <div class="error-message" id="city-error">City is required</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="pincode" class="form-label">Pincode *</label>
+                        <input type="text" class="form-control" id="pincode" name="pincode" maxlength="6" value="<%= typeof address !== 'undefined' && address ? address.pincode : '' %>">
+                        <div class="error-message" id="pincode-error">Please enter a valid 6-digit pincode</div>
+                        <!-- <small class="text-muted">Enter pincode to auto-fill location</small> -->
+                    </div>
+                    <div class="col-12 mb-3">
+                        <label for="landmark" class="form-label">Landmark (Optional)</label>
+                        <input type="text" class="form-control" id="landmark" name="landmark" placeholder="Near landmark, building, or area" value="<%= typeof address !== 'undefined' && address ? address.landMark || '' : '' %>">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Address Type Section -->
+            <div class="form-section">
+                <h5><i class="fas fa-tags"></i> Address Type</h5>
+                <div class="address-type-section">
+                    <div class="address-type-options">
+                        <div class="address-type-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="addressType" id="home" value="home" <%= typeof address === 'undefined' || !address || address.addressType === 'home' ? 'checked' : '' %>>
+                                <label class="form-check-label" for="home">
+                                    <i class="fas fa-home"></i> Home
+                                </label>
+                            </div>
+                        </div>
+                        <div class="address-type-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="addressType" id="office" value="office" <%= typeof address !== 'undefined' && address && address.addressType === 'office' ? 'checked' : '' %>>
+                                <label class="form-check-label" for="office">
+                                    <i class="fas fa-briefcase"></i> Office
+                                </label>
+                            </div>
+                        </div>
+                        <div class="address-type-option">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="addressType" id="other" value="other" <%= typeof address !== 'undefined' && address && address.addressType === 'other' ? 'checked' : '' %>>
+                                <label class="form-check-label" for="other">
+                                    <i class="fas fa-map-pin"></i> Other
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Default Address Section -->
+            <div class="form-section">
+                <h5><i class="fas fa-star"></i> Default Settings</h5>
+                <div class="default-address-section">
+                    <div class="form-check form-check-switch">
+                        <input class="form-check-input" type="checkbox" id="makeDefault" <%= typeof address !== 'undefined' && address && address.isDefault ? 'checked' : (typeof address === 'undefined' || !address ? 'checked' : '') %>>
+                        <label class="form-check-label" for="makeDefault">
+                            Make this my default address
+                        </label>
+                    </div>
+                    <small class="text-muted mt-2 d-block">This address will be automatically selected for your orders</small>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-buttons">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-save"></i> Save Address
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* Address Form Styles */
+    .address-container {
+        background: #fff;
+        border-radius: 8px;
+    }
+
+    .address-form {
+        padding: 1.5rem;
+    }
+
+    .form-section {
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    .form-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+    }
+
+    .form-section h5 {
+        color: #000;
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .form-section h5 i {
+        color: #6c757d;
+        font-size: 1rem;
+    }
+
+    .form-label {
+        font-weight: 500;
+        color: #333;
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+    }
+
+    .form-control, .form-select {
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        padding: 0.75rem;
+        font-size: 0.9rem;
+        background-color: #fff;
+        color: #333;
+    }
+
+    .form-control:focus, .form-select:focus {
+        border-color: #000;
+        outline: none;
+        background-color: #fff;
+    }
+
+    .form-control:disabled, .form-select:disabled {
+        background-color: #f8f9fa;
+        color: #6c757d;
+        border-color: #e9ecef;
+    }
+
+    /* Address Type Options */
+    .address-type-options {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .address-type-option {
+        flex: 1;
+        min-width: 120px;
+    }
+
+    .address-type-option .form-check {
+        margin: 0;
+    }
+
+    .address-type-option .form-check-input {
+        display: none;
+    }
+
+    .address-type-option .form-check-label {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 500;
+        color: #6c757d;
+        background: #fff;
+        text-align: center;
+        width: 100%;
+    }
+
+    .address-type-option .form-check-input:checked + .form-check-label {
+        border-color: #000;
+        background-color: #000;
+        color: #fff;
+    }
+
+    .address-type-option .form-check-label:hover {
+        border-color: #000;
+        background-color: #f8f9fa;
+    }
+
+    .address-type-option .form-check-input:checked + .form-check-label:hover {
+        background-color: #000;
+        color: #fff;
+    }
+
+    /* Default Address Section */
+    .default-address-section {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        border: 1px solid #e9ecef;
+    }
+
+    .form-check-switch {
+        margin-bottom: 0.5rem;
+    }
+
+    .form-check-switch .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+        border-radius: 1rem;
+        background-color: #e9ecef;
+        border: none;
+        cursor: pointer;
+    }
+
+    .form-check-switch .form-check-input:checked {
+        background-color: #000;
+        border-color: #000;
+    }
+
+    .form-check-switch .form-check-input:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+    }
+
+    .form-check-switch .form-check-label {
+        font-weight: 500;
+        color: #333;
+        margin-left: 0.5rem;
+        cursor: pointer;
+    }
+
+    /* Action Buttons */
+    .action-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 1rem;
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .action-buttons .btn {
+        padding: 0.75rem 2rem;
+        font-weight: 500;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .action-buttons .btn-primary {
+        background-color: #000;
+        border-color: #000;
+        color: #fff;
+    }
+
+    .action-buttons .btn-primary:hover {
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+
+    /* Validation Styles */
+    .error-message {
+        color: #dc3545;
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
+
+    .is-invalid ~ .error-message {
+        display: block;
+    }
+
+    .is-invalid {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.1);
+    }
+
+    .is-valid {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.1);
+    }
+
+    .form-control.is-invalid:focus, .form-select.is-invalid:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+    }
+
+    .form-control.is-valid:focus, .form-select.is-valid:focus {
+        border-color: #28a745;
+        box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+    }
+
+    /* Geoapify Autocomplete Styling */
+    .geoapify-autocomplete-container {
+        position: relative;
+    }
+
+    .geoapify-autocomplete-items {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        background: white;
+        border: 1px solid #ddd;
+        border-top: none;
+        border-radius: 0 0 6px 6px;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    .geoapify-autocomplete-item {
+        padding: 12px 15px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+        font-size: 0.9rem;
+        color: #333;
+    }
+
+    .geoapify-autocomplete-item:hover,
+    .geoapify-autocomplete-item.selected {
+        background-color: #f8f9fa;
+        color: #000;
+    }
+
+    .geoapify-autocomplete-item:last-child {
+        border-bottom: none;
+        border-radius: 0 0 6px 6px;
+    }
+
+    /* Current Location Button */
+    .btn-location {
+        background: #000;
+        border: none;
+        color: white;
+        font-weight: 500;
+        border-radius: 6px;
+    }
+
+    .btn-location:hover {
+        background: #dc3545;
+        color: white;
+    }
+
+    .btn-location:focus {
+        box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .address-form {
+            padding: 1rem;
+        }
+
+        .address-type-options {
+            flex-direction: column;
+        }
+
+        .address-type-option {
+            min-width: auto;
+        }
+
+        .action-buttons {
+            flex-direction: column;
+        }
+
+        .action-buttons .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .geoapify-autocomplete-item {
+            padding: 10px 12px;
+            font-size: 0.85rem;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .form-section h5 {
+            font-size: 1rem;
+        }
+
+        .form-control, .form-select {
+            font-size: 0.85rem;
+        }
+
+        .address-type-option .form-check-label {
+            padding: 0.6rem 0.8rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-location {
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+        }
+    }
+</style>
+
+<script>
+    // Show SweetAlert only for unknown errors or final success
+    function showSweetAlert(message, type = 'error') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: type === 'error' ? 'Error!' : 'Success!',
+                text: message,
+                icon: type,
+                confirmButtonColor: '#000000'
+            });
+        } else {
+            alert(message);
+        }
+    }
+
+    // Validation fields configuration
+    const validationFields = [
+        {
+            id: "fullName",
+            validate: (value) => {
+                if (value.startsWith(' ')) return false;
+                const trimmed = value.trim();
+                if (trimmed.length < 4) return false;
+                return /^[a-zA-Z\s]+$/.test(trimmed);
+            },
+            errorElement: "fullName-error",
+            getErrorMessage: (value) => {
+                if (value.length === 0) return "Full name is required";
+                if (value.startsWith(' ')) return "Full name cannot start with whitespace";
+                const trimmed = value.trim();
+                if (trimmed.length < 4) return "Full name must be at least 4 characters";
+                if (!/^[a-zA-Z\s]+$/.test(trimmed)) return "Full name can only contain alphabets and spaces";
+                return "";
+            }
+        },
+        {
+            id: "mobileNumber",
+            validate: (value) => /^[6-9]\d{9}$/.test(value.trim()),
+            errorElement: "mobileNumber-error",
+            getErrorMessage: (value) => {
+                const trimmed = value.trim();
+                if (trimmed.length === 0) return "Mobile number is required";
+                if (!/^[6-9]/.test(trimmed)) return "Mobile number must start with 6, 7, 8, or 9";
+                if (trimmed.length !== 10) return "Mobile number must be exactly 10 digits";
+                if (!/^\d+$/.test(trimmed)) return "Mobile number can only contain digits";
+                return "Please enter a valid 10-digit mobile number";
+            }
+        },
+        {
+            id: "altPhone",
+            validate: (value) => {
+                if (!value || value.trim() === '') return true;
+                return /^[6-9]\d{9}$/.test(value.trim());
+            },
+            errorElement: "altPhone-error",
+            getErrorMessage: (value) => {
+                const trimmed = value.trim();
+                if (trimmed.length === 0) return "";
+                if (!/^[6-9]/.test(trimmed)) return "Alternative phone must start with 6, 7, 8, or 9";
+                if (trimmed.length !== 10) return "Alternative phone must be exactly 10 digits";
+                if (!/^\d+$/.test(trimmed)) return "Alternative phone can only contain digits";
+                return "Please enter a valid 10-digit alternative phone number";
+            }
+        },
+        {
+            id: "addressDetails",
+            validate: (value) => value.trim().length >= 10,
+            errorElement: "addressDetails-error",
+            getErrorMessage: (value) => {
+                if (value.trim().length === 0) return "Address details are required";
+                if (value.trim().length < 10) return "Address details must be at least 10 characters";
+                return "";
+            }
+        },
+        {
+            id: "state",
+            validate: (value) => value.trim() !== '',
+            errorElement: "state-error",
+            getErrorMessage: (value) => {
+                if (value.trim() === '') return "Please select a state";
+                return "";
+            }
+        },
+        {
+            id: "district",
+            validate: (value) => value.trim() !== '',
+            errorElement: "district-error",
+            getErrorMessage: (value) => {
+                if (value.trim() === '') return "Please select a district";
+                return "";
+            }
+        },
+        {
+            id: "city",
+            validate: (value) => {
+                const trimmed = value.trim();
+                if (trimmed.length < 2) return false;
+                return /^[a-zA-Z\s]+$/.test(trimmed);
+            },
+            errorElement: "city-error",
+            getErrorMessage: (value) => {
+                const trimmed = value.trim();
+                if (trimmed.length === 0) return "City is required";
+                if (trimmed.length < 2) return "City must be at least 2 characters";
+                if (!/^[a-zA-Z\s]+$/.test(trimmed)) return "City can only contain alphabets and spaces";
+                return "";
+            }
+        },
+        {
+            id: "pincode",
+            validate: (value) => {
+                const trimmed = value.trim();
+                return /^[1-9]\d{5}$/.test(trimmed);
+            },
+            errorElement: "pincode-error",
+            getErrorMessage: (value) => {
+                const trimmed = value.trim();
+                if (trimmed.length === 0) return "Pincode is required";
+                if (!/^\d+$/.test(trimmed)) return "Pincode can only contain numbers";
+                if (trimmed.length !== 6) return "Pincode must be exactly 6 digits";
+                if (trimmed.startsWith('0')) return "Pincode cannot start with 0";
+                return "Please enter a valid 6-digit pincode";
+            }
+        }
+    ];
+
+    let stateDistrictData = {};
+
+    // Load state and district data
+    async function loadStateDistrictData() {
+        try {
+            const response = await fetch('/api/states-districts');
+            const data = await response.json();
+            if (data.success) {
+                stateDistrictData = data.data;
+                initializeStateDistrict();
+            }
+        } catch (error) {
+            console.error('Error loading state/district data:', error);
+        }
+    }
+
+    // Initialize state and district dropdowns
+    function initializeStateDistrict() {
+        const stateSelect = document.getElementById('state');
+        const districtSelect = document.getElementById('district');
+        
+        stateSelect.innerHTML = '<option value="">Select State</option>';
+        
+        Object.keys(stateDistrictData).forEach(stateKey => {
+            const option = document.createElement('option');
+            option.value = stateKey;
+            option.textContent = stateDistrictData[stateKey].name;
+            stateSelect.appendChild(option);
+        });
+
+        const existingState = '<%= typeof address !== "undefined" && address ? address.state : "" %>';
+        const existingDistrict = '<%= typeof address !== "undefined" && address ? address.district || "" : "" %>';
+        
+        if (existingState) {
+            stateSelect.value = existingState;
+            updateDistricts(existingState, existingDistrict);
+        }
+    }
+
+    // Update districts based on selected state
+    function updateDistricts(selectedState, selectedDistrict = '') {
+        const districtSelect = document.getElementById('district');
+        
+        districtSelect.innerHTML = '<option value="">Select District</option>';
+        
+        if (selectedState && stateDistrictData[selectedState]) {
+            districtSelect.disabled = false;
+            
+            stateDistrictData[selectedState].districts.forEach(district => {
+                const option = document.createElement('option');
+                option.value = district.toLowerCase().replace(/\s+/g, '-');
+                option.textContent = district;
+                districtSelect.appendChild(option);
+            });
+            
+            if (selectedDistrict) {
+                districtSelect.value = selectedDistrict;
+            }
+        } else {
+            districtSelect.disabled = true;
+        }
+    }
+
+    // Validation function for individual fields
+    function validateField(field) {
+        const input = document.getElementById(field.id);
+        const errorElement = document.getElementById(field.errorElement);
+        
+        if (!input || !errorElement) return true;
+        
+        const isValid = field.validate(input.value);
+
+        if (isValid) {
+            input.classList.remove("is-invalid");
+            input.classList.add("is-valid");
+            errorElement.style.display = "none";
+        } else {
+            input.classList.add("is-invalid");
+            input.classList.remove("is-valid");
+            if (field.getErrorMessage) {
+                errorElement.textContent = field.getErrorMessage(input.value);
+            }
+            errorElement.style.display = "block";
+        }
+
+        return isValid;
+    }
+
+    // Clear field error
+    function clearFieldError(fieldId) {
+        const input = document.getElementById(fieldId);
+        const errorElement = document.getElementById(fieldId + '-error');
+        
+        if (input && errorElement) {
+            input.classList.remove("is-invalid", "is-valid");
+            errorElement.style.display = "none";
+        }
+    }
+
+    // ======= CHECKOUT PAGE DETECTION AND EARLY EXIT ======= 
+    function isOnCheckoutPage() {
+        return window.location.pathname.includes('/checkout') || 
+               window.location.pathname.includes('/cart/checkout');
+    }
+
+    // ======= ADDRESS BOOK ONLY - FORM SUBMISSION ======= 
+    document.addEventListener('DOMContentLoaded', function() {
+        // EARLY EXIT: Don't initialize anything on checkout pages
+        if (isOnCheckoutPage()) {
+            console.log('🚫 ADDRESSES PARTIAL: On checkout page - skipping all initialization');
+            return;
+        }
+
+        console.log('✅ ADDRESSES PARTIAL: On address book page - initializing');
+        
+        // Initialize state/district data
+        loadStateDistrictData();
+
+        // Real-time validation on input - ADDRESS BOOK ONLY
+        validationFields.forEach(field => {
+            const input = document.getElementById(field.id);
+            if (input) {
+                input.addEventListener("input", () => {
+                    clearFieldError(field.id);
+                    setTimeout(() => {
+                        validateField(field);
+                    }, 300);
+                });
+
+                input.addEventListener("blur", () => {
+                    validateField(field);
+                });
+            }
+        });
+
+        // Input formatting - ADDRESS BOOK ONLY
+        const mobileInput = document.getElementById('mobileNumber');
+        if (mobileInput) {
+            mobileInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/\D/g, '').substring(0, 10);
+            });
+        }
+
+        const altPhoneInput = document.getElementById('altPhone');
+        if (altPhoneInput) {
+            altPhoneInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/\D/g, '').substring(0, 10);
+            });
+        }
+
+        const pincodeInput = document.getElementById('pincode');
+        if (pincodeInput) {
+            pincodeInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/\D/g, '').substring(0, 6);
+            });
+        }
+
+        const fullNameInput = document.getElementById('fullName');
+        if (fullNameInput) {
+            fullNameInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+            });
+        }
+
+        const cityInput = document.getElementById('city');
+        if (cityInput) {
+            cityInput.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
+            });
+        }
+
+        // State change handler - ADDRESS BOOK ONLY
+        const stateSelect = document.getElementById('state');
+        if (stateSelect) {
+            stateSelect.addEventListener('change', function() {
+                const selectedState = this.value;
+                console.log(`🔄 ADDRESSES PARTIAL: State changed to: ${selectedState}`);
+                updateDistricts(selectedState);
+                
+                const districtField = validationFields.find(f => f.id === 'district');
+                if (districtField) {
+                    clearFieldError('district');
+                }
+            });
+        }
+
+        // FORM SUBMISSION HANDLER - ADDRESS BOOK ONLY
+        const form = document.getElementById('addressForm');
+        if (form && !form.hasAttribute('data-addressbook-handler-attached')) {
+            // Mark form to prevent duplicate handlers
+            form.setAttribute('data-addressbook-handler-attached', 'true');
+            
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                
+                console.log('📝 ADDRESSES PARTIAL: Form submitted - starting validation...');
+
+                let isFormValid = true;
+                let firstInvalidField = null;
+
+                // Frontend validation - show inline errors only
+                validationFields.forEach(field => {
+                    const isFieldValid = validateField(field);
+                    if (!isFieldValid) {
+                        isFormValid = false;
+                        if (!firstInvalidField) {
+                            firstInvalidField = field;
+                        }
+                        console.log(`❌ ADDRESSES PARTIAL: Field ${field.id} failed validation`);
+                    } else {
+                        console.log(`✅ ADDRESSES PARTIAL: Field ${field.id} passed validation`);
+                    }
+                });
+
+                if (!isFormValid) {
+                    console.log('❌ ADDRESSES PARTIAL: Frontend validation failed');
+                    if (firstInvalidField) {
+                        const firstInvalidInput = document.getElementById(firstInvalidField.id);
+                        if (firstInvalidInput) {
+                            firstInvalidInput.focus();
+                            console.log(`🎯 ADDRESSES PARTIAL: Focused on field: ${firstInvalidField.id}`);
+                        }
+                    }
+                    return;
+                }
+
+                console.log('✅ ADDRESSES PARTIAL: Frontend validation passed - proceeding to backend...');
+
+                // Get form data
+                const formData = new FormData(this);
+                const makeDefaultCheckbox = document.getElementById('makeDefault');
+                const addressData = {
+                    fullName: formData.get('fullName').trim(),
+                    mobileNumber: formData.get('mobileNumber').trim(),
+                    altPhone: formData.get('altPhone') ? formData.get('altPhone').trim() : '',
+                    addressDetails: formData.get('addressDetails').trim(),
+                    state: formData.get('state'),
+                    district: formData.get('district'),
+                    city: formData.get('city').trim(),
+                    pincode: formData.get('pincode').trim(),
+                    landmark: formData.get('landmark') ? formData.get('landmark').trim() : '',
+                    addressType: formData.get('addressType'),
+                    makeDefault: makeDefaultCheckbox ? makeDefaultCheckbox.checked : false
+                };
+
+                // Show loading state
+                const submitBtn = this.querySelector('button[type="submit"]');
+                const originalText = submitBtn.innerHTML;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                submitBtn.disabled = true;
+
+                // Use currentEditingId from parent scope to determine if editing
+                const isEdit = typeof currentEditingId !== 'undefined' && currentEditingId !== null;
+                const addressId = currentEditingId;
+                
+                let url = isEdit ? `/api/address/${addressId}` : '/api/address';
+                const method = isEdit ? 'PUT' : 'POST';
+
+                console.log('🚀 ADDRESSES PARTIAL: Sending to backend:', url, method);
+
+                // Backend submission
+                fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(addressData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📥 ADDRESSES PARTIAL: Backend response:', data);
+                    if (data && data.success) {
+                        console.log('✅ ADDRESSES PARTIAL: Address saved successfully');
+                        
+                        // Show success and redirect to addresses page
+                        showSweetAlert(data.message || 'Address saved successfully', 'success');
+                        
+                        // Close modal
+                        const modal = bootstrap.Modal.getInstance(document.getElementById('addressModal'));
+                        if (modal) {
+                            modal.hide();
+                        }
+                        
+                        // Reset form
+                        this.reset();
+                        currentEditingId = null;
+                        
+                        // Redirect to addresses page (for address book)
+                        setTimeout(() => {
+                            window.location.href = '/addresses';
+                        }, 1500);
+                        
+                    } else if (data && data.message) {
+                        console.log('❌ ADDRESSES PARTIAL: Backend validation failed');
+                        showSweetAlert(data.message, 'error');
+                    } else {
+                        console.log('❌ ADDRESSES PARTIAL: Unknown error');
+                        showSweetAlert('An unexpected error occurred. Please try again.', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('❌ ADDRESSES PARTIAL: Network error:', error);
+                    showSweetAlert('An error occurred while saving the address. Please try again.', 'error');
+                })
+                .finally(() => {
+                    // Restore button state
+                    submitBtn.innerHTML = originalText;
+                    submitBtn.disabled = false;
+                });
+            });
+        }
+    });
+
+    // Modal event handler - ADDRESS BOOK ONLY
+    document.addEventListener('DOMContentLoaded', function() {
+        // EARLY EXIT: Don't attach modal handlers on checkout pages
+        if (isOnCheckoutPage()) {
+            return;
+        }
+
+        const addressModal = document.getElementById('addressModal');
+        if (addressModal) {
+            addressModal.addEventListener('shown.bs.modal', function() {
+                setTimeout(() => {
+                    const stateSelect = document.getElementById('state');
+                    if (stateSelect) {
+                        const newStateSelect = stateSelect.cloneNode(true);
+                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
+                        
+                        newStateSelect.addEventListener('change', function() {
+                            const selectedState = this.value;
+                            console.log(`🔄 ADDRESSES PARTIAL: Modal state changed to: ${selectedState}`);
+                            updateDistricts(selectedState);
+                            
+                            const districtField = validationFields.find(f => f.id === 'district');
+                            if (districtField) {
+                                clearFieldError('district');
+                            }
+                        });
+                    }
+                }, 100);
+            });
+        }
+    });
+</script>
+

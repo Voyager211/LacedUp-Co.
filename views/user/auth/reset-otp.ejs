@@ -1,0 +1,303 @@
+<div class="container-fluid min-vh-100 d-flex align-items-center justify-content-center" style="background-color: #E5E5E5;">
+  <div class="row shadow rounded overflow-hidden" style="max-width: 500px;">
+    <div class="col bg-white p-5">
+      <div class="text-center mb-3">
+        <a href="/" class="text-decoration-none">
+          <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749703192/laceduplogowhitebg_oundjw.png" alt="LacedUp Logo" style="height: 70px; cursor: pointer;">
+        </a>
+      </div>
+      <h4 class="fw-bold text-center mb-3">Enter OTP</h4>
+      <p class="text-center text-secondary">OTP sent to <strong><%= email %></strong></p>
+
+      <form id="otp-form">
+        <input type="hidden" id="email" name="email" value="<%= email %>">
+        <div class="mb-3">
+          <input type="text" id="otp" name="otp" class="form-control text-center" maxlength="6" placeholder="Enter 6-digit OTP" required>
+        </div>
+        <button type="submit" class="btn btn-primary-custom w-100" id="verify-otp-btn">
+          <span class="btn-text">Verify OTP</span>
+          <span class="btn-loader d-none">
+            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            Verifying...
+          </span>
+        </button>
+      </form>
+
+      <p class="text-center text-secondary mt-3" id="timer">Code expires in: <span id="otp-countdown">01:00</span></p>
+
+      <div class="text-center mt-3">
+        <a href="#" id="resend-btn" class="text-decoration-none" style="color: #007bff; cursor: pointer; display: none;">
+          <span class="resend-text">Resend OTP</span>
+          <span class="resend-loader d-none">
+            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            Sending...
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+  // Prevent back button navigation
+  (function() {
+    if (window.history && window.history.pushState) {
+      window.history.pushState('forward', null, window.location.href);
+      window.addEventListener('popstate', function() {
+        window.history.pushState('forward', null, window.location.href);
+      });
+    }
+  })();
+
+  const form = document.getElementById('otp-form');
+  const verifyBtn = document.getElementById('verify-otp-btn');
+  const btnText = verifyBtn.querySelector('.btn-text');
+  const btnLoader = verifyBtn.querySelector('.btn-loader');
+  const resendBtn = document.getElementById('resend-btn');
+  const resendText = resendBtn.querySelector('.resend-text');
+  const resendLoader = resendBtn.querySelector('.resend-loader');
+  const otpCountdownSpan = document.getElementById('otp-countdown');
+  let otpTimer = 60; // 60 seconds (1 minute) for OTP expiration
+  let otpInterval;
+  let otpExpired = false; // Track if OTP has expired
+  const email = document.getElementById('email').value.trim();
+  const timerKey = `otp_timer_${email}_reset`; // Unique key for this email and page
+
+  // Function to show/hide verify button loader
+  function toggleVerifyLoader(show) {
+    if (show) {
+      btnText.classList.add('d-none');
+      btnLoader.classList.remove('d-none');
+      verifyBtn.disabled = true;
+    } else {
+      btnText.classList.remove('d-none');
+      btnLoader.classList.add('d-none');
+      verifyBtn.disabled = false;
+    }
+  }
+
+  // Function to show/hide resend button loader
+  function toggleResendLoader(show) {
+    if (show) {
+      resendText.classList.add('d-none');
+      resendLoader.classList.remove('d-none');
+      resendBtn.style.pointerEvents = 'none';
+      resendBtn.style.color = '#6c757d';
+    } else {
+      resendText.classList.remove('d-none');
+      resendLoader.classList.add('d-none');
+      resendBtn.style.pointerEvents = 'auto';
+      resendBtn.style.color = '#007bff';
+    }
+  }
+
+  // Timer persistence functions
+  function initializeOTPTimer() {
+    const storedStartTime = localStorage.getItem(timerKey);
+    const currentTime = Date.now();
+    
+    if (storedStartTime) {
+      // Calculate elapsed time since timer started
+      const elapsedSeconds = Math.floor((currentTime - parseInt(storedStartTime)) / 1000);
+      const remainingTime = 60 - elapsedSeconds;
+      
+      if (remainingTime > 0) {
+        otpTimer = remainingTime;
+      } else {
+        // Timer has already expired
+        otpTimer = 0;
+        otpExpired = true;
+        localStorage.removeItem(timerKey);
+        showOTPExpiredAlert();
+        return;
+      }
+    } else {
+      // First time loading, store start time
+      localStorage.setItem(timerKey, currentTime.toString());
+      otpTimer = 60;
+    }
+    
+    // Update display immediately to prevent flash of default time
+    updateOTPCountdownDisplay();
+  }
+
+  function resetOTPTimer() {
+    // Clear existing timer data and start fresh
+    localStorage.removeItem(timerKey);
+    localStorage.setItem(timerKey, Date.now().toString());
+    otpTimer = 60;
+    otpExpired = false;
+  }
+
+  function clearOTPTimerData() {
+    localStorage.removeItem(timerKey);
+  }
+
+  function updateOTPCountdownDisplay() {
+    const minutes = Math.floor(otpTimer / 60);
+    const seconds = otpTimer % 60;
+    const formattedTime = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    otpCountdownSpan.textContent = formattedTime;
+  }
+
+  function updateOTPCountdown() {
+    updateOTPCountdownDisplay();
+    
+    if (otpTimer > 0) {
+      otpTimer--;
+    } else {
+      clearInterval(otpInterval);
+      otpExpired = true;
+      // Show resend button when timer expires
+      resendBtn.style.display = 'inline';
+      // OTP expired, show expiration alert
+      showOTPExpiredAlert();
+    }
+  }
+
+  function showOTPExpiredAlert() {
+    Swal.fire({
+      icon: 'warning',
+      title: 'OTP Expired!',
+      text: 'Your OTP has expired. Please request a new one to continue.',
+      confirmButtonText: 'Request New OTP',
+      confirmButtonColor: '#e03a2f',
+      allowOutsideClick: false,
+      allowEscapeKey: false
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Automatically trigger resend OTP
+        resendBtn.click();
+      }
+    });
+  }
+
+  // Start timer on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeOTPTimer();
+    otpInterval = setInterval(updateOTPCountdown, 1000);
+  });
+
+  // OTP form submission
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    // Check if OTP has expired
+    if (otpExpired) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'OTP Expired!',
+        text: 'Your OTP has expired. Please request a new one.',
+        confirmButtonText: 'Request New OTP',
+        confirmButtonColor: '#e03a2f'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          resendBtn.click();
+        }
+      });
+      return;
+    }
+
+    const email = document.getElementById('email').value.trim();
+    const otp = document.getElementById('otp').value.trim();
+
+    // Show loader
+    toggleVerifyLoader(true);
+
+    try {
+      const res = await fetch('/reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, otp })
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.redirect) {
+        // Clear timer data on successful verification
+        clearOTPTimerData();
+        clearInterval(otpInterval);
+        
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Verified!',
+          text: 'Redirecting to reset password...',
+          showConfirmButton: false,
+          timer: 1500
+        }).then(() => {
+          window.location.href = data.redirect;
+        });
+      } else {
+        toggleVerifyLoader(false);
+        Swal.fire({
+          icon: 'error',
+          title: 'Invalid OTP',
+          text: data.error || 'Try again.'
+        });
+      }
+    } catch (err) {
+      toggleVerifyLoader(false);
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Something went wrong!'
+      });
+    }
+  });
+
+  // Resend OTP functionality
+  resendBtn.addEventListener('click', async (e) => {
+    e.preventDefault();
+
+    const email = document.getElementById('email').value.trim();
+
+    // Show loader
+    toggleResendLoader(true);
+
+    try {
+      const res = await fetch('/resend-reset-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'OTP Sent!',
+          text: 'A new OTP has been sent to your email.',
+          showConfirmButton: false,
+          timer: 1500
+        });
+
+        // Restart timer and reset expiration flag
+        clearInterval(otpInterval);
+        resetOTPTimer();
+        otpInterval = setInterval(updateOTPCountdown, 1000);
+        
+        // Hide resend button
+        resendBtn.style.display = 'none';
+      } else {
+        // Show error
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.error || 'Could not resend OTP. Please try again.'
+        });
+      }
+    } catch (err) {
+      // Show error
+      Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Something went wrong! Please try again.'
+      });
+    } finally {
+      toggleResendLoader(false);
+    }
+  });
+</script>

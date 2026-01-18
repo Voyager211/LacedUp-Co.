@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title><%= typeof title !== 'undefined' ? title : 'Admin Panel' %> | LacedUp Co. Admin</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet" />
+  
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+  
+  <!-- Geoapify Geocoder Autocomplete -->
+  <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/index.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/minimal.css">
+
+  <!-- badge color css -->
+  <link rel="stylesheet" href="/css/design-system.css">
+  
+  <!-- Global Admin Css -->
+  <link rel="stylesheet" href="/css/admin.css">
+
+  <% if (title === 'Order Details') { %>
+    <link rel="stylesheet" href="/css/admin/order-details.css">
+  <% } %>
+
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749988516/1_ySN03OR8YfuQp9hXOECYCw-removebg-preview_oj2kuv.png">
+</head>
+<body>
+
+
+
+  <div class="d-flex" style="min-height: 100vh;" id="admin-main-content">
+    <%- include('./partials/sidebar') %>
+
+    <main class="admin-content">
+      <%- include('./partials/header') %>
+      <div class="flex-grow-1">
+        <%- body %>
+      </div>
+      <%- include('./partials/footer') %>
+    </main>
+  </div>
+
+  <!-- Notifications Dropdown -->
+  <div id="notificationsDropdown" class="notifications-dropdown" aria-labelledby="notifications-bell-btn" aria-hidden="true">
+    <!-- Triangular pointer -->
+    <div class="dropdown-arrow"></div>
+
+    <!-- Dropdown content -->
+    <div class="dropdown-content notifications-dropdown-content">
+      <div class="dropdown-header">
+        <h5 class="dropdown-title" id="notificationsDropdownLabel">Notifications</h5>
+        <button type="button" class="btn-close-dropdown" aria-label="Close notifications" tabindex="0">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+      <div class="dropdown-body notifications-dropdown-body">
+        <!-- Placeholder for future notifications content -->
+        <div class="text-center text-muted py-5">
+          <i class="bi bi-bell-slash fs-1 mb-3"></i>
+          <p class="mb-0">No notifications yet</p>
+          <small>New notifications will appear here</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script> <!-- ✅ Added this line -->
+
+  <!-- Pagination Utility -->
+  <script src="/js/utils/pagination.js"></script>
+
+  <!-- Admin Page Transition Script -->
+  <script>
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Admin logout - direct redirect without loading screen
+      const adminLogoutBtn = document.querySelector('.logout-btn');
+      if (adminLogoutBtn) {
+        adminLogoutBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          // Direct redirect to logout without loading screen
+          window.location.href = '/admin/logout';
+        });
+      }
+
+      // Notifications dropdown functionality
+      const notificationsBellBtn = document.getElementById('notifications-bell-btn');
+      const notificationsDropdown = document.getElementById('notificationsDropdown');
+
+      if (notificationsBellBtn && notificationsDropdown) {
+        // Select close button within the dropdown context
+        const closeDropdownBtn = notificationsDropdown.querySelector('.btn-close-dropdown');
+        let isDropdownOpen = false;
+
+
+
+        // Function to show dropdown
+        function showDropdown() {
+          notificationsDropdown.classList.add('show');
+          notificationsBellBtn.setAttribute('aria-expanded', 'true');
+          notificationsDropdown.setAttribute('aria-hidden', 'false');
+          isDropdownOpen = true;
+        }
+
+        // Function to hide dropdown
+        function hideDropdown() {
+          notificationsDropdown.classList.remove('show');
+          notificationsBellBtn.setAttribute('aria-expanded', 'false');
+          notificationsDropdown.setAttribute('aria-hidden', 'true');
+          isDropdownOpen = false;
+
+          // Return focus to bell button for accessibility
+          notificationsBellBtn.focus();
+        }
+
+        // Handle bell button click
+        notificationsBellBtn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          if (isDropdownOpen) {
+            hideDropdown();
+          } else {
+            showDropdown();
+          }
+        });
+
+        // Handle close button click - Multiple approaches for reliability
+        if (closeDropdownBtn) {
+          // Primary click handler
+          closeDropdownBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          });
+
+          // Additional mousedown handler for better responsiveness
+          closeDropdownBtn.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+          });
+
+          // Touch event for mobile devices
+          closeDropdownBtn.addEventListener('touchstart', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          });
+
+          // Keyboard support for close button
+          closeDropdownBtn.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              hideDropdown();
+            }
+          });
+        }
+
+        // Event delegation approach as backup
+        notificationsDropdown.addEventListener('click', function(e) {
+          const closeBtn = e.target.closest('.btn-close-dropdown');
+          if (closeBtn) {
+            e.preventDefault();
+            e.stopPropagation();
+            hideDropdown();
+          }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+          if (isDropdownOpen && !notificationsDropdown.contains(e.target) && !notificationsBellBtn.contains(e.target)) {
+            hideDropdown();
+          }
+        });
+
+        // Keyboard accessibility
+        notificationsBellBtn.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (isDropdownOpen) {
+              hideDropdown();
+            } else {
+              showDropdown();
+            }
+          }
+        });
+
+        // Close dropdown with Escape key
+        document.addEventListener('keydown', function(e) {
+          if (e.key === 'Escape' && isDropdownOpen) {
+            hideDropdown();
+            notificationsBellBtn.focus(); // Return focus to bell button
+          }
+        });
+      }
+    });
+  </script>
+  
+  <script>
+    // Block/Unblock Alerts
+    document.addEventListener("DOMContentLoaded", () => {
+      document.querySelectorAll('.btn-block-confirm').forEach(button => {
+        button.addEventListener('click', function () {
+          const form = this.closest('form');
+          Swal.fire({
+            title: 'Are you sure?',
+            text: "This user will be blocked.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, block'
+          }).then((result) => {
+            if (result.isConfirmed) form.submit();
+          });
+        });
+      });
+
+      document.querySelectorAll('.btn-unblock-confirm').forEach(button => {
+        button.addEventListener('click', function () {
+          const form = this.closest('form');
+          Swal.fire({
+            title: 'Unblock this user?',
+            text: "They will be able to access the site again.",
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#aaa',
+            confirmButtonText: 'Yes, unblock'
+          }).then((result) => {
+            if (result.isConfirmed) form.submit();
+          });
+        });
+      });
+
+      toggleClearButton(); // Initial state on page load
+    });
+
+    // Clear button logic
+    function toggleClearButton() {
+      const input = document.getElementById('search-input');
+      const clearX = document.getElementById('clear-x');
+      if (clearX) clearX.style.display = input.value.trim() ? 'block' : 'none';
+    }
+
+    function clearSearch() {
+      const input = document.getElementById('search-input');
+      input.value = '';
+      toggleClearButton();
+      input.focus();
+    }
+
+    function validateSearch() {
+      return true;
+    }
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+
+</body>
+</html>

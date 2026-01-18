@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title><%= title || 'LacedUp Co.' %></title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+  <!-- CropperJS CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" rel="stylesheet" />
+
+  <!-- Geoapify Geocoder Autocomplete -->
+  <script src="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/index.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@geoapify/geocoder-autocomplete@^1/dist/minimal.css">
+
+  <!-- User CSS -->
+  <link rel="stylesheet" href="/css/user.css" />
+  <link rel="stylesheet" href="/css/design-system.css">
+
+  <!-- Pagination CSS (after Bootstrap to override styles) -->
+  <link rel="stylesheet" href="/css/pagination.css" />
+
+  <!-- Toastr CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css">
+
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      padding-top: 70px; /* Adjust based on your navbar height */
+    }
+  </style>
+  <link rel="icon" type="image/png" href="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749988516/1_ySN03OR8YfuQp9hXOECYCw-removebg-preview_oj2kuv.png">
+</head>
+
+<body>
+
+  <!-- Page Transition Overlay -->
+  <div id="page-transition-overlay" class="page-transition-overlay">
+    <div class="text-center">
+      <div class="transition-spinner"></div>
+      <div class="transition-text" id="transition-text">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Navbar Include -->
+  <%- include('../partials/navbar') %>
+
+  <!-- Main Content -->
+  <main id="main-content">
+    <%- body %>
+  </main>
+
+  <!-- Footer Include -->
+  <%- include('../partials/footer') %>
+
+  <!-- jQuery (required for Toastr) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Toastr JS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+
+  <!-- CropperJS -->
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+
+  <!-- Cart functionality -->
+  <script src="/js/user/cart.js"></script>
+
+  <!-- Wishlist functionality -->
+  <script src="/js/user/wishlist.js"></script>
+
+  <!-- Toastr Configuration -->
+  <script>
+    // Configure Toastr options for clean, professional appearance
+    toastr.options = {
+      "closeButton": true,
+      "debug": false,
+      "newestOnTop": true,
+      "progressBar": true,
+      "positionClass": "toast-top-right",
+      "preventDuplicates": true,
+      "onclick": null,
+      "showDuration": "400",
+      "hideDuration": "800",
+      "timeOut": "4000",
+      "extendedTimeOut": "1500",
+      "showEasing": "swing",
+      "hideEasing": "linear",
+      "showMethod": "slideDown",
+      "hideMethod": "slideUp",
+      "maxOpened": 3,
+      "tapToDismiss": true
+    };
+
+    // Global toast helper functions with clean messaging
+    window.showToast = {
+      success: function(message, title = '') {
+        // Clean success messages without redundant titles
+        toastr.success(message, title);
+      },
+      error: function(message, title = '') {
+        toastr.error(message, title);
+      },
+      warning: function(message, title = '') {
+        toastr.warning(message, title);
+      },
+      info: function(message, title = '') {
+        toastr.info(message, title);
+      }
+    };
+  </script>
+
+  <!-- Clean LacedUp Toastr Styling -->
+  <style>
+    /* Toast Container Positioning */
+    #toast-container {
+      position: fixed;
+      top: 80px;
+      right: 20px;
+      z-index: 9999;
+      width: 350px;
+    }
+
+    /* Base Toast Styling - Clean and Professional */
+    #toast-container > div {
+      position: relative;
+      background: #ffffff !important;
+      border: none !important;
+      border-radius: 12px !important;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+      margin-bottom: 12px !important;
+      padding: 16px 20px !important;
+      min-height: auto !important;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+      overflow: hidden !important;
+      border-left: 4px solid transparent !important;
+    }
+
+    /* Success Toast - LacedUp Green */
+    #toast-container > .toast-success {
+      border-left-color: #22c55e !important;
+      background: linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%) !important;
+    }
+
+    /* Error Toast - LacedUp Red */
+    #toast-container > .toast-error {
+      border-left-color: #ef4444 !important;
+      background: linear-gradient(135deg, #ffffff 0%, #fef2f2 100%) !important;
+    }
+
+    /* Warning Toast - LacedUp Orange */
+    #toast-container > .toast-warning {
+      border-left-color: #f59e0b !important;
+      background: linear-gradient(135deg, #ffffff 0%, #fffbeb 100%) !important;
+    }
+
+    /* Info Toast - LacedUp Blue */
+    #toast-container > .toast-info {
+      border-left-color: #3b82f6 !important;
+      background: linear-gradient(135deg, #ffffff 0%, #eff6ff 100%) !important;
+    }
+
+    /* Toast Title - Clean Typography */
+    #toast-container > div .toast-title {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      color: #111827 !important;
+      margin: 0 0 4px 0 !important;
+      line-height: 1.4 !important;
+      display: none !important; /* Hide titles for cleaner look */
+    }
+
+    /* Toast Message - Primary Content */
+    #toast-container > div .toast-message {
+      font-size: 14px !important;
+      font-weight: 500 !important;
+      color: #374151 !important;
+      line-height: 1.5 !important;
+      margin: 0 !important;
+      padding-right: 24px !important;
+    }
+
+    /* Close Button - Subtle and Clean */
+    #toast-container > div .toast-close-button {
+      position: absolute !important;
+      top: 12px !important;
+      right: 12px !important;
+      background: none !important;
+      border: none !important;
+      font-size: 18px !important;
+      color: #9ca3af !important;
+      cursor: pointer !important;
+      padding: 4px !important;
+      border-radius: 4px !important;
+      transition: all 0.2s ease !important;
+      opacity: 0.7 !important;
+    }
+
+    #toast-container > div .toast-close-button:hover {
+      background: rgba(0, 0, 0, 0.05) !important;
+      color: #6b7280 !important;
+      opacity: 1 !important;
+    }
+
+    /* Progress Bar - Subtle and Elegant */
+    #toast-container > div .toast-progress {
+      position: absolute !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      height: 3px !important;
+      background: rgba(0, 0, 0, 0.1) !important;
+      border-radius: 0 0 12px 12px !important;
+    }
+
+    /* Success Progress */
+    #toast-container > .toast-success .toast-progress {
+      background: #22c55e !important;
+    }
+
+    /* Error Progress */
+    #toast-container > .toast-error .toast-progress {
+      background: #ef4444 !important;
+    }
+
+    /* Warning Progress */
+    #toast-container > .toast-warning .toast-progress {
+      background: #f59e0b !important;
+    }
+
+    /* Info Progress */
+    #toast-container > .toast-info .toast-progress {
+      background: #3b82f6 !important;
+    }
+
+    /* Hover Effects - Subtle Elevation */
+    #toast-container > div:hover {
+      transform: translateY(-2px) !important;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Animation - Smooth Slide In */
+    #toast-container > div {
+      animation: slideInFromRight 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    @keyframes slideInFromRight {
+      from {
+        transform: translateX(100%) scale(0.95);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+      }
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      #toast-container {
+        top: 70px;
+        right: 15px;
+        left: 15px;
+        width: auto;
+      }
+
+      #toast-container > div {
+        margin-bottom: 10px !important;
+        padding: 14px 16px !important;
+      }
+
+      #toast-container > div .toast-message {
+        font-size: 13px !important;
+        padding-right: 20px !important;
+      }
+    }
+
+    /* Remove any conflicting default styles */
+    .toast {
+      background: none !important;
+      border: none !important;
+      color: inherit !important;
+    }
+  </style>
+
+  <!-- Page Transition Script -->
+  <script>
+    // Page transition utilities
+    window.PageTransition = {
+      overlay: null,
+      transitionText: null,
+      mainContent: null,
+
+      init() {
+        this.overlay = document.getElementById('page-transition-overlay');
+        this.transitionText = document.getElementById('transition-text');
+        this.mainContent = document.getElementById('main-content');
+      },
+
+      show(text = 'Loading...') {
+        if (!this.overlay) this.init();
+        this.transitionText.textContent = text;
+        this.overlay.classList.add('show');
+      },
+
+      hide() {
+        if (!this.overlay) this.init();
+        this.overlay.classList.remove('show');
+      },
+
+      fadeOut(callback, text = 'Loading...') {
+        if (!this.mainContent) this.init();
+        this.mainContent.style.opacity = '0';
+        this.show(text);
+
+        // Store the callback and timeout for potential cleanup
+        this.currentTimeout = setTimeout(() => {
+          if (callback) callback();
+        }, 300);
+      },
+
+      fadeIn() {
+        if (!this.mainContent) this.init();
+        this.hide();
+
+        // Clear any pending timeouts
+        if (this.currentTimeout) {
+          clearTimeout(this.currentTimeout);
+          this.currentTimeout = null;
+        }
+
+        setTimeout(() => {
+          this.mainContent.style.opacity = '1';
+        }, 100);
+      },
+
+      // Force clear all transitions (for browser navigation)
+      forceReset() {
+        if (!this.overlay || !this.mainContent) this.init();
+
+        // Clear any pending timeouts
+        if (this.currentTimeout) {
+          clearTimeout(this.currentTimeout);
+          this.currentTimeout = null;
+        }
+
+        // Immediately hide overlay and show content
+        this.overlay.classList.remove('show');
+        this.mainContent.style.opacity = '1';
+      }
+    };
+
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      PageTransition.init();
+
+      // Fade in the page on load
+      setTimeout(() => {
+        PageTransition.fadeIn();
+      }, 100);
+
+      // Handle browser back/forward button navigation
+      window.addEventListener('popstate', function(event) {
+        // Force reset all transitions when browser navigates
+        PageTransition.forceReset();
+      });
+
+      // Handle page visibility changes (when user comes back to tab)
+      document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) {
+          // Page became visible, ensure transitions are cleared
+          PageTransition.forceReset();
+        }
+      });
+
+      // Handle beforeunload to clear transitions
+      window.addEventListener('beforeunload', function() {
+        PageTransition.forceReset();
+      });
+
+      // Global AJAX error handler for blocked users
+      const originalFetch = window.fetch;
+      window.fetch = function(...args) {
+        return originalFetch.apply(this, args)
+          .then(response => {
+            // Check if response indicates user is blocked
+            if (response.status === 403) {
+              return response.json().then(data => {
+                if (data.blocked) {
+                  // Show blocked user alert and redirect
+                  Swal.fire({
+                    icon: 'warning',
+                    title: 'Account Blocked',
+                    text: data.error || 'Your account has been blocked. Please contact support.',
+                    confirmButtonText: 'OK',
+                    confirmButtonColor: '#dc3545',
+                    allowOutsideClick: false,
+                    allowEscapeKey: false
+                  }).then(() => {
+                    window.location.href = data.redirect || '/login';
+                  });
+                  throw new Error('User blocked');
+                }
+                throw new Error(data.error || 'Request failed');
+              });
+            }
+            return response;
+          });
+      };
+
+      // Add crossfade transitions to navigation links (excluding auth pages)
+      const navLinks = document.querySelectorAll('a[href]:not([href*="/login"]):not([href*="/signup"]):not([href*="/logout"]):not([href^="mailto:"]):not([href^="tel:"]):not([href^="#"]):not([target="_blank"])');
+
+      navLinks.forEach(link => {
+        // Skip external links and special cases
+        if (link.hostname && link.hostname !== window.location.hostname) return;
+        if (link.classList.contains('no-transition')) return;
+        if (link.closest('.dropdown-menu')) return; // Skip dropdown items for now
+
+        link.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+
+          // Skip if it's the current page
+          if (href === window.location.pathname) return;
+
+          // Skip if it's a form submission or special action
+          if (this.closest('form') || this.type === 'submit') return;
+
+          e.preventDefault();
+
+          PageTransition.fadeOut(() => {
+            window.location.href = href;
+          }, 'Loading...');
+        });
+      });
+    });
+  </script>
+</body>
+</html>

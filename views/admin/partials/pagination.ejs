@@ -1,0 +1,104 @@
+<% if (totalPages && totalPages > 1) { %>
+  <nav class="mt-4">
+    <ul class="pagination justify-content-center" id="pagination-container">
+      <!-- Previous Button -->
+      <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
+        <a class="page-link pagination-btn <%= currentPage === 1 ? 'disabled-btn' : '' %>"
+           href="#"
+           data-page="<%= currentPage - 1 %>"
+           <%= currentPage === 1 ? 'tabindex="-1" aria-disabled="true"' : '' %>>
+          <i class="bi bi-chevron-left"></i> Previous
+        </a>
+      </li>
+
+      <!-- Page Numbers -->
+      <% for (let i = 1; i <= totalPages; i++) { %>
+        <li class="page-item <%= i === currentPage ? 'active' : '' %>">
+          <a class="page-link pagination-btn" href="#" data-page="<%= i %>"><%= i %></a>
+        </li>
+      <% } %>
+
+      <!-- Next Button -->
+      <li class="page-item <%= currentPage === totalPages ? 'disabled' : '' %>">
+        <a class="page-link pagination-btn <%= currentPage === totalPages ? 'disabled-btn' : '' %>"
+           href="#"
+           data-page="<%= currentPage + 1 %>"
+           <%= currentPage === totalPages ? 'tabindex="-1" aria-disabled="true"' : '' %>>
+          Next <i class="bi bi-chevron-right"></i>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Enhanced Pagination Styles -->
+  <style>
+    .pagination {
+      margin-bottom: 0;
+    }
+
+    .pagination .page-item.active .page-link {
+      background-color: #1a1a1a;
+      border-color: #1a1a1a;
+      color: white;
+      font-weight: 600;
+    }
+
+    .pagination .page-link {
+      color: #333;
+      border: 1px solid #dee2e6;
+      border-radius: 6px;
+      margin: 0 2px;
+      padding: 8px 12px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      text-decoration: none;
+    }
+
+    /* Red hover effect for enabled buttons */
+    .pagination .page-link:not(.disabled-btn):hover {
+      background-color: #e03a2f;
+      border-color: #e03a2f;
+      color: white;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+    }
+
+    /* Disabled button styles */
+    .pagination .page-item.disabled .page-link,
+    .pagination .page-link.disabled-btn {
+      color: #6c757d;
+      background-color: #f8f9fa;
+      border-color: #dee2e6;
+      cursor: not-allowed;
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    /* Active page styling */
+    .pagination .page-item.active .page-link:hover {
+      background-color: #1a1a1a;
+      border-color: #1a1a1a;
+      color: white;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Icon spacing */
+    .pagination .page-link i {
+      font-size: 0.9em;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 576px) {
+      .pagination .page-link {
+        padding: 6px 8px;
+        font-size: 0.9rem;
+      }
+
+      .pagination .page-link i {
+        font-size: 0.8em;
+      }
+    }
+  </style>
+<% } %>
+ 

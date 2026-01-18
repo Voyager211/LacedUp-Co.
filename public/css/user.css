@@ -1,0 +1,788 @@
+/* ========= SMOKED CONCRETE PALETTE ========= */
+:root {
+  --color-bg-main: #f2f2f2;
+  --color-card: #F2F2F2;
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #555555;
+  --color-accent-red: #E03A2F;
+  --color-accent-blue: #3A7DFF;
+  --color-border: #D1D1D1;
+}
+
+/* ========= GLOBAL ========= */
+body {
+  background-color: var(--color-bg-main);
+  color: var(--color-text-primary);
+  font-family: 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ========= CARD / FORM CONTAINERS ========= */
+.auth-card {
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+/* ========= TYPOGRAPHY ========= */
+h1, h2, h3, h4 {
+  color: var(--color-text-primary);
+  font-weight: 700;
+}
+
+.text-secondary-custom {
+  color: var(--color-text-secondary);
+}
+
+/* ========= BUTTONS ========= */
+.btn-primary-custom {
+  background-color: var(--color-text-primary);
+  color: white;
+  border: none;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.btn-primary-custom:hover {
+  background-color: var(--color-accent-red);
+  color: white; /* keep text white */
+  transform: scale(1.015);
+  box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
+}
+
+
+.btn-primary-custom:active {
+  transform: scale(0.97);
+}
+
+.btn-accent-red {
+  background-color: var(--color-accent-red);
+  color: white;
+}
+
+.btn-accent-blue {
+  background-color: var(--color-accent-blue);
+  color: white;
+}
+
+/* ========= FORMS ========= */
+.form-control {
+  background-color: var(--color-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
+}
+
+.form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+/* ========= PASSWORD TOGGLE BUTTON ========= */
+.password-toggle-btn {
+  cursor: pointer;
+  transition: color 0.3s ease, transform 0.2s ease;
+  font-size: 1.1rem;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle-btn:hover {
+  color: var(--color-accent-red) !important;
+  transform: scale(1.1);
+}
+
+.password-toggle-btn:focus {
+  outline: 2px solid var(--color-accent-red);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.password-toggle-btn:active {
+  transform: scale(0.95);
+}
+
+/* ========= LINKS ========= */
+a {
+  color: var(--color-accent-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: none;
+}
+
+/* ========= FLASH MESSAGES ========= */
+.alert {
+  font-size: 0.95rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+}
+
+/* ========= RESPONSIVE IMAGE SECTIONS ========= */
+.auth-image {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* ========= GOOGLE BUTTON ========= */
+.google-btn {
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-decoration: none !important;
+}
+
+.google-btn:hover {
+  color: #202124;
+  background-color: #f9f9f9;
+  box-shadow: 0 4px 12px rgba(66, 133, 244, 0.2);
+  text-decoration: none !important;
+}
+
+.google-btn span {
+  text-decoration: none !important;
+}
+
+.promo-banner {
+  background-color: var(--color-bg-main);
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.promo-banner .left-content {
+  max-width: 55%;
+}
+
+.promo-banner .right-image {
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .promo-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+  .promo-banner .left-content {
+    max-width: 100%;
+  }
+  .promo-banner .right-image {
+    margin-top: 1rem;
+  }
+}
+
+.navbar {
+  background-color: #000 !important;
+}
+
+/* ========= NAVBAR LINK HOVER ANIMATION ========= */
+.navbar-nav .nav-link {
+  position: relative;
+  color: white;
+  font-weight: 400;
+  padding-bottom: 4px;
+}
+
+.navbar-nav .nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  width: 0;
+  background-color: var(--color-accent-red);
+  transition: width 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover::after,
+.navbar-nav .nav-link.active::after {
+  width: 100%;
+}
+
+/* ========= AUTH BUTTON HOVER (RED BG, WHITE TEXT) ========= */
+.btn.btn-outline-light:hover,
+.btn.btn-light.text-dark.fw-semibold:hover {
+  background-color: var(--color-accent-red) !important;
+  color: white !important;
+  border-color: var(--color-accent-red) !important;
+}
+
+/* ========= NAVBAR ICON BUTTONS ========= */
+.navbar-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: white;
+  text-decoration: none;
+  border: none;
+  background: none;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  font-size: 1.2rem;
+  position: relative;
+}
+
+.navbar-icon-btn:hover {
+  color: var(--color-accent-red) !important;
+  transform: scale(1.1);
+  text-decoration: none;
+}
+
+.navbar-icon-btn:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 58, 47, 0.3);
+}
+
+/* Remove dropdown arrow for profile button */
+.navbar-icon-btn.dropdown-toggle::after {
+  display: none;
+}
+
+/* ========= PROFILE DROPDOWN ========= */
+.profile-dropdown {
+  background-color: white;
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  padding: 0.5rem 0;
+  min-width: 200px;
+  margin-top: 0.5rem;
+}
+
+.profile-dropdown .dropdown-header {
+  color: var(--color-text-primary);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  font-size: 0.95rem;
+}
+
+.profile-dropdown .dropdown-item {
+  color: var(--color-text-primary);
+  padding: 0.75rem 1rem;
+  transition: all 0.3s ease;
+  border: none;
+  background: none;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+}
+
+.profile-dropdown .dropdown-item:hover {
+  background-color: var(--color-accent-red);
+  color: white;
+  transform: translateX(5px);
+}
+
+.profile-dropdown .dropdown-item.logout-btn {
+  border: 1px solid #dc3545;
+  color: #dc3545;
+  background-color: transparent;
+  border-radius: 6px;
+  margin: 0.25rem 1rem; /* Increased horizontal margin to match dropdown padding */
+  padding: 0.5rem 0.75rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  text-align: center;
+  max-width: calc(100% - 2rem); /* Ensure button doesn't exceed container width */
+  box-sizing: border-box;
+}
+
+.profile-dropdown .dropdown-item.logout-btn:hover {
+  background-color: #dc3545;
+  color: white;
+  transform: translateX(0); /* Override the general dropdown item transform */
+  border-color: #dc3545;
+}
+
+.profile-dropdown .dropdown-divider {
+  border-color: var(--color-border);
+  margin: 0.5rem 0;
+}
+
+/* ========= RESPONSIVE NAVBAR ICONS ========= */
+@media (max-width: 768px) {
+  .navbar-icon-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 1.1rem;
+  }
+
+  .profile-dropdown {
+    min-width: 180px;
+    margin-top: 0.25rem;
+  }
+
+  .profile-dropdown .dropdown-item {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.9rem;
+  }
+
+  .profile-dropdown .dropdown-item.logout-btn {
+    margin: 0.25rem 0.8rem; /* Adjust margin for mobile */
+    max-width: calc(100% - 1.6rem);
+  }
+}
+
+@media (max-width: 576px) {
+  .navbar-icon-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    margin-right: 0.5rem !important;
+  }
+
+  .profile-dropdown {
+    min-width: 160px;
+  }
+
+  .navbar-search-container {
+    min-width: 200px;
+  }
+
+  .navbar-search-suggestions-dropdown {
+    max-height: 300px;
+  }
+}
+
+/* ========= NAVBAR SEARCH DROPDOWN ========= */
+.navbar-search-container {
+  min-width: 250px;
+  z-index: 1010; /* Higher than Bootstrap's navbar z-index */
+}
+
+.navbar-search-suggestions-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  max-height: 400px;
+  overflow-y: auto;
+  display: none;
+  width: 100%;
+  z-index: 1020; /* Highest z-index to ensure it appears above everything */
+  margin-top: 4px;
+}
+
+.navbar-search-suggestions-dropdown.show {
+  display: block;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-decoration: none;
+  color: inherit;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:hover,
+.navbar-search-suggestions-dropdown .suggestion-item.highlighted {
+  background-color: #f8f9fa;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-item:last-child {
+  border-bottom: none;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-image {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-content {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-name {
+  font-weight: 500;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-details {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-brand {
+  font-weight: 500;
+}
+
+.navbar-search-suggestions-dropdown .suggestion-price {
+  font-weight: 600;
+  color: var(--color-accent-red);
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+
+.navbar-search-suggestions-dropdown .suggestions-loading,
+.navbar-search-suggestions-dropdown .suggestions-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--color-text-secondary);
+}
+
+/* Ensure navbar has proper z-index hierarchy */
+.navbar {
+  z-index: 1000;
+}
+
+.navbar .dropdown-menu {
+  z-index: 1015;
+}
+
+/* ========= PAGE TRANSITION EFFECTS ========= */
+.page-transition-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.8);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.page-transition-overlay.show {
+  opacity: 1;
+  visibility: visible;
+}
+
+.page-fade-out {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.page-fade-in {
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+/* Loading spinner for transitions */
+.transition-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top: 3px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.transition-text {
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-top: 1rem;
+  text-align: center;
+}
+
+/* Product card styling */
+.product-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+  /* Ensure product cards stay below search elements */
+  position: relative;
+  z-index: 10;
+}
+
+.product-card:hover {
+  transform: translateY(-15px);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.25);
+  /* Maintain z-index even on hover */
+  z-index: 10;
+}
+
+/* Footer */
+.footer-black {
+  background-color: #000;
+  color: #ccc;
+  padding-bottom: 3rem; /* ✅ add this for spacing below the footer */
+}
+
+
+.footer-black a,
+.footer-black .nav-link,
+.footer-black p,
+.footer-black h6 {
+  color: #ccc !important;
+}
+
+.footer-black a:hover,
+.footer-black .nav-link:hover {
+  color: white !important;
+  text-decoration: underline;
+}
+
+.footer-black .nav-link {
+  font-size: 0.95rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+
+/* Footer Enhancements */
+.footer-black hr {
+  border-color: #ccc !important; /* Ensure the line is visible */
+}
+
+.footer-black .footer-icons i {
+  color: #ccc !important;  /* Match list item color */
+  opacity: 1;              /* Make sure they're not faded */
+}
+
+/* ========= SHOP FILTER SIDEBAR ========= */
+.filter-sidebar {
+  background-color: white;
+  border-radius: 12px;
+  border-top: 4px solid var(--color-accent-red);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  overflow: hidden;
+}
+
+.filter-sidebar:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 16px 28px rgba(0, 0, 0, 0.15);
+}
+
+.filter-sidebar .form-label {
+  color: #000000;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.filter-sidebar .form-control,
+.filter-sidebar .form-select {
+  background-color: white;
+  border: 1px solid var(--color-border);
+  color: #000000;
+}
+
+.filter-sidebar .form-control::placeholder {
+  color: var(--color-text-secondary);
+}
+
+.filter-sidebar .form-control:focus,
+.filter-sidebar .form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 58, 47, 0.2);
+  border-color: var(--color-accent-red);
+}
+
+/* ========= GLOBAL FORM FOCUS STYLES ========= */
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 58, 47, 0.2);
+  border-color: var(--color-accent-red);
+}
+
+.top-controls-bar .form-control:focus,
+.top-controls-bar .form-select:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(224, 58, 47, 0.2);
+  border-color: var(--color-accent-red);
+}
+
+/* ========= SEARCH INPUT WITH ICON ========= */
+.search-input-container {
+  position: relative;
+  /* Ensure search container is above top controls bar */
+  z-index: 200;
+}
+
+.search-input-container .search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-text-secondary);
+  transition: color 0.3s ease;
+  cursor: pointer;
+  z-index: 5;
+}
+
+.search-input-container .search-icon:hover {
+  color: var(--color-accent-red);
+}
+
+.search-input-container .clear-btn {
+  position: absolute;
+  right: 40px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  z-index: 5;
+  display: none;
+}
+
+.search-input-container .clear-btn:hover {
+  color: var(--color-accent-red);
+}
+
+/* ========= SIZE FILTER ========= */
+.size-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.size-option {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background-color: white;
+  color: #000000;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.size-option:hover {
+  border-color: var(--color-accent-red);
+  color: var(--color-accent-red);
+}
+
+.size-option.selected {
+  background-color: var(--color-accent-red);
+  border-color: var(--color-accent-red);
+  color: white;
+}
+
+/* ========= TOP CONTROLS BAR ========= */
+.top-controls-bar {
+  background-color: white;
+  border-radius: 12px;
+  border-top: 4px solid var(--color-accent-red);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  /* Ensure top controls bar is above product cards */
+  position: relative;
+  z-index: 100;
+}
+
+.top-controls-bar:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Search dropdown z-index hierarchy ensures proper layering */
+
+.product-count {
+  font-weight: 600;
+  color: #000000;
+  font-size: 1.1rem;
+}
+
+/* ========= FILTER BUTTONS ========= */
+.btn-apply-filters {
+  background-color: #000000;
+  color: white;
+  border: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-apply-filters:hover {
+  background-color: var(--color-accent-red);
+  transform: scale(1.02);
+  color: white;
+}
+
+.btn-reset-filters {
+  background-color: transparent;
+  color: #000000;
+  border: 2px solid var(--color-border);
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-reset-filters:hover {
+  border-color: var(--color-accent-red);
+  color: var(--color-accent-red);
+  transform: scale(1.02);
+}
+
+/* ========= OUT OF STOCK OVERLAY ========= */
+.product-card.out-of-stock {
+  position: relative;
+}
+
+.out-of-stock-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(128, 128, 128, 0.7);
+  z-index: 20;
+  border-radius: inherit;
+  pointer-events: none; /* Allow clicks to pass through to the product link */
+}
+
+.sold-out-ribbon {
+  position: absolute;
+  top: 15px;
+  left: -30px;
+  background-color: #dc3545;
+  color: white;
+  padding: 8px 40px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transform: rotate(-45deg);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+  z-index: 25;
+}
+
+/* Ensure out of stock products are still clickable */
+.product-card.out-of-stock a {
+  position: relative;
+  z-index: 30;
+}
+
+/* Slightly reduce hover effect for out of stock products */
+.product-card.out-of-stock:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}

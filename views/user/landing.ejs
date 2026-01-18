@@ -1,0 +1,106 @@
+<%- include('../user/partials/banner') %>
+
+<div class="container py-5">
+  <!-- New Arrivals -->
+  <section class="mb-5">
+    <h3 class="mb-3 fw-bold">New Arrivals</h3>
+    <div class="row">
+      <% newArrivals.forEach(product => { %>
+        <%- include('../user/partials/product-card', { product, user }) %>
+      <% }) %>
+    </div>
+  </section>
+
+  <!-- Best Sellers -->
+  <section class="mb-5">
+    <h3 class="mb-3 fw-bold">Best Sellers</h3>
+    <div class="row">
+      <% bestSellers.forEach(product => { %>
+        <%- include('../user/partials/product-card', { product, user }) %>
+      <% }) %>
+    </div>
+  </section>
+
+  <%- include('./partials/testimonials') %>
+
+</div>
+
+<%- include('./partials/join-community') %>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Cart and Wishlist button functionality with authentication check
+  const cartButtons = document.querySelectorAll('.cart-btn');
+  const wishlistButtons = document.querySelectorAll('.wishlist-btn');
+
+  // Function to handle fade-out transition and redirect
+  function redirectToLogin() {
+    document.body.style.transition = 'opacity 0.4s ease';
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+      window.location.href = '/login';
+    }, 400);
+  }
+
+  // Cart button handlers
+  cartButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      const productId = this.dataset.id;
+
+      <% if (!user) { %>
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+
+      // User authenticated - redirect to product details for size selection
+      console.log('Redirecting to product details for size selection:', productId);
+
+      // Find the product card to get the slug
+      const productCard = this.closest('.product-card');
+      const productLink = productCard.querySelector('a[href*="/product/"]');
+
+      if (productLink) {
+        // Redirect to product details page for size selection
+        window.location.href = productLink.href;
+      } else {
+        // Fallback: redirect using product ID
+        window.location.href = `/product/${productId}`;
+      }
+    });
+  });
+
+  // Wishlist button handlers
+  wishlistButtons.forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      const productId = this.dataset.id;
+
+      <% if (!user) { %>
+        // User not authenticated - redirect to login
+        redirectToLogin();
+        return;
+      <% } %>
+
+      // User authenticated - handle wishlist functionality
+      console.log('Adding to wishlist:', productId);
+
+      // Toggle heart icon and color
+      const icon = this.querySelector('i');
+      if (icon.classList.contains('bi-heart')) {
+        icon.classList.remove('bi-heart');
+        icon.classList.add('bi-heart-fill');
+        this.classList.remove('btn-outline-secondary');
+        this.classList.add('btn-danger');
+      } else {
+        icon.classList.remove('bi-heart-fill');
+        icon.classList.add('bi-heart');
+        this.classList.remove('btn-danger');
+        this.classList.add('btn-outline-secondary');
+      }
+    });
+  });
+});
+</script>
+

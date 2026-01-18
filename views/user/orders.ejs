@@ -1,0 +1,961 @@
+<div class="container py-4">
+  <!-- Breadcrumbs -->
+  <%- include('partials/breadcrumb', {
+    breadcrumbs: [
+      { label: 'Home', href: '/' },
+      { label: 'My Profile', href: '/profile' },
+      { label: 'My Orders' }
+    ]
+  }) %>
+
+  <!-- Main Layout: Sidebar + Content -->
+  <div class="row g-4">
+    <!-- Left Sidebar Navigation -->
+    <div class="col-lg-3 col-md-4">
+      <%- include('partials/profile-sidebar.ejs', { user: user, active: 'orders' }) %>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="col-lg-9 col-md-8">
+      <div class="profile-content">
+        <div class="content-card">
+          <!-- top bar -->
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
+            <h2 class="content-title mb-0">My Orders</h2>
+            <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
+              <%- include('partials/order-search') %>
+              <select class="form-select" id="orderStatusFilter" style="width: auto; min-width: 140px;">
+                <option value="">All Orders</option>
+                <option value="Pending">Pending</option>
+                <option value="Processing">Processing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="Returned">Returned</option>
+              </select>
+            </div>
+          </div>
+
+
+          <!-- Orders Container -->
+          <div id="ordersContainer">
+            <% if (orders && orders.length > 0) { %>
+              <% orders.forEach(order => { %>
+                <div class="order-card mb-3" data-status="<%= order.status %>">
+                  <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                      <!-- Order Header -->
+                      <div class="row mb-3 pb-3 border-bottom">
+                        <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
+                          <h6 class="mb-1 fw-bold text-dark">Order #<%= order.orderId %></h6>
+                          <small class="text-muted">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            <%= new Date(order.createdAt).toLocaleDateString('en-IN') %>
+                          </small>
+                        </div>
+                        <div class="col-lg-3 col-md-3 mb-2 mb-lg-0 text-center">
+                          <% 
+                            let statusClass = 'secondary';
+                            if (order.status === 'Pending') statusClass = 'warning';
+                            else if (order.status === 'Processing') statusClass = 'primary';
+                            else if (order.status === 'Shipped') statusClass = 'info';
+                            else if (order.status === 'Delivered') statusClass = 'success';
+                            else if (order.status === 'Cancelled') statusClass = 'danger';
+                            else if (order.status === 'Returned') statusClass = 'warning';
+                            else if (order.status === 'Partially Returned') statusClass = 'warning';
+                            else if (order.status === 'Partially Delivered') statusClass = 'info';
+                            else if (order.status === 'Processing Return') statusClass = 'warning';
+                          %>
+                          <span class="badge bg-<%= statusClass %> fs-6 px-3 py-2">
+                            <%= order.status %>
+                          </span>
+                        </div>
+                        <div class="col-lg-3 col-md-3 text-end">
+                          <div class="fw-bold text-dark fs-5">₹<%= (order.totalAmount - (order.couponDiscount || 0)).toLocaleString('en-IN') %></div>
+                          <small class="text-muted text-uppercase">
+                            <%= order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod %>
+                          </small>
+                        </div>
+                      </div>
+
+                      <!-- Items Display (Show max 4 items) -->
+                      <div class="items-container">
+                        <% 
+                          const displayItems = order.items.slice(0, 4);
+                          const remainingCount = order.items.length - 4;
+                        %>
+                        
+                        <% displayItems.forEach((item, index) => { %>
+                          <div class="item-row d-flex align-items-center py-2 <%= index < displayItems.length - 1 ? 'border-bottom' : '' %>">
+                            <!-- Product Image -->
+                            <div class="item-image me-3">
+                              <% if (item.productId && item.productId.mainImage) { %>
+                                <img src="<%= item.productId.mainImage %>" 
+                                    alt="<%= item.productId.productName %>" 
+                                    class="product-thumb">
+                              <% } else { %>
+                                <div class="product-thumb-placeholder">
+                                  <i class="bi bi-image"></i>
+                                </div>
+                              <% } %>
+                            </div>
+                            
+                            <!-- Product Info -->
+                            <div class="item-info flex-grow-1">
+                              <div class="fw-semibold text-dark">
+                                <%= item.productId ? item.productId.productName : 'Product' %>
+                              </div>
+                              <small class="text-muted">
+                                Size: <%= item.size %> | Qty: <%= item.quantity %>
+                              </small>
+                            </div>
+                            
+                            <!-- Item Price -->
+                            <div class="item-price text-end">
+                              <div class="fw-semibold">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
+                              <% if (item.status && item.status !== order.status) { %>
+                                <small class="badge bg-secondary"><%= item.status %></small>
+                              <% } %>
+                            </div>
+                          </div>
+                        <% }) %>
+                        
+                        <!-- Show remaining items count -->
+                        <% if (remainingCount > 0) { %>
+                          <div class="text-center py-2">
+                            <button class="btn btn-link text-decoration-none p-0" 
+                                    onclick="viewOrderDetails('<%= order.orderId %>')">
+                              <i class="bi bi-plus-circle me-1"></i>
+                              + <%= remainingCount %> more item<%= remainingCount > 1 ? 's' : '' %>
+                            </button>
+                          </div>
+                        <% } %>
+                      </div>
+
+                      <!-- Order Actions -->
+                      <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12">
+                          <div class="order-actions d-flex flex-wrap gap-2 justify-content-end">
+                            <!-- View Details Button -->
+                            <button class="btn btn-primary btn-sm" 
+                                    onclick="viewOrderDetails('<%= order.orderId %>')">
+                              <i class="bi bi-eye me-1"></i>View Details
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+              <% }) %>
+            <% } else { %>
+              <!-- Empty State -->
+              <div class="text-center py-5" id="emptyState">
+                <div class="mb-4">
+                  <i class="bi bi-bag-x display-1 text-muted"></i>
+                </div>
+                <h4 class="text-muted mb-3">No Orders Found</h4>
+                <p class="text-muted mb-4">You haven't placed any orders yet. Start shopping to see your orders here!</p>
+                <a href="/shop" class="btn btn-primary">
+                  <i class="bi bi-shop me-2"></i>Start Shopping
+                </a>
+              </div>
+            <% } %>
+          </div>
+
+
+
+
+          <!-- Pagination -->
+          <% if (totalPages > 1) { %>
+            <div class="row mt-4">
+              <div class="col-12">
+                <%- include('partials/pagination', {
+                  currentPage: currentPage,
+                  totalPages: totalPages
+                }) %>
+              </div>
+            </div>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- Order Actions Modal -->
+<div class="modal fade" id="orderActionModal" tabindex="-1" aria-labelledby="orderActionModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="orderActionModalLabel">Order Action</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="orderActionModalBody">
+        <!-- Dynamic content will be loaded here -->
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" id="confirmOrderAction">Confirm</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Profile Content Styles */
+.profile-content {
+  background: #f8f9fa;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.content-card {
+  padding: 2rem;
+  background: #ffffff;
+}
+
+.content-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #000;
+  margin-bottom: 0;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid #e9ecef;
+}
+
+/* Enhanced Order Card Styles */
+.order-card {
+  transition: all 0.3s ease;
+  position: relative;
+  margin-bottom: 1.5rem;
+}
+
+.order-card:hover {
+  transform: translateY(-2px);
+}
+
+.order-card:active {
+  transform: translateY(0);
+}
+
+.order-card .card {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #dee2e6; /* Right, top, bottom borders */
+  border-left: 5px solid #6c757d; /* Default left border */
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 
+              0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.order-card:hover .card {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12), 
+              0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.order-card .card-body {
+  padding: 1.5rem;
+  position: relative;
+}
+
+/* Status-Specific Left Borders - Matching Badge Colors */
+.order-card[data-status="Pending"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Processing"] .card {
+  border-left: 5px solid #0d6efd; /* Bootstrap primary */
+}
+
+.order-card[data-status="Shipped"] .card {
+  border-left: 5px solid #0dcaf0; /* Bootstrap info */
+}
+
+.order-card[data-status="Delivered"] .card {
+  border-left: 5px solid #198754; /* Bootstrap success */
+}
+
+.order-card[data-status="Cancelled"] .card {
+  border-left: 5px solid #dc3545; /* Bootstrap danger */
+}
+
+.order-card[data-status="Returned"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Partially Returned"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+.order-card[data-status="Partially Delivered"] .card {
+  border-left: 5px solid #0dcaf0; /* Bootstrap info */
+}
+
+.order-card[data-status="Processing Return"] .card {
+  border-left: 5px solid #ffc107; /* Bootstrap warning */
+}
+
+/* Product Thumbnail Styles */
+.product-thumb {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.product-thumb-placeholder {
+  width: 60px;
+  height: 60px;
+  background-color: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6c757d;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  font-size: 1.25rem;
+}
+
+/* Item Row Styles */
+.item-row {
+  min-height: 70px;
+  transition: background-color 0.2s ease;
+  padding: 0.75rem 0.5rem !important;
+  margin: 0 -0.5rem;
+  border-radius: 8px;
+}
+
+.item-row:hover {
+  background-color: #f8f9fa;
+}
+
+.item-row .item-image {
+  flex-shrink: 0;
+}
+
+.item-row .item-info {
+  min-width: 0;
+  flex: 1;
+}
+
+.item-row .item-info .fw-semibold {
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin-bottom: 0.25rem;
+  color: #212529;
+}
+
+.item-row .item-info small {
+  font-size: 0.8rem;
+  color: #6c757d;
+}
+
+.item-row .item-price {
+  flex-shrink: 0;
+  min-width: 120px;
+}
+
+.item-row .item-price .fw-semibold {
+  font-size: 1rem;
+  color: #000;
+}
+
+.item-row:last-child {
+  border-bottom: none !important;
+}
+
+/* Items Container */
+.items-container {
+  background: rgba(248, 249, 250, 0.3);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin: 0.5rem 0;
+}
+
+/* Order Header */
+.order-card .border-bottom {
+  border-color: #e9ecef !important;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.order-card .border-top {
+  border-color: #e9ecef !important;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+
+/* Order Info */
+.order-info h6 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+/* Status & Amount */
+.status-amount .badge {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.status-amount .fs-5 {
+  font-size: 1.25rem !important;
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+}
+
+/* Enhanced Badges */
+.badge {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Order Actions */
+.order-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.order-actions .btn {
+  font-size: 0.875rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  transition: all 0.2s ease;
+}
+
+.order-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+}
+
+.order-actions .btn-primary {
+  background-color: #000;
+  border-color: #000;
+}
+
+.order-actions .btn-primary:hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.order-actions .btn-outline-danger:hover,
+.order-actions .btn-outline-info:hover,
+.order-actions .btn-outline-success:hover,
+.order-actions .btn-outline-warning:hover {
+  transform: translateY(-1px);
+}
+
+/* Remaining Items Button */
+.items-container .btn-link {
+  color: #0d6efd;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.items-container .btn-link:hover {
+  color: #0a58ca;
+  text-decoration: underline !important;
+}
+
+/* Loading State */
+.loading-state {
+  padding: 3rem 0;
+  text-align: center;
+}
+
+.loading-state .spinner-border {
+  width: 3rem;
+  height: 3rem;
+  border-width: 0.3rem;
+  color: #000;
+}
+
+/* Empty State */
+#emptyState {
+  padding: 4rem 2rem;
+  background: #f8f9fa;
+  border-radius: 12px;
+  margin: 2rem 0;
+  text-align: center;
+}
+
+#emptyState i {
+  opacity: 0.5;
+  color: #6c757d;
+}
+
+#emptyState h4 {
+  color: #495057;
+  font-weight: 600;
+}
+
+#emptyState p {
+  color: #6c757d;
+  font-size: 1rem;
+}
+
+/* Retry Payment Alert */
+.alert-warning {
+  background-color: #fff3cd;
+  border-color: #ffecb5;
+  color: #664d03;
+}
+
+/* Filter Dropdown */
+#orderStatusFilter {
+  border-radius: 6px;
+  border: 1px solid #dee2e6;
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+#orderStatusFilter:focus {
+  border-color: #000;
+  box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .order-card .card-body {
+    padding: 1.25rem;
+  }
+  
+  .status-amount {
+    text-align: left !important;
+  }
+  
+  .order-actions {
+    margin-top: 1rem;
+  }
+  
+  .order-card[data-status="Pending"] .card,
+  .order-card[data-status="Processing"] .card,
+  .order-card[data-status="Shipped"] .card,
+  .order-card[data-status="Delivered"] .card,
+  .order-card[data-status="Cancelled"] .card,
+  .order-card[data-status="Returned"] .card,
+  .order-card[data-status="Partially Returned"] .card,
+  .order-card[data-status="Partially Delivered"] .card,
+  .order-card[data-status="Processing Return"] .card {
+    border-left-width: 4px;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-card {
+    padding: 1.5rem;
+  }
+  
+  .order-card .card-body {
+    padding: 1rem;
+  }
+  
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 50px;
+    height: 50px;
+  }
+  
+  .item-row {
+    flex-direction: column;
+    align-items: flex-start !important;
+    text-align: left;
+  }
+  
+  .item-row .item-price {
+    margin-top: 0.5rem;
+    width: 100%;
+    text-align: left !important;
+  }
+  
+  .item-row .item-info .fw-semibold {
+    font-size: 0.85rem;
+  }
+  
+  .status-amount .fs-5 {
+    font-size: 1.1rem !important;
+  }
+  
+  .order-actions {
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    width: 100%;
+  }
+  
+  .order-actions .btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.8rem;
+    flex: 1;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 576px) {
+  .content-card {
+    padding: 1rem;
+  }
+  
+  .content-title {
+    font-size: 1.25rem;
+  }
+  
+  .order-card .card-body {
+    padding: 0.875rem;
+  }
+  
+  .order-card .row > div {
+    margin-bottom: 1rem;
+  }
+  
+  .order-card .row > div:last-child {
+    margin-bottom: 0;
+  }
+  
+  .product-thumb,
+  .product-thumb-placeholder {
+    width: 45px;
+    height: 45px;
+  }
+  
+  .order-actions {
+    flex-direction: column !important;
+  }
+  
+  .order-actions .btn {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .order-actions .btn:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .order-actions,
+  #orderStatusFilter,
+  .profile-sidebar {
+    display: none !important;
+  }
+  
+  .order-card {
+    page-break-inside: avoid;
+    box-shadow: none !important;
+  }
+}
+</style>
+
+<script>
+// ==================== ORDER LISTING PAGE SCRIPT ====================
+// Global variables
+let currentPage = <%= currentPage %>;
+let isLoading = false;
+
+// Cancellation and return reasons
+const cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
+const returnReasons = <%- JSON.stringify(returnReasons) %>;
+
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', function() {
+  initializeOrderPage();
+});
+
+function initializeOrderPage() {
+  // Setup status filter
+  const statusFilter = document.getElementById('orderStatusFilter');
+  if (statusFilter) {
+    statusFilter.addEventListener('change', function() {
+      loadOrders(1, this.value);
+    });
+  }
+  
+  // Setup pagination click handlers
+  setupPaginationHandlers();
+}
+
+// ==================== PAGINATION HANDLERS ====================
+function setupPaginationHandlers() {
+  document.addEventListener('click', function(e) {
+    const paginationBtn = e.target.closest('.pagination-btn');
+    if (!paginationBtn) return;
+    
+    // Ignore if disabled
+    if (paginationBtn.classList.contains('disabled-btn') || 
+        paginationBtn.closest('.page-item')?.classList.contains('disabled')) {
+      return;
+    }
+    
+    e.preventDefault();
+    
+    const page = parseInt(paginationBtn.dataset.page);
+    if (!isNaN(page) && page > 0) {
+      const statusFilter = document.getElementById('orderStatusFilter');
+      loadOrders(page, statusFilter?.value || '');
+    }
+  });
+}
+
+// ==================== LOAD ORDERS (AJAX) ====================
+async function loadOrders(page = 1, status = '') {
+  if (isLoading) return;
+  
+  isLoading = true;
+  showLoadingState();
+  
+  try {
+    const params = new URLSearchParams();
+    params.append('page', page);
+    if (status) params.append('status', status);
+    
+    const response = await fetch(`/orders/api/filtered?${params.toString()}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      currentPage = result.data.currentPage;
+      updateOrdersContainer(result.data.orders);
+      updatePagination(result.data.currentPage, result.data.totalPages);
+    } else {
+      throw new Error(result.message || 'Failed to load orders');
+    }
+  } catch (error) {
+    console.error('Error loading orders:', error);
+    showError('Error loading orders. Please try again.');
+  } finally {
+    isLoading = false;
+    hideLoadingState();
+  }
+}
+
+// ==================== UPDATE ORDERS CONTAINER ====================
+function updateOrdersContainer(orders) {
+  const container = document.getElementById('ordersContainer');
+  
+  if (!orders || orders.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-5" id="emptyState">
+        <div class="mb-4">
+          <i class="bi bi-funnel display-1 text-muted"></i>
+        </div>
+        <h4 class="text-muted mb-3">No Orders Found</h4>
+        <p class="text-muted mb-4">No orders match the selected filter criteria.</p>
+        <button class="btn btn-outline-primary" onclick="clearFilter()">
+          <i class="bi bi-arrow-clockwise me-2"></i>Clear Filter
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  let cardsHTML = '';
+  orders.forEach(order => {
+    cardsHTML += generateOrderCardHTML(order);
+  });
+  
+  container.innerHTML = cardsHTML;
+}
+
+// ==================== GENERATE ORDER CARD ====================
+function generateOrderCardHTML(order) {
+  const orderDate = new Date(order.createdAt);
+  const formattedDate = orderDate.toLocaleDateString('en-IN', { 
+    year: 'numeric', 
+    month: 'short', 
+    day: 'numeric' 
+  });
+  
+  // Status badge class
+  let statusClass = 'secondary';
+  if (order.status === 'Pending') statusClass = 'warning';
+  else if (order.status === 'Processing') statusClass = 'primary';
+  else if (order.status === 'Shipped') statusClass = 'info';
+  else if (order.status === 'Delivered') statusClass = 'success';
+  else if (order.status === 'Cancelled') statusClass = 'danger';
+  else if (order.status === 'Returned') statusClass = 'warning';
+  else if (order.status === 'Partially Returned') statusClass = 'warning';
+  else if (order.status === 'Partially Delivered') statusClass = 'info';
+  else if (order.status === 'Processing Return') statusClass = 'warning';
+  
+  // Items display (max 4)
+  const displayItems = order.items.slice(0, 4);
+  const remainingCount = order.items.length - 4;
+  
+  let itemsHTML = '';
+  displayItems.forEach((item, index) => {
+    const productImageHTML = (item.productId && item.productId.mainImage) 
+      ? `<img src="${item.productId.mainImage}" alt="${item.productId.productName}" class="product-thumb">`
+      : `<div class="product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
+    
+    const productName = item.productId ? item.productId.productName : 'Product';
+    const borderClass = index < displayItems.length - 1 ? 'border-bottom' : '';
+    
+    itemsHTML += `
+      <div class="item-row d-flex align-items-center py-2 ${borderClass}">
+        <div class="item-image me-3">${productImageHTML}</div>
+        <div class="item-info flex-grow-1">
+          <div class="fw-semibold text-dark">${productName}</div>
+          <small class="text-muted">Size: ${item.size} | Qty: ${item.quantity}</small>
+        </div>
+        <div class="item-price text-end">
+          <div class="fw-semibold">₹${item.totalPrice.toLocaleString('en-IN')}</div>
+          ${item.status && item.status !== order.status ? 
+            `<small class="badge bg-secondary">${item.status}</small>` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  if (remainingCount > 0) {
+    itemsHTML += `
+      <div class="text-center py-2">
+        <button class="btn btn-link text-decoration-none p-0 fw-semibold" 
+                onclick="viewOrderDetails('${order.orderId}')">
+          <i class="bi bi-plus-circle me-1"></i>
+          + ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
+        </button>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="order-card mb-3" data-status="${order.status}">
+      <div class="card">
+        <div class="card-body p-4">
+          <div class="row mb-3 pb-3 border-bottom">
+            <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
+              <h6 class="mb-1 fw-bold text-dark">Order #${order.orderId}</h6>
+              <small class="text-muted">
+                <i class="bi bi-calendar3 me-1"></i>${formattedDate}
+              </small>
+            </div>
+            <div class="col-lg-3 col-md-3 mb-2 mb-lg-0 text-center">
+              <span class="badge bg-${statusClass} fs-6 px-3 py-2">${order.status}</span>
+            </div>
+            <div class="col-lg-3 col-md-3 text-end">
+              <div class="fw-bold text-dark fs-5">₹${(order.totalAmount - (order.couponDiscount || 0)).toLocaleString('en-IN')}</div>
+              <small class="text-muted text-uppercase">
+                ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()}
+              </small>
+            </div>
+          </div>
+          <div class="items-container">${itemsHTML}</div>
+          <div class="row mt-3 pt-3 border-top">
+            <div class="col-12">
+              <div class="order-actions d-flex flex-wrap gap-2 justify-content-end">
+                <button class="btn btn-primary btn-sm" onclick="viewOrderDetails('${order.orderId}')">
+                  <i class="bi bi-eye me-1"></i>View Details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== UPDATE PAGINATION ====================
+function updatePagination(currentPage, totalPages) {
+  const paginationWrapper = document.querySelector('.pagination')?.closest('nav')?.parentElement;
+  if (!paginationWrapper || totalPages <= 1) return;
+  
+  const maxButtons = 5;
+  
+  // Calculate which 5 consecutive pages to show
+  const windowIndex = Math.floor((currentPage - 1) / maxButtons);
+  const startPage = (windowIndex * maxButtons) + 1;
+  const endPage = Math.min(startPage + maxButtons - 1, totalPages);
+  
+  let html = '<nav class="mt-4"><ul class="pagination justify-content-center">';
+  
+  // Previous button
+  html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+    <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}" 
+       href="#" data-page="${currentPage - 1}">
+      <i class="bi bi-chevron-left"></i>
+    </a>
+  </li>`;
+  
+  // Show exactly 5 consecutive page buttons
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+      <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
+    </li>`;
+  }
+  
+  // Next button
+  html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+    <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}" 
+       href="#" data-page="${currentPage + 1}">
+      <i class="bi bi-chevron-right"></i>
+    </a>
+  </li>`;
+  
+  html += '</ul></nav>';
+  paginationWrapper.innerHTML = html;
+}
+
+
+// ==================== LOADING STATES ====================
+function showLoadingState() {
+  const container = document.getElementById('ordersContainer');
+  container.innerHTML = `
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading your orders...</p>
+    </div>
+  `;
+}
+
+function hideLoadingState() {
+  // Loading state is replaced by updateOrdersContainer
+}
+
+function showError(message) {
+  if (typeof Swal !== 'undefined') {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: message,
+      confirmButtonColor: '#dc3545'
+    });
+  } else {
+    alert(message);
+  }
+}
+
+// ==================== UTILITY FUNCTIONS ====================
+function clearFilter() {
+  document.getElementById('orderStatusFilter').value = '';
+  loadOrders(1, '');
+}
+
+function viewOrderDetails(orderId) {
+  window.location.href = `/orders/${orderId}`;
+}
+
+function downloadInvoice(orderId) {
+  window.open(`/orders/${orderId}/invoice`, '_blank');
+}
+</script>
+

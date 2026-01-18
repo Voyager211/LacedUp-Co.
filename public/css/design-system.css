@@ -1,0 +1,606 @@
+:root {
+  /* ==================== BOLD BADGE COLORS (for non-table badges) ==================== */
+  
+  /* Pending / Returned / Partially Returned / Processing Return */
+  --badge-warning-bg: #ffc107;
+  --badge-warning-text: #000;
+  
+  /* Processing */
+  --badge-primary-bg: #0d6efd;
+  --badge-primary-text: #fff;
+  
+  /* Shipped / Partially Delivered */
+  --badge-info-bg: #0dcaf0;
+  --badge-info-text: #000;
+  
+  /* Delivered / Completed */
+  --badge-success-bg: #198754;
+  --badge-success-text: #fff;
+  
+  /* Cancelled / Failed */
+  --badge-danger-bg: #dc3545;
+  --badge-danger-text: #fff;
+  
+  /* Refunded / Partially Refunded */
+  --badge-purple-bg: #6f42c1;
+  --badge-purple-text: #fff;
+  
+  /* Default / Secondary */
+  --badge-secondary-bg: #6c757d;
+  --badge-secondary-text: #fff;
+  
+  /* ==================== LIGHT BADGE COLORS (for table badges) ==================== */
+  
+  /* Pending / Returned - Light Yellow */
+  --badge-warning-light-bg: #fff3cd;
+  --badge-warning-light-text: #997404;
+  
+  /* Processing - Light Blue */
+  --badge-primary-light-bg: #cfe2ff;
+  --badge-primary-light-text: #084298;
+  
+  /* Shipped / Partially Delivered - Light Cyan */
+  --badge-info-light-bg: #cff4fc;
+  --badge-info-light-text: #055160;
+  
+  /* Delivered / Completed - Light Green */
+  --badge-success-light-bg: #d1e7dd;
+  --badge-success-light-text: #0f5132;
+  
+  /* Cancelled / Failed - Light Red */
+  --badge-danger-light-bg: #f8d7da;
+  --badge-danger-light-text: #842029;
+  
+  /* Refunded / Partially Refunded - Light Purple */
+  --badge-purple-light-bg: #e0cffc;
+  --badge-purple-light-text: #432874;
+  
+  /* Default / Secondary - Light Gray */
+  --badge-secondary-light-bg: #e2e3e5;
+  --badge-secondary-light-text: #41464b;
+  
+  /* ==================== PAYMENT METHOD COLORS ==================== */
+  
+  /* COD - Yellow (Bold) */
+  --badge-cod-bg: #ffc107;
+  --badge-cod-text: #000;
+  --badge-cod-light-bg: #fff3cd;
+  --badge-cod-light-text: #997404;
+  
+  /* Razorpay / Online - Blue (Bold) */
+  --badge-razorpay-bg: #0d6efd;
+  --badge-razorpay-text: #fff;
+  --badge-razorpay-light-bg: #cfe2ff;
+  --badge-razorpay-light-text: #084298;
+  
+  /* Wallet - Green (Bold) */
+  --badge-wallet-bg: #198754;
+  --badge-wallet-text: #fff;
+  --badge-wallet-light-bg: #d1e7dd;
+  --badge-wallet-light-text: #0f5132;
+  
+  /* UPI - Purple (Bold) */
+  --badge-upi-bg: #6f42c1;
+  --badge-upi-text: #fff;
+  --badge-upi-light-bg: #e0cffc;
+  --badge-upi-light-text: #432874;
+  
+  /* Unknown - Gray */
+  --badge-unknown-bg: #6c757d;
+  --badge-unknown-text: #fff;
+  --badge-unknown-light-bg: #e2e3e5;
+  --badge-unknown-light-text: #41464b;
+  
+  /* ==================== BADGE DIMENSIONS ==================== */
+  --badge-padding: 0.4rem 1rem;
+  --badge-padding-sm: 0.35rem 0.75rem;
+  --badge-padding-lg: 0.5rem 1.2rem;
+  --badge-padding-table: 0.375rem 0.875rem;
+  --badge-radius: 6px;
+  --badge-radius-rounded: 12px;
+  --badge-font-size: 0.75rem;
+  --badge-font-size-table: 0.75rem;
+  --badge-font-weight: 600;
+  --badge-min-width-payment: 80px;
+  --badge-min-width-status: 90px;
+  --badge-min-width-table: 90px;
+  --badge-letter-spacing: 0.5px;
+  
+  /* ==================== BRAND COLORS ==================== */
+  --primary-color: #dc3545;
+  --primary-hover: #bb2d3b;
+  --secondary-color: #111827;
+  --secondary-hover: #374151;
+  --accent-color: #000;
+  
+  /* ==================== SEMANTIC COLORS ==================== */
+  --success-color: #198754;
+  --success-hover: #157347;
+  --warning-color: #ffc107;
+  --warning-hover: #ffca2c;
+  --error-color: #dc3545;
+  --error-hover: #bb2d3b;
+  --info-color: #0dcaf0;
+  --info-hover: #31d2f2;
+  
+  /* ==================== NEUTRAL COLORS ==================== */
+  --gray-50: #f9fafb;
+  --gray-100: #f3f4f6;
+  --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --gray-700: #374151;
+  --gray-800: #1f2937;
+  --gray-900: #111827;
+  
+  /* ==================== SHADOWS ==================== */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.15);
+  
+  /* ==================== TRANSITIONS ==================== */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+}
+
+/* ==================== UNIVERSAL BADGE BASE ==================== */
+.badge {
+  display: inline-block;
+  text-align: center;
+  font-weight: var(--badge-font-weight);
+  font-size: var(--badge-font-size);
+  letter-spacing: var(--badge-letter-spacing);
+  border-radius: var(--badge-radius);
+  transition: all var(--transition-base);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* ==================== TABLE BADGE VARIANTS (Lighter Colors) ==================== */
+
+/* Payment Method Badges for Tables */
+.payment-method-badge-table {
+  padding: var(--badge-padding-table);
+  width: var(--badge-min-width-table);
+  text-transform: uppercase;
+  font-size: var(--badge-font-size-table);
+  border-radius: var(--badge-radius-rounded);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payment-method-badge-table.cod {
+  background-color: var(--badge-cod-light-bg);
+  color: var(--badge-cod-light-text);
+}
+
+.payment-method-badge-table.razorpay,
+.payment-method-badge-table.online {
+  background-color: var(--badge-razorpay-light-bg);
+  color: var(--badge-razorpay-light-text);
+}
+
+.payment-method-badge-table.wallet {
+  background-color: var(--badge-wallet-light-bg);
+  color: var(--badge-wallet-light-text);
+}
+
+.payment-method-badge-table.upi {
+  background-color: var(--badge-upi-light-bg);
+  color: var(--badge-upi-light-text);
+}
+
+.payment-method-badge-table.unknown {
+  background-color: var(--badge-unknown-light-bg);
+  color: var(--badge-unknown-light-text);
+}
+
+/* Order Status Badges for Tables */
+.order-status-badge-table {
+  padding: var(--badge-padding-table);
+  width: var(--badge-min-width-table);
+  text-transform: capitalize;
+  font-size: var(--badge-font-size-table);
+  border-radius: var(--badge-radius-rounded);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Pending / Returned / Partially Returned / Processing Return */
+.order-status-badge-table.pending,
+.order-status-badge-table.returned,
+.order-status-badge-table.partially-returned,
+.order-status-badge-table.processing-return {
+  background-color: var(--badge-warning-light-bg);
+  color: var(--badge-warning-light-text);
+}
+
+/* Processing */
+.order-status-badge-table.processing {
+  background-color: var(--badge-primary-light-bg);
+  color: var(--badge-primary-light-text);
+}
+
+/* Shipped / Partially Delivered */
+.order-status-badge-table.shipped,
+.order-status-badge-table.partially-delivered {
+  background-color: var(--badge-info-light-bg);
+  color: var(--badge-info-light-text);
+}
+
+/* Delivered */
+.order-status-badge-table.delivered {
+  background-color: var(--badge-success-light-bg);
+  color: var(--badge-success-light-text);
+}
+
+/* Cancelled / Failed */
+.order-status-badge-table.cancelled,
+.order-status-badge-table.failed {
+  background-color: var(--badge-danger-light-bg);
+  color: var(--badge-danger-light-text);
+}
+
+/* Payment Status Badges for Tables */
+.payment-status-badge-table {
+  padding: var(--badge-padding-table);
+  width: var(--badge-min-width-table);
+  text-transform: capitalize;
+  font-size: var(--badge-font-size-table);
+  border-radius: var(--badge-radius-rounded);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.payment-status-badge-table.pending {
+  background-color: var(--badge-warning-light-bg);
+  color: var(--badge-warning-light-text);
+}
+
+.payment-status-badge-table.completed {
+  background-color: var(--badge-success-light-bg);
+  color: var(--badge-success-light-text);
+}
+
+.payment-status-badge-table.failed,
+.payment-status-badge-table.cancelled {
+  background-color: var(--badge-danger-light-bg);
+  color: var(--badge-danger-light-text);
+}
+
+.payment-status-badge-table.refunded,
+.payment-status-badge-table.partially-refunded {
+  background-color: var(--badge-purple-light-bg);
+  color: var(--badge-purple-light-text);
+}
+
+.payment-status-badge-table.partially-completed {
+  background-color: var(--badge-info-light-bg);
+  color: var(--badge-info-light-text);
+}
+
+/* ==================== REGULAR PAYMENT METHOD BADGES (Bold Colors) ==================== */
+.payment-method-badge {
+  padding: var(--badge-padding);
+  min-width: var(--badge-min-width-payment);
+  text-transform: uppercase;
+}
+
+.payment-method-badge.cod,
+.payment-method-badge.payment-cod {
+  background-color: var(--badge-cod-bg);
+  color: var(--badge-cod-text);
+}
+
+.payment-method-badge.razorpay,
+.payment-method-badge.payment-razorpay,
+.payment-method-badge.online,
+.payment-method-badge.payment-online {
+  background-color: var(--badge-razorpay-bg);
+  color: var(--badge-razorpay-text);
+}
+
+.payment-method-badge.wallet,
+.payment-method-badge.payment-wallet {
+  background-color: var(--badge-wallet-bg);
+  color: var(--badge-wallet-text);
+}
+
+.payment-method-badge.upi,
+.payment-method-badge.payment-upi {
+  background-color: var(--badge-upi-bg);
+  color: var(--badge-upi-text);
+}
+
+.payment-method-badge.unknown,
+.payment-method-badge.payment-unknown {
+  background-color: var(--badge-unknown-bg);
+  color: var(--badge-unknown-text);
+}
+
+/* ==================== REGULAR PAYMENT STATUS BADGES (Bold Colors) ==================== */
+.payment-status-badge {
+  padding: var(--badge-padding);
+  min-width: var(--badge-min-width-status);
+  text-transform: capitalize;
+}
+
+.payment-status-badge.pending,
+.payment-status-badge.payment-pending {
+  background-color: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+.payment-status-badge.completed,
+.payment-status-badge.payment-completed {
+  background-color: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+
+.payment-status-badge.failed,
+.payment-status-badge.payment-failed,
+.payment-status-badge.cancelled,
+.payment-status-badge.payment-cancelled {
+  background-color: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+.payment-status-badge.refunded,
+.payment-status-badge.payment-refunded,
+.payment-status-badge.partially-refunded,
+.payment-status-badge.payment-partially-refunded {
+  background-color: var(--badge-purple-bg);
+  color: var(--badge-purple-text);
+}
+
+.payment-status-badge.partially-completed,
+.payment-status-badge.payment-partially-completed {
+  background-color: var(--badge-info-bg);
+  color: var(--badge-info-text);
+}
+
+/* ==================== REGULAR ORDER STATUS BADGES (Bold Colors) ==================== */
+.order-status-badge {
+  padding: var(--badge-padding);
+  min-width: var(--badge-min-width-status);
+  text-transform: capitalize;
+}
+
+.order-status-badge.pending,
+.order-status-badge.order-pending,
+.order-status-badge.returned,
+.order-status-badge.order-returned,
+.order-status-badge.partially-returned,
+.order-status-badge.order-partially-returned,
+.order-status-badge.processing-return,
+.order-status-badge.order-processing-return {
+  background-color: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+.order-status-badge.processing,
+.order-status-badge.order-processing {
+  background-color: var(--badge-primary-bg);
+  color: var(--badge-primary-text);
+}
+
+.order-status-badge.shipped,
+.order-status-badge.order-shipped,
+.order-status-badge.partially-delivered,
+.order-status-badge.order-partially-delivered {
+  background-color: var(--badge-info-bg);
+  color: var(--badge-info-text);
+}
+
+.order-status-badge.delivered,
+.order-status-badge.order-delivered {
+  background-color: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+
+.order-status-badge.cancelled,
+.order-status-badge.order-cancelled,
+.order-status-badge.failed,
+.order-status-badge.order-failed {
+  background-color: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+.order-status-badge.secondary,
+.order-status-badge.order-secondary {
+  background-color: var(--badge-secondary-bg);
+  color: var(--badge-secondary-text);
+}
+
+/* ==================== LEGACY/GENERIC BADGE CLASSES (for backward compatibility) ==================== */
+.payment-badge,
+.status-badge {
+  padding: var(--badge-padding);
+  min-width: var(--badge-min-width-status);
+}
+
+/* Payment Method - Legacy */
+.payment-badge.payment-cod,
+.payment-badge.cod {
+  background-color: var(--badge-cod-bg);
+  color: var(--badge-cod-text);
+}
+
+.payment-badge.payment-razorpay,
+.payment-badge.razorpay,
+.payment-badge.payment-online,
+.payment-badge.online {
+  background-color: var(--badge-razorpay-bg);
+  color: var(--badge-razorpay-text);
+}
+
+.payment-badge.payment-wallet,
+.payment-badge.wallet {
+  background-color: var(--badge-wallet-bg);
+  color: var(--badge-wallet-text);
+}
+
+.payment-badge.payment-upi,
+.payment-badge.upi {
+  background-color: var(--badge-upi-bg);
+  color: var(--badge-upi-text);
+}
+
+.payment-badge.payment-unknown,
+.payment-badge.unknown {
+  background-color: var(--badge-unknown-bg);
+  color: var(--badge-unknown-text);
+}
+
+/* Status - Legacy */
+.status-badge.status-pending,
+.status-badge.pending {
+  background-color: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+.status-badge.status-processing,
+.status-badge.processing {
+  background-color: var(--badge-primary-bg);
+  color: var(--badge-primary-text);
+}
+
+.status-badge.status-shipped,
+.status-badge.shipped {
+  background-color: var(--badge-info-bg);
+  color: var(--badge-info-text);
+}
+
+.status-badge.status-delivered,
+.status-badge.delivered {
+  background-color: var(--badge-success-bg);
+  color: var(--badge-success-text);
+}
+
+.status-badge.status-cancelled,
+.status-badge.cancelled,
+.status-badge.status-failed,
+.status-badge.failed {
+  background-color: var(--badge-danger-bg);
+  color: var(--badge-danger-text);
+}
+
+.status-badge.status-returned,
+.status-badge.returned {
+  background-color: var(--badge-warning-bg);
+  color: var(--badge-warning-text);
+}
+
+/* ==================== BOOTSTRAP COMPATIBILITY CLASSES ==================== */
+.bg-warning-custom {
+  background-color: var(--badge-warning-bg) !important;
+  color: var(--badge-warning-text) !important;
+}
+
+.bg-primary-custom {
+  background-color: var(--badge-primary-bg) !important;
+  color: var(--badge-primary-text) !important;
+}
+
+.bg-info-custom {
+  background-color: var(--badge-info-bg) !important;
+  color: var(--badge-info-text) !important;
+}
+
+.bg-success-custom {
+  background-color: var(--badge-success-bg) !important;
+  color: var(--badge-success-text) !important;
+}
+
+.bg-danger-custom {
+  background-color: var(--badge-danger-bg) !important;
+  color: var(--badge-danger-text) !important;
+}
+
+.bg-secondary-custom {
+  background-color: var(--badge-secondary-bg) !important;
+  color: var(--badge-secondary-text) !important;
+}
+
+.bg-purple-custom {
+  background-color: var(--badge-purple-bg) !important;
+  color: var(--badge-purple-text) !important;
+}
+
+/* ==================== BADGE SIZE VARIANTS ==================== */
+.badge-sm {
+  padding: var(--badge-padding-sm);
+  font-size: calc(var(--badge-font-size) * 0.9);
+}
+
+.badge-lg {
+  padding: var(--badge-padding-lg);
+  font-size: calc(var(--badge-font-size) * 1.1);
+}
+
+/* ==================== HOVER EFFECTS ==================== */
+.payment-method-badge:hover,
+.payment-status-badge:hover,
+.order-status-badge:hover,
+.payment-badge:hover,
+.status-badge:hover,
+.payment-method-badge-table:hover,
+.payment-status-badge-table:hover,
+.order-status-badge-table:hover {
+  opacity: 0.85;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ==================== UTILITY CLASSES ==================== */
+.text-primary-custom {
+  color: var(--primary-color) !important;
+}
+
+.text-secondary-custom {
+  color: var(--secondary-color) !important;
+}
+
+.border-left-primary {
+  border-left: 5px solid var(--primary-color) !important;
+}
+
+.border-left-success {
+  border-left: 5px solid var(--success-color) !important;
+}
+
+.border-left-warning {
+  border-left: 5px solid var(--warning-color) !important;
+}
+
+.border-left-danger {
+  border-left: 5px solid var(--error-color) !important;
+}
+
+.border-left-info {
+  border-left: 5px solid var(--info-color) !important;
+}
+
+.border-left-purple {
+  border-left: 5px solid var(--badge-purple-bg) !important;
+}

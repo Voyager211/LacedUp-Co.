@@ -1,0 +1,864 @@
+<div class="container-fluid">
+  <h1>Coupon Management</h1>
+
+  <div class="container coupon-header">
+    <div class="coupon-buttons">
+      <button class="btn btn-custom-dark me-2" onclick="fetchAndPopulateCouponsTable()">
+        <i class="bi bi-arrow-clockwise me-1"></i>Reload Coupons
+      </button>
+      <button class="btn btn-custom-dark" onclick="addNewCoupon()">
+        <i class="bi bi-plus-circle me-1"></i>Add New Coupon
+      </button>
+    </div>
+
+    <table id="coupons-table" class="table table-striped">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Code</th>
+          <th scope="col" class="name-column">Name</th>
+          <th scope="col">Description</th>
+          <th scope="col">Discount Type</th>
+          <th scope="col">Discount Value</th>
+          <th scope="col">Min Order</th>
+          <th scope="col">Usage</th>
+          <th scope="col">Valid Period</th>
+          <th scope="col">Status</th>
+          <th scope="col">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="coupons-tbody">
+        <!-- Server-side rendered rows -->
+        <% if(coupons && coupons.length > 0) { %>
+          <% coupons.forEach(function(coupon, index) { %>
+          <tr data-coupon-id="<%= coupon._id %>">
+            <td><%= index + 1 %></td>
+            <td><strong><%= coupon.code %></strong></td>
+            <td class="name-column"><%= coupon.name %></td>
+            <td><%= coupon.description || 'No description' %></td>
+            <td>
+              <% if(coupon.discountType === 'percentage') { %>
+                <span class="badge bg-info">Percentage</span>
+              <% } else { %>
+                <span class="badge bg-success">Fixed Amount</span>
+              <% } %>
+            </td>
+            <td>
+              <% if(coupon.discountType === 'percentage') { %>
+                <%= coupon.discountValue %>%
+                <% if(coupon.maximumDiscountAmount) { %>
+                  <small>(Max: ₹<%= coupon.maximumDiscountAmount %>)</small>
+                <% } %>
+              <% } else { %>
+                ₹<%= coupon.discountValue %>
+              <% } %>
+            </td>
+            <td>₹<%= coupon.minimumOrderValue || 0 %></td>
+            <td>
+              <%= coupon.usedCount || 0 %>/<%= coupon.usageLimit || '∞' %>
+              <small>(Per user: <%= coupon.userLimit %>)</small>
+            </td>
+            <td>
+              <small>
+                From: <%= new Date(coupon.validFrom).toLocaleDateString('en-IN') %><br>
+                To: <%= new Date(coupon.validTo).toLocaleDateString('en-IN') %>
+              </small>
+            </td>
+            <td>
+              <label class="toggle-switch">
+                <input type="checkbox" <%= coupon.isActive ? 'checked' : '' %> 
+                      data-coupon-id="<%= coupon._id %>" 
+                      data-current-status="<%= coupon.isActive %>"
+                      class="coupon-toggle">
+                <span class="toggle-slider"></span>
+              </label>
+            </td>
+            <td>
+              <button class="btn btn-sm action-btn" onclick="editCoupon('<%= coupon._id %>')" title="Edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-sm action-btn" onclick="deleteCoupon('<%= coupon._id %>')" title="Delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+          <% }); %>
+        <% } else { %>
+          <tr>
+            <td colspan="11" class="text-center text-muted">No coupons found</td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Coupon Modal -->
+<%- include('partials/coupon-modal') %>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('Coupon Management Page Loaded');
+
+    // handle toggle switch
+    document.querySelectorAll('.coupon-toggle').forEach(toggle => {
+      toggle.addEventListener('change', function() {
+        const couponId = this.getAttribute('data-coupon-id');
+        const currentStatus = this.getAttribute('data-current-status') === 'true';
+        toggleStatus(couponId, currentStatus);
+      });
+    });
+  });
+
+  document.getElementById('couponModal').addEventListener('hidden.bs.modal', function () {
+    // reset edit mode
+    isEditMode = false;
+    editingCouponId = null;
+
+    // reset form and ui
+    document.getElementById('couponForm').reset();
+    document.getElementById('couponModalLabel').textContent = 'Add New Coupon';
+    document.getElementById('saveCouponBtn').querySelector('.btn-text').textContent = 'Create Coupon';
+    clearValidationStates();
+  })
+
+  // Function to add a single row
+  function addRowFromData(couponData, index) {
+    const tbody = document.getElementById('coupons-tbody');
+    const row = tbody.insertRow(-1);
+
+    // Format discount value display
+    let discountDisplay = '';
+    let discountTypeBadge = '';
+
+    if (couponData.discountType === 'percentage') {
+      discountDisplay = `${couponData.discountValue}%`;
+      if (couponData.maximumDiscountAmount) {
+        discountDisplay += `<small>(Max: ₹${couponData.maximumDiscountAmount})</small>`;
+      }
+      discountTypeBadge = `<span class="badge bg-info">Percentage</span>`;
+    } else {
+      discountDisplay = `₹${couponData.discountValue}`;
+      discountTypeBadge = '<span class="badge bg-success">Fixed Amount</span>';
+    }
+
+      // Format status
+  const now = new Date();
+  const validFrom = new Date(couponData.validFrom);
+  const validTo = new Date(couponData.validTo);
+  
+  const statusToggle = `
+    <label class="toggle-switch">
+      <input type="checkbox" ${couponData.isActive ? 'checked' : ''} 
+            onchange="toggleStatus('${couponData._id}', ${couponData.isActive})">
+      <span class="toggle-slider"></span>
+    </label>
+  `;
+
+    // Format usage info
+    const usageInfo = `${couponData.usedCount || 0}/${couponData.usageLimit || '∞'}<small>(Per user: ${couponData.userLimit})</small>`;
+
+    // Format valid period
+    const validPeriod = `<small>From: ${validFrom.toLocaleDateString('en-IN')}<br>To: ${validTo.toLocaleDateString('en-IN')}</small>`;
+
+    row.innerHTML = `
+        <td>${index + 1}</td>
+        <td><strong>${couponData.code}</strong></td>
+        <td>${couponData.name}</td>
+        <td>${couponData.description || 'No description'}</td>
+        <td>${discountTypeBadge}</td>
+        <td>${discountDisplay}</td>
+        <td>₹${couponData.minimumOrderValue || 0}</td>
+        <td>${usageInfo}</td>
+        <td>${validPeriod}</td>
+        <td>${statusToggle}</td>
+        <td>
+          <button class="btn btn-sm action-btn" onclick="editCoupon('${couponData._id}')" title="Edit">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button class="btn btn-sm action-btn" onclick="deleteCoupon('${couponData._id}')" title="Delete">
+            <i class="bi bi-trash"></i>
+          </button>
+        </td>
+      `;
+    
+    row.setAttribute('data-coupon-id', couponData._id);
+  }
+
+  // Function to clear and repopulate table
+  function clearAndPopulateTable(coupons) {
+    const tbody = document.getElementById('coupons-tbody');
+    tbody.innerHTML = '';
+
+    if (coupons && coupons.length > 0) {
+      coupons.forEach((coupon, index) => {
+        addRowFromData(coupon, index);
+      });
+    } else {
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted">No coupons</td></tr>';
+    }
+  }
+
+  // Function to fetch and populate table via AJAX reload
+  async function fetchAndPopulateCouponsTable () {
+    try {
+      console.log('Fetching coupons...');
+
+      const response = await fetch('/admin/coupons/api');
+      if (!response.ok) {
+        throw new Error(`HTTP Error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('API Response:', data)
+
+      
+
+      if(data.success) {
+        clearAndPopulateTable(data.data.coupons);
+        console.log('Table updated with ', data.data.count, 'coupons');
+
+        Toastify({
+          text: `Successfully loaded ${data.data.count} coupons`,
+          duration: 3000,
+          gravity: "top",
+          position: "right",
+          style: {
+            background: "linear-gradient(to right, #00b09b, #09693d)"
+          }
+        }).showToast();
+
+      } else {
+        throw new Error(data.message || 'Failed to fetch coupons');
+      }
+    } catch (error) {
+      console.error('Error fetching coupons', error);
+      
+      Toastify ({
+        text: 'Failed to load coupons: ' + error.message,
+        duration: 5000,
+        gravity: "top",
+        position: "right",
+        style: {
+          background: "linear-gradient(to right, #ff5f6d, #ffc371)"
+        }
+      }).showToast();
+    }
+  }
+
+  // Action functions (placeholders for now)
+  async function deleteCoupon(couponId) {
+    try {
+      const row = document.querySelector(`tr[data-coupon-id="${couponId}"]`);
+      const couponCode = row?.querySelector('td:nth-child(2) strong')?.textContent || 'this coupon';
+      const couponName = row?.querySelector('td:nth-child(3)')?.textContent || '';
+
+      // swal confirmation
+      const result = await Swal.fire({
+        title: 'Delete Coupon?',
+        html: `
+          <div class="text-start">
+            <p><strong>Code:</strong> ${couponCode}</p>
+            <p><strong>Name:</strong> ${couponName}</p>
+            <p class="text-danger mt-3">⚠️ This action cannot be undone!</p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        cancelButtonColor: '#6c757d',
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Delete',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true,
+        focusCancel: true
+      });
+
+      if(!result.isConfirmed) {
+        return;
+      }
+
+      console.log('Deleting coupon:', couponId);
+
+      // api call
+      const response = await fetch(`/admin/coupons/api/${couponId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if(!response.ok) {
+        throw new Error(`HTTP Error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Delete response:', data);
+
+      if (data.success) {
+        // delete row
+        const rowToDelete = document.querySelector(`tr[data-coupon-id="${couponId}"]`);
+        if (rowToDelete) {
+          // fade animation
+          rowToDelete.style.transition = 'opacity 0.3s ease';
+          rowToDelete.style.opacity = '0';
+
+          setTimeout(()=> {
+            rowToDelete.remove()
+          }, 300);
+        }
+
+        Swal.close();
+
+        // success message
+        Toastify({
+          text: data.message || 'Coupon deleted successfully!',
+          duration: 4000,
+          gravity: 'top',
+          position: 'right',
+          style: {
+            background: 'linear-gradient(to right, #28a745, #20c997)'
+          }
+        }).showToast();
+
+        console.log(`Coupon ${data.data?.deletedCoupon?.code || couponId} deleted`);
+
+      } else {
+        throw new Error(data.message || 'Failed to delete coupon');
+      }
+    } catch (error) {
+      console.error('Error deleting coupon:', error);
+
+      await Swal.fire({
+        title: 'Deletion Failed!',
+        text: `Failed to delete coupon: ${error.message}`,
+        icon: 'error',
+        confirmButtonColor: '#dc3545'
+      });
+    }
+    
+  }
+
+  async function toggleStatus(couponId, currentStatus) {
+    try {
+      const toggleSwitch = document.querySelector(`input[data-coupon-id="${couponId}"]`);
+
+      // disale toggle to prevent multiple clicks
+      if (toggleSwitch) {
+        toggleSwitch.disabled = true;
+      }
+
+      console.log('Toggling coupon status:', couponId, 'from', currentStatus);
+
+      // api call
+      const response = await fetch(`/admin/coupons/api/${couponId}/toggle`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error (`HTTP Error! Status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Toggle response:', result);
+
+      if (result.success) {
+        const newStatus = result.data.coupon.isActive;
+
+        if (toggleSwitch) {
+          toggleSwitch.checked = newStatus;
+          toggleSwitch.setAttribute('data-current-status', newStatus);
+        }
+
+        Toastify({
+          text: result.message,
+          duration: 3000,
+          gravity: 'top',
+          position: 'right',
+          style: {
+            background: newStatus
+              ? "linear-gradient(to right, #00b09b, #096c47)" 
+              : "linear-gradient(to right, #ffa726, #ff7043)"
+          }
+        }).showToast();
+
+        console.log(`Coupon ${result.data.coupon.code} is now ${newStatus ? 'active' : 'inactive'}`);
+
+
+      } else {
+        throw new Error(result.message || 'Failed to toggle coupon status');
+      }
+    } catch (error) {
+      console.error ('Error toggling coupon status:', error);
+
+      // revert toggle switch state
+      const toggleSwitch = document.querySelector(`tr[data-coupon-id="${couponId}"] input[type="checkbox"]`);
+      if (toggleSwitch) {
+        toggleSwitch.checked = currentStatus;
+      }
+
+      Toastify({
+        text: `Failed to update coupon status: ${error.message}`,
+        duration: 5000,
+        gravity: 'top',
+        position: 'right',
+        style: {
+          background: "linear-gradient(to right, #ff5f6d, #ffc371)"
+        }
+      }).showToast();
+    } finally {
+      // re enable toggle switch
+      const toggleSwitch = document.querySelector(`tr[data-coupon-id="${couponId}"] input[type="checkbox"]`);
+      if (toggleSwitch) {
+        toggleSwitch.disabled = false;
+      }
+    }
+  }
+
+  // Modal form handling
+  let isEditMode = false;
+  let editingCouponId = null;
+
+  function addNewCoupon() {
+    console.log('Opening add coupon modal');
+    isEditMode = false;
+    editingCouponId = null;
+
+    // Reset form
+    document.getElementById('couponForm').reset();
+    document.getElementById('couponModalLabel').textContent = 'Add new Coupon';
+    document.getElementById('saveCouponBtn').querySelector('.btn-text').textContent = 'Create Coupon';
+
+    // Set default values
+    document.getElementById('userLimit').value = 1;
+    document.getElementById('minimumOrderValue').value = 0;
+    document.getElementById('isActive').checked = true;
+
+    // Set default dates
+    const now = new Date ();
+    const tomorrow = new Date (now.getTime() + 24 * 60 * 60 * 1000);
+    const nextMonth = new Date (now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    document.getElementById('validFrom').value = formatDateTimeLocal(now);
+    document.getElementById('validTo').value = formatDateTimeLocal(nextMonth);
+
+    // Clear validation states
+    clearValidationStates();
+
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('couponModal'));
+    modal.show();
+  }
+
+  async function editCoupon(couponId) {
+    console.log('Edit coupon:', couponId);
+    
+    try {
+      // fetch coupon details
+      const response = await fetch(`/admin/coupons/${couponId}`);
+      if(!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if(!result.success) {
+        throw new Error(result.message || 'Failed to fetch coupon details');
+      }
+
+      const coupon = result.data.coupon;
+
+      // Set edit mode
+      isEditMode = true;
+      editingCouponId = couponId;
+
+      // Update modal title and button
+      document.getElementById('couponModalLabel').textContent = 'Edit Coupon';
+      document.getElementById('saveCouponBtn').querySelector('.btn-text').textContent = 'Update Coupon';
+
+      // populate form with existing coupon data
+      populateFormWithCouponData(coupon);
+
+      // Clear validation states
+      clearValidationStates();
+
+      // Show modal
+      const modal = new bootstrap.Modal(document.getElementById('couponModal'));
+      modal.show();
+
+    } catch (error) {
+      console.error('Error fetching coupon details:', error);
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: `Failed to load coupon details: ${error.message}`,
+        confirmButtonText: 'Close',
+        confirmButtonColor: '#d33'
+      });
+    }
+  }
+
+  function populateFormWithCouponData (coupon) {
+    document.getElementById('couponCode').value = coupon.code;
+    document.getElementById('couponName').value = coupon.name;
+    document.getElementById('couponDescription').value = coupon.description;
+    document.getElementById('discountType').value = coupon.discountType;
+    document.getElementById('discountValue').value = coupon.discountValue;
+
+
+    // trigger discount type change
+    document.getElementById('discountType').dispatchEvent(new Event('change'));
+
+    document.getElementById('minimumOrderValue').value = coupon.minimumOrderValue || 0;
+    document.getElementById('maximumDiscountAmount').value = coupon.maximumDiscountAmount || '';
+    document.getElementById('usageLimit').value = coupon.usageLimit || '';
+    document.getElementById('userLimit').value = coupon.userLimit || 1;
+
+    // convert date fields to proper format
+    if (coupon.validFrom) {
+      const validFrom = new Date(coupon.validFrom);
+      document.getElementById('validFrom').value = formatDateTimeLocal(validFrom);
+    }
+
+    if (coupon.validTo) {
+      const validTo = new Date(coupon.validTo);
+      document.getElementById('validTo').value = formatDateTimeLocal(validTo);
+    }
+
+    // Active status
+    document.getElementById('isActive').checked = coupon.isActive;
+
+    console.log('Form populated with coupon data:', coupon);
+  }
+
+  // Format date for datetime-local input
+  function formatDateTimeLocal(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+  
+  // Clear Validation states
+  function clearValidationStates() {
+    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+    document.querySelectorAll('.isvalid').forEach(el => el.classList.remove('is-valid'));
+  }
+
+  // Handle discount type Change
+  document.getElementById('discountType').addEventListener('change', function() {
+    const discountType = this.value;
+    const prefix = document.getElementById('discountValuePrefix');
+    const maxDiscountGroup = document.getElementById('maxDiscountGroup');
+    const discountValueInput = document.getElementById('discountValue');
+    const helpText = document.getElementById('discountValueHelp');
+
+    if (discountType === 'percentage') {
+      prefix.textContent = '%';
+      maxDiscountGroup.style.display = 'block';
+      discountValueInput.max = 100;
+      helpText.textContent = 'Enter percentage (1-100)';
+    } else if (discountType === 'fixed') {
+      prefix.textContent = '₹';
+      maxDiscountGroup.style.display = 'none';
+      discountType.max = '';
+      helpText.textContent = 'Enter fixed discount amount';
+    }
+  });
+
+  // Handle form submission
+  document.getElementById('couponForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    if (isEditMode) {
+      await updateCoupon();
+    } else {
+      await createCoupon();
+    }
+  });
+
+  // Create new coupon
+  async function createCoupon () {
+    const submitBtn = document.getElementById('saveCouponBtn');
+    const spinner = document.getElementById('saveSpinner');
+
+    try {
+      // Show loading state
+      submitBtn.disabled = true;
+      spinner.classList.remove('d-none');
+
+      // Clear previous validation
+      clearValidationStates();
+
+      // get form data
+      const formData = new FormData(document.getElementById('couponForm'));
+      const couponData = Object.fromEntries(formData.entries());
+
+      // convert checkbox value
+      couponData.isActive = document.getElementById('isActive').checked;
+
+      // Convert numeric values
+      if (couponData.discountValue) couponData.discountValue = parseFloat(couponData.discountValue);
+      if (couponData.minimumOrderValue) couponData.minimumOrderValue = parseFloat(couponData.minimumOrderValue);
+      if (couponData.maximumDiscountAmount) couponData.maximumDiscountAmount = parseFloat(couponData.maximumDiscountAmount);
+      if (couponData.usageLimit) couponData.usageLimit = parseInt(couponData.usageLimit);
+      if (couponData.userLimit) couponData.userLimit = parseInt(couponData.userLimit);
+
+      console.log('Creating coupon: ', couponData);
+
+      const response = await fetch('/admin/coupons/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(couponData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await Swal.fire({
+          icon: 'Success',
+          title: 'Success!',
+          text: 'Coupon Created Successfully!',
+          confirmButtonText: 'Close',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: true
+        });
+
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('couponModal'));
+        modal.hide();
+
+        // Refresh table
+        await fetchAndPopulateCouponsTable();
+
+      } else {
+        // Handle validation errors 
+        if (result.errors) {
+          displayValidationErrors(result.errors);
+        } else {
+          await Swal.fire({
+            icon: 'Error',
+            title: 'Oops..',
+            text: result.message || 'Failed to create coupon',
+            confirmButtonText: 'Try Again',
+            confirmButtonColor: '#d33'
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error('Error creating coupon:', error);
+      Swal.fire({
+        icon: 'Error',
+        title: 'Server error',
+        text: error.message || 'Some unknown error occurred while creating coupon',
+        confirmButtonText: 'Close',
+        confirmButtonColor: '#d33'
+      });
+    } finally {
+      // Hide loading state
+      submitBtn.disabled = false;
+      spinner.classList.add('d-none');
+    }
+  }
+
+  // display validation errors
+  function displayValidationErrors(errors) {
+    for (const field in errors) {
+      const input = document.querySelector(`[name="${field}"]`);
+      if(input) {
+        input.classList.add('is-invalid');
+        const feedback = input.parentNode.querySelector('.invalid-feedback') || input.parentNode.parentNode.querySelector('.invalid-feedback');
+        if (feedback) {
+          feedback.textContent = errors[field];
+        }
+      }
+    }
+  }
+
+  async function updateCoupon() {
+    const submitBtn = document.getElementById('saveCouponBtn');
+    const spinner = document.getElementById('saveSpinner');
+
+    try {
+      // Show loading state
+      submitBtn.disabled = true;
+      spinner.classList.remove('d=none');
+
+      // clear previous validation
+      clearValidationStates();
+
+      // get form data
+      const formData = new FormData(document.getElementById('couponForm'));
+      const couponData = Object.fromEntries(formData.entries());
+
+      // convert checkbox value
+      couponData.isActive = document.getElementById('isActive').checked;
+
+      // type check and convert numeric values
+      if (couponData.discountValue) couponData.discountValue = parseFloat(couponData.discountValue);
+      if (couponData.minimumOrderValue) couponData.minimumOrderValue = parseFloat(couponData.minimumOrderValue);
+      if (couponData.maximumDiscountAmount) couponData.maximumDiscountAmount = parseFloat(couponData.maximumDiscountAmount);
+      if (couponData.usageLimit) couponData.usageLimit = parseInt(couponData.usageLimit);
+      if (couponData.userLimit) couponData.userLimit = parseInt(couponData.userLimit);
+
+      console.log('Updating coupon:', editingCouponId, couponData);
+
+      // api call
+      const response = await fetch(`/admin/coupons/${editingCouponId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(couponData)
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await Swal.fire({
+          icon: 'Success',
+          title: 'Success!',
+          text: 'Coupon updated successfully!',
+          confirmButtonText: 'Close',
+          timer: 3000,
+          timerProgressBar: true,
+          showConfirmButton: true
+        });
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('couponModal'));
+        modal.hide();
+
+        // refresh table
+        await fetchAndPopulateCouponsTable();
+
+      } else {
+        if (result.errors) {
+          displayValidationErrors(result.errors);
+        } else {
+          await Swal.fire({
+            icon: 'error',
+            title: 'Oops..',
+            text: result.message || 'Faied to update coupon',
+            confirmButtonText: ' Try Again',
+            confirmButtonColor: '#d33'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error Updating coupon:', error);
+      await Swal.fire({
+        icon: 'Error',
+        title: 'Server error',
+        text: `${error.message} - Some unknown error occurred while updating coupon`,
+        confirmButtonText: 'Close',
+        confirmButtonColor: '#d33'
+      });
+    } finally {
+      // hide loading state
+      submitBtn.disabled = false;
+      spinner.classList.add('d-none');
+    }
+  }
+
+  // Auto uppercase coupon code
+  document.getElementById('couponCode').addEventListener('input', function() {
+    this.value = this.value.toUpperCase();
+  });
+
+</script>
+
+<style>
+  .coupon-header {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .coupon-buttons {
+    margin-bottom: 2.5rem;
+  }
+  
+  .btn-custom-dark {
+    background-color: #000;
+    border-color: #000;
+    color: #fff;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-custom-dark:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+  }
+  
+  .action-btn {
+    background-color: #000;
+    border-color: #000;
+    color: #fff;
+    margin-right: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    transition: all 0.3s ease;
+  }
+  
+  .action-btn:hover {
+    background-color: #dc3545;
+    border-color: #dc3545;
+    color: #fff;
+  }
+  
+  .name-column {
+    min-width: 150px;
+    max-width: 200px;
+  }
+  
+  .toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 24px;
+  }
+  
+  .toggle-switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  
+  .toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 24px;
+  }
+  
+  .toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  
+  input:checked + .toggle-slider {
+    background-color: #28a745;
+  }
+  
+  input:checked + .toggle-slider:before {
+    transform: translateX(26px);
+  }
+</style>

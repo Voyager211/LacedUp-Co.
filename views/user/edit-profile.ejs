@@ -1,0 +1,399 @@
+<div class="container py-5">
+  <!-- Breadcrumb -->
+  <nav aria-label="breadcrumb" class="mb-4">
+    <ol class="breadcrumb">
+      <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+      <li class="breadcrumb-item"><a href="/profile" class="text-decoration-none">My Profile</a></li>
+      <li class="breadcrumb-item active" aria-current="page">Edit Profile</li>
+    </ol>
+  </nav>
+
+  <!-- Page Header -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="fw-bold mb-2">Edit Profile</h1>
+      <p class="text-secondary-custom mb-0">Update your personal information</p>
+    </div>
+  </div>
+
+  <!-- Edit Profile Form -->
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="auth-card p-4">
+        <form id="editProfileForm">
+          <div class="row g-4">
+            <!-- Full Name -->
+            <div class="col-12">
+              <label for="fullname" class="form-label fw-semibold">Full Name *</label>
+              <input type="text" 
+                     class="form-control" 
+                     id="fullname" 
+                     name="fullname" 
+                     value="<%= user.name || '' %>" 
+                     required
+                     placeholder="Enter your full name">
+              <div class="invalid-feedback" id="fullname-error"></div>
+            </div>
+
+            <!-- Email -->
+            <div class="col-12">
+              <label for="email" class="form-label fw-semibold">Email Address *</label>
+              <div class="input-group">
+                <input type="email" 
+                       class="form-control" 
+                       id="email" 
+                       name="email" 
+                       value="<%= user.email || '' %>" 
+                       disabled>
+                <button type="button" 
+                        class="btn btn-outline-primary" 
+                        onclick="openEmailVerificationModal()">
+                  Change
+                </button>
+              </div>
+              <div class="form-text">To change your email, you'll need to verify your current email first.</div>
+              <div class="invalid-feedback" id="email-error"></div>
+            </div>
+
+            <!-- Phone -->
+            <div class="col-12">
+              <label for="phone" class="form-label fw-semibold">Phone Number</label>
+              <input type="tel" 
+                     class="form-control" 
+                     id="phone" 
+                     name="phone" 
+                     value="<%= user.phone || '' %>" 
+                     placeholder="Enter your phone number">
+              <div class="form-text">Optional - 10 digit Indian mobile number</div>
+              <div class="invalid-feedback" id="phone-error"></div>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="col-12">
+              <div class="d-flex gap-3 justify-content-center flex-wrap">
+                <button type="submit" class="btn btn-primary-custom" id="updateBtn">
+                  <i class="bi bi-check-lg me-2"></i>
+                  Update Profile
+                </button>
+                <a href="/profile" class="btn btn-outline-secondary">
+                  <i class="bi bi-x-lg me-2"></i>
+                  Cancel
+                </a>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Email Verification Modal -->
+<div class="modal fade" id="emailVerificationModal" tabindex="-1" aria-labelledby="emailVerificationModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header border-0">
+        <h5 class="modal-title fw-bold" id="emailVerificationModalLabel">
+          <i class="bi bi-shield-check me-2"></i>
+          Verify Current Email
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="text-secondary-custom mb-3">To change your email address, please verify your current email first.</p>
+        <div class="mb-3">
+          <label for="currentEmail" class="form-label fw-semibold">Current Email Address</label>
+          <input type="email" 
+                 class="form-control" 
+                 id="currentEmail"
+                 placeholder="Enter your current email"
+                 value="<%= user.email || '' %>">
+          <div class="invalid-feedback" id="currentEmail-error"></div>
+        </div>
+      </div>
+      <div class="modal-footer border-0">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary-custom" onclick="verifyCurrentEmail()" id="verifyEmailBtn">
+          <i class="bi bi-send me-2"></i>
+          Send OTP
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Form validation styles */
+.is-invalid {
+  border-color: #dc3545;
+}
+
+.invalid-feedback {
+  display: none;
+  width: 100%;
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: #dc3545;
+}
+
+.is-invalid ~ .invalid-feedback {
+  display: block;
+}
+
+/* Input group styling */
+.input-group .btn {
+  border-left: 0;
+}
+
+.input-group .form-control:disabled {
+  background-color: var(--color-card);
+  opacity: 0.8;
+}
+
+/* Modal enhancements */
+.modal-content {
+  border: none;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+
+.modal-header {
+  padding: 1.5rem 1.5rem 0;
+}
+
+.modal-body {
+  padding: 1rem 1.5rem;
+}
+
+.modal-footer {
+  padding: 0 1.5rem 1.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .d-flex.gap-3.flex-wrap {
+    flex-direction: column;
+  }
+  
+  .btn {
+    width: 100%;
+  }
+}
+</style>
+
+<script>
+// Form validation functions
+function validateFullname(fullname) {
+  if (!fullname || fullname.trim().length < 4) {
+    return 'Full name must be at least 4 characters long';
+  }
+  if (/\d/.test(fullname.trim())) {
+    return 'Full name should not contain numbers';
+  }
+  return null;
+}
+
+function validatePhone(phone) {
+  if (phone && phone.trim() && !/^[6-9]\d{9}$/.test(phone.trim())) {
+    return 'Phone number must be 10 digits and start with 6, 7, 8, or 9';
+  }
+  return null;
+}
+
+function showError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  const errorElement = document.getElementById(fieldId + '-error');
+  
+  if (field && errorElement) {
+    field.classList.add('is-invalid');
+    errorElement.textContent = message;
+  }
+}
+
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const errorElement = document.getElementById(fieldId + '-error');
+  
+  if (field && errorElement) {
+    field.classList.remove('is-invalid');
+    errorElement.textContent = '';
+  }
+}
+
+function clearAllErrors() {
+  const fields = ['fullname', 'phone', 'currentEmail'];
+  fields.forEach(fieldId => clearError(fieldId));
+}
+
+// Real-time validation
+document.getElementById('fullname').addEventListener('input', function() {
+  const error = validateFullname(this.value);
+  if (error) {
+    showError('fullname', error);
+  } else {
+    clearError('fullname');
+  }
+});
+
+document.getElementById('phone').addEventListener('input', function() {
+  const error = validatePhone(this.value);
+  if (error) {
+    showError('phone', error);
+  } else {
+    clearError('phone');
+  }
+});
+
+// Form submission
+document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+
+  const formData = new FormData(this);
+  const fullname = formData.get('fullname');
+  const phone = formData.get('phone');
+
+  // Clear previous errors
+  clearAllErrors();
+
+  // Validate form
+  let hasErrors = false;
+
+  const fullnameError = validateFullname(fullname);
+  if (fullnameError) {
+    showError('fullname', fullnameError);
+    hasErrors = true;
+  }
+
+  const phoneError = validatePhone(phone);
+  if (phoneError) {
+    showError('phone', phoneError);
+    hasErrors = true;
+  }
+
+  if (hasErrors) {
+    return;
+  }
+
+  // Disable button and show loading
+  const updateBtn = document.getElementById('updateBtn');
+  const originalText = updateBtn.innerHTML;
+  updateBtn.disabled = true;
+  updateBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Updating...';
+
+  try {
+    const response = await fetch('/profile/edit', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        fullname: fullname.trim(),
+        phone: phone.trim()
+      })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      Swal.fire({
+        icon: 'success',
+        title: 'Success!',
+        text: 'Profile updated successfully',
+        confirmButtonColor: '#000'
+      }).then(() => {
+        window.location.href = '/profile';
+      });
+    } else {
+      if (data.errors) {
+        // Display field-specific errors
+        Object.keys(data.errors).forEach(field => {
+          showError(field, data.errors[field]);
+        });
+      } else {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: data.message || 'Failed to update profile',
+          confirmButtonColor: '#000'
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: 'An error occurred while updating profile',
+      confirmButtonColor: '#000'
+    });
+  } finally {
+    updateBtn.disabled = false;
+    updateBtn.innerHTML = originalText;
+  }
+});
+
+// Email verification modal functions
+function openEmailVerificationModal() {
+  const modal = new bootstrap.Modal(document.getElementById('emailVerificationModal'));
+  modal.show();
+}
+
+// Verify current email function
+async function verifyCurrentEmail() {
+  const currentEmail = document.getElementById('currentEmail').value.trim();
+
+  if (!currentEmail) {
+    showError('currentEmail', 'Please enter your current email address');
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(currentEmail)) {
+    showError('currentEmail', 'Please enter a valid email address');
+    return;
+  }
+
+  clearError('currentEmail');
+
+  const verifyBtn = document.getElementById('verifyEmailBtn');
+  const originalText = verifyBtn.innerHTML;
+  verifyBtn.disabled = true;
+  verifyBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Sending OTP...';
+
+  try {
+    const response = await fetch('/profile/verify-current-email', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ currentEmail })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Close modal
+      const modal = bootstrap.Modal.getInstance(document.getElementById('emailVerificationModal'));
+      modal.hide();
+
+      // Show success message and redirect
+      Swal.fire({
+        icon: 'success',
+        title: 'OTP Sent!',
+        text: 'An OTP has been sent to your current email address',
+        confirmButtonColor: '#000'
+      }).then(() => {
+        window.location.href = '/profile/email-change-otp';
+      });
+    } else {
+      showError('currentEmail', data.message || 'Failed to verify email');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showError('currentEmail', 'An error occurred while verifying email');
+  } finally {
+    verifyBtn.disabled = false;
+    verifyBtn.innerHTML = originalText;
+  }
+}
+</script>

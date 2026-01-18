@@ -1,0 +1,1536 @@
+<!-- <h1><%= title %></h1> -->
+
+<div class="container my-4">
+  <h2 class="fw-bold mb-4">Add New Product</h2>
+
+  <% if (message && message.length > 0) { %>
+    <div class="alert alert-danger" role="alert">
+      <%= message %>
+    </div>
+  <% } %>
+
+  <form id="add-product-form" novalidate>
+    <!-- Basic Info -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Name *</label>
+          <input type="text" name="productName" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Brand *</label>
+          <select name="brand" class="form-select" required>
+            <option value="" disabled selected>Select Brand</option>
+            <% brands.forEach(brand => { %>
+              <option value="<%= brand._id %>"><%= brand.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category *</label>
+          <select name="category" class="form-select" required>
+            <option value="" disabled selected>Select Category</option>
+            <% categories.filter(cat => !cat.isBlocked).forEach(cat => { %>
+              <option value="<%= cat._id %>"><%= cat.name %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Features *</label>
+          <input type="text" name="features" class="form-control" required placeholder="e.g., Breathable, Lightweight, Durable">
+          <div class="form-text">Separate features with commas. Each feature will be automatically capitalized.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-cash-coin me-2"></i>Pricing & Offers</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Regular Price *</label>
+          <input type="number" name="regularPrice" class="form-control" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Offer (%)</label>
+          <input type="number" name="productOffer" class="form-control">
+        </div>
+      </div>
+    </div>
+
+        <!-- Active Offers -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-tags me-2"></i>Active Offers</h5>
+      <div id="active-offers-container">
+        <div class="alert alert-info small" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          Active offers will be displayed here based on your selected brand and category. These offers will be automatically applied to the product's final pricing.
+        </div>
+        <div id="offers-display" class="d-flex flex-wrap gap-2">
+          <!-- Offers will be dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Product Variants -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>📏 Add different sizes with individual base prices and variant-specific offers</li>
+          <li>✅ At least <strong>one variant</strong> is required</li>
+          <li>🇬🇧 Use UK size format (e.g., "UK 6", "UK 7", etc.)</li>
+          <li>💰 Base Price: The intended selling price for each variant</li>
+          <li>🎯 Variant Specific Offer: Optional discount percentage (0-100%) applied to base price</li>
+          <li>📊 Final Price: Automatically calculated as Base Price - Variant Specific Offer</li>
+          <li>➕ Click "Add Variant" to add more sizes</li>
+        </ul>
+      </div>
+
+      <div id="variants-container">
+        <!-- Variants will be dynamically added here -->
+      </div>
+
+      <button type="button" id="add-variant-btn" class="btn btn-outline-dark">
+        <i class="bi bi-plus-lg me-2"></i>Add Variant
+      </button>
+    </div>
+
+    <!-- Description -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-card-text me-2"></i>Product Details</h5>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea name="description" class="form-control" rows="4" required></textarea>
+      </div>
+    </div>
+
+    <!-- Images -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>⭐ Click the star icon to set a main image</li>
+          <li>📥 Upload at least <strong>3 images</strong> (maximum 6 images)</li>
+          <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
+          <li>➕ Click the '+' placeholders to upload individual images</li>
+        </ul>
+      </div>
+      <div class="mb-3">
+        <div class="mb-3">
+            <label class="form-label">Product Images (Min: 3, Max: 6)</label>
+
+            <!-- Bulk upload button -->
+            <div class="mb-3">
+              <button type="button" id="bulk-upload-btn" class="btn btn-outline-dark">
+                <i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)
+              </button>
+              <small class="text-muted ms-2">Select multiple images at once, or use the '+' placeholders below for individual uploads</small>
+            </div>
+
+            <!-- Hidden file inputs -->
+            <input type="file" id="image-input" accept="image/*" class="d-none">
+            <input type="file" id="bulk-input" accept="image/*" multiple class="d-none">
+            <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+
+            <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex justify-content-end gap-2">
+      <a href="/admin/products" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-dark">
+        <i class="bi bi-save me-1"></i> Save Product
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<style>
+  .image-wrapper {
+    position: relative;
+    border: 2px solid transparent;
+    padding: 5px;
+    border-radius: 10px;
+  }
+
+  .image-wrapper.main {
+    border-color: green;
+  }
+
+  .image-wrapper img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 5px;
+  }
+
+  /* 🧼 Enhanced Close (X) Button */
+  .btn-remove {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #dc3545, #bb2d3b);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 18px;
+    font-weight: bold;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-remove:hover {
+    background: linear-gradient(135deg, #bb2d3b, #a02834);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 6px 20px rgba(220, 53, 69, 0.6);
+  }
+
+  .btn-remove:active {
+    transform: scale(0.95) rotate(90deg);
+  }
+
+  /* ⭐ Enhanced Star Button */
+  .btn-main {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #fd7e14, #e8690b);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 18px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(253, 126, 20, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-main.active {
+    background: linear-gradient(135deg, #198754, #146c43);
+    box-shadow: 0 6px 20px rgba(25, 135, 84, 0.6);
+    transform: scale(1.1);
+  }
+
+  .btn-main:hover {
+    transform: scale(1.15) rotate(18deg);
+    box-shadow: 0 6px 20px rgba(253, 126, 20, 0.6);
+  }
+
+  .btn-main.active:hover {
+    transform: scale(1.15) rotate(18deg);
+    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.7);
+  }
+
+  .btn-main:active {
+    transform: scale(0.95);
+  }
+
+  /* 🔄 Crop Button */
+  .btn-crop {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #6f42c1, #5a2d91);
+    color: white;
+    border: 2px solid white;
+    border-radius: 50%;
+    font-size: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(111, 66, 193, 0.4);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 10;
+  }
+
+  .btn-crop:hover {
+    background: linear-gradient(135deg, #5a2d91, #4c2577);
+    transform: scale(1.1) rotate(-15deg);
+    box-shadow: 0 6px 20px rgba(111, 66, 193, 0.6);
+  }
+
+  .btn-crop:active {
+    transform: scale(0.95);
+  }
+
+  /* Image wrapper enhancements */
+  .image-wrapper {
+    position: relative;
+    border: 3px solid transparent;
+    padding: 8px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #e9ecef, #dee2e6) border-box;
+  }
+
+  .image-wrapper.main {
+    border-color: transparent;
+    background: linear-gradient(white, white) padding-box,
+                linear-gradient(135deg, #198754, #20c997) border-box;
+    box-shadow: 0 8px 25px rgba(25, 135, 84, 0.3);
+  }
+
+  .image-wrapper:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+  }
+
+  .image-wrapper img {
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  /* Image placeholder styles */
+  .image-placeholder {
+    cursor: pointer;
+    border: 3px dashed #dee2e6 !important;
+    background: #f8f9fa !important;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover {
+    border-color: #dc3545 !important;
+    background: #fff5f5 !important;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(220, 53, 69, 0.15);
+  }
+
+  .placeholder-content {
+    width: 120px;
+    height: 120px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content {
+    color: #dc3545;
+  }
+
+  .placeholder-content i {
+    font-size: 24px;
+    margin-bottom: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .image-placeholder:hover .placeholder-content i {
+    transform: scale(1.1);
+  }
+
+  /* Bulk upload button styles */
+  #bulk-upload-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+  }
+
+  #bulk-upload-btn:hover {
+    background-color: #212529;
+    border-color: #212529;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  #bulk-upload-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ========= OPTIMIZED CROPPER MODAL ========= */
+  .cropper-modal-custom {
+    max-width: 1200px;
+    width: 95vw;
+  }
+
+  .cropper-modal-content {
+    height: 700px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cropper-modal-content .modal-header {
+    flex-shrink: 0;
+    height: 60px;
+    display: flex;
+    align-items: center;
+  }
+
+  .cropper-modal-content .modal-footer {
+    flex-shrink: 0;
+    height: 70px;
+    display: flex;
+    align-items: center;
+  }
+
+  .cropper-modal-content .modal-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+  }
+
+  .cropper-image-container {
+    width: 1000px;
+    height: 550px;
+    max-width: 85%;
+    max-height: 100%;
+    position: relative;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .cropper-image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+  }
+
+  /* Enhanced cropper elements for better visibility */
+  .cropper-container {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  .cropper-canvas {
+    max-width: 100% !important;
+    max-height: 100% !important;
+  }
+
+  .cropper-drag-box,
+  .cropper-crop-box {
+    border-radius: 4px;
+  }
+
+  .cropper-view-box {
+    outline: 2px solid rgba(224, 58, 47, 0.8);
+    outline-color: rgba(224, 58, 47, 0.8);
+  }
+
+  .cropper-point {
+    width: 10px !important;
+    height: 10px !important;
+    background-color: #E03A2F !important;
+    border: 2px solid #fff !important;
+    border-radius: 50% !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .cropper-line {
+    background-color: #E03A2F !important;
+    opacity: 0.7 !important;
+  }
+
+  .cropper-point.point-se {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-nw {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-ne {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  .cropper-point.point-sw {
+    width: 12px !important;
+    height: 12px !important;
+  }
+
+  /* ========= VARIANTS MANAGEMENT STYLES ========= */
+  .variant-row {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+    position: relative;
+  }
+
+  .variant-row:hover {
+    border-color: #dc3545;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.1);
+    transform: translateY(-1px);
+  }
+
+  .variant-header {
+    display: flex;
+    justify-content: between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e9ecef;
+  }
+
+  .variant-number {
+    display: none;
+  }
+
+  .remove-variant-btn {
+    background: transparent;
+    color: #6c757d;
+    border: none;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  .remove-variant-btn i {
+    transition: color 0.3s ease;
+  }
+
+  .remove-variant-btn:hover i {
+    color: #dc3545;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+  }
+
+  .remove-variant-btn:active {
+    transform: scale(0.95) rotate(90deg);
+  }
+
+  #add-variant-btn {
+    transition: all 0.3s ease;
+    font-weight: 500;
+    border: 2px dashed #6c757d;
+    background: transparent;
+  }
+
+  #add-variant-btn:hover {
+    background-color: #212529;
+    border-color: #212529;
+    border-style: solid;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  .variant-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+    gap: 15px;
+  }
+
+  @media (max-width: 1200px) {
+    .variant-fields {
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .variant-fields {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+  }
+
+</style>
+
+<script src="/js/validation.js"></script>
+<script src="/utils/imageValidation.js"></script>
+<script>
+  const input = document.getElementById('image-input');
+  const bulkInput = document.getElementById('bulk-input');
+  const bulkUploadBtn = document.getElementById('bulk-upload-btn');
+  const container = document.getElementById('image-preview-container');
+  const mainIndexInput = document.getElementById('mainImageIndex');
+  let imageFiles = [];
+  let base64Images = [];
+  let cropper;
+  let cropModal;
+
+  let filesToCrop = [];
+  let currentFileIndex = 0;
+  let currentUploadSlot = -1; // Track which slot is being uploaded to
+  let isProcessingBulk = false; // Track bulk upload state
+  const MAX_IMAGES = 6;
+  const MIN_IMAGES = 3;
+
+  // Variants management
+  let variants = [];
+  let variantCounter = 0;
+  const variantsContainer = document.getElementById('variants-container');
+  const addVariantBtn = document.getElementById('add-variant-btn');
+
+  input.addEventListener('change', (e) => {
+    const file = e.target.files[0]; // Single file selection
+
+    if (!file) return;
+
+    // Check maximum images limit
+    if (base64Images.length >= MAX_IMAGES) {
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+      e.target.value = '';
+      return;
+    }
+
+    // Validate the selected file
+    const validation = ImageValidator.validateImageFile(file);
+
+    if (!validation.isValid) {
+      // Show validation errors
+      showValidationErrors([`${file.name}: ${validation.message}`]);
+      // Clear the input
+      e.target.value = '';
+      return;
+    }
+
+    // Clear any previous validation errors
+    clearValidationErrors();
+
+    // Process single file - ONLY OPENS CROPPER, DOES NOT SUBMIT
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        // Image processing is handled by the crop save handler
+        // Just clean up after cropping is complete
+        e.target.value = '';
+        currentUploadSlot = -1;
+      });
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Function to trigger file selection for a specific slot
+  function selectImageForSlot(slotIndex = -1) {
+    currentUploadSlot = slotIndex;
+    input.click();
+  }
+
+  // Bulk upload button event listener
+  bulkUploadBtn.addEventListener('click', () => {
+    if (isProcessingBulk) {
+      showValidationErrors(['Please wait for the current upload to complete.']);
+      return;
+    }
+    bulkInput.click();
+  });
+
+  // Bulk input change handler
+  bulkInput.addEventListener('change', (e) => {
+    const files = Array.from(e.target.files);
+
+    if (!files.length) return;
+
+    // Check if adding these files would exceed maximum
+    let filesToProcess = files;
+    if (base64Images.length + files.length > MAX_IMAGES) {
+      const availableSlots = MAX_IMAGES - base64Images.length;
+      if (availableSlots <= 0) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        e.target.value = '';
+        return;
+      }
+
+      filesToProcess = files.slice(0, availableSlots);
+      showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed. Only the first ${availableSlots} images have been selected.`]);
+    }
+
+    // Validate all selected files
+    const validation = ImageValidator.validateMultipleImageFiles(filesToProcess);
+
+    if (!validation.isValid) {
+      // Show validation errors but continue with valid files if any
+      showValidationErrors(validation.errors);
+      if (validation.validFiles.length === 0) {
+        e.target.value = '';
+        return;
+      }
+      filesToProcess = validation.validFiles;
+    } else {
+      // Clear any previous validation errors
+      clearValidationErrors();
+    }
+
+    // Start bulk processing - ONLY OPENS CROPPERS, DOES NOT SUBMIT
+    processBulkUpload(filesToProcess);
+
+    // Clear the input for next use
+    e.target.value = '';
+  });
+
+
+  // Bulk upload processing function
+  function processBulkUpload(files) {
+    if (files.length === 0) return;
+
+    isProcessingBulk = true;
+    filesToCrop = files;
+    currentFileIndex = 0;
+
+    // Update button state
+    bulkUploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
+    bulkUploadBtn.disabled = true;
+
+    // Start processing first image
+    cropNextBulkImage();
+  }
+
+  function cropNextBulkImage() {
+    if (currentFileIndex >= filesToCrop.length) {
+      // Bulk processing complete
+      isProcessingBulk = false;
+      bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
+      bulkUploadBtn.disabled = false;
+      filesToCrop = [];
+      currentFileIndex = 0;
+      return;
+    }
+
+    const file = filesToCrop[currentFileIndex];
+    const reader = new FileReader();
+    reader.onload = () => {
+      showCropModal(reader.result, () => {
+        currentFileIndex++;
+        cropNextBulkImage(); // Process next image
+      });
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function handleCropCancel() {
+    // Clean up cropper instance
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+
+    // Reset file input
+    input.value = '';
+
+    // Reset current upload slot
+    currentUploadSlot = -1;
+
+    // Handle bulk upload cancellation
+    if (isProcessingBulk) {
+      isProcessingBulk = false;
+      bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
+      bulkUploadBtn.disabled = false;
+      filesToCrop = [];
+      currentFileIndex = 0;
+      bulkInput.value = ''; // Clear bulk input as well
+    }
+
+    // Clear any validation errors that might be showing
+    clearValidationErrors();
+  }
+
+  /**
+   * Shows the image cropping modal with enhanced user workflow
+   * This function ensures that:
+   * 1. The modal opens with the image ready for cropping
+   * 2. NO AUTOMATIC SUBMISSION occurs - user must explicitly click "Crop & Add"
+   * 3. Proper cleanup happens on cancel or completion
+   * 4. Clear feedback is provided to the user
+   * 5. NO SWEETALERT OR FORM SUBMISSION until user clicks main form submit
+   */
+  function showCropModal(imageSrc, onCropDone) {
+    // Remove any existing modal to prevent conflicts
+    const existingModal = document.getElementById('cropModal');
+    if (existingModal) existingModal.remove();
+
+    // Create the cropping modal with clear action buttons
+    const modalHtml = `
+      <div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered cropper-modal-custom">
+          <div class="modal-content cropper-modal-content">
+            <div class="modal-header border-0 pb-2">
+              <h5 class="modal-title mx-auto mb-0">
+                <i class="bi bi-scissors me-2"></i>Crop Image
+              </h5>
+              <small class="text-muted d-block text-center mt-1">
+                Adjust the crop area and click "Crop & Add" to save
+              </small>
+            </div>
+            <div class="modal-body p-2">
+              <div class="cropper-image-container">
+                <img id="crop-image" src="${imageSrc}" />
+              </div>
+            </div>
+            <div class="modal-footer border-0 pt-2 justify-content-center">
+              <button class="btn btn-outline-secondary px-4" id="crop-cancel">
+                <i class="bi bi-x-lg me-1"></i>Cancel
+              </button>
+              <button class="btn btn-success px-4" id="crop-save">
+                <i class="bi bi-check-lg me-1"></i>Crop & Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    const modalEl = document.getElementById('cropModal');
+    cropModal = new bootstrap.Modal(modalEl, {
+      backdrop: 'static', // Prevent closing by clicking outside
+      keyboard: false     // Prevent closing with ESC key
+    });
+    
+    // Show the modal
+    cropModal.show();
+
+    const imageEl = document.getElementById('crop-image');
+    
+    // Initialize cropper when image loads
+    imageEl.onload = () => {
+      // Initialize the cropper with optimal settings
+      cropper = new Cropper(imageEl, {
+        aspectRatio: NaN, // Allow free aspect ratio
+        viewMode: 1,      // Restrict crop box to not exceed canvas
+        dragMode: 'move', // Allow dragging the image
+        autoCropArea: 0.6, // Initial crop area size
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false,
+        responsive: true,
+        checkCrossOrigin: false,
+        checkOrientation: false,
+        modal: true,
+        background: true,
+        minContainerWidth: 300,
+        minContainerHeight: 300,
+        minCanvasWidth: 200,
+        minCanvasHeight: 200,
+        minCropBoxWidth: 100,
+        minCropBoxHeight: 100,
+        scalable: true,
+        zoomable: true,
+        zoomOnTouch: true,
+        zoomOnWheel: true,
+        wheelZoomRatio: 0.1,
+        ready: function () {
+          // Optimize initial display when cropper is ready
+          this.cropper.reset();
+          const containerData = this.cropper.getContainerData();
+          const imageData = this.cropper.getImageData();
+
+          // Calculate optimal scale to fit image in container
+          const scaleX = containerData.width / imageData.naturalWidth;
+          const scaleY = containerData.height / imageData.naturalHeight;
+          const scale = Math.min(scaleX, scaleY) * 0.8; // Leave some padding
+
+          // Center and scale the image optimally
+          this.cropper.zoomTo(scale);
+          this.cropper.center();
+        }
+      });
+    };
+
+    // Handle explicit cancel button click
+    const cancelBtn = modalEl.querySelector('#crop-cancel');
+    cancelBtn.onclick = (e) => {
+      e.preventDefault();
+      // Mark as cancelled and handle cleanup
+      modalEl.classList.add('crop-cancelled');
+      handleCropCancel();
+      cropModal.hide();
+    };
+
+    // Handle modal hidden event for cleanup
+    modalEl.addEventListener('hidden.bs.modal', (e) => {
+      // Only run cancel cleanup if not already handled and not completed
+      if (!e.target.classList.contains('crop-completed') && !e.target.classList.contains('crop-cancelled')) {
+        handleCropCancel();
+      }
+
+      // Clean up modal and backdrop
+      modalEl.remove();
+      const backdrop = document.querySelector('.modal-backdrop');
+      if (backdrop) backdrop.remove();
+    });
+
+    // Handle explicit "Crop & Add" button click - ONLY ACTION THAT SAVES THE IMAGE
+    // THIS DOES NOT SUBMIT THE FORM OR SHOW SWEETALERT
+    const cropSaveBtn = modalEl.querySelector('#crop-save');
+    cropSaveBtn.onclick = (e) => {
+      e.preventDefault();
+      
+      // Disable button to prevent double-clicking
+      cropSaveBtn.disabled = true;
+      cropSaveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processing...';
+
+      try {
+        // Generate the cropped image
+        const croppedCanvas = cropper.getCroppedCanvas({
+          width: 800,
+          height: 800,
+          imageSmoothingEnabled: true,
+          imageSmoothingQuality: 'high'
+        });
+
+        const croppedImageData = croppedCanvas.toDataURL('image/jpeg', 0.9);
+
+        // Save the cropped image to the appropriate slot - NO FORM SUBMISSION
+        if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
+          // Replace existing image (re-cropping scenario)
+          base64Images[currentUploadSlot] = croppedImageData;
+        } else {
+          // Add new image
+          base64Images.push(croppedImageData);
+        }
+
+        // Update the thumbnail display - NO FORM SUBMISSION
+        renderThumbnails();
+
+        // Mark as completed to avoid cancel cleanup
+        modalEl.classList.add('crop-completed');
+        
+        // Hide the modal
+        cropModal.hide();
+
+        // Handle post-hide cleanup and callback
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          modalEl.remove();
+          const backdrop = document.querySelector('.modal-backdrop');
+          if (backdrop) backdrop.remove();
+
+          // Execute the completion callback if provided - NO FORM SUBMISSION
+          if (typeof onCropDone === 'function') {
+            onCropDone();
+          }
+        }, { once: true }); // Use once to prevent multiple executions
+
+      } catch (error) {
+        console.error('Error during image cropping:', error);
+        
+        // Re-enable button on error
+        cropSaveBtn.disabled = false;
+        cropSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Crop & Add';
+        
+        // Show error message
+        showValidationErrors(['Failed to process the cropped image. Please try again.']);
+      }
+    };
+  }
+
+
+  function renderThumbnails() {
+    container.innerHTML = '';
+
+    // Render existing images
+    base64Images.forEach((img, index) => {
+      const wrapper = document.createElement('div');
+      wrapper.classList.add('image-wrapper');
+      if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
+
+      wrapper.innerHTML = `
+        <img src="${img}" />
+        <button type="button" class="btn-remove" onclick="removeImage(${index})">×</button>
+        <button type="button" class="btn-crop" onclick="recropImage(${index})" title="Re-crop image"><i class="bi bi-scissors"></i></button>
+        <button type="button" class="btn-main ${mainIndexInput.value == index ? 'active' : ''}" onclick="setMainImage(${index})">&#9733;</button>
+      `;
+      container.appendChild(wrapper);
+    });
+
+    // Add placeholders based on current state
+    const currentImageCount = base64Images.length;
+
+    if (currentImageCount < MIN_IMAGES) {
+      // Show placeholders to reach minimum requirement
+      const placeholdersNeeded = MIN_IMAGES - currentImageCount;
+      for (let i = 0; i < placeholdersNeeded; i++) {
+        addPlaceholder();
+      }
+    } else if (currentImageCount >= MIN_IMAGES && currentImageCount < MAX_IMAGES) {
+      // After minimum met: show 1 additional placeholder
+      addPlaceholder();
+    }
+    // If currentImageCount >= MAX_IMAGES, show no placeholders
+  }
+
+  function addPlaceholder() {
+    const placeholder = document.createElement('div');
+    placeholder.classList.add('image-wrapper', 'image-placeholder');
+    placeholder.innerHTML = `
+      <div class="placeholder-content">
+        <i class="bi bi-plus-lg"></i>
+        <span>Add Image</span>
+      </div>
+    `;
+
+    // Add click handler to trigger file selection
+    placeholder.addEventListener('click', () => {
+      if (base64Images.length >= MAX_IMAGES) {
+        showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
+        return;
+      }
+      selectImageForSlot(-1); // -1 indicates new image, not replacement
+    });
+
+    container.appendChild(placeholder);
+  }
+
+  function setMainImage(index) {
+    mainIndexInput.value = index;
+    renderThumbnails();
+  }
+
+  function removeImage(index) {
+    base64Images.splice(index, 1);
+    if (mainIndexInput.value == index) mainIndexInput.value = '';
+    renderThumbnails();
+  }
+
+  /**
+   * Initiates re-cropping workflow for an existing image
+   * This function:
+   * 1. Opens the cropper modal with the existing image
+   * 2. Allows user to adjust the crop area
+   * 3. Only saves the new crop when user explicitly clicks "Crop & Add"
+   * 4. Does NOT automatically submit or show alerts
+   */
+  function recropImage(index) {
+    if (index < 0 || index >= base64Images.length) return;
+
+    // Set the current upload slot to the index being re-cropped
+    currentUploadSlot = index;
+
+    // Open crop modal with the existing image for re-cropping
+    // The modal will handle all user interactions and only save on explicit confirmation
+    showCropModal(base64Images[index], () => {
+      // Reset upload slot after re-cropping is complete
+      currentUploadSlot = -1;
+      
+      // Optional: Show a subtle success indicator (not a SweetAlert)
+      console.log('Image re-cropped successfully');
+    });
+  }
+
+  // Validation error display functions
+  function showValidationErrors(errors) {
+    clearValidationErrors();
+
+    const imageSection = document.querySelector('#image-input').closest('.border');
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'alert alert-danger mt-3 image-validation-errors';
+    errorDiv.innerHTML = `
+      <strong>Image Validation Errors:</strong>
+      <ul class="mb-0 mt-2">
+        ${errors.map(error => `<li>${error}</li>`).join('')}
+      </ul>
+    `;
+
+    imageSection.appendChild(errorDiv);
+  }
+
+  function clearValidationErrors() {
+    const existingErrors = document.querySelectorAll('.image-validation-errors');
+    existingErrors.forEach(error => error.remove());
+  }
+
+  // ========= VARIANTS MANAGEMENT FUNCTIONS =========
+
+  // Preview calculation for final price (backend will be the source of truth)
+  function previewFinalPrice(variantId) {
+    const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
+    if (!variantElement) return;
+
+    const basePriceInput = variantElement.querySelector('.variant-base-price');
+    const offerInput = variantElement.querySelector('.variant-specific-offer');
+    const finalPriceInput = variantElement.querySelector('.variant-final-price');
+
+    const basePrice = Math.round(parseFloat(basePriceInput.value) || 0);
+    const variantOffer = parseFloat(offerInput.value) || 0;
+    const productOffer = parseFloat(document.querySelector('input[name="productOffer"]').value) || 0;
+    const maxOffer = Math.max(productOffer, variantOffer);
+
+    // Validate base price against regular price
+    const regularPriceField = document.querySelector('input[name="regularPrice"]');
+    const regularPrice = regularPriceField ? parseFloat(regularPriceField.value) || 0 : 0;
+
+    if (basePrice > 0) {
+      // Check if base price exceeds regular price
+      if (regularPrice > 0 && basePrice >= regularPrice) {
+        finalPriceInput.value = 'Invalid';
+        finalPriceInput.style.color = '#dc3545'; // Red to indicate error
+        finalPriceInput.title = `Base price must be less than regular price (₹${Math.round(regularPrice)})`;
+
+        // Trigger validation if validator is available
+        if (typeof productValidator !== 'undefined') {
+          const result = productValidator.validateVariantBasePrice(basePriceInput);
+          if (!result.isValid) {
+            productValidator.showFieldError(basePriceInput, result.message);
+          }
+        }
+      } else {
+        const previewPrice = basePrice * (1 - maxOffer / 100);
+        finalPriceInput.value = previewPrice.toFixed(2);
+        finalPriceInput.style.color = '#6c757d'; // Gray to indicate preview
+        finalPriceInput.title = 'Preview - Final price will be calculated on save';
+
+        // Clear any validation errors
+        if (typeof productValidator !== 'undefined') {
+          productValidator.clearFieldError(basePriceInput);
+        }
+      }
+    } else {
+      finalPriceInput.value = '0.00';
+      finalPriceInput.style.color = '#6c757d';
+      finalPriceInput.title = 'Enter base price to see preview';
+    }
+  }
+  function addVariant(size = '', stock = '', basePrice = '', variantSpecificOffer = '', finalPrice = '') {
+    variantCounter++;
+    const variantId = `variant-${variantCounter}`;
+
+    const variantHtml = `
+      <div class="variant-row" data-variant-id="${variantId}">
+        <div class="variant-header">
+          <div class="d-flex align-items-center gap-2">
+            <span class="fw-semibold">Variant ${variants.length + 1}</span>
+          </div>
+          <button type="button" class="remove-variant-btn" onclick="removeVariant('${variantId}')">
+            <i class="bi bi-trash3"></i>
+          </button>
+        </div>
+        <div class="variant-fields">
+          <div>
+            <label class="form-label">Size *</label>
+            <input type="text" class="form-control variant-size" placeholder="e.g., UK 6" value="${size}" required>
+          </div>
+          <div>
+            <label class="form-label">Stock *</label>
+            <input type="number" class="form-control variant-stock" placeholder="0" value="${stock}" min="0" required>
+          </div>
+          <div>
+            <label class="form-label">Base Price * (₹)</label>
+            <input type="number" class="form-control variant-base-price" placeholder="0" value="${basePrice ? Math.round(basePrice) : ''}" min="0" step="1" required onchange="previewFinalPrice('${variantId}')" oninput="previewFinalPrice('${variantId}')">
+          </div>
+          <div>
+            <label class="form-label">Variant Specific Offer (%)</label>
+            <input type="number" class="form-control variant-specific-offer" placeholder="0" value="${variantSpecificOffer}" min="0" max="100" step="0.01" onchange="previewFinalPrice('${variantId}')" oninput="previewFinalPrice('${variantId}')">
+          </div>
+          <div>
+            <label class="form-label">Final Price (₹) <small class="text-muted">- Preview</small></label>
+            <input type="number" class="form-control variant-final-price" placeholder="0" value="${finalPrice}" readonly style="background-color: #f8f9fa; font-weight: 600; color: #6c757d;" title="Preview - Final price will be calculated on save">
+          </div>
+        </div>
+      </div>
+    `;
+
+    variantsContainer.insertAdjacentHTML('beforeend', variantHtml);
+    variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer, finalPrice });
+    updateVariantNumbers();
+
+    // Add validation to the new base price field
+    setTimeout(() => {
+      const newBasePriceField = document.querySelector(`[data-variant-id="${variantId}"] .variant-base-price`);
+      if (newBasePriceField && productValidator) {
+        newBasePriceField.addEventListener('blur', () => {
+          const result = productValidator.validateVariantBasePrice(newBasePriceField);
+          if (!result.isValid) {
+            productValidator.showFieldError(newBasePriceField, result.message);
+          } else {
+            productValidator.clearFieldError(newBasePriceField);
+          }
+        });
+
+        newBasePriceField.addEventListener('input', () => {
+          productValidator.clearFieldError(newBasePriceField);
+        });
+      }
+
+      // Calculate initial preview for final price
+      previewFinalPrice(variantId);
+    }, 100);
+  }
+
+  function removeVariant(variantId) {
+    const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
+    if (variantElement) {
+      variantElement.remove();
+      variants = variants.filter(v => v.id !== variantId);
+      updateVariantNumbers();
+    }
+  }
+
+  function updateVariantNumbers() {
+    const variantRows = document.querySelectorAll('.variant-row');
+    variantRows.forEach((row, index) => {
+      const labelElement = row.querySelector('.variant-header .fw-semibold');
+      if (labelElement) {
+        labelElement.textContent = `Variant ${index + 1}`;
+      }
+    });
+  }
+
+  function getVariantsData() {
+    const variantRows = document.querySelectorAll('.variant-row');
+    const variantsData = [];
+
+    variantRows.forEach(row => {
+      const size = row.querySelector('.variant-size').value.trim();
+      const stock = parseInt(row.querySelector('.variant-stock').value) || 0;
+      const basePrice = parseFloat(row.querySelector('.variant-base-price').value) || 0;
+      const variantSpecificOffer = parseFloat(row.querySelector('.variant-specific-offer').value) || 0;
+
+      if (size && basePrice > 0) {
+        variantsData.push({
+          size,
+          stock,
+          basePrice,
+          variantSpecificOffer
+        });
+      }
+    });
+
+    return variantsData;
+  }
+
+  function validateVariants() {
+    const variantsData = getVariantsData();
+    const errors = [];
+
+    if (variantsData.length === 0) {
+      errors.push('At least one product variant is required.');
+      return { isValid: false, errors };
+    }
+
+    const sizes = new Set();
+    variantsData.forEach((variant, index) => {
+      if (!variant.size) {
+        errors.push(`Variant ${index + 1}: Size is required.`);
+      } else if (sizes.has(variant.size.toLowerCase())) {
+        errors.push(`Variant ${index + 1}: Duplicate size "${variant.size}".`);
+      } else {
+        sizes.add(variant.size.toLowerCase());
+      }
+
+      if (variant.stock < 0) {
+        errors.push(`Variant ${index + 1}: Stock cannot be negative.`);
+      }
+
+      if (!variant.basePrice || variant.basePrice <= 0) {
+        errors.push(`Variant ${index + 1}: Base price is required and must be greater than 0.`);
+      }
+
+      if (variant.variantSpecificOffer < 0 || variant.variantSpecificOffer > 100) {
+        errors.push(`Variant ${index + 1}: Variant specific offer must be between 0 and 100.`);
+      }
+    });
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  // Add variant button event listener
+  addVariantBtn.addEventListener('click', () => {
+    addVariant();
+  });
+
+  // Note: base64Images are attached in the submitForm function, not here
+  // This prevents duplicate image submissions
+
+  // Initialize form validation
+  const productValidator = new FormValidator('add-product-form');
+
+  // Add custom validation for variant base prices
+  productValidator.addCustomValidation('.variant-base-price', (field) => {
+    return productValidator.validateVariantBasePrice(field);
+  });
+
+  // Add validation when regular price changes
+  const regularPriceField = document.querySelector('input[name="regularPrice"]');
+  if (regularPriceField) {
+    regularPriceField.addEventListener('blur', () => {
+      // Re-validate all variant base prices when regular price changes
+      productValidator.validateAllVariantBasePrices();
+    });
+  }
+
+  // Override submit function with validation
+  productValidator.submitForm = async function() {
+    const form = document.getElementById('add-product-form');
+    const formData = new FormData(form);
+
+    // Validate minimum image requirement
+    if (base64Images.length < MIN_IMAGES) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Images Required',
+        text: `Please upload at least ${MIN_IMAGES} images for the product.`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
+
+    // Validate variant base prices
+    const basePriceValidation = productValidator.validateAllVariantBasePrices();
+    if (!basePriceValidation.isValid) {
+      await Swal.fire({
+        icon: 'error',
+        title: 'Validation Error',
+        text: 'Please fix the base price validation errors before submitting.',
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
+
+    // Validate variants
+    const variantValidation = validateVariants();
+    if (!variantValidation.isValid) {
+      await Swal.fire({
+        icon: 'warning',
+        title: 'Variant Validation Failed',
+        html: `<ul style="text-align: left; margin: 0; padding-left: 20px;">${variantValidation.errors.map(error => `<li>${error}</li>`).join('')}</ul>`,
+        confirmButtonColor: '#d33'
+      });
+      return;
+    }
+
+    // ONLY HERE: Attach base64 images manually when form is actually being submitted
+    base64Images.forEach((b64, i) => {
+      formData.append('base64Images[]', b64);
+    });
+
+    // Attach variants data
+    const variantsData = getVariantsData();
+    formData.append('variants', JSON.stringify(variantsData));
+
+    try {
+      const res = await fetch('/admin/products/api/add', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        await Swal.fire({
+          icon: 'success',
+          title: 'Product Added!',
+          text: 'Your new product has been successfully created.',
+          confirmButtonColor: '#111'
+        });
+        window.location.href = '/admin/products';
+      } else {
+        throw new Error(data.message || 'Failed to add product');
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops!',
+        text: err.message || 'Something went wrong. Try again.',
+        confirmButtonColor: '#d33'
+      });
+    }
+  };
+  // ========= ACTIVE OFFERS FUNCTIONALITY =========
+  
+  // Function to fetch and display active offers
+  async function updateActiveOffers() {
+    const brandSelect = document.querySelector('select[name="brand"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    const productOfferInput = document.querySelector('input[name="productOffer"]');
+    const offersDisplay = document.getElementById('offers-display');
+    
+    if (!brandSelect || !categorySelect || !offersDisplay) return;
+    
+    const brandId = brandSelect.value;
+    const categoryId = categorySelect.value;
+    const productOffer = parseFloat(productOfferInput?.value) || 0;
+    
+    // Clear current offers display
+    offersDisplay.innerHTML = '';
+    
+    if (!brandId && !categoryId && productOffer === 0) {
+      offersDisplay.innerHTML = '<span class="text-muted small">No offers available</span>';
+      return;
+    }
+    
+    try {
+      // Fetch brand and category data to get offers
+      const promises = [];
+      
+      if (brandId) {
+        promises.push(fetch(`/admin/brands/api/${brandId}`).then(res => res.json()));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+      
+      if (categoryId) {
+        promises.push(fetch(`/admin/categories/api/${categoryId}`).then(res => res.json()));
+      } else {
+        promises.push(Promise.resolve(null));
+      }
+      
+      const [brandData, categoryData] = await Promise.all(promises);
+      
+      const offers = [];
+      
+      // Add brand offer if exists
+      if (brandData?.brand?.brandOffer && brandData.brand.brandOffer > 0) {
+        offers.push({
+          type: 'brand',
+          name: brandData.brand.name,
+          value: brandData.brand.brandOffer,
+          label: `${brandData.brand.brandOffer}% off on all ${brandData.brand.name} products`,
+          badgeClass: 'bg-primary'
+        });
+      }
+      
+      // Add category offer if exists
+      if (categoryData?.category?.categoryOffer && categoryData.category.categoryOffer > 0) {
+        offers.push({
+          type: 'category',
+          name: categoryData.category.name,
+          value: categoryData.category.categoryOffer,
+          label: `${categoryData.category.categoryOffer}% off on all ${categoryData.category.name}`,
+          badgeClass: 'bg-info'
+        });
+      }
+      
+      // Add product offer if exists
+      if (productOffer > 0) {
+        offers.push({
+          type: 'product',
+          name: 'This Product',
+          value: productOffer,
+          label: `${productOffer}% off on this product`,
+          badgeClass: 'bg-success'
+        });
+      }
+      
+      // Display offers
+      if (offers.length === 0) {
+        offersDisplay.innerHTML = '<span class="text-muted small">No active offers</span>';
+      } else {
+        const offersHtml = offers.map(offer => `
+          <span class="badge ${offer.badgeClass} text-white px-3 py-2 me-2 mb-2" style="font-size: 0.9rem;">
+            <i class="bi bi-tag-fill me-1"></i>
+            ${offer.label}
+          </span>
+        `).join('');
+        
+        offersDisplay.innerHTML = offersHtml;
+        
+        // Show highest offer info
+        const maxOffer = Math.max(...offers.map(o => o.value));
+        const maxOfferType = offers.find(o => o.value === maxOffer);
+        
+        if (offers.length > 1) {
+          offersDisplay.innerHTML += `
+            <div class="w-100 mt-2">
+              <small class="text-muted">
+                <i class="bi bi-info-circle me-1"></i>
+                Highest offer (${maxOffer}% from ${maxOfferType.type}) will be applied to final pricing
+              </small>
+            </div>
+          `;
+        }
+      }
+      
+    } catch (error) {
+      console.error('Error fetching offers:', error);
+      offersDisplay.innerHTML = '<span class="text-danger small">Error loading offers</span>';
+    }
+  }
+  
+  // Add event listeners for brand and category changes
+  document.addEventListener('DOMContentLoaded', function() {
+    const brandSelect = document.querySelector('select[name="brand"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    const productOfferInput = document.querySelector('input[name="productOffer"]');
+    
+    if (brandSelect) {
+      brandSelect.addEventListener('change', updateActiveOffers);
+    }
+    
+    if (categorySelect) {
+      categorySelect.addEventListener('change', updateActiveOffers);
+    }
+    
+    if (productOfferInput) {
+      productOfferInput.addEventListener('input', debounce(updateActiveOffers, 500));
+      productOfferInput.addEventListener('change', updateActiveOffers);
+    }
+    
+    // Initial load
+    updateActiveOffers();
+  });
+  
+  // Debounce function to limit API calls
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+
+
+  // Initialize the interface with placeholders on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    renderThumbnails();
+
+    // Add default variants for UK shoe sizes (reduced to 2 variants)
+    const defaultSizes = ['UK 7', 'UK 8'];
+    const defaultStocks = [15, 20];
+    defaultSizes.forEach((size, index) => {
+      addVariant(size, defaultStocks[index].toString(), '', '0', '');
+    });
+  });
+
+</script>
