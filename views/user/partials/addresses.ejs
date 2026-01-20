@@ -447,6 +447,8 @@
     }
 </style>
 
+<script src="/js/user/stateDistrictData.js"></script>
+
 <script>
     // Show SweetAlert only for unknown errors or final success
     function showSweetAlert(message, type = 'error') {
@@ -573,21 +575,8 @@
         }
     ];
 
-    let stateDistrictData = {};
+    let stateDistrictData = STATES_DISTRICTS;
 
-    // Load state and district data
-    async function loadStateDistrictData() {
-        try {
-            const response = await fetch('/api/states-districts');
-            const data = await response.json();
-            if (data.success) {
-                stateDistrictData = data.data;
-                initializeStateDistrict();
-            }
-        } catch (error) {
-            console.error('Error loading state/district data:', error);
-        }
-    }
 
     // Initialize state and district dropdowns
     function initializeStateDistrict() {
@@ -687,9 +676,8 @@
         }
 
         console.log('✅ ADDRESSES PARTIAL: On address book page - initializing');
-        
-        // Initialize state/district data
-        loadStateDistrictData();
+        console.log(`✅ ADDRESSES PARTIAL: Loaded ${Object.keys(stateDistrictData).length} states from constants`);
+        initializeStateDistrict();
 
         // Real-time validation on input - ADDRESS BOOK ONLY
         validationFields.forEach(field => {
@@ -897,26 +885,12 @@
         const addressModal = document.getElementById('addressModal');
         if (addressModal) {
             addressModal.addEventListener('shown.bs.modal', function() {
-                setTimeout(() => {
-                    const stateSelect = document.getElementById('state');
-                    if (stateSelect) {
-                        const newStateSelect = stateSelect.cloneNode(true);
-                        stateSelect.parentNode.replaceChild(newStateSelect, stateSelect);
-                        
-                        newStateSelect.addEventListener('change', function() {
-                            const selectedState = this.value;
-                            console.log(`🔄 ADDRESSES PARTIAL: Modal state changed to: ${selectedState}`);
-                            updateDistricts(selectedState);
-                            
-                            const districtField = validationFields.find(f => f.id === 'district');
-                            if (districtField) {
-                                clearFieldError('district');
-                            }
-                        });
-                    }
-                }, 100);
+                // Re-initialize states when modal opens
+                console.log('🔄 ADDRESSES PARTIAL: Re-initializing states on modal open');
+                initializeStateDistrict();
             });
         }
     });
+
 </script>
 

@@ -1,8 +1,8 @@
 const Address = require('../../models/Address');
 const User = require('../../models/User');
 
-// Add new address
-exports.addAddress = async (req, res) => {
+// ==================== ADD NEW ADDRESS ====================
+const addAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     
@@ -134,8 +134,8 @@ exports.addAddress = async (req, res) => {
   }
 };
 
-// Update existing address
-exports.updateAddress = async (req, res) => {
+// ==================== UPDATE EXISTING ADDRESS ====================
+const updateAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const addressId = req.params.addressId;
@@ -271,8 +271,8 @@ exports.updateAddress = async (req, res) => {
   }
 };
 
-// Get all addresses for a user
-exports.getAddresses = async (req, res) => {
+// ==================== GET ALL ADDRESSES ====================
+const getAddresses = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     
@@ -299,8 +299,8 @@ exports.getAddresses = async (req, res) => {
   }
 };
 
-// Get a single address by ID
-exports.getAddress = async (req, res) => {
+// ==================== GET SINGLE ADDRESS ====================
+const getAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const addressId = req.params.addressId;
@@ -345,9 +345,8 @@ exports.getAddress = async (req, res) => {
   }
 };
 
-
-// Delete address
-exports.deleteAddress = async (req, res) => {
+// ==================== DELETE ADDRESS ====================
+const deleteAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const addressId = req.params.addressId;
@@ -406,8 +405,8 @@ exports.deleteAddress = async (req, res) => {
   }
 };
 
-// Set default address
-exports.setDefaultAddress = async (req, res) => {
+// ==================== SET DEFAULT ADDRESS ====================
+const setDefaultAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const addressId = req.params.addressId;
@@ -460,8 +459,8 @@ exports.setDefaultAddress = async (req, res) => {
   }
 };
 
-// Load addresses page
-exports.loadAddresses = async (req, res) => {
+// ==================== LOAD ADDRESSES PAGE ====================
+const loadAddresses = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     
@@ -474,29 +473,35 @@ exports.loadAddresses = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // ✅ ADD: Get pagination parameters for initial page load
+    // Get pagination parameters
     const page = parseInt(req.query.page) || 1;
     const limit = 2; // 2 addresses per page
     const skip = (page - 1) * limit;
 
-    // Get user addresses
+    // Get all user addresses
     const userAddresses = await Address.findOne({ userId }).lean();
     const allAddresses = userAddresses ? userAddresses.address : [];
     
-    // ✅ ADD: Calculate pagination for initial render
+    // Calculate pagination
     const totalAddresses = allAddresses.length;
     const totalPages = Math.ceil(totalAddresses / limit) || 1;
+    const currentPage = Math.min(page, totalPages); // Prevent going beyond last page
+    
+    // Get paginated addresses
     const addresses = allAddresses.slice(skip, skip + limit);
 
-    console.log(`📄 Initial page load: ${addresses.length} addresses for page ${page}/${totalPages}`);
+    console.log(`📍 Address Book - Page ${currentPage}/${totalPages} (${addresses.length} addresses, ${totalAddresses} total)`);
 
     res.render('user/address-book', {
       user,
       addresses,
-      // ✅ ADD: Pagination data for EJS template
-      currentPage: page,
+      currentPage: currentPage,
       totalPages: totalPages,
-      totalAddresses: totalAddresses,
+      totalAddresses: totalAddresses, // ✅ Added for count display
+      hasPrevPage: currentPage > 1,
+      hasNextPage: currentPage < totalPages,
+      prevPage: currentPage - 1,
+      nextPage: currentPage + 1,
       title: 'Address Book - LacedUp',
       layout: 'user/layouts/user-layout',
       active: 'addresses',
@@ -508,8 +513,8 @@ exports.loadAddresses = async (req, res) => {
   }
 };
 
-// Get states and districts data
-exports.getStatesAndDistricts = async (req, res) => {
+// ==================== GET STATES AND DISTRICTS ====================
+const getStatesAndDistricts = async (req, res) => {
   try {
     // Indian states and districts data
     const stateDistrictData = {
@@ -517,142 +522,7 @@ exports.getStatesAndDistricts = async (req, res) => {
         name: "Andhra Pradesh",
         districts: ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Nellore", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"]
       },
-      "arunachal-pradesh": {
-        name: "Arunachal Pradesh",
-        districts: ["Anjaw", "Changlang", "Dibang Valley", "East Kameng", "East Siang", "Kamle", "Kra Daadi", "Kurung Kumey", "Lepa Rada", "Lohit", "Longding", "Lower Dibang Valley", "Lower Siang", "Lower Subansiri", "Namsai", "Pakke Kessang", "Papum Pare", "Shi Yomi", "Siang", "Tawang", "Tirap", "Upper Siang", "Upper Subansiri", "West Kameng", "West Siang"]
-      },
-      "assam": {
-        name: "Assam",
-        districts: ["Baksa", "Barpeta", "Biswanath", "Bongaigaon", "Cachar", "Charaideo", "Chirang", "Darrang", "Dhemaji", "Dhubri", "Dibrugarh", "Goalpara", "Golaghat", "Hailakandi", "Hojai", "Jorhat", "Kamrup", "Kamrup Metropolitan", "Karbi Anglong", "Karimganj", "Kokrajhar", "Lakhimpur", "Majuli", "Morigaon", "Nagaon", "Nalbari", "Dima Hasao", "Sivasagar", "Sonitpur", "South Salmara-Mankachar", "Tinsukia", "Udalguri", "West Karbi Anglong"]
-      },
-      "bihar": {
-        name: "Bihar",
-        districts: ["Araria", "Arwal", "Aurangabad", "Banka", "Begusarai", "Bhagalpur", "Bhojpur", "Buxar", "Darbhanga", "East Champaran", "Gaya", "Gopalganj", "Jamui", "Jehanabad", "Kaimur", "Katihar", "Khagaria", "Kishanganj", "Lakhisarai", "Madhepura", "Madhubani", "Munger", "Muzaffarpur", "Nalanda", "Nawada", "Patna", "Purnia", "Rohtas", "Saharsa", "Samastipur", "Saran", "Sheikhpura", "Sheohar", "Sitamarhi", "Siwan", "Supaul", "Vaishali", "West Champaran"]
-      },
-      "chhattisgarh": {
-        name: "Chhattisgarh",
-        districts: ["Balod", "Baloda Bazar", "Balrampur", "Bastar", "Bemetara", "Bijapur", "Bilaspur", "Dantewada", "Dhamtari", "Durg", "Gariaband", "Gaurela Pendra Marwahi", "Janjgir Champa", "Jashpur", "Kabirdham", "Kanker", "Kondagaon", "Korba", "Koriya", "Mahasamund", "Mungeli", "Narayanpur", "Raigarh", "Raipur", "Rajnandgaon", "Sukma", "Surajpur", "Surguja"]
-      },
-      "goa": {
-        name: "Goa",
-        districts: ["North Goa", "South Goa"]
-      },
-      "gujarat": {
-        name: "Gujarat",
-        districts: ["Ahmedabad", "Amreli", "Anand", "Aravalli", "Banaskantha", "Bharuch", "Bhavnagar", "Botad", "Chhota Udaipur", "Dahod", "Dang", "Devbhoomi Dwarka", "Gandhinagar", "Gir Somnath", "Jamnagar", "Junagadh", "Kheda", "Kutch", "Mahisagar", "Mehsana", "Morbi", "Narmada", "Navsari", "Panchmahal", "Patan", "Porbandar", "Rajkot", "Sabarkantha", "Surat", "Surendranagar", "Tapi", "Vadodara", "Valsad"]
-      },
-      "haryana": {
-        name: "Haryana",
-        districts: ["Ambala", "Bhiwani", "Charkhi Dadri", "Faridabad", "Fatehabad", "Gurugram", "Hisar", "Jhajjar", "Jind", "Kaithal", "Karnal", "Kurukshetra", "Mahendragarh", "Nuh", "Palwal", "Panchkula", "Panipat", "Rewari", "Rohtak", "Sirsa", "Sonipat", "Yamunanagar"]
-      },
-      "himachal-pradesh": {
-        name: "Himachal Pradesh",
-        districts: ["Bilaspur", "Chamba", "Hamirpur", "Kangra", "Kinnaur", "Kullu", "Lahaul and Spiti", "Mandi", "Shimla", "Sirmaur", "Solan", "Una"]
-      },
-      "jharkhand": {
-        name: "Jharkhand",
-        districts: ["Bokaro", "Chatra", "Deoghar", "Dhanbad", "Dumka", "East Singhbhum", "Garhwa", "Giridih", "Godda", "Gumla", "Hazaribagh", "Jamtara", "Khunti", "Koderma", "Latehar", "Lohardaga", "Pakur", "Palamu", "Ramgarh", "Ranchi", "Sahebganj", "Seraikela Kharsawan", "Simdega", "West Singhbhum"]
-      },
-      "karnataka": {
-        name: "Karnataka",
-        districts: ["Bagalkot", "Ballari", "Belagavi", "Bengaluru Rural", "Bengaluru Urban", "Bidar", "Chamarajanagar", "Chikballapur", "Chikkamagaluru", "Chitradurga", "Dakshina Kannada", "Davangere", "Dharwad", "Gadag", "Hassan", "Haveri", "Kalaburagi", "Kodagu", "Kolar", "Koppal", "Mandya", "Mysuru", "Raichur", "Ramanagara", "Shivamogga", "Tumakuru", "Udupi", "Uttara Kannada", "Vijayapura", "Yadgir"]
-      },
-      "kerala": {
-        name: "Kerala",
-        districts: ["Alappuzha", "Ernakulam", "Idukki", "Kannur", "Kasaragod", "Kollam", "Kottayam", "Kozhikode", "Malappuram", "Palakkad", "Pathanamthitta", "Thiruvananthapuram", "Thrissur", "Wayanad"]
-      },
-      "madhya-pradesh": {
-        name: "Madhya Pradesh",
-        districts: ["Agar Malwa", "Alirajpur", "Anuppur", "Ashoknagar", "Balaghat", "Barwani", "Betul", "Bhind", "Bhopal", "Burhanpur", "Chhatarpur", "Chhindwara", "Damoh", "Datia", "Dewas", "Dhar", "Dindori", "Guna", "Gwalior", "Harda", "Hoshangabad", "Indore", "Jabalpur", "Jhabua", "Katni", "Khandwa", "Khargone", "Mandla", "Mandsaur", "Morena", "Narsinghpur", "Neemuch", "Niwari", "Panna", "Raisen", "Rajgarh", "Ratlam", "Rewa", "Sagar", "Satna", "Sehore", "Seoni", "Shahdol", "Shajapur", "Sheopur", "Shivpuri", "Sidhi", "Singrauli", "Tikamgarh", "Ujjain", "Umaria", "Vidisha"]
-      },
-      "maharashtra": {
-        name: "Maharashtra",
-        districts: ["Ahmednagar", "Akola", "Amravati", "Aurangabad", "Beed", "Bhandara", "Buldhana", "Chandrapur", "Dhule", "Gadchiroli", "Gondia", "Hingoli", "Jalgaon", "Jalna", "Kolhapur", "Latur", "Mumbai City", "Mumbai Suburban", "Nagpur", "Nanded", "Nandurbar", "Nashik", "Osmanabad", "Palghar", "Parbhani", "Pune", "Raigad", "Ratnagiri", "Sangli", "Satara", "Sindhudurg", "Solapur", "Thane", "Wardha", "Washim", "Yavatmal"]
-      },
-      "manipur": {
-        name: "Manipur",
-        districts: ["Bishnupur", "Chandel", "Churachandpur", "Imphal East", "Imphal West", "Jiribam", "Kakching", "Kamjong", "Kangpokpi", "Noney", "Pherzawl", "Senapati", "Tamenglong", "Tengnoupal", "Thoubal", "Ukhrul"]
-      },
-      "meghalaya": {
-        name: "Meghalaya",
-        districts: ["East Garo Hills", "East Jaintia Hills", "East Khasi Hills", "North Garo Hills", "Ri Bhoi", "South Garo Hills", "South West Garo Hills", "South West Khasi Hills", "West Garo Hills", "West Jaintia Hills", "West Khasi Hills"]
-      },
-      "mizoram": {
-        name: "Mizoram",
-        districts: ["Aizawl", "Champhai", "Hnahthial", "Khawzawl", "Kolasib", "Lawngtlai", "Lunglei", "Mamit", "Saiha", "Saitual", "Serchhip"]
-      },
-      "nagaland": {
-        name: "Nagaland",
-        districts: ["Dimapur", "Kiphire", "Kohima", "Longleng", "Mokokchung", "Mon", "Noklak", "Peren", "Phek", "Tuensang", "Wokha", "Zunheboto"]
-      },
-      "odisha": {
-        name: "Odisha",
-        districts: ["Angul", "Balangir", "Balasore", "Bargarh", "Bhadrak", "Boudh", "Cuttack", "Deogarh", "Dhenkanal", "Gajapati", "Ganjam", "Jagatsinghpur", "Jajpur", "Jharsuguda", "Kalahandi", "Kandhamal", "Kendrapara", "Kendujhar", "Khordha", "Koraput", "Malkangiri", "Mayurbhanj", "Nabarangpur", "Nayagarh", "Nuapada", "Puri", "Rayagada", "Sambalpur", "Subarnapur", "Sundargarh"]
-      },
-      "punjab": {
-        name: "Punjab",
-        districts: ["Amritsar", "Barnala", "Bathinda", "Faridkot", "Fatehgarh Sahib", "Fazilka", "Ferozepur", "Gurdaspur", "Hoshiarpur", "Jalandhar", "Kapurthala", "Ludhiana", "Malerkotla", "Mansa", "Moga", "Muktsar", "Pathankot", "Patiala", "Rupnagar", "Sangrur", "SAS Nagar", "Shaheed Bhagat Singh Nagar", "Tarn Taran"]
-      },
-      "rajasthan": {
-        name: "Rajasthan",
-        districts: ["Ajmer", "Alwar", "Banswara", "Baran", "Barmer", "Bharatpur", "Bhilwara", "Bikaner", "Bundi", "Chittorgarh", "Churu", "Dausa", "Dholpur", "Dungarpur", "Hanumangarh", "Jaipur", "Jaisalmer", "Jalore", "Jhalawar", "Jhunjhunu", "Jodhpur", "Karauli", "Kota", "Nagaur", "Pali", "Pratapgarh", "Rajsamand", "Sawai Madhopur", "Sikar", "Sirohi", "Sri Ganganagar", "Tonk", "Udaipur"]
-      },
-      "sikkim": {
-        name: "Sikkim",
-        districts: ["East Sikkim", "North Sikkim", "South Sikkim", "West Sikkim"]
-      },
-      "tamil-nadu": {
-        name: "Tamil Nadu",
-        districts: ["Ariyalur", "Chengalpattu", "Chennai", "Coimbatore", "Cuddalore", "Dharmapuri", "Dindigul", "Erode", "Kallakurichi", "Kanchipuram", "Kanyakumari", "Karur", "Krishnagiri", "Madurai", "Mayiladuthurai", "Nagapattinam", "Namakkal", "Nilgiris", "Perambalur", "Pudukkottai", "Ramanathapuram", "Ranipet", "Salem", "Sivaganga", "Tenkasi", "Thanjavur", "Theni", "Thoothukudi", "Tiruchirappalli", "Tirunelveli", "Tirupattur", "Tiruppur", "Tiruvallur", "Tiruvannamalai", "Tiruvarur", "Vellore", "Viluppuram", "Virudhunagar"]
-      },
-      "telangana": {
-        name: "Telangana",
-        districts: ["Adilabad", "Bhadradri Kothagudem", "Hyderabad", "Jagtial", "Jangaon", "Jayashankar Bhupalpally", "Jogulamba Gadwal", "Kamareddy", "Karimnagar", "Khammam", "Komaram Bheem Asifabad", "Mahabubabad", "Mahabubnagar", "Mancherial", "Medak", "Medchal Malkajgiri", "Mulugu", "Nagarkurnool", "Nalgonda", "Narayanpet", "Nirmal", "Nizamabad", "Peddapalli", "Rajanna Sircilla", "Rangareddy", "Sangareddy", "Siddipet", "Suryapet", "Vikarabad", "Wanaparthy", "Warangal Rural", "Warangal Urban", "Yadadri Bhuvanagiri"]
-      },
-      "tripura": {
-        name: "Tripura",
-        districts: ["Dhalai", "Gomati", "Khowai", "North Tripura", "Sepahijala", "South Tripura", "Unakoti", "West Tripura"]
-      },
-      "uttar-pradesh": {
-        name: "Uttar Pradesh",
-        districts: ["Agra", "Aligarh", "Ambedkar Nagar", "Amethi", "Amroha", "Auraiya", "Ayodhya", "Azamgarh", "Baghpat", "Bahraich", "Ballia", "Balrampur", "Banda", "Barabanki", "Bareilly", "Basti", "Bhadohi", "Bijnor", "Budaun", "Bulandshahr", "Chandauli", "Chitrakoot", "Deoria", "Etah", "Etawah", "Farrukhabad", "Fatehpur", "Firozabad", "Gautam Buddha Nagar", "Ghaziabad", "Ghazipur", "Gonda", "Gorakhpur", "Hamirpur", "Hapur", "Hardoi", "Hathras", "Jalaun", "Jaunpur", "Jhansi", "Kannauj", "Kanpur Dehat", "Kanpur Nagar", "Kasganj", "Kaushambi", "Kheri", "Kushinagar", "Lalitpur", "Lucknow", "Maharajganj", "Mahoba", "Mainpuri", "Mathura", "Mau", "Meerut", "Mirzapur", "Moradabad", "Muzaffarnagar", "Pilibhit", "Pratapgarh", "Prayagraj", "Raebareli", "Rampur", "Saharanpur", "Sambhal", "Sant Kabir Nagar", "Shahjahanpur", "Shamli", "Shrawasti", "Siddharthnagar", "Sitapur", "Sonbhadra", "Sultanpur", "Unnao", "Varanasi"]
-      },
-      "uttarakhand": {
-        name: "Uttarakhand",
-        districts: ["Almora", "Bageshwar", "Chamoli", "Champawat", "Dehradun", "Haridwar", "Nainital", "Pauri Garhwal", "Pithoragarh", "Rudraprayag", "Tehri Garhwal", "Udham Singh Nagar", "Uttarkashi"]
-      },
-      "west-bengal": {
-        name: "West Bengal",
-        districts: ["Alipurduar", "Bankura", "Birbhum", "Cooch Behar", "Dakshin Dinajpur", "Darjeeling", "Hooghly", "Howrah", "Jalpaiguri", "Jhargram", "Kalimpong", "Kolkata", "Malda", "Murshidabad", "Nadia", "North 24 Parganas", "Paschim Bardhaman", "Paschim Medinipur", "Purba Bardhaman", "Purba Medinipur", "Purulia", "South 24 Parganas", "Uttar Dinajpur"]
-      },
-      "andaman-nicobar": {
-        name: "Andaman and Nicobar Islands",
-        districts: ["Nicobar", "North and Middle Andaman", "South Andaman"]
-      },
-      "chandigarh": {
-        name: "Chandigarh",
-        districts: ["Chandigarh"]
-      },
-      "dadra-nagar-haveli": {
-        name: "Dadra and Nagar Haveli and Daman and Diu",
-        districts: ["Dadra and Nagar Haveli", "Daman", "Diu"]
-      },
-      "delhi": {
-        name: "Delhi",
-        districts: ["Central Delhi", "East Delhi", "New Delhi", "North Delhi", "North East Delhi", "North West Delhi", "Shahdara", "South Delhi", "South East Delhi", "South West Delhi", "West Delhi"]
-      },
-      "jammu-kashmir": {
-        name: "Jammu and Kashmir",
-        districts: ["Anantnag", "Bandipora", "Baramulla", "Budgam", "Doda", "Ganderbal", "Jammu", "Kathua", "Kishtwar", "Kulgam", "Kupwara", "Poonch", "Pulwama", "Rajouri", "Ramban", "Reasi", "Samba", "Shopian", "Srinagar", "Udhampur"]
-      },
-      "ladakh": {
-        name: "Ladakh",
-        districts: ["Kargil", "Leh"]
-      },
-      "lakshadweep": {
-        name: "Lakshadweep",
-        districts: ["Lakshadweep"]
-      },
+      // ... (keep all your existing state/district data)
       "puducherry": {
         name: "Puducherry",
         districts: ["Karaikal", "Mahe", "Puducherry", "Yanam"]
@@ -672,7 +542,8 @@ exports.getStatesAndDistricts = async (req, res) => {
   }
 };
 
-exports.getAddressesPaginated = async (req, res) => {
+// ==================== GET PAGINATED ADDRESSES (AJAX) ====================
+const getAddressesPaginated = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     
@@ -685,10 +556,10 @@ exports.getAddressesPaginated = async (req, res) => {
 
     // Get pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = 2; // ✅ 2 addresses per page as requested
+    const limit = 2; // 2 addresses per page
     const skip = (page - 1) * limit;
 
-    console.log(`📄 Fetching addresses page ${page} (limit: ${limit}, skip: ${skip})`);
+    console.log(`📡 AJAX: Fetching addresses page ${page} (limit: ${limit}, skip: ${skip})`);
 
     // Get all user addresses
     const userAddresses = await Address.findOne({ userId }).lean();
@@ -697,21 +568,24 @@ exports.getAddressesPaginated = async (req, res) => {
     // Calculate pagination
     const totalAddresses = allAddresses.length;
     const totalPages = Math.ceil(totalAddresses / limit) || 1;
+    const currentPage = Math.min(page, totalPages); // Prevent going beyond last page
     
-    // Get addresses for current page (application-level pagination)
+    // Get addresses for current page
     const addresses = allAddresses.slice(skip, skip + limit);
 
-    console.log(`✅ Found ${totalAddresses} total addresses, returning ${addresses.length} for page ${page}/${totalPages}`);
+    console.log(`✅ AJAX: Returning ${addresses.length} addresses for page ${currentPage}/${totalPages}`);
 
     res.json({
       success: true,
       data: {
         addresses: addresses,
-        currentPage: page,
+        currentPage: currentPage,
         totalPages: totalPages,
         totalAddresses: totalAddresses,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
+        hasNextPage: currentPage < totalPages,
+        hasPrevPage: currentPage > 1,
+        prevPage: currentPage - 1,
+        nextPage: currentPage + 1
       }
     });
 
@@ -722,4 +596,17 @@ exports.getAddressesPaginated = async (req, res) => {
       message: 'Failed to fetch addresses'
     });
   }
+};
+
+// ==================== EXPORTS ====================
+module.exports = {
+  addAddress,
+  updateAddress,
+  getAddresses,
+  getAddress,
+  deleteAddress,
+  setDefaultAddress,
+  loadAddresses,
+  getStatesAndDistricts,
+  getAddressesPaginated
 };
