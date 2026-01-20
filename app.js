@@ -1,4 +1,4 @@
-require('dotenv').config(); // ✅ Load .env FIRST
+require('dotenv').config();
 
 // Package imports
 const express = require('express');
@@ -19,8 +19,6 @@ const isAdmin = require('./middlewares/isAdmin');
 const { addUserContext } = require('./middlewares/user-middleware');
 const checkUserBlocked = require('./middlewares/checkUserBlocked');
 
-// for testing
-// const userCouponController = require('./controllers/user/couponController');
 
 // Route imports
 const adminAuthRoutes = require('./routes/admin/auth');
@@ -37,20 +35,19 @@ const adminDashboardRoutes = require('./routes/admin/dashboard');
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
-const userProductRoutes = require('./routes/user/product-routes');
+const userShopRoutes = require('./routes/user/shop');
 const userReviewRoutes = require('./routes/user/review-routes');
 const userProfileRoutes = require('./routes/user/profile-routes');
 const userAddressRoutes = require('./routes/user/address-routes');
 const userCartRoutes = require('./routes/user/cart-routes');
 const userWishlistRoutes = require('./routes/user/wishlist-routes');
 const userCouponRoutes = require('./routes/user/coupon-routes');
-// const transactionRoutes = require('./routes/user/transaction-routes');
 const checkoutRoutes = require('./routes/user/checkout-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
 const userWalletRoutes = require('./routes/user/wallet-routes');
 const userReferralRoutes = require('./routes/user/referral-routes');
 
-require('./config/passport')(passport); // ✅ Load passport config
+require('./config/passport')(passport);
 
 // Connect DB
 connectDB();
@@ -130,7 +127,7 @@ app.use('/checkout', checkoutRoutes);
 app.use('/', landingRoutes);
 app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
-app.use('/', userProductRoutes);
+app.use('/', userShopRoutes);
 app.use('/', userReviewRoutes);
 app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);

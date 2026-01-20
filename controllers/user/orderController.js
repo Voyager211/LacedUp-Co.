@@ -9,7 +9,7 @@ const walletService = require('../../services/paymentProviders/walletService');
 const { paypalClient } = require('../../services/paymentProviders/paypal');
 const paypal = require('@paypal/checkout-server-sdk');
 const razorpayService = require('../../services/paymentProviders/razorpay');
-const { getPagination } = require('../../utils/pagination');
+const getPagination = require('../../utils/pagination');
 
 const {
   ORDER_STATUS,
@@ -51,16 +51,47 @@ const getUserOrders = async (req, res) => {
       limit
     );
 
+    // ✅ ADD: Get total orders count
+    const totalOrders = await Order.countDocuments(filter);
+
     console.log('Order listing debug:', {
       totalOrders: orders.length,
-      totalPages
+      totalPages,
+      totalOrdersCount: totalOrders
     });
+
+    // ✅ Calculate pagination variables for shop-style pagination
+    const currentPage = page;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = currentPage - 1;
+    const nextPage = currentPage + 1;
+    
+    // Generate page numbers (show up to 5 pages around current page)
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
     res.render('user/orders', {
       user,
       orders,
-      currentPage: page,
+      currentPage,
       totalPages,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+      pageNumbers,
+      totalOrders, // ✅ NEW: Add total orders count
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
       active: 'orders',
@@ -77,11 +108,13 @@ const getUserOrders = async (req, res) => {
       layout: 'user/layouts/user-layout',
       active: 'orders',
       user: null,
+      totalOrders: 0, // ✅ NEW: Add default value for error case
       cancellationReasons: CANCELLATION_REASONS,
       returnReasons: RETURN_REASONS
     });
   }
 };
+
 
 
 const getUserOrdersPaginated = async (req, res) => {
@@ -90,6 +123,7 @@ const getUserOrdersPaginated = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = 4;
     const statusFilter = req.query.status || '';
+    const searchQuery = req.query.search || '';
 
     if (!userId) {
       return res.status(401).json({
@@ -100,20 +134,18 @@ const getUserOrdersPaginated = async (req, res) => {
 
     const filter = { user: userId };
 
-    if (statusFilter) {
-      filter['items.status'] = statusFilter;
-    }
-
-    const queryBuilder = Order.find(filter)
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage brand',
-        populate: {
-          path: 'brand',
-          select: 'name'
-        }
-      })
-      .sort({ createdAt: -1 });
+    // ✅ CASE 1: NO search and NO filter - Use efficient database pagination
+    if (!searchQuery && !statusFilter) {
+      const queryBuilder = Order.find(filter)
+        .populate({
+          path: 'items.productId',
+          select: 'productName mainImage brand',
+          populate: {
+            path: 'brand',
+            select: 'name'
+          }
+        })
+        .sort({ createdAt: -1 });
 
       const { data: orders, totalPages } = await getPagination(
         queryBuilder,
@@ -123,25 +155,123 @@ const getUserOrdersPaginated = async (req, res) => {
         limit
       );
 
-      const filteredOrders = orders.map(order => {
-        const orderObj = order.toObject ? order.toObject() : order;
-        
-        if (statusFilter) {
-          orderObj.items = orderObj.items.filter(item => item.status === statusFilter);
-        }
-        return orderObj;
-      });
+      const currentPage = page;
+      const hasPrevPage = currentPage > 1;
+      const hasNextPage = currentPage < totalPages;
+      const prevPage = currentPage - 1;
+      const nextPage = currentPage + 1;
 
-      res.json({
+      // ✅ ADD: Generate page numbers
+      const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+      return res.json({
         success: true,
         data: {
-          orders: filteredOrders,
-          currentPage: page,
+          orders,
+          currentPage,
           totalPages,
+          hasPrevPage,
+          hasNextPage,
+          prevPage,
+          nextPage,
+          pageNumbers, // ✅ NEW
           totalOrders: await Order.countDocuments(filter),
-          filters: { status: statusFilter }
+          filters: { status: '', search: '' }
         }
       });
+    }
+
+    // ✅ CASE 2: Search OR Filter active - Fetch ALL orders, then filter in memory
+    const allOrders = await Order.find(filter)
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage brand',
+        populate: {
+          path: 'brand',
+          select: 'name'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let filteredOrders = allOrders;
+
+    // ✅ Apply search filter
+    if (searchQuery) {
+      filteredOrders = filteredOrders.filter(order => {
+        const searchLower = searchQuery.toLowerCase();
+
+        // Check order ID
+        const orderIdMatch = order.orderId.toLowerCase().includes(searchLower);
+
+        // Check product names
+        const productMatch = order.items.some(item => {
+          const productName = item.productId?.productName;
+          return productName && productName.toLowerCase().includes(searchLower);
+        });
+
+        // Check brand names
+        const brandMatch = order.items.some(item => {
+          const brandName = item.productId?.brand?.name;
+          return brandName && brandName.toLowerCase().includes(searchLower);
+        });
+
+        return orderIdMatch || productMatch || brandMatch;
+      });
+    }
+
+    // ✅ Apply status filter
+    if (statusFilter) {
+      filteredOrders = filteredOrders.map(order => {
+        // Filter items by status
+        const filteredItems = order.items.filter(item => item.status === statusFilter);
+
+        // Only return order if it has items matching the status
+        if (filteredItems.length > 0) {
+          return {
+            ...order,
+            items: filteredItems
+          };
+        }
+        return null;
+      }).filter(order => order !== null);
+    }
+
+    // ✅ Calculate pagination for filtered results
+    const totalFilteredOrders = filteredOrders.length;
+    const totalPages = Math.ceil(totalFilteredOrders / limit) || 1;
+    const currentPage = Math.min(page, totalPages); // Prevent requesting page beyond available
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = currentPage - 1;
+    const nextPage = currentPage + 1;
+
+    // ✅ ADD: Generate page numbers
+    const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+    // ✅ Paginate the filtered results
+    const startIndex = (currentPage - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+
+    res.json({
+      success: true,
+      data: {
+        orders: paginatedOrders,
+        currentPage,
+        totalPages,
+        hasPrevPage,
+        hasNextPage,
+        prevPage,
+        nextPage,
+        pageNumbers, // ✅ NEW
+        totalOrders: totalFilteredOrders,
+        filters: { 
+          status: statusFilter,
+          search: searchQuery 
+        }
+      }
+    });
 
   } catch (error) {
     console.error('Error fetching paginated orders:', error);
@@ -151,6 +281,25 @@ const getUserOrdersPaginated = async (req, res) => {
     });
   }
 };
+
+// Helper function to generate page numbers
+function generatePageNumbers(currentPage, totalPages) {
+  const pageNumbers = [];
+  const maxPagesToShow = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+  
+  if (endPage - startPage + 1 < maxPagesToShow) {
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
+  }
+  
+  return pageNumbers;
+}
+
 
 const searchOrders = async (req, res) => {
   try {
@@ -197,7 +346,10 @@ const searchOrders = async (req, res) => {
 
     res.json({
       success: true,
-      data: { orders: filteredOrders }
+      data: { 
+        orders: filteredOrders,
+        totalOrders: filteredOrders.length  // ✅ ADD THIS
+      }
     });
 
   } catch (error) {
@@ -208,6 +360,7 @@ const searchOrders = async (req, res) => {
     });
   }
 };
+
 
 
 // Get order details

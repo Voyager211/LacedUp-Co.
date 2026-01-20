@@ -21,9 +21,13 @@
         <div class="content-card">
           <!-- top bar -->
           <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4 pb-3 border-bottom">
-            <h2 class="content-title mb-0">My Orders</h2>
+            <h2 class="content-title mb-0" id="ordersTitle">
+              My Orders <span class="orders-count" id="ordersCount">(<%= totalOrders || 0 %>)</span>
+            </h2>
+            
             <div class="d-flex align-items-center gap-2 flex-grow-1 justify-content-end">
               <%- include('partials/order-search') %>
+              
               <select class="form-select" id="orderStatusFilter" style="width: auto; min-width: 140px;">
                 <option value="">All Orders</option>
                 <option value="Pending">Pending</option>
@@ -33,9 +37,18 @@
                 <option value="Cancelled">Cancelled</option>
                 <option value="Returned">Returned</option>
               </select>
+              
+              <!-- Reset All Filters Button -->
+              <button 
+                class="btn btn-outline-secondary" 
+                id="resetAllFiltersBtn"
+                onclick="clearAllFilters()"
+                title="Reset all filters"
+                style="display: none; height: 42px; padding: 0 12px;">
+                <i class="bi bi-arrow-clockwise"></i>
+              </button>
             </div>
           </div>
-
 
           <!-- Orders Container -->
           <div id="ordersContainer">
@@ -84,7 +97,7 @@
                           const displayItems = order.items.slice(0, 4);
                           const remainingCount = order.items.length - 4;
                         %>
-                        
+
                         <% displayItems.forEach((item, index) => { %>
                           <div class="item-row d-flex align-items-center py-2 <%= index < displayItems.length - 1 ? 'border-bottom' : '' %>">
                             <!-- Product Image -->
@@ -99,7 +112,7 @@
                                 </div>
                               <% } %>
                             </div>
-                            
+
                             <!-- Product Info -->
                             <div class="item-info flex-grow-1">
                               <div class="fw-semibold text-dark">
@@ -109,7 +122,7 @@
                                 Size: <%= item.size %> | Qty: <%= item.quantity %>
                               </small>
                             </div>
-                            
+
                             <!-- Item Price -->
                             <div class="item-price text-end">
                               <div class="fw-semibold">₹<%= item.totalPrice.toLocaleString('en-IN') %></div>
@@ -119,7 +132,7 @@
                             </div>
                           </div>
                         <% }) %>
-                        
+
                         <!-- Show remaining items count -->
                         <% if (remainingCount > 0) { %>
                           <div class="text-center py-2">
@@ -164,26 +177,55 @@
             <% } %>
           </div>
 
+          <!-- Pagination (Always visible) -->
+          <div class="pagination-wrapper">
+            <div class="pagination">
+              <!-- Previous Button -->
+              <% if (hasPrevPage) { %>
+                <button
+                  class="page-btn pagination-btn"
+                  data-page="<%= prevPage %>">
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+              <% } else { %>
+                <button class="page-btn" disabled>
+                  <i class="bi bi-chevron-left"></i>
+                </button>
+              <% } %>
 
+              <!-- Page Numbers -->
+              <% pageNumbers.forEach(pageNum => { %>
+                <% if (pageNum === currentPage) { %>
+                  <button class="page-btn active"><%= pageNum %></button>
+                <% } else { %>
+                  <button
+                    class="page-btn pagination-btn"
+                    data-page="<%= pageNum %>">
+                    <%= pageNum %>
+                  </button>
+                <% } %>
+              <% }) %>
 
-
-          <!-- Pagination -->
-          <% if (totalPages > 1) { %>
-            <div class="row mt-4">
-              <div class="col-12">
-                <%- include('partials/pagination', {
-                  currentPage: currentPage,
-                  totalPages: totalPages
-                }) %>
-              </div>
+              <!-- Next Button -->
+              <% if (hasNextPage) { %>
+                <button
+                  class="page-btn pagination-btn"
+                  data-page="<%= nextPage %>">
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              <% } else { %>
+                <button class="page-btn" disabled>
+                  <i class="bi bi-chevron-right"></i>
+                </button>
+              <% } %>
             </div>
-          <% } %>
+          </div>
+
         </div>
       </div>
     </div>
   </div>
 </div>
-
 
 <!-- Order Actions Modal -->
 <div class="modal fade" id="orderActionModal" tabindex="-1" aria-labelledby="orderActionModalLabel" aria-hidden="true">
@@ -532,20 +574,109 @@
   box-shadow: 0 0 0 0.2rem rgba(0, 0, 0, 0.1);
 }
 
-/* Responsive Design */
+/* Custom Pagination Styles */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  min-height: 50px; /* ✅ Prevents layout shift */
+  align-items: center;
+}
+
+.pagination-wrapper:empty {
+  display: none; /* ✅ Hide when empty */
+  min-height: 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Red hover effect for enabled buttons */
+.page-btn:not(:disabled):not(.active):hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+}
+
+/* Active page styling */
+.page-btn.active {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn.active:hover {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Disabled button styles */
+.page-btn:disabled {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-btn:disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon spacing */
+.page-btn i {
+  font-size: 0.9em;
+}
+
+/* Responsive adjustments */
 @media (max-width: 992px) {
   .order-card .card-body {
     padding: 1.25rem;
   }
-  
+
   .status-amount {
     text-align: left !important;
   }
-  
+
   .order-actions {
     margin-top: 1rem;
   }
-  
+
   .order-card[data-status="Pending"] .card,
   .order-card[data-status="Processing"] .card,
   .order-card[data-status="Shipped"] .card,
@@ -559,47 +690,93 @@
   }
 }
 
+/* Orders Count Badge */
+.orders-count {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #6c757d;
+  margin-left: 0.5rem;
+}
+
+/* Reset Button Styles */
+#resetAllFiltersBtn {
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-size: 16px;
+}
+
+#resetAllFiltersBtn:hover {
+  background-color: #f3f4f6;
+  border-color: #9ca3af;
+  transform: rotate(90deg);
+}
+
+#resetAllFiltersBtn:active {
+  transform: rotate(90deg) scale(0.95);
+}
+
+
+@media (max-width: 768px) {
+  .orders-count {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .content-title {
+    font-size: 1.25rem;
+  }
+  
+  .orders-count {
+    font-size: 0.9rem;
+    display: block;
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+}
+
+
 @media (max-width: 768px) {
   .content-card {
     padding: 1.5rem;
   }
-  
+
   .order-card .card-body {
     padding: 1rem;
   }
-  
+
   .product-thumb,
   .product-thumb-placeholder {
     width: 50px;
     height: 50px;
   }
-  
+
   .item-row {
     flex-direction: column;
     align-items: flex-start !important;
     text-align: left;
   }
-  
+
   .item-row .item-price {
     margin-top: 0.5rem;
     width: 100%;
     text-align: left !important;
   }
-  
+
   .item-row .item-info .fw-semibold {
     font-size: 0.85rem;
   }
-  
+
   .status-amount .fs-5 {
     font-size: 1.1rem !important;
   }
-  
+
   .order-actions {
     flex-direction: row !important;
     justify-content: flex-start !important;
     width: 100%;
   }
-  
+
   .order-actions .btn {
     font-size: 0.8rem;
     padding: 0.4rem 0.8rem;
@@ -612,40 +789,55 @@
   .content-card {
     padding: 1rem;
   }
-  
+
   .content-title {
     font-size: 1.25rem;
   }
-  
+
   .order-card .card-body {
     padding: 0.875rem;
   }
-  
+
   .order-card .row > div {
     margin-bottom: 1rem;
   }
-  
+
   .order-card .row > div:last-child {
     margin-bottom: 0;
   }
-  
+
   .product-thumb,
   .product-thumb-placeholder {
     width: 45px;
     height: 45px;
   }
-  
+
   .order-actions {
     flex-direction: column !important;
   }
-  
+
   .order-actions .btn {
     width: 100%;
     margin-bottom: 0.5rem;
   }
-  
+
   .order-actions .btn:last-child {
     margin-bottom: 0;
+  }
+
+  .page-btn {
+    min-width: 35px;
+    height: 35px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .page-btn i {
+    font-size: 0.8em;
+  }
+
+  .pagination {
+    gap: 0.25rem;
   }
 }
 
@@ -653,10 +845,11 @@
 @media print {
   .order-actions,
   #orderStatusFilter,
-  .profile-sidebar {
+  .profile-sidebar,
+  .pagination-wrapper {
     display: none !important;
   }
-  
+
   .order-card {
     page-break-inside: avoid;
     box-shadow: none !important;
@@ -664,10 +857,15 @@
 }
 </style>
 
+
 <script>
 // ==================== ORDER LISTING PAGE SCRIPT ====================
-// Global variables
+
+// ==================== GLOBAL VARIABLES ====================
 let currentPage = <%= currentPage %>;
+let currentSearchQuery = ''; // Track search query
+let currentStatusFilter = ''; // Track status filter
+let currentOrdersCount = <%= totalOrders || 0 %>;
 let isLoading = false;
 
 // Cancellation and return reasons
@@ -684,60 +882,164 @@ function initializeOrderPage() {
   const statusFilter = document.getElementById('orderStatusFilter');
   if (statusFilter) {
     statusFilter.addEventListener('change', function() {
-      loadOrders(1, this.value);
+      currentStatusFilter = this.value;
+      loadOrders(1, currentStatusFilter, currentSearchQuery);
+      updateResetButtonVisibility(); // ✅ Add this line
     });
   }
-  
+
+  // Setup search functionality
+  setupSearchHandlers();
+
   // Setup pagination click handlers
   setupPaginationHandlers();
 }
 
-// ==================== PAGINATION HANDLERS ====================
-function setupPaginationHandlers() {
-  document.addEventListener('click', function(e) {
-    const paginationBtn = e.target.closest('.pagination-btn');
-    if (!paginationBtn) return;
+
+
+// ==================== SEARCH HANDLERS ====================
+function setupSearchHandlers() {
+  const searchInput = document.getElementById('orderSearchInput');
+  const clearSearchBtn = document.getElementById('clearOrderSearch');
+
+  if (!searchInput) {
+    console.error('❌ Search input not found!');
+    return;
+  }
+
+  // Real-time search on input
+  let searchTimeout;
+  searchInput.addEventListener('input', function() {
+    const query = this.value.trim();
     
-    // Ignore if disabled
-    if (paginationBtn.classList.contains('disabled-btn') || 
-        paginationBtn.closest('.page-item')?.classList.contains('disabled')) {
-      return;
+    // Show/hide clear button
+    if (clearSearchBtn) {
+      clearSearchBtn.style.display = query ? 'flex' : 'none';
     }
-    
-    e.preventDefault();
-    
-    const page = parseInt(paginationBtn.dataset.page);
-    if (!isNaN(page) && page > 0) {
-      const statusFilter = document.getElementById('orderStatusFilter');
-      loadOrders(page, statusFilter?.value || '');
+
+    // Show/hide reset button
+    updateResetButtonVisibility();
+
+    // Clear previous timeout
+    clearTimeout(searchTimeout);
+
+    // Debounce search
+    searchTimeout = setTimeout(() => {
+      currentSearchQuery = query;
+      loadOrders(1, currentStatusFilter, currentSearchQuery);
+    }, 500);
+  });
+
+  // Clear search button
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener('click', function() {
+      searchInput.value = '';
+      this.style.display = 'none';
+      currentSearchQuery = '';
+      loadOrders(1, currentStatusFilter, '');
+      updateResetButtonVisibility();
+    });
+  }
+
+  // Enter key support
+  searchInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      clearTimeout(searchTimeout);
+      const query = this.value.trim();
+      currentSearchQuery = query;
+      loadOrders(1, currentStatusFilter, currentSearchQuery);
     }
   });
 }
 
-// ==================== LOAD ORDERS (AJAX) ====================
-async function loadOrders(page = 1, status = '') {
-  if (isLoading) return;
-  
+// ==================== SHOW/HIDE RESET BUTTON ====================
+function updateResetButtonVisibility() {
+  const resetBtn = document.getElementById('resetAllFiltersBtn');
+  if (resetBtn) {
+    // Show button if search OR filter is active
+    const hasActiveFilters = currentSearchQuery || currentStatusFilter;
+    resetBtn.style.display = hasActiveFilters ? 'inline-block' : 'none';
+  }
+}
+
+
+
+// ==================== PAGINATION HANDLERS ====================
+function setupPaginationHandlers() {
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.pagination-btn')) {
+      e.preventDefault();
+      
+      const btn = e.target.closest('.pagination-btn');
+      const page = parseInt(btn.dataset.page);
+
+      if (page && page > 0) {
+        console.log('📄 Pagination clicked, page:', page);
+        loadOrders(page, currentStatusFilter, currentSearchQuery);
+      }
+    }
+  });
+}
+
+// ==================== LOAD ORDERS (AJAX) - UNIFIED ====================
+async function loadOrders(page = 1, status = '', search = '') {
+  if (isLoading) {
+    console.log('⏳ Already loading, ignoring request');
+    return;
+  }
+
   isLoading = true;
+
+  // Update global state
+  currentPage = page;
+  currentStatusFilter = status;
+  currentSearchQuery = search;
+
+  console.log('🔄 Loading orders:', { page, status, search });
+
   showLoadingState();
-  
+
   try {
+    // Build API URL
     const params = new URLSearchParams();
     params.append('page', page);
     if (status) params.append('status', status);
-    
-    const response = await fetch(`/orders/api/filtered?${params.toString()}`);
+    if (search) params.append('search', search);
+
+    const url = `/orders/api/filtered?${params.toString()}`;
+    console.log('📡 API Request:', url);
+
+    const response = await fetch(url);
     const result = await response.json();
-    
+
+    console.log('📥 API Response:', result);
+
     if (result.success) {
+      // Update global state
       currentPage = result.data.currentPage;
+      currentOrdersCount = result.data.totalOrders;
+
+      console.log('✅ Data received:', {
+        orders: result.data.orders.length,
+        totalOrders: result.data.totalOrders,
+        currentPage: result.data.currentPage,
+        totalPages: result.data.totalPages
+      });
+
+      // Update UI - ALL THREE FUNCTIONS
       updateOrdersContainer(result.data.orders);
-      updatePagination(result.data.currentPage, result.data.totalPages);
+      updatePagination(result.data);
+      updateOrdersCount(result.data.totalOrders); // ✅ UPDATE COUNT!
+
+      // Update UI indicators
+      updateSearchIndicator(search);
+      updateFilterIndicator(status);
     } else {
       throw new Error(result.message || 'Failed to load orders');
     }
   } catch (error) {
-    console.error('Error loading orders:', error);
+    console.error('❌ Error loading orders:', error);
     showError('Error loading orders. Please try again.');
   } finally {
     isLoading = false;
@@ -745,43 +1047,80 @@ async function loadOrders(page = 1, status = '') {
   }
 }
 
+// ==================== UPDATE ORDERS COUNT ====================
+function updateOrdersCount(count) {
+  const ordersCountElement = document.getElementById('ordersCount');
+  if (ordersCountElement) {
+    ordersCountElement.textContent = `(${count || 0})`;
+    console.log('📊 Orders count updated to:', count);
+  }
+}
+
+// ==================== UI STATE INDICATORS ====================
+function updateSearchIndicator(query) {
+  const searchInput = document.getElementById('orderSearchInput');
+  const clearBtn = document.getElementById('clearOrderSearch');
+  
+  if (searchInput) searchInput.value = query;
+  if (clearBtn) clearBtn.style.display = query ? 'flex' : 'none';
+}
+
+function updateFilterIndicator(status) {
+  const statusFilter = document.getElementById('orderStatusFilter');
+  if (statusFilter) statusFilter.value = status;
+}
+
 // ==================== UPDATE ORDERS CONTAINER ====================
 function updateOrdersContainer(orders) {
   const container = document.getElementById('ordersContainer');
-  
+
   if (!orders || orders.length === 0) {
+    const emptyMessage = currentSearchQuery 
+      ? `No orders found matching "${currentSearchQuery}"${currentStatusFilter ? ` with status "${currentStatusFilter}"` : ''}`
+      : currentStatusFilter 
+        ? `No orders match the selected filter criteria.`
+        : `You haven't placed any orders yet.`;
+
+    const emptyIcon = currentSearchQuery || currentStatusFilter ? 'search' : 'bag-x';
+
     container.innerHTML = `
       <div class="text-center py-5" id="emptyState">
         <div class="mb-4">
-          <i class="bi bi-funnel display-1 text-muted"></i>
+          <i class="bi bi-${emptyIcon} display-1 text-muted"></i>
         </div>
         <h4 class="text-muted mb-3">No Orders Found</h4>
-        <p class="text-muted mb-4">No orders match the selected filter criteria.</p>
-        <button class="btn btn-outline-primary" onclick="clearFilter()">
-          <i class="bi bi-arrow-clockwise me-2"></i>Clear Filter
-        </button>
+        <p class="text-muted mb-4">${emptyMessage}</p>
+        ${currentSearchQuery || currentStatusFilter ? `
+          <button class="btn btn-outline-primary" onclick="clearAllFilters()">
+            <i class="bi bi-arrow-clockwise me-2"></i>Clear All Filters
+          </button>
+        ` : `
+          <a href="/shop" class="btn btn-primary">
+            <i class="bi bi-shop me-2"></i>Start Shopping
+          </a>
+        `}
       </div>
     `;
     return;
   }
-  
+
   let cardsHTML = '';
   orders.forEach(order => {
     cardsHTML += generateOrderCardHTML(order);
   });
-  
+
   container.innerHTML = cardsHTML;
 }
 
 // ==================== GENERATE ORDER CARD ====================
 function generateOrderCardHTML(order) {
   const orderDate = new Date(order.createdAt);
-  const formattedDate = orderDate.toLocaleDateString('en-IN', { 
-    year: 'numeric', 
-    month: 'short', 
-    day: 'numeric' 
+  const formattedDate = orderDate.toLocaleDateString('en-IN', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
   });
-  
+
   // Status badge class
   let statusClass = 'secondary';
   if (order.status === 'Pending') statusClass = 'warning';
@@ -793,48 +1132,45 @@ function generateOrderCardHTML(order) {
   else if (order.status === 'Partially Returned') statusClass = 'warning';
   else if (order.status === 'Partially Delivered') statusClass = 'info';
   else if (order.status === 'Processing Return') statusClass = 'warning';
-  
+
   // Items display (max 4)
   const displayItems = order.items.slice(0, 4);
   const remainingCount = order.items.length - 4;
-  
+
   let itemsHTML = '';
   displayItems.forEach((item, index) => {
-    const productImageHTML = (item.productId && item.productId.mainImage) 
+    const productImageHTML = item.productId && item.productId.mainImage
       ? `<img src="${item.productId.mainImage}" alt="${item.productId.productName}" class="product-thumb">`
       : `<div class="product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
-    
+
     const productName = item.productId ? item.productId.productName : 'Product';
     const borderClass = index < displayItems.length - 1 ? 'border-bottom' : '';
-    
+
     itemsHTML += `
       <div class="item-row d-flex align-items-center py-2 ${borderClass}">
         <div class="item-image me-3">${productImageHTML}</div>
         <div class="item-info flex-grow-1">
           <div class="fw-semibold text-dark">${productName}</div>
-          <small class="text-muted">Size: ${item.size} | Qty: ${item.quantity}</small>
+          <small class="text-muted">Size: ${item.size} • Qty: ${item.quantity}</small>
         </div>
         <div class="item-price text-end">
           <div class="fw-semibold">₹${item.totalPrice.toLocaleString('en-IN')}</div>
-          ${item.status && item.status !== order.status ? 
-            `<small class="badge bg-secondary">${item.status}</small>` : ''}
+          ${item.status && item.status !== order.status ? `<small class="badge bg-secondary">${item.status}</small>` : ''}
         </div>
       </div>
     `;
   });
-  
+
   if (remainingCount > 0) {
     itemsHTML += `
       <div class="text-center py-2">
-        <button class="btn btn-link text-decoration-none p-0 fw-semibold" 
-                onclick="viewOrderDetails('${order.orderId}')">
-          <i class="bi bi-plus-circle me-1"></i>
-          + ${remainingCount} more item${remainingCount > 1 ? 's' : ''}
+        <button class="btn btn-link text-decoration-none p-0 fw-semibold" onclick="viewOrderDetails('${order.orderId}')">
+          <i class="bi bi-plus-circle me-1"></i>${remainingCount} more item${remainingCount > 1 ? 's' : ''}
         </button>
       </div>
     `;
   }
-  
+
   return `
     <div class="order-card mb-3" data-status="${order.status}">
       <div class="card">
@@ -842,21 +1178,19 @@ function generateOrderCardHTML(order) {
           <div class="row mb-3 pb-3 border-bottom">
             <div class="col-lg-6 col-md-6 mb-2 mb-lg-0">
               <h6 class="mb-1 fw-bold text-dark">Order #${order.orderId}</h6>
-              <small class="text-muted">
-                <i class="bi bi-calendar3 me-1"></i>${formattedDate}
-              </small>
+              <small class="text-muted"><i class="bi bi-calendar3 me-1"></i>${formattedDate}</small>
             </div>
             <div class="col-lg-3 col-md-3 mb-2 mb-lg-0 text-center">
               <span class="badge bg-${statusClass} fs-6 px-3 py-2">${order.status}</span>
             </div>
             <div class="col-lg-3 col-md-3 text-end">
               <div class="fw-bold text-dark fs-5">₹${(order.totalAmount - (order.couponDiscount || 0)).toLocaleString('en-IN')}</div>
-              <small class="text-muted text-uppercase">
-                ${order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()}
-              </small>
+              <small class="text-muted text-uppercase">${order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod}</small>
             </div>
           </div>
+          
           <div class="items-container">${itemsHTML}</div>
+          
           <div class="row mt-3 pt-3 border-top">
             <div class="col-12">
               <div class="order-actions d-flex flex-wrap gap-2 justify-content-end">
@@ -873,46 +1207,69 @@ function generateOrderCardHTML(order) {
 }
 
 // ==================== UPDATE PAGINATION ====================
-function updatePagination(currentPage, totalPages) {
-  const paginationWrapper = document.querySelector('.pagination')?.closest('nav')?.parentElement;
-  if (!paginationWrapper || totalPages <= 1) return;
-  
-  const maxButtons = 5;
-  
-  // Calculate which 5 consecutive pages to show
-  const windowIndex = Math.floor((currentPage - 1) / maxButtons);
-  const startPage = (windowIndex * maxButtons) + 1;
-  const endPage = Math.min(startPage + maxButtons - 1, totalPages);
-  
-  let html = '<nav class="mt-4"><ul class="pagination justify-content-center">';
-  
-  // Previous button
-  html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
-    <a class="page-link pagination-btn ${currentPage === 1 ? 'disabled-btn' : ''}" 
-       href="#" data-page="${currentPage - 1}">
-      <i class="bi bi-chevron-left"></i>
-    </a>
-  </li>`;
-  
-  // Show exactly 5 consecutive page buttons
-  for (let i = startPage; i <= endPage; i++) {
-    html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
-      <a class="page-link pagination-btn" href="#" data-page="${i}">${i}</a>
-    </li>`;
-  }
-  
-  // Next button
-  html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
-    <a class="page-link pagination-btn ${currentPage === totalPages ? 'disabled-btn' : ''}" 
-       href="#" data-page="${currentPage + 1}">
-      <i class="bi bi-chevron-right"></i>
-    </a>
-  </li>`;
-  
-  html += '</ul></nav>';
-  paginationWrapper.innerHTML = html;
-}
+function updatePagination(data) {
+  const paginationWrapper = document.querySelector('.pagination-wrapper');
+  if (!paginationWrapper) return;
 
+  const { currentPage, totalPages, hasPrevPage, hasNextPage } = data;
+
+  // Hide pagination if no pages or only one page
+  if (!totalPages || totalPages <= 1) {
+    paginationWrapper.innerHTML = '';
+    paginationWrapper.style.display = 'none';
+    return;
+  }
+
+  // Show pagination wrapper
+  paginationWrapper.style.display = 'flex';
+
+  // Generate page numbers (show up to 5 pages around current page)
+  const pageNumbers = [];
+  const maxPagesToShow = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+  if (endPage - startPage + 1 < maxPagesToShow) {
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Build pagination HTML
+  let paginationHTML = '<div class="pagination">';
+
+  // Previous button
+  if (hasPrevPage) {
+    paginationHTML += `<button class="page-btn pagination-btn" data-page="${currentPage - 1}"><i class="bi bi-chevron-left"></i></button>`;
+  } else {
+    paginationHTML += `<button class="page-btn disabled"><i class="bi bi-chevron-left"></i></button>`;
+  }
+
+  // Page numbers
+  pageNumbers.forEach(pageNum => {
+    if (pageNum === currentPage) {
+      paginationHTML += `<button class="page-btn active">${pageNum}</button>`;
+    } else {
+      paginationHTML += `<button class="page-btn pagination-btn" data-page="${pageNum}">${pageNum}</button>`;
+    }
+  });
+
+  // Next button
+  if (hasNextPage) {
+    paginationHTML += `<button class="page-btn pagination-btn" data-page="${currentPage + 1}"><i class="bi bi-chevron-right"></i></button>`;
+  } else {
+    paginationHTML += `<button class="page-btn disabled"><i class="bi bi-chevron-right"></i></button>`;
+  }
+
+  paginationHTML += '</div>';
+
+  // Replace pagination content
+  paginationWrapper.innerHTML = paginationHTML;
+
+  console.log('📄 Pagination updated:', { currentPage, totalPages, visible: totalPages > 1 });
+}
 
 // ==================== LOADING STATES ====================
 function showLoadingState() {
@@ -946,8 +1303,26 @@ function showError(message) {
 
 // ==================== UTILITY FUNCTIONS ====================
 function clearFilter() {
+  currentStatusFilter = '';
   document.getElementById('orderStatusFilter').value = '';
-  loadOrders(1, '');
+  loadOrders(1, '', currentSearchQuery); // Keep search query
+}
+
+function clearAllFilters() {
+  currentStatusFilter = '';
+  currentSearchQuery = '';
+  
+  const statusFilter = document.getElementById('orderStatusFilter');
+  const searchInput = document.getElementById('orderSearchInput');
+  const clearBtn = document.getElementById('clearOrderSearch');
+  const resetBtn = document.getElementById('resetAllFiltersBtn');
+  
+  if (statusFilter) statusFilter.value = '';
+  if (searchInput) searchInput.value = '';
+  if (clearBtn) clearBtn.style.display = 'none';
+  if (resetBtn) resetBtn.style.display = 'none';
+  
+  loadOrders(1, '', '');
 }
 
 function viewOrderDetails(orderId) {
@@ -958,4 +1333,5 @@ function downloadInvoice(orderId) {
   window.open(`/orders/${orderId}/invoice`, '_blank');
 }
 </script>
+
 
