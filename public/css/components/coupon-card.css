@@ -1,0 +1,292 @@
+/* ===================================
+   COUPON CARD - VERTICAL STACKED LAYOUT
+   Clean, Uniform, Compact
+   =================================== */
+
+/* Import Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800;900&display=swap');
+
+/* ==========================================
+   GRID CONTAINER
+   ========================================== */
+.coupons-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    width: 100%;
+    padding: 0;
+}
+
+.coupon-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ==========================================
+   COUPON CARD - Outer Wrapper
+   ========================================== */
+.decorative-coupon-wrapper {
+    background: linear-gradient(135deg, #4A90E2 0%, #357ABD 100%);
+    padding: 4px;
+    border-radius: 12px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin-bottom: 16px;
+    height: 100%;
+}
+
+.decorative-coupon-wrapper:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+/* ==========================================
+   COUPON CARD - Inner Content
+   ========================================== */
+.decorative-coupon-inner {
+    background: linear-gradient(135deg, #FFFBF0 0%, #FFF4D6 100%);
+    border: 2px dashed #4A90E2;
+    border-radius: 10px;
+    padding: 20px;
+    height: 100%;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Decorative corner dots */
+.decorative-coupon-inner::before,
+.decorative-coupon-inner::after {
+    content: '';
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    background: #4A90E2;
+    border-radius: 50%;
+    opacity: 0.08;
+}
+
+.decorative-coupon-inner::before {
+    top: -8px;
+    left: -8px;
+}
+
+.decorative-coupon-inner::after {
+    bottom: -8px;
+    right: -8px;
+}
+
+/* ==========================================
+   VERTICAL STACKED LAYOUT
+   ========================================== */
+.coupon-horizontal-layout {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 16px !important;
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* ==========================================
+   TOP SECTION - Discount Badge
+   ========================================== */
+.coupon-discount-section {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px 16px !important;
+    border-bottom: 2px dashed rgba(74, 144, 226, 0.4) !important;
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-radius: 8px !important;
+}
+
+.coupon-decorative-discount {
+    font-family: 'Poppins', sans-serif !important;
+    font-size: 2.2rem !important;
+    font-weight: 900 !important;
+    color: #1a202c !important;
+    line-height: 1.1 !important;
+    text-align: center !important;
+    margin: 0 !important;
+    letter-spacing: -0.5px !important;
+    text-transform: uppercase !important;
+}
+
+/* ==========================================
+   BOTTOM SECTION - Coupon Details
+   ========================================== */
+.coupon-details-section {
+    flex: 1 1 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    justify-content: space-between !important;
+}
+
+/* Header Row - Title + Badge */
+.coupon-header-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: nowrap !important;
+}
+
+.coupon-decorative-title {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: #2d3748 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin: 0 !important;
+    flex: 1 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+}
+
+/* Status Badge */
+.coupon-badge-decorative {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.65rem !important;
+    font-weight: 700 !important;
+    padding: 4px 10px !important;
+    border-radius: 12px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+}
+
+.badge-active {
+    background: #C6F6D5 !important;
+    color: #22543D !important;
+}
+
+.badge-inactive {
+    background: #E2E8F0 !important;
+    color: #4A5568 !important;
+}
+
+.badge-expired {
+    background: #FED7D7 !important;
+    color: #742A2A !important;
+}
+
+/* Description - Fully Visible */
+.coupon-decorative-description {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.85rem !important;
+    color: #4a5568 !important;
+    line-height: 1.5 !important;
+    margin: 0 !important;
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    min-height: 2.6em !important;
+}
+
+/* Coupon Code Row */
+.coupon-code-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+}
+
+.coupon-decorative-code {
+    font-family: 'Courier New', monospace !important;
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: #1a202c !important;
+    background: #ffffff !important;
+    padding: 8px 14px !important;
+    border-radius: 6px !important;
+    border: 2px dashed #4A90E2 !important;
+    letter-spacing: 1px !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+.coupon-max-discount {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    color: #718096 !important;
+    font-weight: 600 !important;
+}
+
+/* Footer Row */
+.coupon-footer-row {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 10px !important;
+    flex-wrap: wrap !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(74, 144, 226, 0.25) !important;
+    margin-top: auto !important;
+}
+
+.coupon-decorative-validity {
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    color: #718096 !important;
+    font-weight: 600 !important;
+    margin: 0 !important;
+}
+
+.coupon-decorative-meta {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    color: #718096 !important;
+    font-weight: 500 !important;
+}
+
+.coupon-decorative-meta span {
+    display: flex !important;
+    align-items: center !important;
+    gap: 5px !important;
+    white-space: nowrap !important;
+}
+
+/* ==========================================
+   RESPONSIVE
+   ========================================== */
+
+/* Tablets */
+@media (max-width: 992px) {
+    .coupons-grid {
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 18px;
+    }
+}
+
+/* Mobile phones */
+@media (max-width: 576px) {
+    .coupons-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    
+    .decorative-coupon-inner {
+        padding: 18px;
+    }
+    
+    .coupon-decorative-discount {
+        font-size: 2rem !important;
+    }
+}
+
+/* Large screens */
+@media (min-width: 1400px) {
+    .coupons-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+}

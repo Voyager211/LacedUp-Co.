@@ -29,23 +29,30 @@
         <div class="checkout-left">
             <!-- Delivery Address Section -->
             <div class="section-card">
-              <div class="section-title">
-                  <div>
-                      <i class="bi bi-geo-alt"></i>
-                      Delivery Address
-                  </div>
-                  <button class="btn-add-new-address" onclick="showAddAddressModal()">
-                      <i class="bi bi-plus-circle"></i> Add New Address
-                  </button>
-              </div>
+                <div class="section-title">
+                    <div>
+                        <i class="bi bi-geo-alt"></i>
+                        Delivery Address
+                    </div>
+                    <button class="btn-add-new-address" onclick="showAddAddressModal()">
+                        <i class="bi bi-plus-circle"></i> Add New Address
+                    </button>
+                </div>
 
-              <!-- Address Container -->
+                <!-- Address Container -->
                 <div id="addressContainer">
                     <% if (addresses && addresses.length > 0) { %>
-                        <% addresses.forEach((address, index) => { %>
-                            <div class="address-card <%= index === 0 ? 'selected' : '' %>" id="address-card-<%= address._id %>">
+                        <!-- Initially show first 3 addresses -->
+                        <% const initialLimit = 3; %>
+                        <% addresses.slice(0, Math.min(initialLimit, addresses.length)).forEach((address, index) => { %>
+                            <div class="address-card <%= index === 0 ? 'selected' : '' %>" id="address-card-<%= address._id %>" data-address-index="<%= index %>">
                                 <label class="d-flex align-items-start">
-                                    <input type="radio" name="deliveryAddress" value="<%= addressDocumentId %>" data-address-id="<%= address._id %>" data-address-index="<%= index %>" <%= index === 0 ? 'checked' : '' %> onclick="selectAddress(this)">
+                                    <input type="radio" 
+                                        name="deliveryAddress" 
+                                        value="<%= address._id %>" 
+                                        data-address-index="<%= index %>" 
+                                        <%= index === 0 ? 'checked' : '' %> 
+                                        onclick="selectAddress(this)">
                                     <div class="address-info flex-grow-1">
                                         <h6><%= address.name %></h6>
                                         <p><%= address.addressType %></p>
@@ -68,6 +75,51 @@
                                 </label>
                             </div>
                         <% }) %>
+                        
+                        <!-- Hidden addresses (will be shown on load more) -->
+                        <% if (addresses.length > initialLimit) { %>
+                            <% addresses.slice(initialLimit).forEach((address, index) => { %>
+                                <% const actualIndex = index + initialLimit; %>
+                                <div class="address-card hidden-address" 
+                                    id="address-card-<%= address._id %>" 
+                                    data-address-index="<%= actualIndex %>" 
+                                    style="display: none;">
+                                    <label class="d-flex align-items-start">
+                                        <input type="radio" 
+                                            name="deliveryAddress" 
+                                            value="<%= address._id %>" 
+                                            data-address-index="<%= actualIndex %>" 
+                                            onclick="selectAddress(this)">
+                                        <div class="address-info flex-grow-1">
+                                            <h6><%= address.name %></h6>
+                                            <p><%= address.addressType %></p>
+                                            <p><%= address.landMark %></p>
+                                            <p><%= address.city %>, <%= address.state %></p>
+                                            <p>PIN: <%= address.pincode %></p>
+                                            <p><i class="bi bi-telephone"></i> <%= address.phone %></p>
+                                            <% if (address.altPhone) { %>
+                                                <p><i class="bi bi-telephone"></i> <%= address.altPhone %> (Alt)</p>
+                                            <% } %>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="editAddress('<%= address._id %>')">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteAddress('<%= address._id %>')">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </label>
+                                </div>
+                            <% }) %>
+                            
+                            <!-- Load More Button -->
+                            <div class="load-more-container">
+                                <span id="loadMoreAddressesBtn" class="load-more-span" onclick="loadMoreAddresses()">
+                                    <i class="bi bi-arrow-down-circle me-2"></i>Load More Addresses (<span id="remainingCount"><%= addresses.length - initialLimit %></span>)
+                                </span>
+                            </div>
+                        <% } %>
                     <% } else { %>
                         <div class="text-center py-4">
                             <p class="text-muted">No addresses found. Please add a delivery address to continue.</p>
@@ -78,6 +130,7 @@
                     <% } %>
                 </div>
             </div>
+
             
             <!-- Coupon Section -->
             <div class="section-card">
@@ -405,7 +458,7 @@
 
 <script>
   // Pass server-side data to client-side JavaScript
-  window.geoapifyApiKey = '<%= geoapifyApiKey %>';
+//   window.geoapifyApiKey = '<%= geoapifyApiKey %>';
   window.orderTotal = <%= total || 0 %>;
   window.walletBalance = <%= walletBalance || 0 %>;
 </script>

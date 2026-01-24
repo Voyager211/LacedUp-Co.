@@ -464,6 +464,7 @@
         }
     }
 
+
     // Validation fields configuration
     const validationFields = [
         {
@@ -575,6 +576,7 @@
         }
     ];
 
+
     let stateDistrictData = STATES_DISTRICTS;
 
 
@@ -582,6 +584,8 @@
     function initializeStateDistrict() {
         const stateSelect = document.getElementById('state');
         const districtSelect = document.getElementById('district');
+        
+        if (!stateSelect || !districtSelect) return;
         
         stateSelect.innerHTML = '<option value="">Select State</option>';
         
@@ -592,6 +596,7 @@
             stateSelect.appendChild(option);
         });
 
+
         const existingState = '<%= typeof address !== "undefined" && address ? address.state : "" %>';
         const existingDistrict = '<%= typeof address !== "undefined" && address ? address.district || "" : "" %>';
         
@@ -601,9 +606,12 @@
         }
     }
 
+
     // Update districts based on selected state
     function updateDistricts(selectedState, selectedDistrict = '') {
         const districtSelect = document.getElementById('district');
+        
+        if (!districtSelect) return;
         
         districtSelect.innerHTML = '<option value="">Select District</option>';
         
@@ -625,6 +633,7 @@
         }
     }
 
+
     // Validation function for individual fields
     function validateField(field) {
         const input = document.getElementById(field.id);
@@ -633,6 +642,7 @@
         if (!input || !errorElement) return true;
         
         const isValid = field.validate(input.value);
+
 
         if (isValid) {
             input.classList.remove("is-invalid");
@@ -647,8 +657,10 @@
             errorElement.style.display = "block";
         }
 
+
         return isValid;
     }
+
 
     // Clear field error
     function clearFieldError(fieldId) {
@@ -661,23 +673,33 @@
         }
     }
 
-    // ======= CHECKOUT PAGE DETECTION AND EARLY EXIT ======= 
+
+    // ======= CHECKOUT PAGE DETECTION ======= 
     function isOnCheckoutPage() {
         return window.location.pathname.includes('/checkout') || 
                window.location.pathname.includes('/cart/checkout');
     }
 
-    // ======= ADDRESS BOOK ONLY - FORM SUBMISSION ======= 
+
+    // ======= INITIALIZATION - WORKS ON BOTH CHECKOUT AND ADDRESS BOOK ======= 
     document.addEventListener('DOMContentLoaded', function() {
-        // EARLY EXIT: Don't initialize anything on checkout pages
-        if (isOnCheckoutPage()) {
-            console.log('🚫 ADDRESSES PARTIAL: On checkout page - skipping all initialization');
+        const isCheckout = isOnCheckoutPage();
+        
+        console.log(isCheckout ? '✅ ADDRESSES PARTIAL: On checkout page - initializing states only' : '✅ ADDRESSES PARTIAL: On address book page - full initialization');
+        
+        // Initialize state/district data (works on both pages)
+        console.log(`✅ ADDRESSES PARTIAL: Loaded ${Object.keys(stateDistrictData).length} states from constants`);
+        initializeStateDistrict();
+
+        // EARLY EXIT for checkout: Skip form handlers (checkout has its own)
+        if (isCheckout) {
+            console.log('🚫 ADDRESSES PARTIAL: Skipping address book form handlers on checkout');
             return;
         }
 
-        console.log('✅ ADDRESSES PARTIAL: On address book page - initializing');
-        console.log(`✅ ADDRESSES PARTIAL: Loaded ${Object.keys(stateDistrictData).length} states from constants`);
-        initializeStateDistrict();
+
+        // ======= ADDRESS BOOK ONLY - VALIDATORS AND FORM HANDLERS BELOW =======
+
 
         // Real-time validation on input - ADDRESS BOOK ONLY
         validationFields.forEach(field => {
@@ -690,11 +712,13 @@
                     }, 300);
                 });
 
+
                 input.addEventListener("blur", () => {
                     validateField(field);
                 });
             }
         });
+
 
         // Input formatting - ADDRESS BOOK ONLY
         const mobileInput = document.getElementById('mobileNumber');
@@ -704,12 +728,14 @@
             });
         }
 
+
         const altPhoneInput = document.getElementById('altPhone');
         if (altPhoneInput) {
             altPhoneInput.addEventListener('input', function(e) {
                 this.value = this.value.replace(/\D/g, '').substring(0, 10);
             });
         }
+
 
         const pincodeInput = document.getElementById('pincode');
         if (pincodeInput) {
@@ -718,6 +744,7 @@
             });
         }
 
+
         const fullNameInput = document.getElementById('fullName');
         if (fullNameInput) {
             fullNameInput.addEventListener('input', function(e) {
@@ -725,12 +752,14 @@
             });
         }
 
+
         const cityInput = document.getElementById('city');
         if (cityInput) {
             cityInput.addEventListener('input', function(e) {
                 this.value = this.value.replace(/[^a-zA-Z\s]/g, '');
             });
         }
+
 
         // State change handler - ADDRESS BOOK ONLY
         const stateSelect = document.getElementById('state');
@@ -747,6 +776,7 @@
             });
         }
 
+
         // FORM SUBMISSION HANDLER - ADDRESS BOOK ONLY
         const form = document.getElementById('addressForm');
         if (form && !form.hasAttribute('data-addressbook-handler-attached')) {
@@ -759,8 +789,10 @@
                 
                 console.log('📝 ADDRESSES PARTIAL: Form submitted - starting validation...');
 
+
                 let isFormValid = true;
                 let firstInvalidField = null;
+
 
                 // Frontend validation - show inline errors only
                 validationFields.forEach(field => {
@@ -776,6 +808,7 @@
                     }
                 });
 
+
                 if (!isFormValid) {
                     console.log('❌ ADDRESSES PARTIAL: Frontend validation failed');
                     if (firstInvalidField) {
@@ -788,7 +821,9 @@
                     return;
                 }
 
+
                 console.log('✅ ADDRESSES PARTIAL: Frontend validation passed - proceeding to backend...');
+
 
                 // Get form data
                 const formData = new FormData(this);
@@ -807,11 +842,13 @@
                     makeDefault: makeDefaultCheckbox ? makeDefaultCheckbox.checked : false
                 };
 
+
                 // Show loading state
                 const submitBtn = this.querySelector('button[type="submit"]');
                 const originalText = submitBtn.innerHTML;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
                 submitBtn.disabled = true;
+
 
                 // Use currentEditingId from parent scope to determine if editing
                 const isEdit = typeof currentEditingId !== 'undefined' && currentEditingId !== null;
@@ -820,7 +857,9 @@
                 let url = isEdit ? `/api/address/${addressId}` : '/api/address';
                 const method = isEdit ? 'PUT' : 'POST';
 
+
                 console.log('🚀 ADDRESSES PARTIAL: Sending to backend:', url, method);
+
 
                 // Backend submission
                 fetch(url, {
@@ -875,13 +914,9 @@
         }
     });
 
-    // Modal event handler - ADDRESS BOOK ONLY
-    document.addEventListener('DOMContentLoaded', function() {
-        // EARLY EXIT: Don't attach modal handlers on checkout pages
-        if (isOnCheckoutPage()) {
-            return;
-        }
 
+    // Modal event handler - WORKS ON BOTH CHECKOUT AND ADDRESS BOOK
+    document.addEventListener('DOMContentLoaded', function() {
         const addressModal = document.getElementById('addressModal');
         if (addressModal) {
             addressModal.addEventListener('shown.bs.modal', function() {
@@ -891,6 +926,4 @@
             });
         }
     });
-
 </script>
-

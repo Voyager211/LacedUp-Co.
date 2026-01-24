@@ -3,7 +3,7 @@ console.log('🛒 Checkout JavaScript loaded');
 // Global variables
 window.currentEditingId = null;
 let checkoutAddresses = [];
-let orderTotal = 0;
+let orderTotal = 0; 
 
 
 /* ========= CHECKOUT VALIDATION FUNCTIONALITY ========= */
@@ -213,6 +213,216 @@ window.deleteAddress = async function(id) {
     });
   }
 };
+
+
+/* ========= LOAD MORE ADDRESSES FUNCTIONALITY ========= */
+let visibleAddressCount = 3;
+const addressesPerLoad = 3;
+let totalAddresses = 0;
+
+// Initialize address count on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAddressCount();
+    validateCheckoutOnLoad();
+    
+    // Attach form handler for checkout
+    const addressForm = document.getElementById('addressForm');
+    if (addressForm && window.location.pathname.includes('/checkout')) {
+        addressForm.addEventListener('submit', handleCheckoutAddressSubmit);
+        attachStateChangeHandler();
+        console.log('✅ CHECKOUT: Form handler attached');
+    }
+});
+
+function initializeAddressCount() {
+    const allAddresses = document.querySelectorAll('.address-card');
+    totalAddresses = allAddresses.length;
+    visibleAddressCount = document.querySelectorAll('.address-card:not(.hidden-address)').length;
+    
+    console.log(`📍 Address count initialized: ${visibleAddressCount} visible of ${totalAddresses} total`);
+    
+    updateLoadMoreButton();
+}
+
+function loadMoreAddresses() {
+    console.log('📥 Loading more addresses...');
+    
+    const hiddenAddresses = document.querySelectorAll('.address-card.hidden-address');
+    const loadMoreBtn = document.getElementById('loadMoreAddressesBtn');
+    const loadMoreContainer = document.querySelector('.load-more-container');
+    
+    if (!hiddenAddresses || hiddenAddresses.length === 0) {
+        console.log('❌ No more addresses to load');
+        if (loadMoreContainer) {
+            loadMoreContainer.style.opacity = '0';
+            loadMoreContainer.style.transform = 'translateY(-10px)';
+            setTimeout(() => {
+                loadMoreContainer.style.display = 'none';
+            }, 300);
+        }
+        return;
+    }
+    
+    // Show next batch of addresses with sliding animation
+    let loaded = 0;
+    hiddenAddresses.forEach((address, index) => {
+        if (loaded < addressesPerLoad) {
+            // Set initial state for slide-down animation
+            address.style.maxHeight = '0';
+            address.style.opacity = '0';
+            address.style.overflow = 'hidden';
+            address.style.display = 'block';
+            
+            // Trigger slide-down animation
+            setTimeout(() => {
+                address.style.transition = 'max-height 0.5s ease, opacity 0.4s ease, transform 0.4s ease';
+                address.style.maxHeight = '300px'; // Adjust based on card height
+                address.style.opacity = '1';
+                address.style.transform = 'translateY(0)';
+                address.style.overflow = 'visible';
+            }, index * 100); // Stagger animation
+            
+            address.classList.remove('hidden-address');
+            loaded++;
+        }
+    });
+    
+    visibleAddressCount += loaded;
+    console.log(`✅ Loaded ${loaded} more addresses. Total visible: ${visibleAddressCount}/${totalAddresses}`);
+    
+    // Update button state
+    updateLoadMoreButton();
+    
+    // Smooth scroll to first newly loaded address
+    if (loaded > 0) {
+        const firstNewAddress = document.querySelectorAll('.address-card')[visibleAddressCount - loaded];
+        if (firstNewAddress) {
+            setTimeout(() => {
+                firstNewAddress.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }, 400);
+        }
+    }
+}
+
+function updateLoadMoreButton() {
+    const loadMoreBtn = document.getElementById('loadMoreAddressesBtn');
+    const loadMoreContainer = document.querySelector('.load-more-container');
+    const remainingCountSpan = document.getElementById('remainingCount');
+    
+    if (!loadMoreBtn || !loadMoreContainer) return;
+    
+    const remainingAddresses = totalAddresses - visibleAddressCount;
+    
+    if (remainingAddresses > 0) {
+        loadMoreContainer.style.display = 'block';
+        if (remainingCountSpan) {
+            remainingCountSpan.textContent = remainingAddresses;
+        }
+    } else {
+        // All addresses loaded - hide with fade out
+        loadMoreContainer.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        loadMoreContainer.style.opacity = '0';
+        loadMoreContainer.style.transform = 'translateY(-10px)';
+        
+        setTimeout(() => {
+            loadMoreContainer.style.display = 'none';
+        }, 300);
+        
+        console.log('✅ All addresses loaded');
+    }
+}
+
+// Update renderCheckoutAddresses to support load more
+function renderCheckoutAddresses() {
+    const container = document.getElementById('addressContainer');
+    if (!container) {
+        console.error('❌ Address container not found');
+        return;
+    }
+
+    const loadingState = document.getElementById('addressLoadingState');
+    if (loadingState) {
+        loadingState.style.display = 'none';
+    }
+
+    if (checkoutAddresses.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <p class="text-muted">No addresses found. Please add a delivery address to continue.</p>
+                <button class="btn btn-primary" onclick="showAddAddressModal()">
+                    <i class="bi bi-plus-circle"></i> Add Your First Address
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    // Render addresses with load more functionality
+    const initialLimit = 3;
+    const visibleAddresses = checkoutAddresses.slice(0, initialLimit);
+    const hiddenAddresses = checkoutAddresses.slice(initialLimit);
+
+    let addressesHTML = visibleAddresses.map((address, index) => generateAddressCard(address, index, index === 0)).join('');
+    
+    if (hiddenAddresses.length > 0) {
+        addressesHTML += hiddenAddresses.map((address, index) => 
+            generateAddressCard(address, index + initialLimit, false, true)
+        ).join('');
+        
+        addressesHTML += `
+            <div class="load-more-container">
+                <span id="loadMoreAddressesBtn" class="load-more-span" onclick="loadMoreAddresses()">
+                    <i class="bi bi-arrow-down-circle me-2"></i>Load More Addresses (<span id="remainingCount">${hiddenAddresses.length}</span>)
+                </span>
+            </div>
+        `;
+    }
+
+    container.innerHTML = addressesHTML;
+    
+    // Reinitialize counts
+    totalAddresses = checkoutAddresses.length;
+    visibleAddressCount = initialLimit;
+    
+    console.log('✅ Addresses rendered in checkout with load more');
+}
+
+function generateAddressCard(address, index, isSelected = false, isHidden = false) {
+    return `
+        <div class="address-card ${isSelected ? 'selected' : ''} ${isHidden ? 'hidden-address' : ''}" 
+             id="address-card-${address._id}"
+             data-address-index="${index}"
+             style="${isHidden ? 'display: none; max-height: 0; opacity: 0;' : ''}">
+            <label class="d-flex align-items-start">
+                <input type="radio" 
+                       name="deliveryAddress" 
+                       value="${address._id}" 
+                       data-address-index="${index}"
+                       ${isSelected ? 'checked' : ''} 
+                       onclick="selectAddress(this)">
+                <div class="address-info flex-grow-1">
+                    <h6>${address.name}</h6>
+                    <p>${address.addressType}</p>
+                    <p>${address.landMark}</p>
+                    <p>${address.city}, ${address.state}</p>
+                    <p>PIN: ${address.pincode}</p>
+                    <p><i class="bi bi-telephone"></i> ${address.phone}</p>
+                    ${address.altPhone ? `<p><i class="bi bi-telephone"></i> ${address.altPhone} (Alt)</p>` : ''}
+                </div>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editAddress('${address._id}')">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteAddress('${address._id}')">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </label>
+        </div>
+    `;
+}
+
+
 
 
 /* ========= ORDER PLACEMENT ========= */

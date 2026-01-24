@@ -188,6 +188,80 @@ function calculateDiscount(coupon, orderTotal) {
 }
 
 
+const renderCouponsPage = async (req, res) => {
+    try {
+        const userId = req.user?.id || req.session.userId;
+
+        if (!userId) {
+            req.flash('error', 'Please login to view coupons');
+            return res.redirect('/login');
+        }
+
+        const currentDate = new Date();
+        
+        // Fetch all active and valid coupons
+        const coupons = await Coupon.find({
+            isActive: true,
+            validFrom: { $lte: currentDate },
+            validTo: { $gte: currentDate }
+        })
+        .select('code name description discountType discountValue minimumOrderValue maximumDiscountAmount usageLimit usedCount userLimit validFrom validTo isActive usedBy')
+        .sort({ createdAt: -1 });
+
+        // Filter coupons based on usage limits
+        const availableCoupons = coupons.filter(coupon => {
+            // Check total usage limit
+            if (coupon.usageLimit !== null && coupon.usedCount >= coupon.usageLimit) {
+                return false;
+            }
+
+            // Check per-user usage limit
+            if (coupon.userLimit !== null) {
+                const userUsageCount = coupon.usedBy.filter(
+                    usage => usage.user.toString() === userId.toString()
+                ).length;
+
+                if (userUsageCount >= coupon.userLimit) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        // Get cart totals for validation
+        const cartTotalsResult = await calculateCartTotals(userId);
+        const cartTotal = cartTotalsResult.success ? cartTotalsResult.totals.amountAfterDiscount : 0;
+
+        // Separate coupons into categories
+        const applicableCoupons = availableCoupons.filter(coupon => 
+            cartTotal >= (coupon.minimumOrderValue || 0)
+        );
+
+        const upcomingCoupons = availableCoupons.filter(coupon => 
+            cartTotal < (coupon.minimumOrderValue || 0)
+        );
+
+        console.log(`Rendering coupons page - Total: ${availableCoupons.length}, Applicable: ${applicableCoupons.length}, Upcoming: ${upcomingCoupons.length}`);
+
+        res.render('user/coupons', {
+            title: 'Available Coupons',
+            coupons: availableCoupons,
+            applicableCoupons: applicableCoupons,
+            upcomingCoupons: upcomingCoupons,
+            cartTotal: cartTotal,
+            hasCart: cartTotalsResult.success,
+            user: req.user || null
+        });
+
+    } catch (error) {
+        console.error('Error rendering coupons page:', error);
+        req.flash('error', 'Error loading coupons. Please try again.');
+        res.redirect('/');
+    }
+};
+
+
 const getAvailableCoupons = async (req, res) => {
     try {
         const userId = req.user?.id || req.session.userId;
@@ -479,6 +553,7 @@ const updateCouponUsage = async (couponId, userId, orderId = null) => {
 }
 
 module.exports = {
+    renderCouponsPage,
     getAvailableCoupons,
     applyCoupon,
     removeCoupon,

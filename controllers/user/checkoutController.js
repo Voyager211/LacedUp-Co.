@@ -221,7 +221,7 @@ const calculateOrderTotals = (cartItems) => {
     totalItemCount,
     total: Math.round(total)
   };
-};
+};  
 
 
 const loadCheckout = async (req, res) => {

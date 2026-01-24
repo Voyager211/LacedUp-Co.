@@ -14,7 +14,7 @@
     <div class="col-lg-3 col-md-4">
       <%- include('partials/profile-sidebar.ejs', { user: user, active: 'referrals' }) %>
     </div>
-
+ 
     <!-- Main Content Area -->
     <div class="col-lg-9 col-md-8">
       <div class="referrals-content">
@@ -160,7 +160,7 @@
         </div>
 
         <!-- Earnings History -->
-        <% if (referralTransactions.length > 0) { %>
+        <% if (totalEarningsCount > 0) { %>
           <div class="earnings-history-card mt-4">
             <div class="card border-0 shadow-sm">
               <div class="card-header bg-white border-bottom">
@@ -170,7 +170,8 @@
                 </h5>
               </div>
               
-              <div class="card-body p-0">
+              <!-- ✅ Container for dynamic content -->
+              <div class="card-body p-0" id="earningsContainer">
                 <div class="earnings-list">
                   <% referralTransactions.forEach((transaction) => { %>
                     <div class="earnings-item">
@@ -211,9 +212,50 @@
                   <% }) %>
                 </div>
               </div>
+
+              <!-- ✅ Earnings Pagination -->
+              <div class="card-footer bg-white" id="earningsPaginationContainer">
+                <div class="pagination-wrapper">
+                  <div class="pagination">
+                    <!-- Previous Button -->
+                    <% if (earningsHasPrevPage) { %>
+                      <button class="page-btn earnings-pagination-btn" data-page="<%= earningsPrevPage %>">
+                        <i class="bi bi-chevron-left"></i>
+                      </button>
+                    <% } else { %>
+                      <button class="page-btn" disabled>
+                        <i class="bi bi-chevron-left"></i>
+                      </button>
+                    <% } %>
+
+                    <!-- Page Numbers -->
+                    <% earningsPageNumbers.forEach(pageNum => { %>
+                      <% if (pageNum === earningsCurrentPage) { %>
+                        <button class="page-btn active"><%= pageNum %></button>
+                      <% } else { %>
+                        <button class="page-btn earnings-pagination-btn" data-page="<%= pageNum %>">
+                          <%= pageNum %>
+                        </button>
+                      <% } %>
+                    <% }) %>
+
+                    <!-- Next Button -->
+                    <% if (earningsHasNextPage) { %>
+                      <button class="page-btn earnings-pagination-btn" data-page="<%= earningsNextPage %>">
+                        <i class="bi bi-chevron-right"></i>
+                      </button>
+                    <% } else { %>
+                      <button class="page-btn" disabled>
+                        <i class="bi bi-chevron-right"></i>
+                      </button>
+                    <% } %>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         <% } %>
+
 
       </div>
     </div>
@@ -448,6 +490,101 @@
   color: #dc3545 !important;
 }
 
+/* ========= PAGINATION STYLES ========= */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  padding: 1rem 0;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.page-btn:not(:disabled):not(.active):hover {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.2);
+}
+
+.page-btn.active {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn.active:hover {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+.page-btn:disabled {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-btn:disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+.page-btn i {
+  font-size: 0.9em;
+}
+
+@media (max-width: 576px) {
+  .page-btn {
+    min-width: 35px;
+    height: 35px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .page-btn i {
+    font-size: 0.8em;
+  }
+
+  .pagination {
+    gap: 0.25rem;
+  }
+}
+
+
 /* Responsive */
 @media (max-width: 768px) {
   .stat-value {
@@ -520,4 +657,284 @@
       timerProgressBar: true
     });
   }
+
+  // ✅ PAGINATION FUNCTIONALITY
+let referralsCurrentPage = <%= referralsCurrentPage %>;
+let earningsCurrentPage = <%= earningsCurrentPage %>;
+
+// Load paginated referrals
+async function loadReferrals(page) {
+  try {
+    showLoadingState('referralsContainer');
+    
+    const response = await fetch(`/referrals/api/referred-users?page=${page}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      renderReferrals(result.data);
+      updateReferralsPagination(result.data);
+      referralsCurrentPage = result.data.currentPage;
+    } else {
+      throw new Error(result.message || 'Failed to load referrals');
+    }
+  } catch (error) {
+    console.error('Error loading referrals:', error);
+    showError('referralsContainer', 'Error loading referrals. Please try again.');
+  }
+}
+
+// Load paginated earnings
+async function loadEarnings(page) {
+  try {
+    showLoadingState('earningsContainer');
+    
+    const response = await fetch(`/referrals/api/earnings?page=${page}`);
+    const result = await response.json();
+    
+    if (result.success) {
+      renderEarnings(result.data);
+      updateEarningsPagination(result.data);
+      earningsCurrentPage = result.data.currentPage;
+    } else {
+      throw new Error(result.message || 'Failed to load earnings');
+    }
+  } catch (error) {
+    console.error('Error loading earnings:', error);
+    showError('earningsContainer', 'Error loading earnings. Please try again.');
+  }
+}
+
+// Render referrals
+function renderReferrals(data) {
+  const container = document.getElementById('referralsContainer');
+  
+  if (!data.referredUsers || data.referredUsers.length === 0) {
+    container.innerHTML = `
+      <div class="empty-referrals text-center py-5">
+        <div class="mb-4">
+          <i class="bi bi-people display-1 text-muted"></i>
+        </div>
+        <h4 class="text-muted mb-3">No Referrals Yet</h4>
+        <p class="text-muted mb-4">Start sharing your referral code to earn rewards!</p>
+        <button class="btn btn-primary" onclick="showShareModal()">
+          <i class="bi bi-share-fill me-2"></i>Share Your Code
+        </button>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '<div class="referral-list">';
+  data.referredUsers.forEach(user => {
+    const date = new Date(user.createdAt).toLocaleDateString('en-IN', { 
+      day: '2-digit', month: 'short', year: 'numeric' 
+    });
+    
+    html += `
+      <div class="referral-item">
+        <div class="row align-items-center py-3 px-4">
+          <div class="col-md-1">
+            <div class="referral-icon">
+              <i class="bi bi-person-check-fill"></i>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="referral-details">
+              <div class="referral-name">${user.name}</div>
+              <div class="referral-meta">
+                <span class="referral-email">${user.email}</span>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-2 text-center">
+            <div class="referral-date">${date}</div>
+          </div>
+          <div class="col-md-3 text-end">
+            <div class="referral-reward">
+              <span class="badge bg-success">+₹300</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
+// Render earnings
+function renderEarnings(data) {
+  const container = document.getElementById('earningsContainer');
+  
+  if (!data.referralTransactions || data.referralTransactions.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-5">
+        <p class="text-muted">No earnings history available</p>
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '<div class="earnings-list">';
+  data.referralTransactions.forEach(transaction => {
+    const date = new Date(transaction.date).toLocaleDateString('en-IN', { 
+      day: '2-digit', month: 'short', year: 'numeric' 
+    });
+    const time = new Date(transaction.date).toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit'
+    });
+    
+    html += `
+      <div class="earnings-item">
+        <div class="row align-items-center py-3 px-4">
+          <div class="col-md-1">
+            <div class="transaction-icon credit">
+              <i class="bi bi-arrow-down-circle"></i>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="transaction-description">${transaction.description}</div>
+            <div class="transaction-meta">
+              <span class="transaction-id">ID: ${transaction.transactionId}</span>
+            </div>
+          </div>
+          <div class="col-md-2 text-center">
+            <div class="transaction-date">
+              ${date}
+              <div class="transaction-time">${time}</div>
+            </div>
+          </div>
+          <div class="col-md-3 text-end">
+            <div class="transaction-amount credit">
+              +₹${transaction.amount.toLocaleString('en-IN')}
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  
+  container.innerHTML = html;
+}
+
+// Update referrals pagination
+function updateReferralsPagination(data) {
+  const container = document.getElementById('referralsPaginationContainer');
+  container.innerHTML = generatePaginationHTML(data, 'referrals-pagination-btn');
+  
+  // Attach event listeners
+  container.querySelectorAll('.referrals-pagination-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = parseInt(btn.dataset.page);
+      if (page > 0) {
+        loadReferrals(page);
+        scrollToElement('referralsContainer');
+      }
+    });
+  });
+}
+
+// Update earnings pagination
+function updateEarningsPagination(data) {
+  const container = document.getElementById('earningsPaginationContainer');
+  container.innerHTML = generatePaginationHTML(data, 'earnings-pagination-btn');
+  
+  // Attach event listeners
+  container.querySelectorAll('.earnings-pagination-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = parseInt(btn.dataset.page);
+      if (page > 0) {
+        loadEarnings(page);
+        scrollToElement('earningsContainer');
+      }
+    });
+  });
+}
+
+// Generate pagination HTML
+function generatePaginationHTML(data, btnClass) {
+  let html = '<div class="pagination-wrapper"><div class="pagination">';
+  
+  // Previous button
+  html += data.hasPrevPage ? 
+    `<button class="page-btn ${btnClass}" data-page="${data.prevPage}"><i class="bi bi-chevron-left"></i></button>` :
+    `<button class="page-btn" disabled><i class="bi bi-chevron-left"></i></button>`;
+  
+  // Page numbers
+  data.pageNumbers.forEach(pageNum => {
+    if (pageNum === data.currentPage) {
+      html += `<button class="page-btn active">${pageNum}</button>`;
+    } else {
+      html += `<button class="page-btn ${btnClass}" data-page="${pageNum}">${pageNum}</button>`;
+    }
+  });
+  
+  // Next button
+  html += data.hasNextPage ?
+    `<button class="page-btn ${btnClass}" data-page="${data.nextPage}"><i class="bi bi-chevron-right"></i></button>` :
+    `<button class="page-btn" disabled><i class="bi bi-chevron-right"></i></button>`;
+  
+  html += '</div></div>';
+  return html;
+}
+
+// Utility functions
+function showLoadingState(containerId) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = `
+    <div class="text-center py-5">
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+      <p class="mt-3 text-muted">Loading...</p>
+    </div>
+  `;
+}
+
+function showError(containerId, message) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = `
+    <div class="text-center py-5">
+      <i class="bi bi-exclamation-triangle display-1 text-danger"></i>
+      <p class="mt-3 text-danger">${message}</p>
+    </div>
+  `;
+}
+
+function scrollToElement(elementId) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Event delegation for initial page pagination buttons
+document.addEventListener('DOMContentLoaded', function() {
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.referrals-pagination-btn')) {
+      e.preventDefault();
+      const btn = e.target.closest('.referrals-pagination-btn');
+      const page = parseInt(btn.dataset.page);
+      if (page > 0) {
+        loadReferrals(page);
+        scrollToElement('referralsContainer');
+      }
+    }
+    
+    if (e.target.closest('.earnings-pagination-btn')) {
+      e.preventDefault();
+      const btn = e.target.closest('.earnings-pagination-btn');
+      const page = parseInt(btn.dataset.page);
+      if (page > 0) {
+        loadEarnings(page);
+        scrollToElement('earningsContainer');
+      }
+    }
+  });
+});
+
 </script>

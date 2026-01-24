@@ -18,7 +18,7 @@ const renderWalletPage = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get user data (like orderController does)
+    // Get user data
     const User = require('../../models/User');
     const user = await User.findById(userId);
 
@@ -30,19 +30,50 @@ const renderWalletPage = async (req, res) => {
     // Get or create wallet
     const wallet = await walletService.getOrCreateWallet(userId);
 
-    // Get first page of transactions
-    const transactionData = await walletService.getPaginatedTransactions(userId, 1, 10);
+    // Get pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
+    // Get paginated transactions
+    const transactionData = await walletService.getPaginatedTransactions(userId, page, limit);
 
     // Get wallet statistics
     const stats = await walletService.getWalletStats(userId);
 
-    // Render with same layout pattern as orders
+    // Calculate pagination data
+    const { transactions, currentPage, totalPages, totalTransactions } = transactionData;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = hasPrevPage ? currentPage - 1 : null;
+    const nextPage = hasNextPage ? currentPage + 1 : null;
+
+    // Generate page numbers (show up to 5 pages around current page)
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
+    // Render with pagination data
     res.render('user/wallet', {
       user,
       wallet,
-      transactions: transactionData.transactions,
-      currentPage: transactionData.currentPage,
-      totalPages: transactionData.totalPages,
+      transactions,
+      currentPage,
+      totalPages,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+      pageNumbers,
+      totalTransactions,
       stats,
       title: 'My Wallet',
       layout: 'user/layouts/user-layout',
@@ -57,7 +88,7 @@ const renderWalletPage = async (req, res) => {
 
 
 /**
- * GET /api/wallet/transactions/paginated
+ * GET /wallet/transactions/paginated
  * Get paginated transactions with optional filtering
  */
 const getPaginatedTransactionsAPI = async (req, res) => {
@@ -75,15 +106,47 @@ const getPaginatedTransactionsAPI = async (req, res) => {
     // Get paginated transactions
     const data = await walletService.getPaginatedTransactions(userId, page, limit, type);
 
+    // Calculate pagination metadata
+    const { transactions, currentPage, totalPages, totalTransactions } = data;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = hasPrevPage ? currentPage - 1 : null;
+    const nextPage = hasNextPage ? currentPage + 1 : null;
+
+    // Generate page numbers
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
+
     res.json({
       success: true,
-      data
+      data: {
+        transactions,
+        currentPage,
+        totalPages,
+        totalTransactions,
+        hasPrevPage,
+        hasNextPage,
+        prevPage,
+        nextPage,
+        pageNumbers
+      }
     });
   } catch (error) {
     console.error('Error fetching paginated transactions:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch transactions' });
   }
 };
+
 
 
 /**

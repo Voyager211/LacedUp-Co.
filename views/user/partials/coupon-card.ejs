@@ -1,200 +1,402 @@
 <%
-// Coupon Card - Modern Styling
-// INPUTS: coupon (object), currentTotal (number), clickable (bool)
+// Modern Horizontal Coupon Card
+// INPUTS: 
+//   - coupon (object): The coupon data
+//   - currentTotal (number): Current cart/order total (optional, defaults to 0)
+//   - clickable (bool): Whether the coupon is clickable (optional, defaults to true)
+//   - showApplyButton (bool): Show apply button (optional, defaults to true)
+//   - context (string): 'user' or 'admin' (optional, defaults to 'user')
+
 // Defaults
 const clickable = typeof locals.clickable !== 'undefined' ? locals.clickable : true;
+const showApplyButton = typeof locals.showApplyButton !== 'undefined' ? locals.showApplyButton : true;
+const context = locals.context || 'user';
 const currentTotal = locals.currentTotal || 0;
+
+// Calculate if coupon is applicable
 const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
-const isApplicable = meetsMinOrder && coupon.isActive;
-const discountLabel = coupon.discountType === 'percentage'
-    ? `${coupon.discountValue}% OFF`
-    : `FLAT ₹${coupon.discountValue} OFF`;
-const badgeLabel = coupon.discountType === 'percentage' ? `${coupon.discountValue}% OFF` : `FLAT OFF`;
+const isApplicable = meetsMinOrder && coupon.isActive && context === 'user';
+const canClick = clickable && isApplicable && context === 'user';
+
+// Discount display
+const discountDisplay = coupon.discountType === 'percentage' 
+    ? `${coupon.discountValue}% OFF` 
+    : `₹${coupon.discountValue} OFF`;
+
+// Format dates
+const validFromDate = new Date(coupon.validFrom).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+const validToDate = new Date(coupon.validTo).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+// Check if expired
+const now = new Date();
+const isExpired = now > new Date(coupon.validTo);
+const isNotYetValid = now < new Date(coupon.validFrom);
+
+// Status indicator
+let statusClass = 'status-active';
+let statusText = 'Active';
+if (isExpired) {
+    statusClass = 'status-expired';
+    statusText = 'Expired';
+} else if (!coupon.isActive) {
+    statusClass = 'status-inactive';
+    statusText = 'Inactive';
+} else if (isNotYetValid) {
+    statusClass = 'status-pending';
+    statusText = 'Upcoming';
+}
+
+// Usage info
+const hasUsageLimit = coupon.usageLimit !== null;
+const remainingUses = hasUsageLimit ? Math.max(0, coupon.usageLimit - coupon.usedCount) : null;
 %>
-<div class="coupon-card-modern <%= !isApplicable ? 'coupon-disabled' : 'coupon-eligible' %>"
-    <%= clickable && isApplicable ? `onclick="applyCouponFromModal('${coupon.code}')" style='cursor:pointer;'` : '' %>>
+
+<div class="coupon-card-v2 <%= !isApplicable && context === 'user' ? 'coupon-disabled' : '' %> <%= context === 'admin' ? 'coupon-admin' : '' %>"
+    <%= canClick ? `onclick="applyCouponFromModal('${coupon.code}')" style='cursor:pointer;'` : '' %>>
     
-    <!-- Vertical Badge -->
-    <div class="coupon-badge <%= isApplicable ? 'coupon-badge-active' : '' %>">
-      <div class="badge-label">FLAT OFF</div>
+    <!-- Left Vertical Badge with Discount -->
+    <div class="coupon-left-badge <%= isApplicable ? 'badge-green' : 'badge-gray' %>">
+        <div class="badge-discount"><%= discountDisplay %></div>
     </div>
     
-    <!-- Main body -->
-    <div class="coupon-card-main">
-      <div class="coupon-card-header">
-        <span class="coupon-code"><%= coupon.code %></span>
-        <button class="apply-btn <%= !isApplicable ? 'apply-btn-disabled' : '' %>">
-          <%= isApplicable ? 'APPLY' : 'N/A' %>
-        </button>
-      </div>
-      <% if (!meetsMinOrder && coupon.minimumOrderValue) { %>
-      <div class="min-order-warning">
-        Add ₹<%= (coupon.minimumOrderValue - currentTotal) %> more to avail this offer
-      </div>
-      <% } %>
-      <div class="coupon-desc"><%= coupon.description || coupon.name %></div>
-      <div class="dotted-separator"></div>
-      <div class="coupon-footer">
-        Use code <strong><%= coupon.code %></strong> & get <%= discountLabel %>
-        <% if (coupon.minimumOrderValue) { %> off orders above ₹<%= coupon.minimumOrderValue %>.<% } %>
-      </div>
+    <!-- Main Content -->
+    <div class="coupon-content-v2">
+        <!-- Header Row -->
+        <div class="coupon-header-row">
+            <div class="coupon-title-section">
+                <h3 class="coupon-code-title"><%= coupon.code %></h3>
+                <% if (context === 'admin') { %>
+                    <span class="coupon-status-badge <%= statusClass %>"><%= statusText %></span>
+                <% } %>
+            </div>
+            
+            <% if (showApplyButton && context === 'user') { %>
+                <button type="button" class="coupon-apply-btn <%= !isApplicable ? 'btn-disabled' : '' %>"
+                    <%= !isApplicable ? 'disabled' : '' %>>
+                    <%= isApplicable ? 'APPLY' : 'N/A' %>
+                </button>
+            <% } %>
+        </div>
+        
+        <!-- Description -->
+        <p class="coupon-description-v2">
+            <%= coupon.description || coupon.name %>
+        </p>
+        
+        <!-- Warning for minimum order -->
+        <% if (context === 'user' && !meetsMinOrder && coupon.minimumOrderValue > 0) { %>
+            <div class="min-order-alert">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                    <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                    <path d="M7.002 11a1 1 0 1 1 2 0 1 1 0 0 1-2 0zM7.1 4.995a.905.905 0 1 1 1.8 0l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 4.995z"/>
+                </svg>
+                Add ₹<%= (coupon.minimumOrderValue - currentTotal).toFixed(2) %> more to unlock this offer
+            </div>
+        <% } %>
+        
+        <!-- Separator -->
+        <div class="coupon-divider"></div>
+        
+        <!-- Footer Info -->
+        <div class="coupon-footer-v2">
+            <div class="coupon-terms">
+                Use code <strong><%= coupon.code %></strong> &amp; get <%= discountDisplay %>
+                <% if (coupon.minimumOrderValue > 0) { %>
+                    on orders above ₹<%= coupon.minimumOrderValue %>
+                <% } %>
+                <% if (coupon.maximumDiscountAmount) { %>
+                    (Max: ₹<%= coupon.maximumDiscountAmount %>)
+                <% } %>
+            </div>
+            
+            <% if (context === 'admin') { %>
+                <div class="coupon-meta-info">
+                    <span class="meta-item">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/>
+                            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                        </svg>
+                        Used: <%= coupon.usedCount %><%= hasUsageLimit ? `/${coupon.usageLimit}` : '' %>
+                    </span>
+                    <span class="meta-item">
+                        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor">
+                            <path d="M11 6.5a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1z"/>
+                            <path d="M3.5 0a.5.5 0 0 1 .5.5V1h8V.5a.5.5 0 0 1 1 0V1h1a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2h1V.5a.5.5 0 0 1 .5-.5zM1 4v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V4H1z"/>
+                        </svg>
+                        Valid till: <%= validToDate %>
+                    </span>
+                </div>
+            <% } else { %>
+                <div class="coupon-validity">
+                    Valid from <%= validFromDate %> to <%= validToDate %>
+                </div>
+            <% } %>
+        </div>
     </div>
 </div>
 
 <style>
-.coupon-card-modern {
-  display: flex;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  border: 1px solid #ececec;
-  margin: 18px 0;
-  transition: all 0.3s ease;
+/* Base Coupon Card Styles */
+.coupon-card-v2 {
+    display: flex;
+    background: #ffffff;
+    border-radius: 12px;
+    border: 2px solid #e8e8e8;
+    overflow: hidden;
+    margin: 16px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    position: relative;
 }
 
-
-.coupon-card-modern.coupon-eligible:hover {
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.25);
-  border-color: #28a745;
+.coupon-card-v2:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.coupon-card-modern:hover { 
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+.coupon-card-v2.coupon-disabled {
+    opacity: 0.5;
+    pointer-events: none;
+    background: #f9f9f9;
 }
 
-.coupon-disabled {
-  opacity: 0.55;
-  pointer-events: none;
+.coupon-card-v2.coupon-admin {
+    border-color: #d4d4d4;
 }
 
-.coupon-badge {
-  background: #ececec;
-  min-width: 54px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  border-radius: 10px 0 0 10px;
-  padding: 0 5px;
-  transition: all 0.3s ease;
+/* Left Badge */
+.coupon-left-badge {
+    min-width: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px 10px;
+    transition: all 0.3s ease;
 }
 
-
-.coupon-badge-active {
-  background: linear-gradient(135deg, #28a745, #218838) !important;
+.badge-green {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
 }
 
-.coupon-badge-active .badge-label {
-  color: #ffffff !important;
+.badge-gray {
+    background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
 }
 
-.badge-label {
-  transform: rotate(-90deg);
-  font-size: 17px;
-  color: #858585;
-  letter-spacing: 2.5px;
-  font-weight: 800;
-  font-family: Arial Black, Arial, sans-serif;
-  transition: color 0.3s ease;
-}
-
-.coupon-card-main {
-  flex: 1;
-  padding: 16px 24px 14px 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.coupon-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 7px;
-}
-
-.coupon-code {
-  font-size: 25px;
-  font-weight: 700;
-  color: #272829;
-}
-
-.apply-btn {
-  border: 1.5px solid #bdbdbd;
-  border-radius: 18px;
-  background: #f5f5f5;
-  font-size: 15px;
-  font-weight: 700;
-  color: #858585;
-  padding: 6px 19px;
-  letter-spacing: 1.2px;
-  cursor: pointer;
-  margin-left: 12px;
-  transition: all 0.3s ease;
-}
-
-.apply-btn:hover { 
-  background: #28a745; 
-  color: #ffffff; 
-  border-color: #28a745;
-}
-
-.apply-btn-disabled { 
-  color: #aaa; 
-  border-color: #eee; 
-  cursor: not-allowed;
-}
-
-.apply-btn-disabled:hover {
-  background: #f5f5f5;
-  color: #aaa;
-  border-color: #eee;
-}
-
-.min-order-warning {
-  color: #e53935;
-  background: #fff1f1;
-  border-left: 3px solid #e53935;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  padding: 5px 12px;
-  border-radius: 0 5px 5px 0;
-}
-
-.coupon-desc {
-  color: #4f4f4f;
-  font-size: 15px;
-  margin-bottom: 10px;
-  margin-top: 2px;
-}
-
-.dotted-separator {
-  border-bottom: 1.5px dotted #cccccc;
-  margin: 9px 0 7px;
-}
-
-.coupon-footer {
-  color: #888;
-  font-size: 13.5px;
-}
-
-/* Responsive fix for smaller screens */
-@media (max-width: 576px) {
-  .coupon-card-modern {
-    flex-direction: column;
-  }
-  .coupon-badge {
-    min-width: 100%;
-    border-radius: 10px 10px 0 0;
-    padding: 6px 0;
-  }
-  .badge-label {
-    transform: none;
-    font-size: 16px;
+.badge-discount {
+    color: #ffffff;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 1px;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
     text-align: center;
-  }
-  .coupon-card-main {
-    padding: 15px 10px 13px 10px;
-  }
+    line-height: 1.2;
+}
+
+/* Content Section */
+.coupon-content-v2 {
+    flex: 1;
+    padding: 20px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Header Row */
+.coupon-header-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 15px;
+}
+
+.coupon-title-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.coupon-code-title {
+    font-size: 26px;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.coupon-status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-expired {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-inactive {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+/* Apply Button */
+.coupon-apply-btn {
+    background: #ffffff;
+    border: 2px solid #28a745;
+    color: #28a745;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 24px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    letter-spacing: 1px;
+    white-space: nowrap;
+}
+
+.coupon-apply-btn:hover {
+    background: #28a745;
+    color: #ffffff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(40, 167, 69, 0.3);
+}
+
+.coupon-apply-btn.btn-disabled {
+    border-color: #ced4da;
+    color: #adb5bd;
+    cursor: not-allowed;
+}
+
+.coupon-apply-btn.btn-disabled:hover {
+    background: #ffffff;
+    color: #adb5bd;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Description */
+.coupon-description-v2 {
+    font-size: 15px;
+    color: #495057;
+    margin: 0;
+    line-height: 1.5;
+}
+
+/* Minimum Order Alert */
+.min-order-alert {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #fff3cd;
+    border-left: 3px solid #ffc107;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    color: #856404;
+    font-weight: 500;
+}
+
+.min-order-alert svg {
+    flex-shrink: 0;
+}
+
+/* Divider */
+.coupon-divider {
+    border: none;
+    border-top: 1.5px dashed #dee2e6;
+    margin: 8px 0;
+}
+
+/* Footer */
+.coupon-footer-v2 {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.coupon-terms {
+    font-size: 13px;
+    color: #6c757d;
+    line-height: 1.5;
+}
+
+.coupon-terms strong {
+    color: #212529;
+    font-weight: 600;
+}
+
+.coupon-validity {
+    font-size: 12px;
+    color: #868e96;
+}
+
+/* Admin Meta Info */
+.coupon-meta-info {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    color: #6c757d;
+}
+
+.meta-item svg {
+    opacity: 0.7;
+}
+
+/* Responsive Design */
+@media (max-width: 576px) {
+    .coupon-card-v2 {
+        flex-direction: column;
+    }
+    
+    .coupon-left-badge {
+        min-width: 100%;
+        padding: 12px;
+    }
+    
+    .badge-discount {
+        writing-mode: horizontal-tb;
+        transform: none;
+        font-size: 20px;
+    }
+    
+    .coupon-content-v2 {
+        padding: 16px;
+    }
+    
+    .coupon-header-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .coupon-apply-btn {
+        width: 100%;
+        padding: 10px;
+    }
+    
+    .coupon-code-title {
+        font-size: 22px;
+    }
 }
 </style>

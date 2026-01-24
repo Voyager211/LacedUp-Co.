@@ -1006,3 +1006,110 @@ p {
 #applied-coupon .alert {
   margin-bottom: 0;
 }
+
+/* ========= LOAD MORE ADDRESSES SPAN ========= */
+.load-more-container {
+    width: 100%;
+    text-align: center;
+    margin-top: 20px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.load-more-span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    position: relative;
+    user-select: none;
+}
+
+.load-more-span:hover {
+    color: #dc3545;
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+}
+
+.load-more-span:active {
+    transform: translateY(0);
+}
+
+.load-more-span i {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.load-more-span:hover i {
+    transform: translateY(3px);
+    animation: bounce-down 0.6s ease infinite;
+}
+
+@keyframes bounce-down {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(5px);
+    }
+}
+
+#remainingCount {
+    font-weight: 700;
+    color: #000;
+}
+
+/* Hidden address initial state for sliding animation */
+.address-card.hidden-address {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transform: translateY(-20px);
+    margin-bottom: 0;
+}
+
+/* Smooth transition when addresses become visible */
+.address-card {
+    transition: max-height 0.5s ease, opacity 0.4s ease, transform 0.4s ease, margin-bottom 0.3s ease;
+}
+
+/* When address is shown, restore margin */
+.address-card:not(.hidden-address) {
+    margin-bottom: 15px;
+}
+
+/* Loading state for addresses */
+.address-card.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .load-more-span {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+    
+    .load-more-span i {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 576px) {
+    .load-more-span {
+        font-size: 13px;
+        padding: 8px 14px;
+    }
+}
+
+/* Add subtle animation when all addresses are shown */
+.load-more-container.hiding {
+    opacity: 0;
+    transform: translateY(-10px);
+}
