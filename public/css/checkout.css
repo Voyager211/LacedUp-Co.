@@ -617,9 +617,12 @@
         min-height: auto;
     }
     
-    .checkout-left, .checkout-right {
+    .checkout-left, 
+    .checkout-right {
         flex: 1;
-        min-width: auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
     
     .step-indicator {
@@ -634,6 +637,10 @@
     .order-summary {
         position: static;
         margin-top: 2rem;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
         min-height: auto;
     }
     
@@ -643,6 +650,8 @@
     
     .section-card {
         min-height: auto;
+        width: 100%;
+        max-width: 100%;
     }
     
     .address-card {
@@ -985,7 +994,7 @@ p {
 .view-available-coupons {
   font-size: 14px;
   color: #6c757d;
-  font-weight: 500; /* Increased from normal to 500 (medium) */
+  font-weight: 500;
   cursor: pointer;
   text-decoration: none;
   transition: color 0.2s ease;
@@ -993,7 +1002,7 @@ p {
 }
 
 .view-available-coupons:hover {
-  color: #dc3545; /* Bootstrap danger red */
+  color: #dc3545;
   text-decoration: none;
 }
 

@@ -420,7 +420,7 @@ function generateAddressCard(address, index, isSelected = false, isHidden = fals
             </label>
         </div>
     `;
-}
+} 
 
 
 
@@ -1207,50 +1207,226 @@ function showAvailableCouponsModal() {
   }
 }
 
+// Load Available Coupons in Carousel
 async function loadAvailableCoupons() {
-  if (window.couponState.isLoading) {
-    console.log('Already loading coupons, skipping...');
-    return
-  }
-
-  try {
-    console.log('Loading available coupons...')
-
-    window.couponState.isLoading = true;
-    showModalState('loading');
-
-    // Get current order total
-    const currentTotal = window.orderTotal || 0;
-
-    const response = await fetch('/coupons/available', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json'
-      }
+    console.log('🎫 loadAvailableCoupons() called');
+    
+    const loadingDiv = document.getElementById('coupons-loading');
+    const containerDiv = document.getElementById('available-coupons-container');
+    const noCouponsDiv = document.getElementById('no-coupons-found');
+    const errorDiv = document.getElementById('coupons-error');
+    
+    console.log('📍 Elements found:', {
+        loadingDiv: !!loadingDiv,
+        containerDiv: !!containerDiv,
+        noCouponsDiv: !!noCouponsDiv,
+        errorDiv: !!errorDiv
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to load coupons (Status: ${response.status})`);
+    
+    // Reset states
+    loadingDiv?.classList.remove('d-none');
+    containerDiv?.classList.add('d-none');
+    noCouponsDiv?.classList.add('d-none');
+    errorDiv?.classList.add('d-none');
+    
+    try {
+        console.log('📡 Fetching coupons from /coupons/available...');
+        
+        const response = await fetch('/coupons/available', {
+            method: 'GET',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        console.log('✅ Response received:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch coupons: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('📦 Data received:', data);
+        
+        loadingDiv?.classList.add('d-none');
+        
+        // ✅ FIX: Access coupons from data.data instead of data.coupons
+        const coupons = data.data?.coupons || data.data || [];
+        console.log('🎯 Extracted coupons:', coupons);
+        
+        if (!coupons || coupons.length === 0) {
+            console.log('⚠️ No coupons available');
+            noCouponsDiv?.classList.remove('d-none');
+            return;
+        }
+        
+        console.log(`🎉 Rendering ${coupons.length} coupons in carousel...`);
+        
+        // Render coupons in carousel
+        renderCouponsCarousel(coupons);
+        containerDiv?.classList.remove('d-none');
+        
+    } catch (error) {
+        console.error('❌ Error loading coupons:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+        
+        loadingDiv?.classList.add('d-none');
+        errorDiv?.classList.remove('d-none');
     }
-
-    const data = await response.json();
-    console.log('Available coupons API response:', data);
-
-    if (data.success && data.data && data.data.coupons && data.data.coupons.length > 0) {
-      window.couponState.availableCoupons = data.data.coupons;
-      renderCouponsInModal(data.data.coupons, currentTotal);
-    } else {
-      showModalState('no-coupons');
-    }
-
-  } catch (error) {
-    console.error('Error loading available coupons', error);
-    showModalState('error');
-    toastr.error('Failed to load coupons:', error.message);
-  } finally {
-    window.couponState.isLoading = false;
-  }
 }
+
+
+
+// Render Coupons as Carousel
+function renderCouponsCarousel(coupons) {
+    const carouselInner = document.getElementById('carousel-coupons-inner');
+    const indicatorsContainer = document.getElementById('carousel-indicators');
+    
+    if (!carouselInner || !indicatorsContainer) return;
+    
+    // Clear existing content
+    carouselInner.innerHTML = '';
+    indicatorsContainer.innerHTML = '';
+    
+    // Get current cart total for validation
+    const currentTotal = parseFloat(document.getElementById('grand-total')?.textContent?.replace(/[₹,]/g, '') || 0);
+    
+    // Create carousel items
+    coupons.forEach((coupon, index) => {
+        // Create carousel item
+        const carouselItem = document.createElement('div');
+        carouselItem.className = `carousel-item ${index === 0 ? 'active' : ''}`;
+        
+        // Render coupon card
+        const couponHTML = renderDecorativeCouponCard(coupon, currentTotal);
+        carouselItem.innerHTML = couponHTML;
+        
+        // Add click handler
+        carouselItem.addEventListener('click', () => {
+            const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
+            if (coupon.isActive && meetsMinOrder) {
+                applyCouponFromModal(coupon.code);
+            }
+        });
+        
+        carouselInner.appendChild(carouselItem);
+        
+        // Create indicator dot
+        const dot = document.createElement('button');
+        dot.className = `carousel-indicator-dot ${index === 0 ? 'active' : ''}`;
+        dot.setAttribute('data-bs-target', '#couponsCarousel');
+        dot.setAttribute('data-bs-slide-to', index);
+        dot.setAttribute('aria-label', `Slide ${index + 1}`);
+        if (index === 0) {
+            dot.setAttribute('aria-current', 'true');
+        }
+        
+        indicatorsContainer.appendChild(dot);
+    });
+    
+    // Update indicators on slide change
+    const carousel = document.getElementById('couponsCarousel');
+    if (carousel) {
+        carousel.addEventListener('slide.bs.carousel', (event) => {
+            const dots = indicatorsContainer.querySelectorAll('.carousel-indicator-dot');
+            dots.forEach((dot, idx) => {
+                if (idx === event.to) {
+                    dot.classList.add('active');
+                } else {
+                    dot.classList.remove('active');
+                }
+            });
+        });
+    }
+}
+
+// Render Decorative Coupon Card (Server-side template as client-side)
+function renderDecorativeCouponCard(coupon, currentTotal) {
+    const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
+    const isApplicable = meetsMinOrder && coupon.isActive;
+    
+    const discountDisplay = coupon.discountType === 'percentage' 
+        ? `${coupon.discountValue}% OFF` 
+        : `₹${coupon.discountValue} OFF`;
+    
+    const validToDate = new Date(coupon.validTo).toLocaleDateString('en-GB', { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
+    });
+    
+    const now = new Date();
+    const isExpired = now > new Date(coupon.validTo);
+    
+    let statusBadgeClass = 'badge-active';
+    let statusText = 'ACTIVE';
+    
+    if (isExpired) {
+        statusBadgeClass = 'badge-expired';
+        statusText = 'EXPIRED';
+    } else if (!coupon.isActive) {
+        statusBadgeClass = 'badge-inactive';
+        statusText = 'INACTIVE';
+    }
+    
+    return `
+        <div class="decorative-coupon-wrapper ${!isApplicable ? 'coupon-disabled' : ''}">
+            <div class="decorative-coupon-inner">
+                <div class="coupon-horizontal-layout">
+                    <!-- Left Section: Discount -->
+                    <div class="coupon-discount-section">
+                        <h2 class="coupon-decorative-discount">GET ${discountDisplay}</h2>
+                    </div>
+
+                    <!-- Right Section: Details -->
+                    <div class="coupon-details-section">
+                        <div class="coupon-header-row">
+                            <p class="coupon-decorative-title">${coupon.name || 'Special Offer'}</p>
+                        </div>
+
+                        <p class="coupon-decorative-description">
+                            ${coupon.description || 'Enjoy this exclusive discount on your purchase!'}
+                        </p>
+
+                        ${!meetsMinOrder && coupon.minimumOrderValue > 0 ? `
+                            <div class="min-order-alert" style="display: flex; align-items: center; gap: 8px; background: #fff3cd; border-left: 3px solid #ffc107; padding: 8px 12px; border-radius: 4px; font-size: 13px; color: #856404; font-weight: 500; margin: 8px 0;">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                Add ₹${(coupon.minimumOrderValue - currentTotal).toFixed(2)} more to unlock this offer
+                            </div>
+                        ` : ''}
+
+                        <div class="coupon-code-row">
+                            <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Use code:</span>
+                            <span class="coupon-decorative-code">${coupon.code}</span>
+                            ${coupon.maximumDiscountAmount ? `
+                                <span class="coupon-max-discount">(Max: ₹${coupon.maximumDiscountAmount})</span>
+                            ` : ''}
+                        </div>
+
+                        <div class="coupon-footer-row">
+                            <p class="coupon-decorative-validity">Valid Till ${validToDate}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Add CSS for disabled state
+const style = document.createElement('style');
+style.textContent = `
+    .coupon-disabled {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+    .coupon-disabled .decorative-coupon-wrapper {
+        filter: grayscale(50%);
+    }
+`;
+document.head.appendChild(style);
+
 
 function showModalState(state) {
   const loadingDiv = document.getElementById('coupons-loading');
@@ -1752,58 +1928,73 @@ function initializeCouponEventListeners () {
 
 
 
-/* ========= DOM READY & INITIALIZATION ========= */
+// DOM READY INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('🛒 Checkout DOM ready');
-  document.querySelector('.checkout-content')?.classList.remove('hidden');
-  
-  // Get order total
-  const totalElement = document.querySelector('.summary-row.total .price-value');
-  if (totalElement) {
-    window.orderTotal = parseFloat(totalElement.textContent.replace(/[₹,]/g, '')) || 0;
-    console.log(`💰 Order total set: ₹${window.orderTotal}`);
-  }
-  
-  // Load addresses if container is empty
-  const addressContainer = document.getElementById('addressContainer');
-  const hasAddresses = addressContainer && addressContainer.children.length > 0 && !addressContainer.querySelector('.text-center');
-  
-  if (!hasAddresses) {
-    loadCheckoutAddresses();
-  } else {
-    console.log('✅ Addresses already rendered server-side');
-  }
-  
-  // Validate checkout after delay
-  setTimeout(validateCheckoutOnLoad, 500);
-
-  // Initialize coupon functionality
-  initializeCouponEventListeners();
-
-  // Set up address modal handlers
-  const addressModal = document.getElementById('addressModal');
-  if (addressModal) {
-    addressModal.addEventListener('shown.bs.modal', () => {
-      setTimeout(() => {
-        if (typeof loadStateDistrictData === 'function') loadStateDistrictData();
-        if (typeof GeoapifyAddressForm !== 'undefined')
-          new GeoapifyAddressForm(window.geoapifyApiKey || '');
-        
-        const form = document.getElementById('addressForm');
-        if (form) {
-          const newForm = form.cloneNode(true);
-          form.parentNode.replaceChild(newForm, form);
-          newForm.addEventListener('submit', handleCheckoutAddressSubmit, { once: false, capture: true });
-          console.log('✅ CHECKOUT: Form handler attached');
-        }
-        
-        attachStateChangeHandler();
-      }, 200);
-    });
-  }
-
-  console.log('✅ Checkout initialization complete');
+    console.log('🛒 Checkout DOM ready');
+    
+    document.querySelector('.checkout-content')?.classList.remove('hidden');
+    
+    // Get order total
+    const totalElement = document.querySelector('.summary-row.total .price-value');
+    if (totalElement) {
+        window.orderTotal = parseFloat(totalElement.textContent.replace(/[₹,]/g, '')) || 0;
+        console.log('💰 Order total set:', window.orderTotal);
+    }
+    
+    // Load addresses if container is empty
+    const addressContainer = document.getElementById('addressContainer');
+    const hasAddresses = addressContainer && addressContainer.children.length > 0 && !addressContainer.querySelector('.text-center');
+    
+    if (!hasAddresses) {
+        loadCheckoutAddresses();
+    } else {
+        console.log('✅ Addresses already rendered server-side');
+    }
+    
+    // Validate checkout after delay
+    setTimeout(validateCheckoutOnLoad, 500);
+    
+    // Initialize coupon functionality
+    initializeCouponEventListeners();
+    
+    // ✅ ADD THIS: Load coupons when modal opens
+    const availableCouponsModal = document.getElementById('availableCouponsModal');
+    if (availableCouponsModal) {
+        availableCouponsModal.addEventListener('shown.bs.modal', function() {
+            console.log('📋 Modal shown - loading coupons...');
+            loadAvailableCoupons();
+        });
+        console.log('✅ Coupons modal event listener attached');
+    }
+    
+    // Set up address modal handlers
+    const addressModal = document.getElementById('addressModal');
+    if (addressModal) {
+        addressModal.addEventListener('shown.bs.modal', () => {
+            setTimeout(() => {
+                if (typeof loadStateDistrictData === 'function') {
+                    loadStateDistrictData();
+                }
+                
+                if (typeof GeoapifyAddressForm !== 'undefined') {
+                    new GeoapifyAddressForm(window.geoapifyApiKey);
+                }
+                
+                const form = document.getElementById('addressForm');
+                if (form) {
+                    const newForm = form.cloneNode(true);
+                    form.parentNode.replaceChild(newForm, form);
+                    newForm.addEventListener('submit', handleCheckoutAddressSubmit, { once: false, capture: true });
+                    console.log('✅ CHECKOUT: Form handler attached');
+                    attachStateChangeHandler();
+                }
+            }, 200);
+        });
+    }
+    
+    console.log('✅ Checkout initialization complete');
 });
+
 
 // Expose functions globally
 window.selectPayment = selectPayment;

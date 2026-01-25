@@ -278,11 +278,6 @@
             <!-- Containers for payment gateways -->
             <div id="paypal-btn-container-left" class="mt-3 d-none"></div>
             <div id="razorpay-btn-container-left" class="mt-3 d-none"></div>
-
-            <!-- Back to Cart -->
-            <a href="/cart" class="btn-back">
-                <i class="bi bi-arrow-left"></i> Back to Cart
-            </a>
         </div>
 
         <!-- Right Side - Order Summary -->
@@ -335,7 +330,7 @@
                                     }
                                 %>
                                 <img src="<%= imageSrc %>" 
-                                     alt="<%= productName %>"
+                                     alt="<%= productName %>" 
                                      class="item-image" 
                                      onerror="this.onerror=null; this.src='/images/placeholder.svg';"
                                      loading="lazy">

@@ -1,6 +1,6 @@
 <!-- Available Coupons Modal -->
 <div class="modal fade" id="availableCouponsModal" tabindex="-1" aria-labelledby="availableCouponsModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-lg">
+  <div class="modal-dialog modal-xl">
     <div class="modal-content">
       <!-- Modal Header -->
       <div class="modal-header modal-header-custom">
@@ -18,12 +18,32 @@
             <span class="visually-hidden">Loading...</span>
           </div>
           <p class="mt-3 text-muted mb-0">Loading available coupons...</p>
-        </div>
+        </div> 
         
-        <!-- Coupons Container -->
+        <!-- Coupons Carousel Container -->
         <div id="available-coupons-container" class="d-none">
-          <div class="p-3">
-            <!-- Coupon cards will be dynamically inserted here -->
+          <div class="coupons-carousel-wrapper">
+            <!-- Carousel will be dynamically inserted here -->
+            <div id="couponsCarousel" class="carousel slide" data-bs-ride="false">
+              <div class="carousel-inner" id="carousel-coupons-inner">
+                <!-- Coupon cards will be inserted here -->
+              </div>
+              
+              <!-- Carousel Controls -->
+              <button class="carousel-control-prev" type="button" data-bs-target="#couponsCarousel" data-bs-slide="prev">
+                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Previous</span>
+              </button>
+              <button class="carousel-control-next" type="button" data-bs-target="#couponsCarousel" data-bs-slide="next">
+                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                <span class="visually-hidden">Next</span>
+              </button>
+            </div>
+            
+            <!-- Carousel Indicators (Dots) -->
+            <div class="carousel-indicators-custom" id="carousel-indicators">
+              <!-- Dots will be inserted here -->
+            </div>
           </div>
         </div>
         
@@ -112,186 +132,128 @@
   transform: translateY(0);
 }
 
-.modal-lg {
-  max-width: 700px;
+.modal-xl {
+  max-width: 900px;
 }
 
-#availableCouponsModal .modal-body {
-  max-height: 70vh;
-  overflow-y: auto;
+/* Carousel Wrapper */
+.coupons-carousel-wrapper {
+  padding: 40px 20px;
+  position: relative;
 }
 
-/* Custom scrollbar for the modal */
-#availableCouponsModal .modal-body::-webkit-scrollbar {
-  width: 6px;
+/* Carousel Styling */
+#couponsCarousel {
+  position: relative;
+  padding: 0 60px;
 }
 
-#availableCouponsModal .modal-body::-webkit-scrollbar-track {
-  background: #f1f1f1;
-  border-radius: 10px;
+.carousel-inner {
+  padding: 20px 0;
 }
 
-#availableCouponsModal .modal-body::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 10px;
+.carousel-item {
+  padding: 0 20px;
+  transition: transform 0.6s ease-in-out;
 }
 
-#availableCouponsModal .modal-body::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
-
-.coupon-card-modern {
-  display: flex;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.07);
-  border: 1px solid #ececec;
-  margin: 18px 0;
+/* Carousel Controls */
+.carousel-control-prev,
+.carousel-control-next {
+  width: 50px;
+  height: 50px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.8;
   transition: all 0.3s ease;
 }
 
-.coupon-card-modern.coupon-eligible:hover {
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.25);
-  border-color: #28a745;
-  transform: translateY(-2px);
+.carousel-control-prev {
+  left: 0;
 }
 
-.coupon-card-modern:hover { 
-  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+.carousel-control-next {
+  right: 0;
 }
 
-.coupon-disabled {
-  opacity: 0.55;
-  pointer-events: none;
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.8);
 }
 
-.coupon-badge {
-  background: #ececec;
-  min-width: 54px;
+.carousel-control-prev-icon,
+.carousel-control-next-icon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Custom Indicators (Dots) */
+.carousel-indicators-custom {
   display: flex;
-  flex-direction: column;
   justify-content: center;
-  align-items: center;
-  border-radius: 10px 0 0 10px;
-  padding: 0 5px;
-  transition: all 0.3s ease;
+  gap: 10px;
+  margin-top: 20px;
 }
 
-.coupon-badge-active {
-  background: linear-gradient(135deg, #28a745, #218838) !important;
-}
-
-.coupon-badge-active .badge-label {
-  color: #ffffff !important;
-}
-
-.badge-label {
-  transform: rotate(-90deg);
-  font-size: 17px;
-  color: #858585;
-  letter-spacing: 2.5px;
-  font-weight: 800;
-  font-family: Arial Black, Arial, sans-serif;
-  transition: color 0.3s ease;
-}
-
-.coupon-card-main {
-  flex: 1;
-  padding: 16px 24px 14px 18px;
-  display: flex;
-  flex-direction: column;
-}
-
-.coupon-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 7px;
-}
-
-.coupon-code {
-  font-size: 25px;
-  font-weight: 700;
-  color: #272829;
-}
-
-.apply-btn {
-  border: 1.5px solid #bdbdbd;
-  border-radius: 18px;
-  background: #f5f5f5;
-  font-size: 15px;
-  font-weight: 700;
-  color: #858585;
-  padding: 6px 19px;
-  letter-spacing: 1.2px;
+.carousel-indicator-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: #d1d5db;
+  border: none;
+  padding: 0;
   cursor: pointer;
-  margin-left: 12px;
   transition: all 0.3s ease;
 }
 
-.apply-btn:hover { 
-  background: #28a745; 
-  color: #ffffff; 
-  border-color: #28a745;
+.carousel-indicator-dot.active {
+  background-color: #4A90E2;
+  width: 32px;
+  border-radius: 6px;
 }
 
-.apply-btn-disabled { 
-  color: #aaa; 
-  border-color: #eee; 
-  cursor: not-allowed;
+.carousel-indicator-dot:hover {
+  background-color: #9ca3af;
 }
 
-.apply-btn-disabled:hover {
-  background: #f5f5f5;
-  color: #aaa;
-  border-color: #eee;
+/* Clickable Coupon Card in Carousel */
+.carousel-item .decorative-coupon-wrapper {
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  margin-bottom: 0;
 }
 
-.min-order-warning {
-  color: #e53935;
-  background: #fff1f1;
-  border-left: 3px solid #e53935;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 6px;
-  padding: 5px 12px;
-  border-radius: 0 5px 5px 0;
+.carousel-item .decorative-coupon-wrapper:hover {
+  transform: scale(1.02);
 }
 
-.coupon-desc {
-  color: #4f4f4f;
-  font-size: 15px;
-  margin-bottom: 10px;
-  margin-top: 2px;
+/* Responsive */
+@media (max-width: 768px) {
+  #couponsCarousel {
+    padding: 0 50px;
+  }
+  
+  .carousel-control-prev,
+  .carousel-control-next {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .carousel-item {
+    padding: 0 10px;
+  }
 }
 
-.dotted-separator {
-  border-bottom: 1.5px dotted #cccccc;
-  margin: 9px 0 7px;
-}
-
-.coupon-footer {
-  color: #888;
-  font-size: 13.5px;
-}
-
-/* Responsive fix for smaller screens */
 @media (max-width: 576px) {
-  .coupon-card-modern {
-    flex-direction: column;
+  .coupons-carousel-wrapper {
+    padding: 20px 10px;
   }
-  .coupon-badge {
-    min-width: 100%;
-    border-radius: 10px 10px 0 0;
-    padding: 6px 0;
-  }
-  .badge-label {
-    transform: none;
-    font-size: 16px;
-    text-align: center;
-  }
-  .coupon-card-main {
-    padding: 15px 10px 13px 10px;
+  
+  #couponsCarousel {
+    padding: 0 45px;
   }
 }
 </style>
