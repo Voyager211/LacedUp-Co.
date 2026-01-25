@@ -3,7 +3,7 @@ const getPagination = require('../../utils/pagination');
 
 // List categories with search and filter
 const listCategories = async (req, res) => {
-  try {
+  try { 
     const searchQuery = req.query.q || '';
     const statusFilter = req.query.status || 'all';
     const page = parseInt(req.query.page) || 1;
@@ -22,6 +22,8 @@ const listCategories = async (req, res) => {
       query.isActive = false;
     }
 
+    const totalRecords = await Category.countDocuments(query);
+
     const { data: categories, totalPages } = await getPagination(
       Category.find(query).sort({ createdAt: -1 }),
       Category,
@@ -34,6 +36,7 @@ const listCategories = async (req, res) => {
       categories,
       currentPage: page,
       totalPages,
+      totalRecords,
       searchQuery,
       statusFilter,
       title: 'Category Management'
@@ -44,6 +47,7 @@ const listCategories = async (req, res) => {
       categories: [],
       currentPage: 1,
       totalPages: 1,
+      totalRecords: 0,
       searchQuery: '',
       statusFilter: 'all',
       title: 'Category Management',
@@ -73,6 +77,8 @@ const apiCategories = async (req, res) => {
       query.isActive = false;
     }
 
+    const totalRecords = await Category.countDocuments(query);
+
     const { data: categories, totalPages } = await getPagination(
       Category.find(query).sort({ createdAt: -1 }),
       Category,
@@ -81,7 +87,12 @@ const apiCategories = async (req, res) => {
       limit
     );
 
-    res.json({ categories, currentPage: page, totalPages });
+    res.json({ 
+      categories,
+      currentPage: page,
+      totalPages,
+      totalRecords
+    });
   } catch (err) {
     console.error('Error fetching categories:', err);
     res.status(500).json({ message: 'Internal Server Error' });

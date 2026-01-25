@@ -458,6 +458,107 @@
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }
+
+/* ========= PAGINATION STYLES ========= */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.page-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  height: 40px;
+  padding: 8px 12px;
+  border: 1px solid #dee2e6;
+  background-color: white;
+  color: #333;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+/* Red hover effect for enabled buttons */
+.page-btn:not(:disabled):not(.active):hover {
+  background-color: #e03a2f;
+  border-color: #e03a2f;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(224, 58, 47, 0.2);
+}
+
+/* Active page styling */
+.page-btn.active {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  font-weight: 600;
+}
+
+.page-btn.active:hover {
+  background-color: #1a1a1a;
+  border-color: #1a1a1a;
+  color: white;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Disabled button styles */
+.page-btn:disabled {
+  color: #6c757d;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.page-btn:disabled:hover {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+  color: #6c757d;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Icon spacing */
+.page-btn i {
+  font-size: 0.9em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .page-btn {
+    min-width: 35px;
+    height: 35px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+
+  .page-btn i {
+    font-size: 0.8em;
+  }
+
+  .pagination {
+    gap: 0.25rem;
+  }
+}
+
 </style>
 
 <div class="category-management-container">
@@ -473,7 +574,9 @@
   <div class="page-header">
     <div class="header-content">
       <div class="header-left">
-        <h1 class="page-title">Category Management</h1>
+        <h1 class="page-title">
+          Category Management (<span id="category-count"><%= typeof totalRecords !== 'undefined' ? totalRecords : categories.length %></span>)
+        </h1>
         <p class="page-subtitle">Organize and manage product categories</p>
       </div>
       <div class="header-right">
@@ -582,7 +685,8 @@
                     data-bs-target="#editCategoryModal"
                     data-category-id="<%= category._id %>"
                     data-category-name="<%= category.name %>"
-                    data-category-description="<%= category.description || '' %>">
+                    data-category-description="<%= category.description || '' %>"
+                    data-category-offer="<%= category.categoryOffer || 0 %>">
                     <i class="bi bi-pencil-square"></i>
                   </button>
                   <label class="toggle-switch">
@@ -615,6 +719,67 @@
       </tbody>
     </table>
   </div>
+
+  <!-- Pagination -->
+    <% if (totalPages >= 1) { %>
+      <div class="pagination-wrapper">
+        <div class="pagination">
+          <!-- Previous Button -->
+          <% if (currentPage > 1) { %>
+            <button
+              class="page-btn pagination-btn"
+              data-page="<%= currentPage - 1 %>">
+              <i class="bi bi-chevron-left"></i>
+            </button>
+          <% } else { %>
+            <button class="page-btn" disabled>
+              <i class="bi bi-chevron-left"></i>
+            </button>
+          <% } %>
+
+          <!-- Page Numbers -->
+          <%
+            const maxPagesToShow = 5;
+            let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+            let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+            
+            if (endPage - startPage + 1 < maxPagesToShow) {
+              startPage = Math.max(1, endPage - maxPagesToShow + 1);
+            }
+            
+            const pageNumbers = [];
+            for (let i = startPage; i <= endPage; i++) {
+              pageNumbers.push(i);
+            }
+          %>
+          
+          <% pageNumbers.forEach(pageNum => { %>
+            <% if (pageNum === currentPage) { %>
+              <button class="page-btn active"><%= pageNum %></button>
+            <% } else { %>
+              <button
+                class="page-btn pagination-btn"
+                data-page="<%= pageNum %>">
+                <%= pageNum %>
+              </button>
+            <% } %>
+          <% }) %>
+
+          <!-- Next Button -->
+          <% if (currentPage < totalPages) { %>
+            <button
+              class="page-btn pagination-btn"
+              data-page="<%= currentPage + 1 %>">
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          <% } else { %>
+            <button class="page-btn" disabled>
+              <i class="bi bi-chevron-right"></i>
+            </button>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
 </div>
 
 <!-- Add Category Modal -->
@@ -625,15 +790,29 @@
         <h5 class="modal-title">Add New Category</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
-      <form id="addCategoryForm" method="POST" action="/admin/categories/add">
+      <form id="addCategoryForm" method="POST" action="/admin/categories/api/add">
         <div class="modal-body">
           <div class="mb-3">
-            <label for="categoryName" class="form-label">Category Name</label>
+            <label for="categoryName" class="form-label">Category Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="categoryName" name="name" required>
           </div>
           <div class="mb-3">
             <label for="categoryDescription" class="form-label">Description</label>
             <textarea class="form-control" id="categoryDescription" name="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="categoryOffer" class="form-label">Category Offer (%)</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="categoryOffer" 
+              name="categoryOffer" 
+              min="0" 
+              max="100" 
+              step="0.01"
+              value="0"
+              placeholder="Enter offer percentage (0-100)">
+            <small class="text-muted">Enter a value between 0 and 100</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -644,6 +823,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Edit Category Modal -->
 <div class="modal fade" id="editCategoryModal" tabindex="-1">
@@ -657,12 +837,25 @@
         <div class="modal-body">
           <input type="hidden" id="editCategoryId" name="id">
           <div class="mb-3">
-            <label for="editCategoryName" class="form-label">Category Name</label>
+            <label for="editCategoryName" class="form-label">Category Name <span class="text-danger">*</span></label>
             <input type="text" class="form-control" id="editCategoryName" name="name" required>
           </div>
           <div class="mb-3">
             <label for="editCategoryDescription" class="form-label">Description</label>
             <textarea class="form-control" id="editCategoryDescription" name="description" rows="3"></textarea>
+          </div>
+          <div class="mb-3">
+            <label for="editCategoryOffer" class="form-label">Category Offer (%)</label>
+            <input 
+              type="number" 
+              class="form-control" 
+              id="editCategoryOffer" 
+              name="categoryOffer" 
+              min="0" 
+              max="100" 
+              step="0.01"
+              placeholder="Enter offer percentage (0-100)">
+            <small class="text-muted">Enter a value between 0 and 100</small>
           </div>
         </div>
         <div class="modal-footer">
@@ -673,6 +866,7 @@
     </div>
   </div>
 </div>
+
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -685,6 +879,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentQuery = searchInput.value;
   let currentStatus = statusFilter.value;
+  let currentPage = <%= currentPage || 1 %>;
 
   // Toggle clear button visibility
   function toggleClearButton() {
@@ -722,23 +917,109 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Update pagination UI
+  function updatePagination(paginationData) {
+      const paginationWrapper = document.querySelector('.pagination-wrapper');
+      
+      if (!paginationWrapper) return;
+      
+      // Always show pagination
+      paginationWrapper.style.display = 'flex';
+      
+      // Default to page 1 if no data
+      const page = paginationData?.currentPage || 1;
+      const totalPages = paginationData?.totalPages || 1;
+      
+      // Generate page numbers (show up to 5 pages around current page)
+      const pageNumbers = [];
+      const maxPagesToShow = 5;
+      let startPage = Math.max(1, page - Math.floor(maxPagesToShow / 2));
+      let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+      
+      if (endPage - startPage + 1 < maxPagesToShow) {
+        startPage = Math.max(1, endPage - maxPagesToShow + 1);
+      }
+      
+      for (let i = startPage; i <= endPage; i++) {
+        pageNumbers.push(i);
+      }
+      
+      // Build pagination HTML
+      let paginationHTML = '<div class="pagination">';
+      
+      // Previous button
+      if (page > 1) {
+        paginationHTML += `
+          <button class="page-btn pagination-btn" data-page="${page - 1}">
+            <i class="bi bi-chevron-left"></i>
+          </button>
+        `;
+      } else {
+        paginationHTML += `
+          <button class="page-btn" disabled>
+            <i class="bi bi-chevron-left"></i>
+          </button>
+        `;
+      }
+      
+      // Page numbers
+      pageNumbers.forEach(pageNum => {
+        if (pageNum === page) {
+          paginationHTML += `<button class="page-btn active">${pageNum}</button>`;
+        } else {
+          paginationHTML += `
+            <button class="page-btn pagination-btn" data-page="${pageNum}">
+              ${pageNum}
+            </button>
+          `;
+        }
+      });
+      
+      // Next button
+      if (page < totalPages) {
+        paginationHTML += `
+          <button class="page-btn pagination-btn" data-page="${page + 1}">
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        `;
+      } else {
+        paginationHTML += `
+          <button class="page-btn" disabled>
+            <i class="bi bi-chevron-right"></i>
+          </button>
+        `;
+      }
+      
+      paginationHTML += '</div>';
+      
+      // Replace pagination content
+      paginationWrapper.innerHTML = paginationHTML;
+    }
+
   // Fetch and render categories
-  async function fetchAndRenderCategories(query = '', status = 'all') {
+  async function fetchAndRenderCategories(query = '', status = 'all', page = 1) {
     try {
       const params = new URLSearchParams();
       if (query) params.append('q', query);
       if (status !== 'all') params.append('status', status);
+      params.append('page', page);
 
       const response = await fetch(`/admin/categories/api?${params.toString()}`);
       const data = await response.json();
 
+      // Update category count
+      if (data.totalRecords !== undefined) {
+        document.getElementById('category-count').textContent = data.totalRecords;
+      }
+
       // Render table rows
       if (data.categories && data.categories.length > 0) {
+        const startIndex = (page - 1) * 10; // 10 is the limit from controller
         const rows = data.categories.map((category, index) => `
           <tr data-category-id="${category._id}">
             <td>
               <div class="row-number">
-                <span class="fw-bold text-black">${index + 1}</span>
+                <span class="fw-bold text-black">${startIndex + index + 1}</span>
               </div>
             </td>
             <td>
@@ -761,7 +1042,8 @@ document.addEventListener('DOMContentLoaded', () => {
                   data-bs-target="#editCategoryModal"
                   data-category-id="${category._id}"
                   data-category-name="${category.name}"
-                  data-category-description="${category.description || ''}">
+                  data-category-description="${category.description || ''}"
+                  data-category-offer="${category.categoryOffer || 0}">
                   <i class="bi bi-pencil-square"></i>
                 </button>
                 <label class="toggle-switch">
@@ -795,6 +1077,12 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
+      // Update pagination
+      updatePagination({
+        currentPage: data.currentPage,
+        totalPages: data.totalPages
+      });
+
       // Update URL without refresh
       const url = new URL(window.location.href);
       url.search = params.toString();
@@ -805,6 +1093,20 @@ document.addEventListener('DOMContentLoaded', () => {
       Swal.fire('Error', 'Failed to load categories', 'error');
     }
   }
+
+  // Event delegation for pagination buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.closest('.pagination-btn')) {
+      e.preventDefault();
+      const btn = e.target.closest('.pagination-btn');
+      const page = parseInt(btn.dataset.page);
+      
+      if (page && page > 0) {
+        currentPage = page;
+        fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
+      }
+    }
+  });
 
   // Handle remove filter action
   async function handleRemoveFilter() {
@@ -818,7 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       statusFilter.value = 'all';
       currentStatus = 'all';
-      await fetchAndRenderCategories(currentQuery, currentStatus);
+      currentPage = 1;
+      await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
       updateRemoveFilterButton('all');
     } catch (error) {
       console.error(error);
@@ -833,22 +1136,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Search button handler
   searchBtn.addEventListener('click', async () => {
     currentQuery = searchInput.value.trim();
-    await fetchAndRenderCategories(currentQuery, currentStatus);
+    currentPage = 1;
+    await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
   });
 
   // Clear search button handler
   clearSearchBtn.addEventListener('click', async () => {
     searchInput.value = '';
     currentQuery = '';
+    currentPage = 1;
     toggleClearButton();
-    await fetchAndRenderCategories(currentQuery, currentStatus);
+    await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
   });
 
   // Automatically apply filter when dropdown changes
   statusFilter.addEventListener('change', async () => {
     const newStatus = statusFilter.value;
     currentStatus = newStatus;
-    await fetchAndRenderCategories(currentQuery, currentStatus);
+    currentPage = 1;
+    await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
     updateRemoveFilterButton(newStatus);
   });
 
@@ -860,6 +1166,162 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ============ ADD CATEGORY FORM HANDLER ============
+  const addCategoryForm = document.getElementById('addCategoryForm');
+  const addCategoryModal = document.getElementById('addCategoryModal');
+
+  if (addCategoryForm) {
+    addCategoryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = addCategoryForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i> Adding...';
+
+      try {
+        const formData = new FormData(addCategoryForm);
+        const data = {
+          name: formData.get('name'),
+          description: formData.get('description'),
+          categoryOffer: formData.get('categoryOffer')
+        };
+
+        const response = await fetch('/admin/categories/api', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Show success toast
+          const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+
+          Toast.fire({
+            icon: 'success',
+            title: result.message || 'Category created successfully'
+          });
+
+          // Close modal
+          const modalInstance = bootstrap.Modal.getInstance(addCategoryModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Reset form
+          addCategoryForm.reset();
+
+          // Refresh table - stay on current page
+          await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
+        } else {
+          // Show error
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: result.message || 'Failed to create category'
+          });
+        }
+      } catch (error) {
+        console.error('Error creating category:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Server Error',
+          text: 'Failed to create category. Please try again.'
+        });
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
+    });
+  }
+
+  // ============ EDIT CATEGORY FORM HANDLER ============
+  const editCategoryForm = document.getElementById('editCategoryForm');
+  const editCategoryModal = document.getElementById('editCategoryModal');
+
+  if (editCategoryForm) {
+    editCategoryForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const submitBtn = editCategoryForm.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i> Saving...';
+
+      try {
+        const formData = new FormData(editCategoryForm);
+        const categoryId = document.getElementById('editCategoryId').value;
+        const data = {
+          name: formData.get('name'),
+          description: formData.get('description'),
+          categoryOffer: formData.get('categoryOffer')
+        };
+
+        const response = await fetch(`/admin/categories/api/${categoryId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          // Show success toast
+          const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+          });
+
+          Toast.fire({
+            icon: 'success',
+            title: result.message || 'Category updated successfully'
+          });
+
+          // Close modal
+          const modalInstance = bootstrap.Modal.getInstance(editCategoryModal);
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+
+          // Refresh table - stay on current page
+          await fetchAndRenderCategories(currentQuery, currentStatus, currentPage);
+        } else {
+          // Show error
+          Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: result.message || 'Failed to update category'
+          });
+        }
+      } catch (error) {
+        console.error('Error updating category:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Server Error',
+          text: 'Failed to update category. Please try again.'
+        });
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalBtnText;
+      }
+    });
+  }
+
   // Edit category modal populate
   const editModal = document.getElementById('editCategoryModal');
   if (editModal) {
@@ -868,11 +1330,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const categoryId = button.getAttribute('data-category-id');
       const categoryName = button.getAttribute('data-category-name');
       const categoryDescription = button.getAttribute('data-category-description');
+      const categoryOffer = button.getAttribute('data-category-offer');
 
       document.getElementById('editCategoryId').value = categoryId;
       document.getElementById('editCategoryName').value = categoryName;
       document.getElementById('editCategoryDescription').value = categoryDescription;
-      document.getElementById('editCategoryForm').action = `/admin/categories/edit/${categoryId}`;
+      document.getElementById('editCategoryOffer').value = categoryOffer || 0;
     });
   }
 
@@ -884,6 +1347,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   toggleClearButton();
 });
+
+
 
 // Toggle category status function with dynamic UI update
 async function toggleCategory(categoryId, toggleElement) {
@@ -1015,6 +1480,10 @@ window.addEventListener('refresh-categories', async (e) => {
 
   const response = await fetch(`/admin/categories/api?${params.toString()}`);
   const data = await response.json();
+
+  if (data.totalRecords !== undefined) {
+    document.getElementById('category-count').textContent = data.totalRecords;
+  }
   
   // Render offer cell helper
   function renderOfferCell(categoryOffer) {
@@ -1054,7 +1523,8 @@ window.addEventListener('refresh-categories', async (e) => {
               data-bs-target="#editCategoryModal"
               data-category-id="${category._id}"
               data-category-name="${category.name}"
-              data-category-description="${category.description || ''}">
+              data-category-description="${category.description || ''}"
+              data-category-offer="${category.categoryOffer || 0}">
               <i class="bi bi-pencil-square"></i>
             </button>
             <label class="toggle-switch">
