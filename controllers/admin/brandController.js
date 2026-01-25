@@ -1,49 +1,28 @@
 const Brand = require('../../models/Brand');
 const getPagination = require('../../utils/pagination');
 
-exports.listBrands = async (req, res) => {
-    try {
-        const q = req.query.q || '';
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10;
-
-        const query = {
-            name: { $regex: q, $options: 'i' },
-            isDeleted: false
-        };
-
-        const { data: brands, totalPages } = await getPagination(
-            Brand.find(query).sort({ createdAt: -1 }),
-            Brand,
-            query,
-            page,
-            limit
-        );
-
-        res.render('admin/brands', {
-            brands,
-            currentPage: page,
-            totalPages,
-            searchQuery: q,
-            title: "Brand Management"
-        });
-    } catch (error) {
-        console.error('Error listing brands:', error);
-        res.status(500).send('Internal Server Error');
-    }
-};
-
-// Fetch-based brand listing
-exports.apiBrands = async (req, res) => {
+// List brands with search and filter
+const listBrands = async (req, res) => {
   try {
-    const q = req.query.q || '';
+    const searchQuery = req.query.q || '';
+    const statusFilter = req.query.status || 'all';
     const page = parseInt(req.query.page) || 1;
     const limit = 10;
 
+    // Build filter query
     const query = {
-      name: { $regex: q, $options: 'i' },
+      name: { $regex: searchQuery, $options: 'i' },
       isDeleted: false
     };
+
+    // Apply status filter
+    if (statusFilter === 'active') {
+      query.isActive = true;
+    } else if (statusFilter === 'inactive') {
+      query.isActive = false;
+    }
+
+    const totalRecords = await Brand.countDocuments(query);
 
     const { data: brands, totalPages } = await getPagination(
       Brand.find(query).sort({ createdAt: -1 }),
@@ -53,7 +32,67 @@ exports.apiBrands = async (req, res) => {
       limit
     );
 
-    res.json({ brands, currentPage: page, totalPages });
+    res.render('admin/brands', {
+      brands,
+      currentPage: page,
+      totalPages,
+      totalRecords,
+      searchQuery,
+      statusFilter,
+      title: 'Brand Management'
+    });
+  } catch (error) {
+    console.error('Error listing brands:', error);
+    res.status(500).render('admin/brands', {
+      brands: [],
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      searchQuery: '',
+      statusFilter: 'all',
+      title: 'Brand Management',
+      error: 'Failed to load brands'
+    });
+  }
+};
+
+// Fetch-based brand listing
+const apiBrands = async (req, res) => {
+  try {
+    const searchQuery = req.query.q || '';
+    const statusFilter = req.query.status || 'all';
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
+    // Build filter query
+    const query = {
+      name: { $regex: searchQuery, $options: 'i' },
+      isDeleted: false
+    };
+
+    // Apply status filter
+    if (statusFilter === 'active') {
+      query.isActive = true;
+    } else if (statusFilter === 'inactive') {
+      query.isActive = false;
+    }
+
+    const totalRecords = await Brand.countDocuments(query);
+
+    const { data: brands, totalPages } = await getPagination(
+      Brand.find(query).sort({ createdAt: -1 }),
+      Brand,
+      query,
+      page,
+      limit
+    );
+
+    res.json({
+      brands,
+      currentPage: page,
+      totalPages,
+      totalRecords
+    });
   } catch (err) {
     console.error('Error fetching brands:', err);
     res.status(500).json({ message: 'Internal Server Error' });
@@ -61,7 +100,7 @@ exports.apiBrands = async (req, res) => {
 };
 
 // Get single brand
-exports.apiGetBrand = async (req, res) => {
+const apiGetBrand = async (req, res) => {
   try {
     const brand = await Brand.findById(req.params.id);
     if (!brand || brand.isDeleted) {
@@ -75,7 +114,7 @@ exports.apiGetBrand = async (req, res) => {
 };
 
 // Add brand via fetch
-exports.apiCreateBrand = async (req, res) => {
+const apiCreateBrand = async (req, res) => {
   try {
     const { name, description, brandOffer } = req.body;
 
@@ -83,13 +122,11 @@ exports.apiCreateBrand = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Brand name is required' });
     }
 
-    // Trim and validate name
     const trimmedName = name.trim();
     if (!trimmedName) {
       return res.status(400).json({ success: false, message: 'Brand name cannot be empty' });
     }
 
-    // Check for case-insensitive uniqueness
     const existingBrand = await Brand.findOne({
       name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
       isDeleted: false
@@ -111,7 +148,6 @@ exports.apiCreateBrand = async (req, res) => {
   } catch (err) {
     console.error('Create Error:', err);
 
-    // Handle MongoDB duplicate key error (in case the unique index catches it)
     if (err.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -124,7 +160,7 @@ exports.apiCreateBrand = async (req, res) => {
 };
 
 // Update brand via fetch
-exports.apiUpdateBrand = async (req, res) => {
+const apiUpdateBrand = async (req, res) => {
   try {
     const { name, description, brandOffer } = req.body;
     const brandId = req.params.id;
@@ -133,13 +169,11 @@ exports.apiUpdateBrand = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Brand name is required' });
     }
 
-    // Trim and validate name
     const trimmedName = name.trim();
     if (!trimmedName) {
       return res.status(400).json({ success: false, message: 'Brand name cannot be empty' });
     }
 
-    // Check for case-insensitive uniqueness (excluding current brand)
     const existingBrand = await Brand.findOne({
       name: { $regex: new RegExp(`^${trimmedName}$`, 'i') },
       isDeleted: false,
@@ -163,7 +197,6 @@ exports.apiUpdateBrand = async (req, res) => {
   } catch (err) {
     console.error('Update Error:', err);
 
-    // Handle MongoDB duplicate key error
     if (err.code === 11000) {
       return res.status(400).json({
         success: false,
@@ -175,15 +208,22 @@ exports.apiUpdateBrand = async (req, res) => {
   }
 };
 
-// Toggle status via fetch
-exports.apiToggleStatus = async (req, res) => {
+// Toggle brand status
+const apiToggleStatus = async (req, res) => {
   try {
     const brand = await Brand.findById(req.params.id);
-    if (brand) {
-      brand.isActive = !brand.isActive;
-      await brand.save();
+    if (!brand || brand.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
     }
-    res.json({ success: true });
+
+    brand.isActive = !brand.isActive;
+    await brand.save();
+
+    res.json({
+      success: true,
+      message: `Brand ${brand.isActive ? 'activated' : 'deactivated'} successfully`,
+      isActive: brand.isActive
+    });
   } catch (err) {
     console.error('Toggle Status Error:', err);
     res.status(500).json({ success: false, message: 'Failed to toggle status' });
@@ -191,12 +231,27 @@ exports.apiToggleStatus = async (req, res) => {
 };
 
 // Soft delete via fetch
-exports.apiSoftDeleteBrand = async (req, res) => {
+const apiSoftDeleteBrand = async (req, res) => {
   try {
+    const brand = await Brand.findById(req.params.id);
+    if (!brand || brand.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
     await Brand.findByIdAndUpdate(req.params.id, { isDeleted: true });
-    res.json({ success: true });
+    res.json({ success: true, message: 'Brand deleted successfully' });
   } catch (err) {
     console.error('Delete Error:', err);
     res.status(500).json({ success: false, message: 'Failed to delete brand' });
   }
+};
+
+module.exports = {
+  listBrands,
+  apiBrands,
+  apiGetBrand,
+  apiCreateBrand,
+  apiUpdateBrand,
+  apiToggleStatus,
+  apiSoftDeleteBrand
 };
