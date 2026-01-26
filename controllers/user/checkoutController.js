@@ -639,6 +639,38 @@ const handleCODOrder = async (req, res, cart) => {
 
     console.log('Processing COD order for user:', userId);
 
+    // ✅ ADDED: Validate delivery address
+    if (!deliveryAddressId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address is required',
+        code: 'MISSING_DELIVERY_ADDRESS'
+      });
+    }
+
+    // ✅ ADDED: Verify the address document exists
+    const addressDoc = await Address.findById(deliveryAddressId).lean();
+
+    if (!addressDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected delivery address not found. Please select a valid address.',
+        code: 'INVALID_DELIVERY_ADDRESS'
+      });
+    }
+
+    // ✅ ADDED: Verify the specific address at the index exists
+    const parsedAddressIndex = parseInt(addressIndex);
+    if (!addressDoc.address || !Array.isArray(addressDoc.address) || !addressDoc.address[parsedAddressIndex]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected address is invalid or has been removed',
+        code: 'ADDRESS_NOT_FOUND'
+      });
+    }
+
+    console.log(`✅ Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
+
     const totals = calculateOrderTotals(cart.items);
 
     let couponDiscount = 0;
@@ -714,7 +746,6 @@ const handleCODOrder = async (req, res, cart) => {
 
     const finalTotal = Math.max(0, totals.total - couponDiscount);
     
-
     // prepare order items
     const orderItems = cart.items.map(item => ({
       productId: item.productId._id,
@@ -754,7 +785,7 @@ const handleCODOrder = async (req, res, cart) => {
       items: orderItems,
       deliveryAddress: {
         addressId: addressObjectId,
-        addressIndex: parseInt(addressIndex)
+        addressIndex: parsedAddressIndex
       },
       couponApplied: appliedCouponId,
       couponDiscount: Math.round(couponDiscount),
@@ -789,7 +820,6 @@ const handleCODOrder = async (req, res, cart) => {
         code: 'ORDER_CREATION_FAILED'
       });
     }
-
 
     if (appliedCouponId) {
       try {
@@ -836,6 +866,8 @@ const handleCODOrder = async (req, res, cart) => {
     });
   }
 };
+
+
 
 // Create Razorpay Order
 const createRazorpayPayment = async (req, res) => {
@@ -1024,6 +1056,35 @@ const verifyRazorpayPayment = async (req, res) => {
       });
     }
 
+    // ✅ ADDED: Validate delivery address from pending order
+    if (!pendingOrder.deliveryAddressId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address information is missing',
+        code: 'MISSING_DELIVERY_ADDRESS'
+      });
+    }
+
+    const addressDoc = await Address.findById(pendingOrder.deliveryAddressId).lean();
+
+    if (!addressDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Delivery address not found. Please try placing the order again.',
+        code: 'INVALID_DELIVERY_ADDRESS'
+      });
+    }
+
+    const parsedAddressIndex = parseInt(pendingOrder.addressIndex);
+    if (!addressDoc.address || !Array.isArray(addressDoc.address) || !addressDoc.address[parsedAddressIndex]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected address is no longer available. Please try again.',
+        code: 'ADDRESS_NOT_FOUND'
+      });
+    }
+
+    console.log(`✅ Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
     console.log('✨ Processing new order payment');
 
     try {
@@ -1062,7 +1123,7 @@ const verifyRazorpayPayment = async (req, res) => {
         items: orderItems,
         deliveryAddress: {
           addressId: addressObjectId,
-          addressIndex: parseInt(pendingOrder.addressIndex)
+          addressIndex: parsedAddressIndex
         },
         couponApplied: pendingOrder.appliedCouponId,
         couponDiscount: Math.round(pendingOrder.couponDiscount),
@@ -1176,6 +1237,7 @@ const verifyRazorpayPayment = async (req, res) => {
     });
   }
 };
+
 
 
 
@@ -2181,6 +2243,28 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
+    // ✅ ADDED: Validate delivery address
+    const addressDoc = await Address.findById(deliveryAddressId).lean();
+
+    if (!addressDoc) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected delivery address not found. Please select a valid address.',
+        code: 'INVALID_DELIVERY_ADDRESS'
+      });
+    }
+
+    // ✅ ADDED: Verify the specific address at the index exists
+    const parsedAddressIndex = parseInt(addressIndex);
+    if (!addressDoc.address || !Array.isArray(addressDoc.address) || !addressDoc.address[parsedAddressIndex]) {
+      return res.status(400).json({
+        success: false,
+        message: 'Selected address is invalid or has been removed',
+        code: 'ADDRESS_NOT_FOUND'
+      });
+    }
+
+    console.log(`✅ Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
     console.log('💳 Processing wallet payment...');
 
     // Step 1: Fetch and validate cart
@@ -2390,7 +2474,7 @@ const handleWalletPayment = async (req, res) => {
       items: orderItems,
       deliveryAddress: {
         addressId: addressObjectId,
-        addressIndex: parseInt(addressIndex)
+        addressIndex: parsedAddressIndex
       },
       couponApplied: appliedCouponId,
       couponDiscount: Math.round(couponDiscount),

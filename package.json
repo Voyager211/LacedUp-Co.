@@ -4,7 +4,12 @@
   "main": "app.js",
   "scripts": {
     "start": "nodemon app.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test:orders": "node tests/orderStatus.test.js",
+    "test": "jest"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "testTimeout": 30000
   },
   "keywords": [],
   "author": "",
@@ -14,6 +19,7 @@
     "@geoapify/geocoder-autocomplete": "^2.1.0",
     "@paypal/checkout-server-sdk": "^1.0.3",
     "bcryptjs": "^3.0.2",
+    "colors": "^1.4.0",
     "connect-flash": "^0.1.1",
     "connect-mongo": "^5.1.0",
     "date-fns": "^4.1.0",
@@ -45,6 +51,7 @@
   },
   "devDependencies": {
     "eslint-config-prettier": "^10.1.5",
-    "eslint-plugin-prettier": "^5.4.1"
+    "eslint-plugin-prettier": "^5.4.1",
+    "jest": "^30.2.0"
   }
 }

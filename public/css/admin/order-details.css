@@ -12,7 +12,7 @@
 
 .card:hover {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-}
+} 
 
 .card-header {
   background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);

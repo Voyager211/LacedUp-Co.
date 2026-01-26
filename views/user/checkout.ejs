@@ -49,7 +49,7 @@
                                 <label class="d-flex align-items-start">
                                     <input type="radio" 
                                         name="deliveryAddress" 
-                                        value="<%= address._id %>" 
+                                        value="<%= addressDocumentId %>"
                                         data-address-index="<%= index %>" 
                                         <%= index === 0 ? 'checked' : '' %> 
                                         onclick="selectAddress(this)">
@@ -87,7 +87,7 @@
                                     <label class="d-flex align-items-start">
                                         <input type="radio" 
                                             name="deliveryAddress" 
-                                            value="<%= address._id %>" 
+                                            value="<%= addressDocumentId %>" 
                                             data-address-index="<%= actualIndex %>" 
                                             onclick="selectAddress(this)">
                                         <div class="address-info flex-grow-1">

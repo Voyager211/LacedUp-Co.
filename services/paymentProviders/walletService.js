@@ -14,7 +14,7 @@ const getOrCreateWallet = async (userId) => {
       transactions: []
     });
     await wallet.save();
-  }
+  } 
 
   return wallet;
 };
@@ -311,10 +311,171 @@ const getWalletStats = async (userId) => {
   };
 };
 
+/**
+ * Add credit to wallet (for cancellation refunds)
+ * @param {String} userId - User ID
+ * @param {Number} amount - Amount to credit
+ * @param {String} description - Transaction description
+ * @param {String} orderId - Order ID (optional)
+ * @returns {Object} - Result object
+ */
+const addCredit = async (userId, amount, description, orderId = null) => {
+  try {
+    // Validate inputs
+    if (!userId || !amount || amount <= 0) {
+      return {
+        success: false,
+        message: 'Invalid user ID or amount'
+      };
+    }
+
+    // Use existing addTransaction method
+    const result = await addTransaction(userId, {
+      type: 'credit',
+      amount: amount,
+      description: description,
+      paymentMethod: 'refund',
+      status: 'completed',
+      orderId: orderId
+    });
+
+    console.log(`✅ Credit added: ₹${amount} credited to user ${userId} - ${description}`);
+
+    return {
+      success: true,
+      message: 'Credit added successfully',
+      transactionId: result.transactionId,
+      wallet: result.wallet,
+      newBalance: result.wallet.balance
+    };
+
+  } catch (error) {
+    console.error('❌ Error adding credit:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to add credit',
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Add return refund to wallet
+ * @param {String} userId - User ID
+ * @param {Number} amount - Refund amount
+ * @param {String} orderId - Order ID
+ * @param {String} returnId - Return request ID
+ * @returns {Object} - Result object
+ */
+const addReturnRefund = async (userId, amount, orderId, returnId) => {
+  try {
+    // Validate inputs
+    if (!userId || !amount || amount <= 0) {
+      return {
+        success: false,
+        message: 'Invalid user ID or refund amount'
+      };
+    }
+
+    // Use existing addTransaction method
+    const description = `Refund for returned item in order ${orderId}`;
+    
+    const result = await addTransaction(userId, {
+      type: 'credit',
+      amount: amount,
+      description: description,
+      paymentMethod: 'refund',
+      status: 'completed',
+      orderId: orderId,
+      returnId: returnId
+    });
+
+    console.log(`✅ Return refund processed: ₹${amount} credited to user ${userId} for order ${orderId}, return ${returnId}`);
+
+    return {
+      success: true,
+      message: 'Return refund credited successfully',
+      transactionId: result.transactionId,
+      wallet: result.wallet,
+      newBalance: result.wallet.balance,
+      refundAmount: amount
+    };
+
+  } catch (error) {
+    console.error('❌ Error processing return refund:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to process return refund',
+      error: error.message
+    };
+  }
+};
+
+/**
+ * Deduct amount from wallet (for payments)
+ * @param {String} userId - User ID
+ * @param {Number} amount - Amount to deduct
+ * @param {String} description - Transaction description
+ * @param {String} orderId - Order ID (optional)
+ * @returns {Object} - Result object
+ */
+const deductAmount = async (userId, amount, description, orderId = null) => {
+  try {
+    // Validate inputs
+    if (!userId || !amount || amount <= 0) {
+      return {
+        success: false,
+        message: 'Invalid user ID or amount'
+      };
+    }
+
+    // Check wallet balance
+    const wallet = await getWallet(userId);
+    if (!wallet || wallet.balance < amount) {
+      return {
+        success: false,
+        message: 'Insufficient wallet balance'
+      };
+    }
+
+    // Use existing addTransaction method
+    const result = await addTransaction(userId, {
+      type: 'debit',
+      amount: amount,
+      description: description,
+      paymentMethod: 'payment_for_order',
+      status: 'completed',
+      orderId: orderId
+    });
+
+    console.log(`✅ Amount deducted: ₹${amount} deducted from user ${userId} - ${description}`);
+
+    return {
+      success: true,
+      message: 'Amount deducted successfully',
+      transactionId: result.transactionId,
+      wallet: result.wallet,
+      newBalance: result.wallet.balance
+    };
+
+  } catch (error) {
+    console.error('❌ Error deducting amount:', error);
+    return {
+      success: false,
+      message: error.message || 'Failed to deduct amount',
+      error: error.message
+    };
+  }
+};
+
+
 module.exports = {
   getOrCreateWallet,
   getWallet,
   addTransaction,
+  addCredit,
+  addReturnRefund,
+  deductAmount,
   getPaginatedTransactions,
   getTransactionsByType,
   getTransactionById,

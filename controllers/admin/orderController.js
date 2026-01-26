@@ -4,7 +4,7 @@ const Product = require('../../models/Product');
 const orderService = require('../../services/orderService');
 const {
   ORDER_STATUS,
-  PAYMENT_STATUS,
+  PAYMENT_STATUS, 
   CANCELLATION_REASONS,
   RETURN_REASONS,
   getOrderStatusArray,
@@ -12,7 +12,8 @@ const {
   getCancellationReasonsArray,
   getReturnReasonsArray
 } = require('../../constants/orderEnums');
-const { paginateAggregate } = require('../../utils/paginateAggregate');
+const getPagination = require('../../utils/pagination');
+
 
 const validateTransitionAndGetOrder = async (orderId, newStatus, isItem = false, itemId = null) => {
   const order = await Order.findOne({ orderId });
@@ -312,8 +313,7 @@ const getAllOrders = async (req, res) => {
       })
       .sort({ [sortBy]: sortOrder });
 
-    // Use regular pagination utility
-    const { getPagination } = require('../../utils/pagination');
+    // Use regular pagination utility (already imported at top)
     const { data: orders, totalPages } = await getPagination(
       queryBuilder,
       Order,
@@ -388,6 +388,7 @@ const getAllOrders = async (req, res) => {
       filters: {},
       error: 'Error loading orders',
       layout: 'admin/layout',
+      orderStatuses: getOrderStatusArray(),
       ORDER_STATUS: ORDER_STATUS,
       PAYMENT_STATUS: PAYMENT_STATUS,
       paymentStatuses: getPaymentStatusArray()
@@ -441,14 +442,17 @@ const getFilteredOrders = async (req, res) => {
       })
       .sort({ [sortBy]: sortOrder });
 
-    const { getPagination } = require('../../utils/pagination');
-    const { data: orders, totalPages, totalCount } = await getPagination(
+    // Use pagination utility (already imported at top)
+    const { data: orders, totalPages } = await getPagination(
       queryBuilder,
       Order,
       filter,
       page,
       limit
     );
+
+    // Get total count for response
+    const totalCount = await Order.countDocuments(filter);
 
     // Process orders
     const processedOrders = orders.map(order => {
@@ -500,12 +504,12 @@ const getFilteredOrders = async (req, res) => {
   }
 };
 
+
 // Get allowed status transitions based on current status
 const getAllowedStatusTransitions = (currentStatus) => {
   return orderService.getValidTransitions(currentStatus);
 };
 
-// Update order status
 const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -535,18 +539,63 @@ const getOrderDetails = async (req, res) => {
       });
     }
 
-    // Extract the specific address from the address array using addressIndex
-    if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
-      const addressIndex = order.deliveryAddress.addressIndex;
-      const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
-      
-      if (specificAddress) {
-        order.deliveryAddress = {
-          ...order.deliveryAddress,
-          ...specificAddress
-        };
+    console.log("📦 Full order object:", JSON.stringify(order, null, 2));
+    console.log("📍 Delivery address:", order.deliveryAddress);
+
+    // ✅ FIXED: Handle delivery address properly
+    let finalDeliveryAddress = null;
+
+    if (order.deliveryAddress) {
+      // Case 1: Address is referenced (addressId exists and was populated)
+      if (order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
+        const addressIndex = order.deliveryAddress.addressIndex || 0;
+        const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
+        
+        if (specificAddress) {
+          console.log("✅ Using referenced address at index:", addressIndex);
+          finalDeliveryAddress = {
+            ...specificAddress,
+            addressIndex: order.deliveryAddress.addressIndex
+          };
+        }
+      }
+      // Case 2: Address is embedded directly in the order (common pattern)
+      else if (order.deliveryAddress.name || order.deliveryAddress.city) {
+        console.log("✅ Using embedded address from order");
+        finalDeliveryAddress = order.deliveryAddress;
+      }
+      // Case 3: Try to get address from user's saved addresses
+      else if (order.user && order.user._id) {
+        console.log("⚠️ AddressId is null, trying to fetch from user addresses");
+        try {
+          const User = require('../../models/User');
+          const userWithAddresses = await User.findById(order.user._id).select('address').lean();
+          
+          if (userWithAddresses && userWithAddresses.address && userWithAddresses.address.length > 0) {
+            const addressIndex = order.deliveryAddress.addressIndex || 0;
+            const userAddress = userWithAddresses.address[addressIndex];
+            
+            if (userAddress) {
+              console.log("✅ Using address from user document at index:", addressIndex);
+              finalDeliveryAddress = userAddress;
+            }
+          }
+        } catch (err) {
+          console.error("❌ Error fetching user addresses:", err);
+        }
       }
     }
+
+    // Case 4: Fallback to shippingAddress if it exists
+    if (!finalDeliveryAddress && order.shippingAddress) {
+      console.log("✅ Using shippingAddress as fallback");
+      finalDeliveryAddress = order.shippingAddress;
+    }
+
+    // Set the final delivery address
+    order.deliveryAddress = finalDeliveryAddress;
+
+    console.log("📍 Final delivery address:", order.deliveryAddress);
 
     // ✅ NEW: Pre-calculate valid transitions for each item
     const { getValidTransitions } = require('../../services/orderService');
@@ -563,7 +612,7 @@ const getOrderDetails = async (req, res) => {
       
       return {
         ...item,
-        validTransitions: allowedItemTransitions // ✅ Add valid transitions to each item
+        validTransitions: allowedItemTransitions
       };
     });
 
@@ -635,6 +684,7 @@ const getOrderDetails = async (req, res) => {
     });
   }
 };
+
 
 
 
