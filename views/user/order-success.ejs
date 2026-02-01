@@ -129,9 +129,23 @@
                         <p>Payment processed successfully</p>
                         <span class="payment-status paid">Payment Completed</span>
                     </div>
-                <% } else { %>
+                <% } else if (orderData.paymentMethod === 'wallet') { %>
+                    <!-- ✅ NEW: Add wallet payment condition -->
+                    <div class="payment-details">
+                        <p><strong><i class="bi bi-wallet2"></i> Wallet Payment</strong></p>
+                        <p>Payment deducted from your wallet successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else if (orderData.paymentMethod === 'netbanking') { %>
                     <div class="payment-details">
                         <p><strong>Net Banking</strong></p>
+                        <p>Payment processed successfully</p>
+                        <span class="payment-status paid">Payment Completed</span>
+                    </div>
+                <% } else { %>
+                    <!-- Fallback for unknown payment methods -->
+                    <div class="payment-details">
+                        <p><strong>Payment Method: <%= orderData.paymentMethod %></strong></p>
                         <p>Payment processed successfully</p>
                         <span class="payment-status paid">Payment Completed</span>
                     </div>
@@ -145,18 +159,40 @@
                 <i class="bi bi-receipt"></i> Price Details
             </h5>
             <div class="price-breakdown">
+                <!-- Subtotal -->
                 <div class="price-row">
                     <span class="price-label">Subtotal (<%= orderData.totalItemCount || 0 %> items)</span>
                     <span class="price-value">₹<%= orderData.subtotal || 0 %></span>
                 </div>
+                
+                <!-- Product Discount -->
                 <% if (orderData.totalDiscount && orderData.totalDiscount > 0) { %>
-                    <div class="price-row">
-                        <span class="price-label">Discount</span>
+                    <div class="price-row discount-row">
+                        <span class="price-label">
+                            <i class="bi bi-tag-fill text-success me-1"></i>Product Discount
+                        </span>
                         <span class="price-value discount">-₹<%= orderData.totalDiscount %></span>
                     </div>
                 <% } %>
+                
+                <!-- Coupon Discount (NEW - SEPARATE ROW) -->
+                <% if (orderData.couponDiscount && orderData.couponDiscount > 0) { %>
+                    <div class="price-row discount-row">
+                        <span class="price-label">
+                            <i class="bi bi-percent text-success me-1"></i>Coupon Discount
+                            <% if (orderData.couponCode) { %>
+                                (<%= orderData.couponCode %>)
+                            <% } %>
+                        </span>
+                        <span class="price-value discount">-₹<%= orderData.couponDiscount %></span>
+                    </div>
+                <% } %>
+                
+                <!-- Shipping -->
                 <div class="price-row">
-                    <span class="price-label">Shipping</span>
+                    <span class="price-label">
+                        <i class="bi bi-truck me-1"></i>Shipping
+                    </span>
                     <span class="price-value">
                         <% if (orderData.shipping && orderData.shipping > 0) { %>
                             ₹<%= orderData.shipping %>
@@ -168,6 +204,7 @@
                 
                 <div class="price-divider"></div>
                 
+                <!-- Total -->
                 <div class="price-row total-row">
                     <span class="price-label"><strong>Total Amount</strong></span>
                     <span class="price-value total"><strong>₹<%= orderData.total || 0 %></strong></span>
@@ -578,6 +615,23 @@
         width: 80px;
         height: 80px;
     }
+}
+
+/* Discount Row Styling */
+.price-row.discount-row {
+    background: #f0fff4;
+    padding: 0.5rem;
+    border-radius: 6px;
+    margin-bottom: 0.75rem;
+}
+
+.price-row.discount-row .price-label {
+    color: #22543d;
+    font-weight: 500;
+}
+
+.price-row.discount-row .price-label i {
+    font-size: 0.9rem;
 }
 </style>
 

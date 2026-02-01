@@ -28,6 +28,14 @@
           <input type="email" id="email" name="email" class="form-control" placeholder="Email address" required>
         </div>
         <div class="mb-3">
+          <label for="referralCode" class="form-label">Referral Code (Optional)</label>
+          <input type="text" id="referralCode" name="referralCode" class="form-control" 
+                placeholder="Enter referral code if you have one" maxlength="20">
+          <small class="form-text text-muted">
+            Enter a referral code to help a friend earn rewards
+          </small>
+        </div>
+        <div class="mb-3">
           <label for="password" class="form-label">Password *</label>
           <input type="password" id="password" name="password" class="form-control" placeholder="Password" required>
         </div>
@@ -100,6 +108,7 @@
         email: document.getElementById('email').value.trim(),
         password: document.getElementById('password').value.trim(),
         confirmPassword: document.getElementById('confirmPassword').value.trim(),
+        referralCode: document.getElementById('referralCode').value.trim() 
       };
 
       // Show loader

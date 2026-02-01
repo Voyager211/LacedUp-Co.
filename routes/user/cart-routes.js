@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const cartController = require('../../controllers/user/cart-controller');
+const addressController = require('../../controllers/user/addressController');
+
 
 // Custom authentication middleware for cart routes
 const requireAuth = (req, res, next) => {
@@ -47,7 +49,7 @@ router.post('/remove-out-of-stock', requireAuthAPI, cartController.removeOutOfSt
 // // API route specifically for wishlist-to-cart functionality  
 // router.post('/add', requireAuthAPI, cartController.addToCart);
 
-// Save for later route (cart to wishlist)
+// add to wishlist
 router.post('/save-for-later', requireAuthAPI, cartController.saveForLater)
 
 // Routes that can be accessed without authentication or with JSON response
@@ -57,12 +59,8 @@ router.get('/count', cartController.getCartCount);
 router.get('/validate-stock', requireAuthAPI, cartController.validateCartStock);
 router.post('/reset-quantity', requireAuthAPI, cartController.resetCartItemQuantity);
 
-// Checkout route
-router.get('/checkout', requireAuth, cartController.loadCheckout);
-
-// Checkout validation route
-router.get('/validate-checkout-stock', requireAuthAPI, cartController.validateCheckoutStock);
-
+// redirect for checkout
+router.get('/checkout', (req, res) => res.redirect('/checkout'));
 
 
 module.exports = router;

@@ -239,10 +239,6 @@ async function updateQuantity(productId, variantId, newQuantity) {
 
     updateButtonStates(productId, variantId);
 
-    // ❌ REMOVED - This was causing ReferenceError since 'result' doesn't exist in finally block
-    // if (result.cartSummary) {
-    //   updateOrderSummary(result.cartSummary);
-    // }
   }
 }
 
@@ -466,108 +462,322 @@ function showStockValidationError(validation) {
 
 // Proceed to checkout with validation
 async function proceedToCheckout() {
-  console.log('proceedToCheckout called');
+  console.log('🛒 Enhanced checkout process starting...');
 
   const availableItems = document.querySelectorAll('.cart-item-card:not(.item-out-of-stock)');
   const outOfStockItems = document.querySelectorAll('.cart-item-card.item-out-of-stock');
 
   if (availableItems.length === 0) {
-    if (outOfStockItems.length > 0) {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          icon: 'warning',
-          title: 'Cannot Proceed to Checkout',
-          html: `
-            <p>All items in your cart are currently out of stock.</p>
-            <p><strong>Options:</strong></p>
-            <ul style="text-align: left; margin: 1rem 0;">
-              <li>Remove out-of-stock items and add available products</li>
-              <li>Continue shopping to find alternative products</li>
-              <li>Check back later when items are restocked</li>
-            </ul>
-          `,
-          showCancelButton: true,
-          confirmButtonText: 'Remove Out of Stock Items',
-          cancelButtonText: 'Continue Shopping',
-          confirmButtonColor: '#dc3545',
-          cancelButtonColor: '#000'
-        }).then((result) => {
-          if (result.isConfirmed) {
-            removeAllOutOfStockItems();
-          } else if (result.dismiss === Swal.DismissReason.cancel) {
-            window.location.href = '/shop';
-          }
-        });
-      } else {
-        if (confirm('All items in your cart are out of stock. Remove them and continue shopping?')) {
-          removeAllOutOfStockItems();
-        }
-      }
-    } else {
-      if (typeof Swal !== 'undefined') {
-        Swal.fire({
-          icon: 'info',
-          title: 'Empty Cart',
-          text: 'Your cart is empty. Add some products to proceed.',
-          confirmButtonColor: '#000'
-        }).then(() => {
-          window.location.href = '/shop';
-        });
-      } else {
-        alert('Your cart is empty. Add some products to proceed.');
-        window.location.href = '/shop';
-      }
-    }
+    await handleEmptyOrInvalidCart(outOfStockItems.length);
     return;
   }
 
-  // Show loading indicator
-  if (typeof Swal !== 'undefined') {
-    Swal.fire({
-      title: 'Validating Cart...',
-      text: 'Checking stock availability for your items',
-      allowOutsideClick: false,
-      allowEscapeKey: false,
-      showConfirmButton: false,
-      didOpen: () => {
-        Swal.showLoading();
-      }
-    });
-  }
+  // Enhanced loading with better UX
+  const checkoutSwal = Swal.fire({
+    title: 'Preparing Checkout',
+    html: `
+      <div class="checkout-progress">
+        <div class="progress mb-3">
+          <div class="progress-bar progress-bar-animated" role="progressbar" style="width: 0%"></div>
+        </div>
+        <p id="checkout-status">Validating cart items...</p>
+      </div>
+    `,
+    allowOutsideClick: false,
+    allowEscapeKey: false,
+    showConfirmButton: false,
+    didOpen: () => {
+      // Animate progress bar
+      const progressBar = Swal.getHtmlContainer().querySelector('.progress-bar');
+      const statusText = Swal.getHtmlContainer().querySelector('#checkout-status');
+      
+      let progress = 0;
+      const interval = setInterval(() => {
+        progress += 10;
+        progressBar.style.width = `${progress}%`;
+        
+        if (progress >= 50) {
+          statusText.textContent = 'Checking stock availability...';
+        }
+        if (progress >= 80) {
+          statusText.textContent = 'Almost ready...';
+        }
+        if (progress >= 100) {
+          clearInterval(interval);
+        }
+      }, 200);
+    }
+  });
 
   try {
-    // Validate cart stock before proceeding
+    // Validate cart with enhanced error handling
     const validation = await validateCartStock();
     
-    if (typeof Swal !== 'undefined') {
-      Swal.close();
-    }
+    Swal.close();
 
     if (!validation.success || !validation.allValid) {
-      // Show validation error
-      showStockValidationError(validation);
+      await showEnhancedValidationError(validation);
       return;
     }
 
-    // If validation passes, proceed to checkout
+    // Additional checkout-specific validation
+    const checkoutValidation = await fetch('/checkout/validate-checkout-stock');
+    const checkoutData = await checkoutValidation.json();
+    
+    if (!checkoutData.success || checkoutData.checkoutEligibleItems === 0) {
+      await showCheckoutSpecificError(checkoutData);
+      return;
+    }
+
+    // All validation passed - proceed to checkout
+    console.log('✅ All validations passed, proceeding to checkout');
     window.location.href = '/cart/checkout';
 
   } catch (error) {
-    console.error('Error during checkout validation:', error);
+    console.error('❌ Error during enhanced checkout validation:', error);
+    Swal.close();
     
-    if (typeof Swal !== 'undefined') {
-      Swal.close();
-      Swal.fire({
-        icon: 'error',
-        title: 'Validation Error',
-        text: 'Unable to validate cart items. Please try again.',
-        confirmButtonColor: '#dc3545'
-      });
-    } else {
-      safeToast('error', 'Unable to validate cart items. Please try again.');
-    }
+    await Swal.fire({
+      icon: 'error',
+      title: 'Checkout Error',
+      html: `
+        <p>We encountered an issue preparing your checkout.</p>
+        <p><strong>What you can try:</strong></p>
+        <ul class="text-start mt-2">
+          <li>Refresh the page and try again</li>
+          <li>Check your internet connection</li>
+          <li>Clear your browser cache</li>
+        </ul>
+      `,
+      confirmButtonText: 'Try Again',
+      confirmButtonColor: '#007bff'
+    });
   }
 }
+
+// Handle empty or invalid cart scenarios
+async function handleEmptyOrInvalidCart(outOfStockCount) {
+  if (outOfStockCount > 0) {
+    // Cart has only out-of-stock items
+    const result = await Swal.fire({
+      icon: 'warning',
+      title: 'Cannot Proceed to Checkout',
+      html: `
+        <div class="text-center">
+          <p>All items in your cart are currently out of stock.</p>
+          <div class="my-3 p-3 bg-light rounded">
+            <strong>Your Options:</strong>
+            <ul class="text-start mt-2 mb-0">
+              <li>Remove out-of-stock items and add available products</li>
+              <li>Save items to wishlist for later</li>
+              <li>Continue shopping for alternatives</li>
+            </ul>
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Remove Out of Stock Items',
+      cancelButtonText: 'Continue Shopping',
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#007bff',
+      width: 600
+    });
+
+    if (result.isConfirmed) {
+      await removeAllOutOfStockItems();
+    } else {
+      window.location.href = '/shop';
+    }
+  } else {
+    // Completely empty cart
+    const result = await Swal.fire({
+      icon: 'info',
+      title: 'Empty Cart',
+      html: `
+        <div class="text-center">
+          <i class="bi bi-cart-x" style="font-size: 3rem; color: #6c757d; margin-bottom: 1rem;"></i>
+          <p>Your cart is empty. Let's find some great products for you!</p>
+        </div>
+      `,
+      confirmButtonText: 'Start Shopping',
+      confirmButtonColor: '#007bff'
+    });
+
+    window.location.href = '/shop';
+  }
+}
+
+// validation error display
+async function showEnhancedValidationError(validation) {
+  let errorHtml = '<div class="validation-errors text-start">';
+  
+  if (validation.outOfStockItems && validation.outOfStockItems.length > 0) {
+    errorHtml += `
+      <div class="error-section mb-3">
+        <h6 class="text-warning"><i class="bi bi-exclamation-triangle me-2"></i>Out of Stock Items:</h6>
+        <ul class="mb-0">
+    `;
+    
+    validation.outOfStockItems.forEach(item => {
+      errorHtml += `<li>${item.productName}${item.size ? ` (${item.size})` : ''}</li>`;
+    });
+    
+    errorHtml += '</ul></div>';
+  }
+  
+  if (validation.invalidItems && validation.invalidItems.length > 0) {
+    errorHtml += `
+      <div class="error-section mb-3">
+        <h6 class="text-danger"><i class="bi bi-x-circle me-2"></i>Unavailable Items:</h6>
+        <ul class="mb-0">
+    `;
+    
+    validation.invalidItems.forEach(item => {
+      errorHtml += `<li>${item.productName}${item.size ? ` (${item.size})` : ''} - ${item.reason}</li>`;
+    });
+    
+    errorHtml += '</ul></div>';
+  }
+  
+  errorHtml += '</div>';
+  
+  const result = await Swal.fire({
+    icon: 'error',
+    title: 'Cart Issues Found',
+    html: `
+      <p>We found some issues with items in your cart:</p>
+      ${errorHtml}
+      <div class="mt-3 p-3 bg-light rounded">
+        <strong>We can help fix these issues automatically.</strong>
+      </div>
+    `,
+    showCancelButton: true,
+    confirmButtonText: 'Fix Issues Automatically',
+    cancelButtonText: 'Fix Manually',
+    confirmButtonColor: '#28a745',
+    cancelButtonColor: '#007bff',
+    width: 700
+  });
+
+  if (result.isConfirmed) {
+    await autoFixCartIssues(validation);
+  } else {
+    // User wants to fix manually - stay on cart page
+    window.location.reload();
+  }
+}
+
+// Auto-fix cart issues
+async function autoFixCartIssues(validation) {
+  Swal.fire({
+    title: 'Fixing Cart Issues',
+    html: 'Please wait while we resolve the cart issues...',
+    allowOutsideClick: false,
+    showConfirmButton: false,
+    didOpen: () => Swal.showLoading()
+  });
+
+  try {
+    let fixedCount = 0;
+    
+    // Remove completely unavailable items
+    if (validation.invalidItems && validation.invalidItems.length > 0) {
+      for (const item of validation.invalidItems) {
+        if (!item.reason.includes('stock')) {
+          // This item is completely unavailable, remove it
+          const cartItem = findCartItemByName(item.productName, item.size);
+          if (cartItem) {
+            const productId = cartItem.dataset.productId;
+            const variantId = cartItem.dataset.variantId;
+            await removeFromCart(productId, variantId);
+            fixedCount++;
+          }
+        }
+      }
+    }
+    
+    // Reset quantities for overstocked items
+    if (validation.outOfStockItems && validation.outOfStockItems.length > 0) {
+      for (const item of validation.outOfStockItems) {
+        if (item.availableStock !== undefined && item.availableStock > 0) {
+          const cartItem = findCartItemByName(item.productName, item.size);
+          if (cartItem) {
+            const productId = cartItem.dataset.productId;
+            const variantId = cartItem.dataset.variantId;
+            await updateQuantity(productId, variantId, Math.min(item.availableStock, 5));
+            fixedCount++;
+          }
+        }
+      }
+    }
+    
+    Swal.close();
+    
+    if (fixedCount > 0) {
+      await Swal.fire({
+        icon: 'success',
+        title: 'Cart Issues Fixed!',
+        html: `
+          <p>We successfully resolved <strong>${fixedCount}</strong> cart issue${fixedCount > 1 ? 's' : ''}.</p>
+          <p>You can now proceed to checkout with your available items.</p>
+        `,
+        confirmButtonText: 'Continue to Checkout',
+        confirmButtonColor: '#28a745'
+      });
+      
+      // Proceed to checkout after fixing
+      window.location.href = '/cart/checkout';
+    } else {
+      await Swal.fire({
+        icon: 'info',
+        title: 'No Issues to Fix',
+        text: 'Your cart appears to be in good condition.',
+        confirmButtonColor: '#007bff'
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Error auto-fixing cart issues:', error);
+    Swal.close();
+    
+    await Swal.fire({
+      icon: 'error',
+      title: 'Auto-Fix Failed',
+      text: 'We couldn\'t automatically fix the issues. Please review your cart manually.',
+      confirmButtonColor: '#007bff'
+    });
+  }
+}
+
+// UTILITY: Find cart item by product name and size
+function findCartItemByName(productName, size) {
+  const cartItems = document.querySelectorAll('.cart-item-card');
+  
+  for (const item of cartItems) {
+    const nameElement = item.querySelector('.product-name');
+    const sizeElement = item.querySelector('.spec-item');
+    
+    if (!nameElement) continue;
+    
+    const itemName = nameElement.textContent.trim();
+    const itemSize = sizeElement ? sizeElement.textContent.includes('Size:') ? 
+      sizeElement.textContent.split('Size:')[1].trim() : '' : '';
+    
+    if (itemName === productName && (!size || itemSize === size)) {
+      return item;
+    }
+  }
+  
+  return null;
+}
+
+// Initialize cart restoration check on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Check for cart restoration from payment failures
+  setTimeout(() => {
+    restoreCartFromFailure();
+  }, 1000);
+});
 
 // Validate cart on page load/refresh
 async function validateCartOnLoad() {
@@ -746,6 +956,72 @@ async function saveForLater(productId, variantId) {
 }
 
 window.saveForLater = saveForLater;
+
+// cart restoration from payment failures
+async function restoreCartFromFailure() {
+  // Check if there's a restoration request from payment failure
+  const restorationData = localStorage.getItem('cartRestorationRequest');
+  if (!restorationData) return;
+  
+  try {
+    const data = JSON.parse(restorationData);
+    localStorage.removeItem('cartRestorationRequest');
+    
+    // Show restoration progress
+    // Swal.fire({
+    //   title: 'Restoring Cart',
+    //   html: 'Recovering your cart items from the failed payment...',
+    //   allowOutsideClick: false,
+    //   showConfirmButton: false,
+    //   didOpen: () => Swal.showLoading()
+    // });
+    
+    // Validate current cart state
+    const validation = await validateCartStock();
+    
+    // Swal.close();
+    
+    if (validation.success && validation.allValid) {
+      // Cart is in good state
+      safeToast('success', 'Your cart has been restored successfully!');
+    } else if (validation.invalidItems && validation.invalidItems.length > 0) {
+      // Show restoration issues
+      showCartRestorationIssues(validation);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error during cart restoration:', error);
+    localStorage.removeItem('cartRestorationRequest');
+  }
+}
+
+// Show cart restoration issues
+function showCartRestorationIssues(validation) {
+  let issuesHtml = '<div class="text-start"><p><strong>Cart Restoration Issues:</strong></p><ul>';
+  
+  validation.invalidItems.forEach(item => {
+    issuesHtml += `<li>${item.productName}${item.size ? ` (${item.size})` : ''} - ${item.reason}</li>`;
+  });
+  
+  issuesHtml += '</ul></div>';
+  
+  Swal.fire({
+    icon: 'warning',
+    title: 'Cart Partially Restored',
+    html: `
+      <p>We restored most of your cart, but some items had issues:</p>
+      ${issuesHtml}
+      <p class="mt-3"><strong>Available items have been added back to your cart.</strong></p>
+    `,
+    confirmButtonText: 'Continue Shopping',
+    confirmButtonColor: '#007bff',
+    width: 600
+  }).then(() => {
+    // Optionally reload to show updated cart
+    window.location.reload();
+  });
+}
+
 
 // Initialize cart functionality only on cart page
 function initializeCartPage() {

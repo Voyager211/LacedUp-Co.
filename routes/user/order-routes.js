@@ -20,11 +20,10 @@ const requireAuth = (req, res, next) => {
 };
 
 
-// Create new order
-router.post('/orders', requireAuth, orderController.placeOrderWithValidation);
-
 // Get all orders for user (api)
 router.get('/orders/api/filtered', requireAuth, orderController.getUserOrdersPaginated);
+router.get('/orders/api/search', requireAuth, orderController.searchOrders);
+
 
 // Get all orders for user
 router.get('/orders', requireAuth, orderController.getUserOrders);
@@ -46,10 +45,8 @@ router.post('/orders/:orderId/returns', requireAuth, orderController.requestOrde
 router.post('/orders/:orderId/items/:itemId/returns', requireAuth, orderController.requestItemReturn);
 
 // ===== UTILITY ROUTES =====
-// Order success page (UI-specific)
-router.get('/order-success/:orderId', requireAuth, orderController.loadOrderSuccess);
-
 // Download invoice (action on resource)
 router.get('/orders/:orderId/invoice', requireAuth, orderController.downloadInvoice);
+
 
 module.exports = router;

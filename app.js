@@ -1,4 +1,4 @@
-require('dotenv').config(); // ✅ Load .env FIRST
+require('dotenv').config();
 
 // Package imports
 const express = require('express');
@@ -19,6 +19,7 @@ const isAdmin = require('./middlewares/isAdmin');
 const { addUserContext } = require('./middlewares/user-middleware');
 const checkUserBlocked = require('./middlewares/checkUserBlocked');
 
+
 // Route imports
 const adminAuthRoutes = require('./routes/admin/auth');
 const adminUserRoutes = require('./routes/admin/user');
@@ -27,19 +28,26 @@ const adminBrandRoutes = require('./routes/admin/brand');
 const adminProductRoutes = require('./routes/admin/product');
 const adminOrderRoutes = require('./routes/admin/order');
 const adminReturnRoutes = require('./routes/admin/returns');
+const adminCouponRoutes = require('./routes/admin/coupon');
+const adminSalesReportRoutes = require('./routes/admin/sales-report');
+const adminDashboardRoutes = require('./routes/admin/dashboard');
+
 const landingRoutes = require('./routes/user/landing');
 const userAuthRoutes = require('./routes/user/auth');
 const userHomeRoutes = require('./routes/user/home');
-const userProductRoutes = require('./routes/user/product-routes');
+const userShopRoutes = require('./routes/user/shop');
 const userReviewRoutes = require('./routes/user/review-routes');
 const userProfileRoutes = require('./routes/user/profile-routes');
 const userAddressRoutes = require('./routes/user/address-routes');
 const userCartRoutes = require('./routes/user/cart-routes');
 const userWishlistRoutes = require('./routes/user/wishlist-routes');
+const userCouponRoutes = require('./routes/user/coupon-routes');
+const checkoutRoutes = require('./routes/user/checkout-routes');
 const userOrderRoutes = require('./routes/user/order-routes');
 const userWalletRoutes = require('./routes/user/wallet-routes');
+const userReferralRoutes = require('./routes/user/referral-routes');
 
-require('./config/passport')(passport); // ✅ Load passport config
+require('./config/passport')(passport);
 
 // Connect DB
 connectDB();
@@ -50,8 +58,8 @@ app.use(expressLayouts);
 app.set('layout', 'admin/layout'); // default for admin
 
 // Middlewares
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.use(flash());
@@ -108,23 +116,28 @@ morganBody(app, {
 });
 
 // ROUTES
-// ✅ User Routes First
+// User Routes 
+app.use('/cart', userCartRoutes);
+app.use('/wishlist', userWishlistRoutes);
+app.use('/wallet', userWalletRoutes);
+app.use('/coupons', userCouponRoutes);
+app.use ('/referrals', userReferralRoutes);
+app.use('/checkout', checkoutRoutes);
+// app.use('/transactions', transactionRoutes);
 app.use('/', landingRoutes);
 app.use('/', userAuthRoutes);
 app.use('/', userHomeRoutes);
-app.use('/', userProductRoutes);
+app.use('/', userShopRoutes);
 app.use('/', userReviewRoutes);
-app.use('/', userWalletRoutes);
 app.use('/', userProfileRoutes);
 app.use('/', userAddressRoutes);
-app.use('/cart', userCartRoutes);
-app.use('/wishlist', userWishlistRoutes);
 app.use('/', userOrderRoutes);
 
 
 
 
-// ✅ Admin Routes
+
+// Admin Routes
 app.use('/admin', adminAuthRoutes);
 app.use('/admin/users', adminUserRoutes);
 app.use('/admin/categories', adminCategoryRoutes);
@@ -132,6 +145,14 @@ app.use('/admin/brands', adminBrandRoutes);
 app.use('/admin/products', adminProductRoutes);
 app.use('/admin/orders', adminOrderRoutes);
 app.use('/admin/returns', adminReturnRoutes);
+app.use('/admin/coupons', adminCouponRoutes);
+app.use('/admin/sales-report', adminSalesReportRoutes);
+app.use('/admin/dashboard', adminDashboardRoutes);
+
+app.get('coupons/available', (req, res) => {
+    console.log('🚀 /coupons/available route HIT!');
+    userCouponController.getAvailableCoupons(req, res);
+});
 
 // Start server
 const PORT = process.env.PORT || 3000;

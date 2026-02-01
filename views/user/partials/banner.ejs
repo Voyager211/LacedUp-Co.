@@ -1,17 +1,288 @@
-<section class="promo-banner position-relative mb-5 shadow rounded overflow-hidden" style="height: 580px; background-color: var(--color-card);">
-  <!-- Background Image -->
-  <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1749822599/banner_2_ucqexi.png"
-       alt="Drop Sneaker"
-       class="w-100 h-100 object-fit-cover" style="object-position: right bottom;">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=League+Gothic&family=Aleo:wght@400;700&display=swap" rel="stylesheet">
 
-  <!-- Text Overlay -->
-  <div class="position-absolute top-0 start-0 text-white p-5" style="max-width: 50%; z-index: 10;">
-    <h1 class="display-5 text-light fw-bold">STAY LACED.<br>STAY AHEAD.</h1>
-    <p class="my-3 text-light fw-bold">NIKE AIR FORCE 1 MID X OFF-WHITE 'PINE GREEN'</p>
-    <a href="/shop" class="btn btn-danger btn-lg px-4 fw-bold">SHOP NOW</a>
+<style>
+/* ========= CAROUSEL BANNER STYLES ========= */
+.promo-banner-carousel {
+  background-color: #f2f2f2;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* Enable slide transition animation */
+.promo-banner-carousel .carousel-item {
+  transition: transform 0.6s ease-in-out;
+}
+
+/* Typography - Apply fonts globally to carousel */
+.promo-banner-carousel h1 {
+  font-family: 'League Gothic', sans-serif !important;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  line-height: 1.1;
+}
+
+.promo-banner-carousel p {
+  font-family: 'Aleo', serif !important;
+}
+
+/* ========= INDIVIDUAL SLIDE FONT CONTROLS ========= */
+
+/* Slide 1 - Nike Air Force */
+.carousel-item:nth-child(1) h1 {
+  font-size: 90px !important;
+  font-weight: 400 !important;
+}
+
+.carousel-item:nth-child(1) p {
+  font-size: 30.6px !important;
+  font-weight: 400 !important;
+}
+
+/* Slide 2 - Adidas Stack */
+.carousel-item:nth-child(2) h1,
+.carousel-item:nth-child(2) .modern-heading {
+  font-size: 70px !important;
+  font-weight: 500 !important;
+}
+
+/* Slide 3 - Nike Court Vision (if you add text later) */
+.carousel-item:nth-child(3) h1 {
+  font-size: 107px !important;
+  font-weight: 400 !important;
+}
+
+/* Slide 1 - Nike shoe */
+.carousel-item .slide-1-image {
+  object-position: center bottom !important;
+  transform: translateY(-40%) !important;
+}
+
+/* Slide 2 - Adidas Stack */
+.carousel-item .slide-2-image {
+  object-position: center top !important;
+  transform: translateY(-25%) !important;
+}
+
+/* Slide 3 - Nike Court Vision */
+.carousel-item .slide-3-image {
+  object-position: left bottom !important;
+  transform: translateY(-40%) !important;
+}
+
+/* Slide 1 caption */
+.carousel-caption-custom {
+  /* No additional animation */
+}
+
+/* Slide 2 right text */
+.carousel-caption-right {
+  right: 10% !important;
+  top: 20% !important;
+}
+
+/* Slide 3 caption - positioned below text on right side */
+.carousel-caption-center {
+  position: absolute;
+  top: 40%;
+  right: 35%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.modern-heading {
+  font-family: 'League Gothic', sans-serif !important;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  line-height: 1.1;
+  color: #1A1A1A !important;
+  text-shadow: 
+    3px 3px 6px rgba(255, 255, 255, 0.8),
+    -1px -1px 2px rgba(255, 255, 255, 0.6),
+    2px 2px 4px rgba(0, 0, 0, 0.1);
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.3);
+}
+
+/* Carousel controls */
+.promo-banner-carousel .carousel-control-prev,
+.promo-banner-carousel .carousel-control-next {
+  width: 60px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.promo-banner-carousel:hover .carousel-control-prev,
+.promo-banner-carousel:hover .carousel-control-next {
+  opacity: 0.8;
+}
+
+.promo-banner-carousel .carousel-control-prev:hover,
+.promo-banner-carousel .carousel-control-next:hover {
+  opacity: 1;
+}
+
+/* Carousel indicators */
+.promo-banner-carousel .carousel-indicators {
+  bottom: 20px;
+  z-index: 15;
+}
+
+.promo-banner-carousel .carousel-indicators button {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background-color: transparent;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.promo-banner-carousel .carousel-indicators button.active {
+  background-color: #E03A2F;
+  border-color: #E03A2F;
+  opacity: 1;
+  transform: scale(1.2);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .promo-banner-carousel {
+    height: 400px !important;
+  }
+  
+  .carousel-caption-custom,
+  .carousel-caption-right,
+  .carousel-caption-center {
+    max-width: 80% !important;
+    padding: 2rem !important;
+    right: 5% !important;
+    top: 25% !important;
+  }
+  
+  .carousel-caption-custom h1,
+  .modern-heading {
+    font-size: 3rem !important;
+  }
+  
+  .carousel-caption-custom p {
+    font-size: 1.2rem !important;
+  }
+  
+  /* Responsive individual slide controls */
+  .carousel-item:nth-child(1) h1,
+  .carousel-item:nth-child(2) h1,
+  .carousel-item:nth-child(3) h1 {
+    font-size: 3rem !important;
+  }
+  
+  .carousel-item:nth-child(1) p {
+    font-size: 1.2rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .promo-banner-carousel {
+    height: 350px !important;
+  }
+  
+  .carousel-caption-custom,
+  .carousel-caption-right,
+  .carousel-caption-center {
+    max-width: 90% !important;
+    padding: 1.5rem !important;
+    right: 5% !important;
+    top: 20% !important;
+  }
+  
+  .carousel-caption-custom h1,
+  .modern-heading {
+    font-size: 2.5rem !important;
+  }
+  
+  .carousel-caption-custom p {
+    font-size: 1rem !important;
+  }
+  
+  /* Responsive individual slide controls */
+  .carousel-item:nth-child(1) h1,
+  .carousel-item:nth-child(2) h1,
+  .carousel-item:nth-child(3) h1 {
+    font-size: 2.5rem !important;
+  }
+  
+  .carousel-item:nth-child(1) p {
+    font-size: 1rem !important;
+  }
+}
+</style>
+
+
+<section class="promo-banner-carousel position-relative mb-5 shadow rounded overflow-hidden" style="height: 580px;">
+  <div id="heroBannerCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+    <div class="carousel-inner h-100">
+      
+      <!-- Slide 1 - Nike Air Force -->
+      <div class="carousel-item active">
+        <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/f_auto,q_auto,w_1920/banner_2_ucqexi.png"
+             alt="Nike Air Force 1"
+             class="w-100 h-100 object-fit-cover slide-1-image">
+        
+        <div class="carousel-caption-custom position-absolute top-0 start-0 text-white p-5" style="max-width: 50%; z-index: 10;">
+          <h1 class="text-light">STAY LACED.<br>STAY AHEAD.</h1>
+          <p class="my-3 text-light">NIKE AIR FORCE 1 <br> MID X OFF-WHITE 'PINE GREEN'</p>
+          <a href="/shop" class="btn btn-danger btn-lg px-4 fw-bold">SHOP NOW</a>
+        </div>
+      </div>
+
+      <!-- Slide 2 - Adidas Stack -->
+      <div class="carousel-item">
+        <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1769770672/1769770301665_aphf5m.png"
+             alt="Adidas Collection"
+             class="w-100 h-100 object-fit-cover slide-2-image">
+        
+        <div class="carousel-caption-right position-absolute text-end" style="max-width: 45%; z-index: 10;">
+          <h1 class="modern-heading mb-4">
+            EXPLORE<br>ADIDAS<br>COLLECTIONS
+          </h1>
+          <a href="/shop?brand=687b610cda35799b66b65189&page=1" class="btn btn-danger btn-lg px-4 fw-bold">SHOP NOW</a>
+        </div>
+      </div>
+
+      <!-- Slide 3 - Nike Court Vision -->
+      <div class="carousel-item">
+        <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1769780544/Classic_Court_Style._Modern_Comfort._1_xdk7tb.png"
+             alt="Nike Court Vision Low"
+             class="w-100 h-100 object-fit-cover slide-3-image">
+        
+        <!-- Button INSIDE slide 3 -->
+        <div class="carousel-caption-center">
+          <a href="/product/nike-court-vision-low-next-nature" class="btn btn-danger btn-lg px-4 fw-bold">SHOP NOW</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Carousel Controls -->
+    <button class="carousel-control-prev" type="button" data-bs-target="#heroBannerCarousel" data-bs-slide="prev">
+      <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Previous</span>
+    </button>
+    <button class="carousel-control-next" type="button" data-bs-target="#heroBannerCarousel" data-bs-slide="next">
+      <span class="carousel-control-next-icon" aria-hidden="true"></span>
+      <span class="visually-hidden">Next</span>
+    </button>
+
+    <!-- Carousel Indicators -->
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+      <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+      <button type="button" data-bs-target="#heroBannerCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+    </div>
+
+    <!-- Optional dark overlay -->
+    <div class="position-absolute top-0 start-0 w-100 h-100 carousel-overlay" 
+         style="background: rgba(0,0,0,0.00); z-index: 5; pointer-events: none;"></div>
   </div>
-
-  <!-- Optional dark overlay -->
-  <div class="position-absolute top-0 start-0 w-100 h-100"
-       style="background: rgba(0,0,0,0.00); z-index: 5;"></div>
 </section>

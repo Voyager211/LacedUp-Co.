@@ -1,363 +1,480 @@
 const Wallet = require('../../models/Wallet');
-const User = require('../../models/User');
-const mongoose = require('mongoose');
-const walletService = require('../../services/walletService'); 
+const walletService = require('../../services/paymentProviders/walletService');
+const { razorpayInstance } = require('../../services/paymentProviders/razorpay');
+const crypto = require('crypto');
 
 
 /**
- * Get wallet page with balance and transactions
+ * GET /wallet
+ * Render wallet page with user's balance and transactions
  */
-exports.getWallet = async (req, res) => {
-  console.log('🚀 WALLET CONTROLLER - Loading wallet page...');
-  const startTime = Date.now();
-  
+const renderWalletPage = async (req, res) => {
   try {
-    const userId = req.user ? req.user._id : req.session.userId;
+    const userId = req.user?.id || req.user?._id || req.session.userId;
+    console.log(userId);
     
     if (!userId) {
+      req.flash('error', 'Please log in to continue');
       return res.redirect('/login');
     }
 
-    // Get user info
+    // Get user data
+    const User = require('../../models/User');
     const user = await User.findById(userId);
+
     if (!user) {
+      req.flash('error', 'User not found');
       return res.redirect('/login');
     }
 
     // Get or create wallet
-    let wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) }).lean();
+    const wallet = await walletService.getOrCreateWallet(userId);
+
+    // Get pagination parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+
+    // Get paginated transactions
+    const transactionData = await walletService.getPaginatedTransactions(userId, page, limit);
+
+    // Get wallet statistics
+    const stats = await walletService.getWalletStats(userId);
+
+    // Calculate pagination data
+    const { transactions, currentPage, totalPages, totalTransactions } = transactionData;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = hasPrevPage ? currentPage - 1 : null;
+    const nextPage = hasNextPage ? currentPage + 1 : null;
+
+    // Generate page numbers (show up to 5 pages around current page)
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
     
-    if (!wallet) {
-      const newWallet = new Wallet({
-        userId: userId,
-        balance: 0,
-        transactions: []
-      });
-      await newWallet.save();
-      wallet = { balance: 0, transactions: [] };
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
     }
 
-    // ✅ DATABASE-LEVEL PAGINATION: Get first page using walletService
-    const page = 1;
-    const limit = 6;
-    
-    const result = await walletService.getTransactionHistory(userId, page, limit);
-    
-    // ✅ PAGINATION DATA: For pagination partial
-    const paginationData = {
-      currentPage: result.currentPage,
-      totalPages: result.totalPages,
-      hasNextPage: result.hasNextPage,
-      hasPrevPage: result.hasPrevPage
-    };
-
-    console.log(`💰 Wallet loaded in ${Date.now() - startTime}ms - Balance: ₹${wallet.balance}`);
-
+    // Render with pagination data
     res.render('user/wallet', {
       user,
-      wallet: {
-        balance: wallet.balance,
-        transactions: result.transactions,
-        totalTransactions: result.totalTransactions
-      },
-      // ✅ ADD: Pagination data for partial
-      currentPage: paginationData.currentPage,
-      totalPages: paginationData.totalPages,
+      wallet,
+      transactions,
+      currentPage,
+      totalPages,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+      pageNumbers,
+      totalTransactions,
+      stats,
       title: 'My Wallet',
       layout: 'user/layouts/user-layout',
       active: 'wallet'
     });
-
   } catch (error) {
-    console.error('❌ Wallet page error:', error);
-    res.status(500).render('errors/server-error', {
-      message: 'Error loading wallet',
-      layout: 'user/layouts/user-layout'
-    });
+    console.error('Error rendering wallet page:', error);
+    req.flash('error', 'Failed to load wallet');
+    res.redirect('/');
   }
 };
 
+
 /**
- * Get wallet balance (API endpoint)
+ * GET /wallet/transactions/paginated
+ * Get paginated transactions with optional filtering
  */
-exports.getWalletBalance = async (req, res) => {
+const getPaginatedTransactionsAPI = async (req, res) => {
   try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
+    const userId = req.session.userId || req.user._id;
+    const page = parseInt(req.query.page) || 1;
+    const type = req.query.type || null;
+    const limit = 10;
+
+    // Validate page
+    if (page < 1) {
+      return res.status(400).json({ success: false, message: 'Invalid page number' });
     }
 
-    const wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) })
-      .select('balance')
-      .lean();
+    // Get paginated transactions
+    const data = await walletService.getPaginatedTransactions(userId, page, limit, type);
 
-    const balance = wallet ? wallet.balance : 0;
+    // Calculate pagination metadata
+    const { transactions, currentPage, totalPages, totalTransactions } = data;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = hasPrevPage ? currentPage - 1 : null;
+    const nextPage = hasNextPage ? currentPage + 1 : null;
+
+    // Generate page numbers
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    const pageNumbers = [];
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
     res.json({
       success: true,
-      balance: balance
+      data: {
+        transactions,
+        currentPage,
+        totalPages,
+        totalTransactions,
+        hasPrevPage,
+        hasNextPage,
+        prevPage,
+        nextPage,
+        pageNumbers
+      }
     });
-
   } catch (error) {
-    console.error('❌ Get balance error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error getting wallet balance'
-    });
+    console.error('Error fetching paginated transactions:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch transactions' });
   }
 };
 
+
+
 /**
- * Add money to wallet
+ * POST /wallet/topup/create-order
+ * Create a Razorpay order for wallet top-up
  */
-exports.addMoney = async (req, res) => {
+const createRazorpayOrderHandler = async (req, res) => {
   try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const { amount, description } = req.body;
+    const userId = req.session.userId || req.user._id;
+    const { amount, paymentMethod, description } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
-
-    // Validate amount
-    const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount <= 0 || numAmount > 50000) {
+    // Validation
+    if (!amount || amount < 1 || amount > 50000) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid amount. Must be between ₹1 and ₹50,000'
+        message: 'Invalid amount. Minimum 1, Maximum 50,000'
       });
     }
 
-    // Get or create wallet
-    let wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) });
-    
-    if (!wallet) {
-      wallet = new Wallet({
-        userId: userId,
-        balance: 0,
-        transactions: []
+    if (!paymentMethod || !['razorpay', 'upi', 'paypal'].includes(paymentMethod)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment method'
       });
     }
 
-    // Update balance and add transaction
-    const newBalance = wallet.balance + numAmount;
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+    // For now, only support UPI (Razorpay)
+    if (paymentMethod !== 'razorpay' && paymentMethod !== 'upi') {
+      return res.status(400).json({
+        success: false,
+        message: 'Payment method not supported yet'
+      });
+    }
 
-    const newTransaction = {
-      transactionId: transactionId,
-      type: 'credit',
-      amount: numAmount,
-      description: description || 'Money added to wallet',
-      date: new Date(),
-      balanceAfter: newBalance,
-      status: 'completed'
+    // Create pending transaction
+    const transactionResult = await walletService.addPendingTransaction(userId, {
+      amount,
+      description: description || `Wallet top-up`,
+      paymentMethod: 'razorpay'
+    });
+
+    // ✅ FIXED: Create Razorpay order using the instance directly
+    const razorpayOrderOptions = {
+      amount: Math.round(amount * 100), // Amount in paise
+      currency: 'INR',
+      receipt: `wallet_${transactionResult.transactionId}`,
+      payment_capture: 1
     };
 
-    wallet.balance = newBalance;
-    wallet.transactions.push(newTransaction);
-    
-    await wallet.save();
+    const razorpayOrder = await razorpayInstance.orders.create(razorpayOrderOptions);
 
-    console.log(`💰 Added ₹${numAmount} to wallet for user ${userId} - New balance: ₹${newBalance}`);
+    // Update transaction with Razorpay order ID
+    await Wallet.findOneAndUpdate(
+      {
+        userId,
+        'transactions.transactionId': transactionResult.transactionId
+      },
+      {
+        $set: {
+          'transactions.$.razorpayOrderId': razorpayOrder.id
+        }
+      }
+    );
 
     res.json({
       success: true,
-      message: 'Money added successfully',
-      newBalance: newBalance,
-      amountAdded: numAmount,
-      transaction: newTransaction
+      keyId: process.env.RAZORPAY_KEY_ID,
+      amount: amount,
+      currency: 'INR',
+      razorpayOrderId: razorpayOrder.id,
+      transactionId: transactionResult.transactionId
     });
-
   } catch (error) {
-    console.error('❌ Add money error:', error);
+    console.error('Error creating Razorpay order:', error);
     res.status(500).json({
       success: false,
-      message: 'Error adding money to wallet'
+      message: 'Failed to create payment order'
     });
   }
 };
 
-/**
- * Use wallet for payment
- */
-exports.useWallet = async (req, res) => {
-  try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const { amount, description, orderId } = req.body;
 
-    if (!userId) {
-      return res.status(401).json({
+/**
+ * POST /wallet/topup/verify-razorpay
+ * Verify Razorpay payment and complete transaction
+ */
+const verifyRazorpayPayment = async (req, res) => {
+  try {
+    const userId = req.session.userId || req.user._id;
+    const { razorpayPaymentId, razorpayOrderId, razorpaysignature, transactionId } = req.body;
+
+    // Validate signature
+    const body = `${razorpayOrderId}|${razorpayPaymentId}`;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
+
+    if (expectedSignature !== razorpaysignature) {
+      // Mark transaction as failed
+      await walletService.failPendingTransaction(userId, transactionId);
+
+      return res.status(400).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Payment verification failed'
       });
     }
 
-    const numAmount = parseFloat(amount);
-    if (!numAmount || numAmount <= 0) {
+    // Update transaction with payment details
+    await Wallet.findOneAndUpdate(
+      {
+        userId,
+        'transactions.transactionId': transactionId
+      },
+      {
+        $set: {
+          'transactions.$.razorpayPaymentId': razorpayPaymentId,
+          'transactions.$.status': 'completed'
+        }
+      }
+    );
+
+    // Complete the transaction (update balance)
+    const wallet = await walletService.completePendingTransaction(userId, transactionId);
+
+    res.json({
+      success: true,
+      message: 'Payment verified successfully',
+      newBalance: wallet.balance
+    });
+  } catch (error) {
+    console.error('Error verifying Razorpay payment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Payment verification failed'
+    });
+  }
+};
+
+
+/**
+ * POST /wallet/add-money (Legacy - for direct add)
+ * Add money directly to wallet (for testing or other purposes)
+ */
+const addMoney = async (req, res) => {
+  try {
+    const userId = req.session.userId || req.user._id;
+    const { amount, description } = req.body;
+
+    // Validation
+    if (!amount || amount < 1 || amount > 50000) {
       return res.status(400).json({
         success: false,
         message: 'Invalid amount'
       });
     }
 
-    // Get wallet
-    const wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) });
-    
-    if (!wallet || wallet.balance < numAmount) {
-      return res.status(400).json({
-        success: false,
-        message: 'Insufficient wallet balance',
-        currentBalance: wallet ? wallet.balance : 0,
-        requiredAmount: numAmount
-      });
-    }
-
-    // Update balance and add transaction
-    const newBalance = wallet.balance - numAmount;
-    const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
-
-    const newTransaction = {
-      transactionId: transactionId,
-      type: 'debit',
-      amount: numAmount,
-      description: description || 'Payment',
-      orderId: orderId || null,
-      date: new Date(),
-      balanceAfter: newBalance,
+    // Add transaction
+    const result = await walletService.addTransaction(userId, {
+      type: 'credit',
+      amount,
+      description: description || 'Added to wallet',
+      paymentMethod: 'manual_credit',
       status: 'completed'
-    };
+    });
 
-    wallet.balance = newBalance;
-    wallet.transactions.push(newTransaction);
-    
-    await wallet.save();
-
-    console.log(`💰 Deducted ₹${numAmount} from wallet for user ${userId} - New balance: ₹${newBalance}`);
+    // Get updated wallet
+    const wallet = await walletService.getWallet(userId);
 
     res.json({
       success: true,
-      message: 'Payment successful',
-      newBalance: newBalance,
-      amountDebited: numAmount,
-      transaction: newTransaction
+      message: 'Money added to wallet',
+      newBalance: wallet.balance,
+      transactionId: result.transactionId
     });
-
   } catch (error) {
-    console.error('❌ Use wallet error:', error);
+    console.error('Error adding money:', error);
     res.status(500).json({
       success: false,
-      message: 'Error processing wallet payment'
+      message: error.message || 'Failed to add money'
     });
   }
 };
+
 
 /**
- * Get transaction history (API endpoint)
+ * GET /wallet/balance
+ * Get current wallet balance
  */
-exports.getTransactions = async (req, res) => {
+const getWalletBalance = async (req, res) => {
   try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
+    const userId = req.session.userId || req.user._id;
 
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required'
-      });
-    }
-
-    const wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) })
-      .select('transactions')
-      .lean();
-
-    if (!wallet || !wallet.transactions) {
-      return res.json({
-        success: true,
-        transactions: [],
-        totalTransactions: 0,
-        currentPage: page,
-        totalPages: 0,
-        hasNextPage: false,
-        hasPrevPage: false
-      });
-    }
-
-    // Sort transactions by date (latest first)
-    const sortedTransactions = wallet.transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-    
-    // Paginate
-    const startIndex = (page - 1) * limit;
-    const paginatedTransactions = sortedTransactions.slice(startIndex, startIndex + limit);
-    const totalPages = Math.ceil(wallet.transactions.length / limit);
+    const wallet = await walletService.getOrCreateWallet(userId);
 
     res.json({
       success: true,
-      transactions: paginatedTransactions,
-      totalTransactions: wallet.transactions.length,
-      currentPage: page,
-      totalPages: totalPages,
-      hasNextPage: page < totalPages,
-      hasPrevPage: page > 1
+      balance: wallet.balance
     });
-
   } catch (error) {
-    console.error('❌ Get transactions error:', error);
+    console.error('Error fetching balance:', error);
     res.status(500).json({
       success: false,
-      message: 'Error getting transaction history'
+      message: 'Failed to fetch balance'
     });
   }
 };
 
-exports.getTransactionsPaginated = async (req, res) => {
+
+/**
+ * GET /wallet/stats
+ * Get wallet statistics
+ */
+const getWalletStatsAPI = async (req, res) => {
   try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const page = parseInt(req.query.page) || 1;
-    const limit = 6; // ✅ 6 transactions per page as requested
-    const type = req.query.type || ''; // credit, debit, or empty for all
+    const userId = req.session.userId || req.user._id;
 
-    if (!userId) {
-      return res.status(401).json({
+    const stats = await walletService.getWalletStats(userId);
+
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch statistics'
+    });
+  }
+};
+
+
+/**
+ * GET /wallet/transaction/:transactionId
+ * Get specific transaction details
+ */
+const getTransaction = async (req, res) => {
+  try {
+    const userId = req.session.userId || req.user._id;
+    const { transactionId } = req.params;
+
+    const transaction = await walletService.getTransactionById(userId, transactionId);
+
+    if (!transaction) {
+      return res.status(404).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Transaction not found'
       });
-    }
-
-    // ✅ Use existing walletService method
-    const result = await walletService.getTransactionHistory(userId, page, limit);
-
-    // ✅ Apply client-side type filtering if needed
-    let transactions = result.transactions;
-    if (type && ['credit', 'debit'].includes(type)) {
-      transactions = result.transactions.filter(t => t.type === type);
     }
 
     res.json({
       success: true,
-      data: {
-        transactions: transactions,
-        currentPage: result.currentPage,
-        totalPages: result.totalPages,
-        totalTransactions: result.totalTransactions,
-        hasNextPage: result.hasNextPage,
-        hasPrevPage: result.hasPrevPage,
-        filters: { type }
-      }
+      transaction
     });
-
   } catch (error) {
-    console.error('❌ Get paginated transactions error:', error);
+    console.error('Error fetching transaction:', error);
     res.status(500).json({
       success: false,
-      message: 'Error loading transactions'
+      message: 'Failed to fetch transaction'
     });
   }
+};
+
+
+/**
+ * POST /wallet/debit (For order payments)
+ * Debit from wallet for orders
+ */
+const debitWallet = async (req, res) => {
+  try {
+    const userId = req.session.userId || req.user._id;
+    const { amount, orderId, description } = req.body;
+
+    // Validation
+    if (!amount || amount < 1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid amount'
+      });
+    }
+
+    // Check wallet balance
+    const wallet = await walletService.getWallet(userId);
+    if (!wallet || wallet.balance < amount) {
+      return res.status(400).json({
+        success: false,
+        message: 'Insufficient wallet balance'
+      });
+    }
+
+    // Add debit transaction
+    const result = await walletService.addTransaction(userId, {
+      type: 'debit',
+      amount,
+      description: description || `Payment for order ${orderId}`,
+      paymentMethod: 'payment_for_order',
+      orderId,
+      status: 'completed'
+    });
+
+    // Get updated wallet
+    const updatedWallet = await walletService.getWallet(userId);
+
+    res.json({
+      success: true,
+      message: 'Debited from wallet',
+      newBalance: updatedWallet.balance,
+      transactionId: result.transactionId
+    });
+  } catch (error) {
+    console.error('Error debiting wallet:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to debit wallet'
+    });
+  }
+};
+
+
+module.exports = {
+  renderWalletPage,
+  getPaginatedTransactionsAPI,
+  createRazorpayOrder: createRazorpayOrderHandler,
+  verifyRazorpayPayment,
+  addMoney,
+  getWalletBalance,
+  getWalletStatsAPI,
+  getTransaction,
+  debitWallet
 };

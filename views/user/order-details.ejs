@@ -49,28 +49,43 @@
           <!-- Order Actions -->
           <div class="order-actions-bar mb-4">
             <div class="d-flex gap-2 flex-wrap">
+              
+              <!-- ✅ NEW: Retry Payment Button - Only for PENDING orders with FAILED payment -->
+              <% if (order.status === 'Pending' && order.paymentStatus === 'Failed') { %>
+                <a href="/checkout/retry-payment/<%= order.orderId %>" class="btn btn-warning">
+                  <i class="bi bi-arrow-clockwise me-1"></i>Retry Payment
+                </a>
+              <% } %>
+              
+              <!-- Cancel Order Button -->
               <% if (order.status === 'Pending' || order.status === 'Processing') { %>
                 <button class="btn btn-outline-danger" onclick="cancelOrder('<%= order.orderId %>')">
                   <i class="bi bi-x-circle me-1"></i>Cancel Order
                 </button>
               <% } %>
               
+              <!-- Track Order Button -->
               <% if (order.status === 'Shipped') { %>
                 <button class="btn btn-outline-info" onclick="trackOrder('<%= order.orderId %>')">
                   <i class="bi bi-truck me-1"></i>Track Order
                 </button>
               <% } %>
               
+              <!-- Return Order Button -->
               <% if (order.status === 'Delivered') { %>
                 <button class="btn btn-outline-warning" onclick="returnOrder('<%= order.orderId %>')">
                   <i class="bi bi-arrow-return-left me-1"></i>Return Order
                 </button>
               <% } %>
               
-              <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
-                <i class="bi bi-download me-1"></i>Download Invoice
-              </button>
-              
+              <!-- Download Invoice Button - Only for DELIVERED orders -->
+              <% if (order.status === 'Delivered' && order.paymentStatus === 'Completed') { %>
+                <button class="btn btn-outline-success" onclick="downloadInvoice('<%= order.orderId %>')">
+                  <i class="bi bi-download me-1"></i>Download Invoice
+                </button>
+              <% } %>
+                           
+              <!-- Back to Orders Button -->
               <a href="/orders" class="btn btn-secondary">
                 <i class="bi bi-arrow-left me-1"></i>Back to Orders
               </a>
@@ -271,17 +286,32 @@
                 <span>Subtotal:</span>
                 <span>₹<%= order.subtotal.toLocaleString('en-IN') %></span>
               </div>
-              <% if (order.totalDiscount > 0) { %>
+              <% if (order.totalDiscount && order.totalDiscount > 0) { %>
                 <div class="summary-row text-success">
-                  <span>Discount:</span>
+                  <span><i class="bi bi-tag-fill me-1"></i>Product Discount</span>
                   <span>-₹<%= order.totalDiscount.toLocaleString('en-IN') %></span>
                 </div>
               <% } %>
+
+              <% if (order.couponDiscount && order.couponDiscount > 0) { %>
+                <div class="summary-row text-success">
+                  <span>
+                    <i class="bi bi-percent me-1"></i>Coupon Discount
+                    <% if (order.couponCode) { %>
+                      (<%= order.couponCode %>)
+                    <% } %>
+                  </span>
+                  <span>-₹<%= order.couponDiscount.toLocaleString('en-IN') %></span>
+                </div>
+              <% } %>
+
               <div class="summary-row">
-                <span>Shipping:</span>
-                <span><%= order.shipping === 0 ? 'Free' : '₹' + order.shipping.toLocaleString('en-IN') %></span>
+                <span>Shipping</span>
+                <span><%= order.shipping && order.shipping > 0 ? '₹' + order.shipping.toLocaleString('en-IN') : 'Free' %></span>
               </div>
+
               <hr class="my-3">
+
               <div class="summary-row total-row">
                 <span class="fw-bold">Total:</span>
                 <span class="fw-bold fs-5">₹<%= order.totalAmount.toLocaleString('en-IN') %></span>

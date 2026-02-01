@@ -6,18 +6,15 @@ const isAdmin = require('../../middlewares/isAdmin');
 // Admin route protection
 router.use(isAdmin);
 
+// Page render
 router.get('/', categoryController.listCategories);
 
-// router.post('/', categoryController.createCategory);
-// router.post('/:id/toggle', categoryController.toggleCategoryStatus);
-// router.put('/:id', categoryController.updateCategory); // ✅ matches method override from EJS
-// router.patch('/soft-delete/:id', categoryController.softDeleteCategory);
-
+// API routes
 router.get('/api', categoryController.apiCategories);
 router.get('/api/:id', categoryController.apiGetCategory);
-router.post('/api', categoryController.apiCreateCategory);
-router.patch('/api/:id', categoryController.apiUpdateCategory);
+router.post('/api/create', categoryController.apiCreateCategory);
+router.put('/api/:id', categoryController.apiUpdateCategory);
 router.patch('/api/:id/toggle', categoryController.apiToggleStatus);
-router.patch('/api/:id/soft-delete', categoryController.apiSoftDeleteCategory);
+router.delete('/api/:id', categoryController.apiSoftDeleteCategory);
 
 module.exports = router;

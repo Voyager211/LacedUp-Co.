@@ -1,8 +1,10 @@
-const { getHomepageProducts } = require('../../utils/product-sections');
+const { getHomepageProducts, getActiveCategories, getActiveBrands } = require('../../utils/product-sections');
 
-exports.showLanding = async (req, res) => {
+const showLanding = async (req, res) => {
   try {
     const { newArrivals, bestSellers } = await getHomepageProducts();
+    const categories = await getActiveCategories();
+    const brands = await getActiveBrands(); // Add this
 
     res.render('user/landing', {
       title: 'Welcome',
@@ -10,6 +12,8 @@ exports.showLanding = async (req, res) => {
       active: 'home',
       newArrivals,
       bestSellers,
+      categories,
+      brands, // Add this
       user: req.user || null
     });
   } catch (err) {
@@ -17,3 +21,7 @@ exports.showLanding = async (req, res) => {
     res.status(500).send('Failed to load landing page');
   }
 };
+
+module.exports = {
+  showLanding
+}

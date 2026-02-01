@@ -21,7 +21,7 @@ const REFUND_STATUS = {
 };
 
 // Get all return requests for admin
-exports.getAllReturns = async (req, res) => {
+const getAllReturns = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 6;
@@ -168,7 +168,7 @@ exports.getAllReturns = async (req, res) => {
   }
 };
 
-exports.getReturnsAPI = async (req, res) => {
+const getReturnsAPI = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
@@ -292,97 +292,8 @@ exports.getReturnsAPI = async (req, res) => {
 };
 
 
-
-
-// Get single return details
-// exports.getReturnDetails = async (req, res) => {
-//   try {
-//     const { returnId } = req.params;
-
-//     const returnRequest = await Return.findById(returnId)
-//       .populate({
-//         path: 'userId',
-//         select: 'name email phone profilePhoto'
-//       })
-//       .populate({
-//         path: 'productId',
-//         select: 'productName mainImage subImages regularPrice salePrice category brand'
-//       })
-//       .populate({
-//         path: 'processedBy',
-//         select: 'name email'
-//       })
-//       .lean();
-
-//     if (!returnRequest) {
-//       return res.status(404).render('error/404', {
-//         title: 'Return Request Not Found',
-//         message: 'The requested return could not be found.',
-//         error: {
-//           status: 404,
-//           stack: ''
-//         },
-//         layout: 'admin/layout'
-//       });
-//     }
-
-//     // Get the original order for additional context
-//     const order = await Order.findOne({ orderId: returnRequest.orderId })
-//       .populate({
-//         path: 'deliveryAddress.addressId',
-//         select: 'address'
-//       })
-//       .lean();
-
-//     // Extract specific delivery address if available
-//     if (order && order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
-//       const addressIndex = order.deliveryAddress.addressIndex;
-//       const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
-      
-//       if (specificAddress) {
-//         order.deliveryAddress = {
-//           ...order.deliveryAddress,
-//           ...specificAddress
-//         };
-//       }
-//     }
-
-//     // ✅ RENDER: EJS template instead of JSON response
-//     res.render('admin/return-details', {
-//       title: `Return Details - ${returnRequest._id}`,
-//       returnRequest,
-//       order,
-//       // Helper functions for status colors
-//       getReturnStatusColor: (status) => {
-//         const colorMap = {
-//           'pending': 'warning',
-//           'approved': 'success', 
-//           'rejected': 'danger',
-//           'completed': 'info',
-//           'cancelled': 'secondary'
-//         };
-//         return colorMap[status] || 'secondary';
-//       },
-//       layout: 'admin/layout'
-//     });
-
-
-//   } catch (error) {
-//     console.error('Error fetching return details:', error);
-//     res.status(500).render('admin/error', {
-//       title: 'Server Error',
-//       message: 'An error occurred while loading the return details.',
-//       error: {
-//         status: 500,
-//         stack: process.env.NODE_ENV === 'development' ? error.stack : ''
-//       },
-//       layout: 'admin/layout'
-//     });
-//   }
-// };
-
 // Approve return request
-exports.approveReturn = async (req, res) => {
+const approveReturn = async (req, res) => {
   try {
     const { returnId } = req.params;
     const { refundAmount, notes } = req.body;
@@ -415,7 +326,7 @@ exports.approveReturn = async (req, res) => {
 
 
 // Approving bulk order returns
-exports.approveOrderReturn = async (req, res) => {
+const approveOrderReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -446,7 +357,7 @@ exports.approveOrderReturn = async (req, res) => {
 };
 
 // Reject return request
-exports.rejectReturn = async (req, res) => {
+const rejectReturn = async (req, res) => {
   try {
     const { returnId } = req.params;
     const { rejectionReason } = req.body;
@@ -493,7 +404,7 @@ exports.rejectReturn = async (req, res) => {
 
 
 //Reject all return requests for an order
-exports.rejectOrderReturn = async (req, res) => {
+const rejectOrderReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { rejectionReason } = req.body;
@@ -535,7 +446,7 @@ exports.rejectOrderReturn = async (req, res) => {
 
 
 // Get return statistics for dashboard
-exports.getReturnStatistics = async (req, res) => {
+const getReturnStatistics = async (req, res) => {
   try {
     const today = new Date();
     const startOfDay = new Date(today.setHours(0, 0, 0, 0));
@@ -609,7 +520,7 @@ exports.getReturnStatistics = async (req, res) => {
 
 
 // Export returns data (CSV)
-exports.exportReturns = async (req, res) => {
+const exportReturns = async (req, res) => {
   try {
     const { startDate, endDate, status } = req.query;
     
@@ -682,3 +593,16 @@ exports.exportReturns = async (req, res) => {
     });
   }
 };
+
+
+module.exports = {
+  getAllReturns,
+  getReturnsAPI,
+  approveReturn,
+  approveOrderReturn,
+  rejectReturn,
+  rejectOrderReturn,
+  getReturnStatistics,
+  exportReturns,
+  
+}

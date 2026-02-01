@@ -1,0 +1,1224 @@
+<style>
+/* ========= SALES REPORT SPECIFIC STYLES ========= */
+.sales-report-container {
+  padding: 2rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  line-height: 1.6;
+}
+
+.page-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.page-title {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.page-subtitle {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0.5rem 0 0 0;
+}
+
+.export-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: white;
+}
+
+.pdf-btn {
+  background-color: #ef4444;
+}
+
+.pdf-btn:hover {
+  background-color: #dc2626;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.excel-btn {
+  background-color: #10b981;
+}
+
+.excel-btn:hover {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+/* Filters Card */
+.filters-card {
+  background: #f8f9fa;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+}
+
+.filters-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filters-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.filter-actions-row {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  align-items: center;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.filter-label {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.form-select, .form-control {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  transition: all 0.2s ease;
+  background-color: white;
+}
+
+.form-select:focus, .form-control:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.apply-filters-btn {
+  background-color: #111827;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.apply-filters-btn:hover {
+  background-color: #374151;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.2);
+}
+
+/* Remove Filters Button - Red */
+.remove-filters-btn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 0.6rem 1.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.remove-filters-btn:hover {
+  background-color: #dc2626;
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.remove-filters-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Stats Section */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+  border: 1px solid #f3f4f6;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.revenue-card { 
+  background: linear-gradient(to bottom right, #ffffff, #f0fdf4);
+}
+.orders-card { 
+  background: linear-gradient(to bottom right, #ffffff, #eff6ff);
+}
+.average-card { 
+  background: linear-gradient(to bottom right, #ffffff, #fffbeb);
+}
+.discount-card { 
+  background: linear-gradient(to bottom right, #ffffff, #fef2f2);
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 0.5rem;
+}
+
+.stat-label {
+  color: #6b7280;
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Analysis Card */
+.analysis-card, .order-details-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.card-subtitle {
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin: 0.25rem 0 0 0;
+}
+
+/* Modern Table */
+.table-wrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+}
+
+.modern-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.95rem;
+}
+
+.modern-table thead th {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+  padding: 1.25rem 1rem;
+  border-bottom: 2px solid #e9ecef;
+  text-align: left;
+}
+
+.modern-table tbody td {
+  padding: 1.5rem 1rem;
+  border-bottom: 1px solid #f1f3f4;
+  vertical-align: middle;
+}
+
+.modern-table tbody tr {
+  transition: all 0.2s ease;
+  height: auto;
+}
+
+.modern-table tbody tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+.modern-table tbody tr:hover {
+  background-color: #f8f9fa;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Row Number Styling */
+.row-number {
+  text-align: center;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 70px;
+  font-weight: 700;
+  color: #6c757d;
+}
+
+/* Date Cell */
+.date-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #4b5563;
+}
+
+/* Order Badge */
+.order-badge {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  display: inline-block;
+}
+
+.order-badge.total {
+  background-color: #111827;
+}
+
+/* Order Link - Bolder and Darker */
+.order-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.2s ease;
+}
+
+.order-link:hover {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+/* Amount Cell - Bolder */
+.amount-cell {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.amount-cell.positive { 
+  color: #10b981; 
+}
+
+.amount-cell.discount { 
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.amount-cell.net { 
+  color: #111827; 
+}
+
+.amount-cell.total { 
+  color: #111827; 
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.amount-cell.final { 
+  color: #10b981; 
+  font-weight: 700;
+}
+
+/* Total Row */
+.total-row {
+  background-color: #f9fafb;
+  font-weight: 700;
+}
+
+.total-row td {
+  border-top: 2px solid #e5e7eb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.total-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1rem;
+  color: #111827;
+}
+
+/* No Data */
+.no-data {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6b7280;
+}
+
+.no-data-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  font-size: 1.1rem;
+}
+
+.no-data-content i {
+  font-size: 3rem;
+  color: #e5e7eb;
+}
+
+/* Pagination */
+.pagination-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+.pagination-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn {
+  padding: 0.5rem 1rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pagination-btn:hover {
+  background-color: #111827;
+  border-color: #111827;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.15);
+}
+
+.pagination-numbers {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.pagination-number {
+  padding: 0.5rem 0.75rem;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  color: #374151;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  min-width: 40px;
+  text-align: center;
+}
+
+.pagination-number:hover {
+  background-color: #f9fafb;
+  border-color: #111827;
+}
+
+.pagination-number.active {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: white;
+}
+
+.records-info {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.records-count {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .export-actions {
+    width: 100%;
+  }
+  
+  .export-btn {
+    flex: 1;
+    justify-content: center;
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .table-wrapper {
+    overflow-x: scroll;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 1.75rem;
+  }
+
+  .filter-actions-row {
+    flex-direction: column;
+    width: 100%;
+  }
+  
+  .apply-filters-btn,
+  .remove-filters-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Loading Animation */
+.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Focus states for accessibility */
+.form-select:focus-visible,
+.form-control:focus-visible,
+.apply-filters-btn:focus-visible,
+.export-btn:focus-visible,
+.pagination-btn:focus-visible,
+.pagination-number:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+</style>
+
+<div class="sales-report-container">
+  <!-- Breadcrumbs -->
+  <%- include('./partials/breadcrumbs', {
+    breadcrumbs: [
+      { label: 'Dashboard', url: '/admin/dashboard', icon: 'house-door' },
+      { label: 'Sales Report', icon: 'graph-up' }
+    ]
+  }) %> 
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1 class="page-title">Sales Report</h1>
+        <p class="page-subtitle">Comprehensive sales analytics and performance insights</p>
+      </div>
+      <div class="header-right">
+        <div class="export-actions">
+          <button type="button" class="export-btn pdf-btn" id="exportPDF">
+            <i class="bi bi-file-pdf"></i>
+            <span>Export PDF</span>
+          </button>
+          <button type="button" class="export-btn excel-btn" id="exportExcel">
+            <i class="bi bi-file-excel"></i>
+            <span>Export Excel</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error Display -->
+  <% if (typeof error !== 'undefined' && error) { %>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+      <i class="bi bi-exclamation-triangle"></i>
+      <strong>Error:</strong> <%= error %>
+      <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+  <% } %>
+
+  <!-- Filters Section -->
+  <div class="filters-card">
+    <h3 class="filters-title">
+      <i class="bi bi-funnel"></i>
+      Filter Options
+    </h3>
+    <form id="filterForm" method="GET" action="/admin/sales-report">
+      <div class="filters-grid">
+        <div class="filter-group">
+          <label class="filter-label">Time Period</label>
+          <select class="form-select" name="timePeriod" id="timePeriod">
+            <option value="monthly" <%= filters.timePeriod === 'monthly' ? 'selected' : '' %>>Monthly (Last 30 Days)</option>
+            <option value="weekly" <%= filters.timePeriod === 'weekly' ? 'selected' : '' %>>Weekly (Last 7 Days)</option>
+            <option value="yearly" <%= filters.timePeriod === 'yearly' ? 'selected' : '' %>>Yearly (Last 365 Days)</option>
+            <option value="custom" <%= filters.timePeriod === 'custom' ? 'selected' : '' %>>Custom Date Range</option>
+          </select>
+        </div>
+        <div class="filter-group custom-date-group" id="customDateGroup" style="display: <%= filters.timePeriod === 'custom' ? 'block' : 'none' %>;">
+          <label class="filter-label">From Date</label>
+          <input type="date" class="form-control" name="startDate" id="startDate" 
+                value="<%= filters.startDate || '' %>" 
+                max="<%= new Date().toISOString().split('T')[0] %>">
+        </div>
+        <div class="filter-group custom-date-group" id="customDateGroup2" style="display: <%= filters.timePeriod === 'custom' ? 'block' : 'none' %>;">
+          <label class="filter-label">To Date</label>
+          <input type="date" class="form-control" name="endDate" id="endDate" 
+                value="<%= filters.endDate || '' %>" 
+                max="<%= new Date().toISOString().split('T')[0] %>">
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Payment Method</label>
+          <select class="form-select" name="paymentMethod" id="paymentMethod">
+            <option value="all" <%= filters.paymentMethod === 'all' ? 'selected' : '' %>>All Methods</option>
+            <option value="upi" <%= filters.paymentMethod === 'upi' ? 'selected' : '' %>>UPI</option>
+            <option value="card" <%= filters.paymentMethod === 'card' ? 'selected' : '' %>>Card</option>
+            <option value="wallet" <%= filters.paymentMethod === 'wallet' ? 'selected' : '' %>>Wallet</option>
+            <option value="cod" <%= filters.paymentMethod === 'cod' ? 'selected' : '' %>>Cash on Delivery</option>
+            <option value="netbanking" <%= filters.paymentMethod === 'netbanking' ? 'selected' : '' %>>Net Banking</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Order Status</label>
+          <select class="form-select" name="orderStatus" id="orderStatus">
+            <option value="all" <%= filters.orderStatus === 'all' ? 'selected' : '' %>>All Statuses</option>
+            <option value="Delivered" <%= filters.orderStatus === 'Delivered' ? 'selected' : '' %>>Delivered</option>
+            <option value="Cancelled" <%= filters.orderStatus === 'Cancelled' ? 'selected' : '' %>>Cancelled</option>
+            <option value="Returned" <%= filters.orderStatus === 'Returned' ? 'selected' : '' %>>Returned</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- Buttons outside grid, below filters -->
+      <div class="filter-actions-row">
+        <button type="submit" class="apply-filters-btn">
+          <i class="bi bi-search"></i>
+          Apply Filters
+        </button>
+        <button type="button" class="remove-filters-btn" id="removeFiltersBtn">
+          <i class="bi bi-x-circle"></i>
+          Remove Filters
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="stats-section">
+    <div class="stats-grid">
+      <div class="stat-card revenue-card">
+        <div class="stat-content">
+          <div class="stat-value">₹<%= salesStats.totalRevenue ? salesStats.totalRevenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div>
+          <div class="stat-label">Total Revenue</div>
+        </div>
+      </div>
+
+      <div class="stat-card orders-card">
+        <div class="stat-content">
+          <div class="stat-value"><%= salesStats.totalOrders || 0 %></div>
+          <div class="stat-label">Total Orders</div>
+        </div>
+      </div>
+
+      <div class="stat-card average-card">
+        <div class="stat-content">
+          <div class="stat-value">₹<%= salesStats.averageOrder ? salesStats.averageOrder.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div>
+          <div class="stat-label">Average Order Value</div>
+        </div>
+      </div>
+
+      <div class="stat-card discount-card">
+        <div class="stat-content">
+          <div class="stat-value">₹<%= salesStats.totalDiscount ? salesStats.totalDiscount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div>
+          <div class="stat-label">Total Discounts</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sales Analysis Section -->
+  <div class="analysis-card">
+    <div class="card-header">
+      <div class="header-left">
+        <h3 class="card-title">
+          <i class="bi bi-graph-up"></i>
+          Sales Analysis
+        </h3>
+        <p class="card-subtitle">Daily breakdown of sales performance</p>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th>Date/Period</th>
+            <th>Orders</th>
+            <th>Revenue</th>
+            <th>Discount</th>
+            <th>Net Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (dailyAnalysis && dailyAnalysis.length > 0) { %>
+            <% dailyAnalysis.forEach(function(item) { %>
+              <tr>
+                <td>
+                  <div class="date-cell">
+                    <i class="bi bi-calendar-day"></i>
+                    <span><%= item.date %></span>
+                  </div>
+                </td>
+                <td>
+                  <span class="order-badge"><%= item.orders %></span>
+                </td>
+                <td>
+                  <div class="amount-cell positive">
+                    ₹<%= item.revenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+                <td>
+                  <div class="amount-cell discount">
+                    -₹<%= item.discount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+                <td>
+                  <div class="amount-cell net">
+                    ₹<%= item.netRevenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+            <tr class="total-row">
+              <td>
+                <div class="total-label">
+                  <i class="bi bi-calculator"></i>
+                  <strong>TOTAL</strong>
+                </div>
+              </td>
+              <td><span class="order-badge total"><%= salesStats.totalOrders || 0 %></span></td>
+              <td><div class="amount-cell total">₹<%= salesStats.totalRevenue ? salesStats.totalRevenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div></td>
+              <td><div class="amount-cell total discount">-₹<%= salesStats.totalDiscount ? salesStats.totalDiscount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div></td>
+              <td><div class="amount-cell total">₹<%= salesStats.netRevenue ? salesStats.netRevenue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) : '0.00' %></div></td>
+            </tr>
+          <% } else { %>
+            <tr>
+              <td colspan="5" class="no-data">
+                <div class="no-data-content">
+                  <i class="bi bi-graph-down"></i>
+                  <span>No data available for the selected period</span>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Order Details Section -->
+  <div class="order-details-card" id="orderDetailsCard">
+    <div class="card-header">
+      <div class="header-left">
+        <h3 class="card-title">
+          <i class="bi bi-list-ul"></i>
+          Order Details
+        </h3>
+        <p class="card-subtitle">Detailed view of individual orders</p>
+      </div>
+      <div class="header-right">
+        <div class="records-info">
+          <span class="records-count"><%= pagination.totalOrders %> orders</span>
+          <span class="page-info">Page <%= pagination.currentPage %> of <%= pagination.totalPages %></span>
+        </div>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table class="modern-table">
+        <thead>
+          <tr>
+            <th style="width: 50px;">#</th>
+            <th>Order ID</th>
+            <th>Date</th>
+            <th>Payment</th>
+            <th>Status</th>
+            <th>Amount</th>
+            <th>Discount</th>
+            <th>Final Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (orders && orders.length > 0) { %>
+            <% 
+              const itemsPerPage = pagination.itemsPerPage || 10;
+              const startNumber = (pagination.currentPage - 1) * itemsPerPage + 1;
+            %>
+            <% orders.forEach(function(order, index) { %>
+              <tr>
+                <td>
+                  <div class="row-number">
+                    <span class="fw-bold text-black"><%= startNumber + index %></span>
+                  </div>
+                </td>
+                <td>
+                  <a href="/admin/orders/<%= order.orderId %>" class="order-link">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                    <%= order.orderId %>
+                  </a>
+                </td>
+                <td>
+                  <div class="date-cell">
+                    <i class="bi bi-calendar"></i>
+                    <span><%= order.date %></span>
+                  </div>
+                </td>
+                <td>
+                  <span class="payment-method-badge-table <%= (order.paymentMethod || 'unknown').toLowerCase() %>">
+                    <%= (order.paymentMethod || 'Unknown').toUpperCase() %>
+                  </span>
+                </td>
+                <td>
+                  <span class="order-status-badge-table <%= (order.status || 'pending').toLowerCase().replace(/\s+/g, '-') %>">
+                    <%= (order.status || 'Pending') %>
+                  </span>
+                </td>
+                <td>
+                  <div class="amount-cell">
+                    ₹<%= order.amount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+                <td>
+                  <div class="amount-cell discount">
+                    -₹<%= order.discount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+                <td>
+                  <div class="amount-cell final">
+                    ₹<%= order.finalAmount.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
+                  </div>
+                </td>
+              </tr>
+            <% }); %>
+          <% } else { %>
+            <tr>
+              <td colspan="8" class="no-data">
+                <div class="no-data-content">
+                  <i class="bi bi-inbox"></i>
+                  <span>No orders found for the selected criteria</span>
+                </div>
+              </td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+ 
+    <!-- Pagination -->
+    <% if (pagination.totalPages >= 1) { %>
+      <div class="pagination-wrapper">
+        <div class="pagination-container">
+          <% 
+            let queryParams = `timePeriod=${filters.timePeriod}&paymentMethod=${filters.paymentMethod}&orderStatus=${filters.orderStatus}`;
+            if (filters.timePeriod === 'custom' && filters.startDate && filters.endDate) {
+              queryParams += `&startDate=${filters.startDate}&endDate=${filters.endDate}`;
+            }
+          %>
+          <% if (pagination.hasPrev) { %>
+            <a href="?page=<%= pagination.currentPage - 1 %>&<%= queryParams %>" class="pagination-btn">
+              <i class="bi bi-chevron-left"></i>
+              Previous
+            </a>
+          <% } %>
+          <div class="pagination-numbers">
+            <% for (let i = Math.max(1, pagination.currentPage - 2); i <= Math.min(pagination.totalPages, pagination.currentPage + 2); i++) { %>
+              <a href="?page=<%= i %>&<%= queryParams %>" 
+                 class="pagination-number <%= i === pagination.currentPage ? 'active' : '' %>">
+                <%= i %>
+              </a>
+            <% } %>
+          </div>
+          <% if (pagination.hasNext) { %>
+            <a href="?page=<%= pagination.currentPage + 1 %>&<%= queryParams %>" class="pagination-btn">
+              Next
+              <i class="bi bi-chevron-right"></i>
+            </a>
+          <% } %>
+        </div>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+// ==================== GLOBAL STATE ====================
+let currentFilters = {
+  timePeriod: '<%= filters.timePeriod %>',
+  paymentMethod: '<%= filters.paymentMethod %>',
+  orderStatus: '<%= filters.orderStatus %>',
+  startDate: '<%= filters.startDate || "" %>',
+  endDate: '<%= filters.endDate || "" %>',
+  page: <%= pagination.currentPage %>
+};
+
+// ==================== UTILITY FUNCTIONS ====================
+function buildQueryString(params) {
+  const queryParams = new URLSearchParams();
+  Object.keys(params).forEach(key => {
+    if (params[key] && params[key] !== 'all') {
+      queryParams.append(key, params[key]);
+    }
+  });
+  return queryParams.toString();
+}
+
+// ==================== EXPORT FUNCTIONALITY ====================
+document.getElementById('exportPDF').addEventListener('click', async function() {
+  const btn = this;
+  const originalHTML = btn.innerHTML;
+  
+  try {
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i><span>Generating...</span>';
+    btn.disabled = true;
+    
+    const queryString = buildQueryString(currentFilters);
+    const exportUrl = `/admin/sales-report/export-pdf?${queryString}`;
+    
+    window.open(exportUrl, '_blank');
+    
+    setTimeout(() => {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    }, 2000);
+  } catch (error) {
+    console.error('PDF Export Error:', error);
+    alert('Failed to export PDF. Please try again.');
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('exportExcel').addEventListener('click', async function() {
+  const btn = this;
+  const originalHTML = btn.innerHTML;
+  
+  try {
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i><span>Generating...</span>';
+    btn.disabled = true;
+    
+    const queryString = buildQueryString(currentFilters);
+    const exportUrl = `/admin/sales-report/export-excel?${queryString}`;
+    
+    window.open(exportUrl, '_blank');
+    
+    setTimeout(() => {
+      btn.innerHTML = originalHTML;
+      btn.disabled = false;
+    }, 2000);
+  } catch (error) {
+    console.error('Excel Export Error:', error);
+    alert('Failed to export Excel. Please try again.');
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+  }
+});
+
+// ==================== REMOVE FILTERS FUNCTIONALITY ====================
+document.getElementById('removeFiltersBtn').addEventListener('click', async function(e) {
+  e.preventDefault();
+  
+  const btn = this;
+  const originalHTML = btn.innerHTML;
+  
+  try {
+    btn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i>Removing...';
+    btn.disabled = true;
+    
+    currentFilters = {
+      timePeriod: 'monthly',
+      paymentMethod: 'all',
+      orderStatus: 'all',
+      startDate: '',
+      endDate: '',
+      page: 1
+    };
+    
+    document.getElementById('timePeriod').value = 'monthly';
+    document.getElementById('paymentMethod').value = 'all';
+    document.getElementById('orderStatus').value = 'all';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    
+    document.querySelectorAll('.custom-date-group').forEach(group => {
+      group.style.display = 'none';
+    });
+    
+    await fetchAndUpdateReport(currentFilters);
+    
+  } catch (error) {
+    console.error('Remove Filters Error:', error);
+    alert('Failed to remove filters. Please try again.');
+  } finally {
+    btn.innerHTML = originalHTML;
+    btn.disabled = false;
+  }
+});
+
+// ==================== FILTER FUNCTIONALITY ====================
+document.getElementById('timePeriod').addEventListener('change', function() {
+  const customDateGroups = document.querySelectorAll('.custom-date-group');
+  const isCustom = this.value === 'custom';
+  
+  customDateGroups.forEach(function(group) {
+    if (isCustom) {
+      group.style.display = 'block';
+      const dateInputs = group.querySelectorAll('input[type="date"]');
+      dateInputs.forEach(input => input.required = true);
+    } else {
+      group.style.display = 'none';
+      const dateInputs = group.querySelectorAll('input[type="date"]');
+      dateInputs.forEach(input => {
+        input.required = false;
+        if (!isCustom) input.value = '';
+      });
+    }
+  });
+});
+
+document.getElementById('filterForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  
+  const timePeriod = document.getElementById('timePeriod').value;
+  const startDate = document.getElementById('startDate').value;
+  const endDate = document.getElementById('endDate').value;
+  const paymentMethod = document.getElementById('paymentMethod').value;
+  const orderStatus = document.getElementById('orderStatus').value;
+  const applyBtn = document.querySelector('.apply-filters-btn');
+  const originalBtnHTML = applyBtn.innerHTML;
+  
+  if (timePeriod === 'custom') {
+    if (!startDate || !endDate) {
+      alert('Please select both start and end dates for custom date range.');
+      return false;
+    }
+    if (new Date(startDate) > new Date(endDate)) {
+      alert('Start date cannot be later than end date.');
+      return false;
+    }
+  }
+  
+  currentFilters = {
+    timePeriod,
+    paymentMethod,
+    orderStatus,
+    startDate,
+    endDate,
+    page: 1
+  };
+  
+  applyBtn.innerHTML = '<i class="bi bi-arrow-clockwise fa-spinner"></i>Applying...';
+  applyBtn.disabled = true;
+  
+  try {
+    await fetchAndUpdateReport(currentFilters);
+  } catch (error) {
+    console.error('Filter Error:', error);
+    alert('Failed to apply filters. Please try again.');
+  } finally {
+    applyBtn.innerHTML = originalBtnHTML;
+    applyBtn.disabled = false;
+  }
+});
+
+// ==================== PAGINATION FUNCTIONALITY ====================
+document.addEventListener('click', async function(e) {
+  const paginationLink = e.target.closest('.pagination-btn, .pagination-number');
+  
+  if (paginationLink && !paginationLink.classList.contains('active')) {
+    e.preventDefault();
+    
+    const href = paginationLink.getAttribute('href');
+    if (!href) return;
+    
+    const urlParams = new URLSearchParams(href.split('?')[1]);
+    const page = parseInt(urlParams.get('page')) || 1;
+    
+    currentFilters.page = page;
+    
+    try {
+      await fetchAndUpdateReport(currentFilters);
+      document.getElementById('orderDetailsCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } catch (error) {
+      console.error('Pagination Error:', error);
+      alert('Failed to load page. Please try again.');
+    }
+  }
+});
+
+// ==================== FETCH AND UPDATE REPORT ====================
+async function fetchAndUpdateReport(filters) {
+  const queryString = buildQueryString(filters);
+  const url = `/admin/sales-report?${queryString}`;
+  
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to fetch report data');
+    }
+    
+    const html = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    
+    updateStatsCards(doc);
+    updateSalesAnalysis(doc);
+    updateOrderDetails(doc);
+    updatePagination(doc);
+    
+    window.history.pushState({}, '', url);
+    
+  } catch (error) {
+    console.error('Fetch Error:', error);
+    throw error;
+  }
+}
+
+// ==================== UPDATE FUNCTIONS ====================
+function updateStatsCards(doc) {
+  const statsSection = document.querySelector('.stats-section');
+  const newStatsSection = doc.querySelector('.stats-section');
+  
+  if (statsSection && newStatsSection) {
+    statsSection.innerHTML = newStatsSection.innerHTML;
+  }
+}
+
+function updateSalesAnalysis(doc) {
+  const analysisCard = document.querySelector('.analysis-card .table-wrapper');
+  const newAnalysisCard = doc.querySelector('.analysis-card .table-wrapper');
+  
+  if (analysisCard && newAnalysisCard) {
+    analysisCard.innerHTML = newAnalysisCard.innerHTML;
+  }
+}
+
+function updateOrderDetails(doc) {
+  const ordersTable = document.querySelector('.order-details-card .table-wrapper');
+  const newOrdersTable = doc.querySelector('.order-details-card .table-wrapper');
+  
+  if (ordersTable && newOrdersTable) {
+    ordersTable.innerHTML = newOrdersTable.innerHTML;
+  }
+  
+  const recordsInfo = document.querySelector('.order-details-card .records-info');
+  const newRecordsInfo = doc.querySelector('.order-details-card .records-info');
+  if (recordsInfo && newRecordsInfo) {
+    recordsInfo.innerHTML = newRecordsInfo.innerHTML;
+  }
+}
+
+function updatePagination(doc) {
+  // Target specifically the order details card by ID
+  const orderDetailsCard = document.getElementById('orderDetailsCard');
+  
+  // Remove any existing pagination in order details card
+  const existingPagination = orderDetailsCard ? orderDetailsCard.querySelector('.pagination-wrapper') : null;
+  if (existingPagination) {
+    existingPagination.remove();
+  }
+  
+  // Get new pagination from the parsed document
+  const newPaginationWrapper = doc.querySelector('#orderDetailsCard .pagination-wrapper');
+  
+  // Append new pagination only to order details card
+  if (newPaginationWrapper && orderDetailsCard) {
+    orderDetailsCard.appendChild(newPaginationWrapper.cloneNode(true));
+  }
+}
+
+// ==================== INITIALIZATION ====================
+console.log('Sales Report: Pagination scoped to order details only ✅');
+</script>

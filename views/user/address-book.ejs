@@ -23,7 +23,7 @@
           <div class="header-content">
             <h2><i class="bi bi-geo-alt me-2"></i> Address Book</h2>
             <% if (typeof totalAddresses !== 'undefined' && totalAddresses > 0) { %>
-              <p class="text-muted">Manage your delivery addresses</p>
+              <p class="text-muted">Manage your delivery addresses (<span id="addressCount"><%= totalAddresses %></span>)</p>
             <% } else { %>
               <p class="text-muted">Manage your delivery addresses</p>
             <% } %>
@@ -33,7 +33,7 @@
           </button>
         </div>
 
-        <!-- ✅ ADDRESSES GRID: Updated for pagination -->
+        <!-- ADDRESSES GRID -->
         <div class="addresses-grid" id="addressesGrid">
           <% if (typeof addresses !== 'undefined' && addresses.length > 0) { %>
             <% addresses.forEach(function(address) { %>
@@ -91,15 +91,37 @@
           <% } %>
         </div>
 
-        <!-- ✅ PAGINATION: Using your existing pagination partial -->
-        <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
-          <div class="pagination-wrapper">
-            <%- include('partials/pagination', {
-              currentPage: currentPage,
-              totalPages: totalPages
-            }) %>
+        <!-- ✅ UPDATED LOAD MORE SECTION -->
+        <% if (typeof totalAddresses !== 'undefined' && totalAddresses > 2) { %>
+          <div id="loadMoreContainer" class="load-more-container text-center">
+            <!-- Load More Link (Transparent span) -->
+            <span 
+              id="loadMoreBtn" 
+              class="load-more-link"
+              style="<%= currentPage >= totalPages ? 'display: none;' : '' %>"
+            >
+              <span class="load-more-text">Load More Addresses</span>
+              <i class="bi bi-chevron-down ms-2"></i>
+            </span>
+            
+            <!-- All Loaded Message (Italic text) -->
+            <span 
+              id="allLoadedMessage" 
+              class="all-loaded-text" 
+              style="<%= currentPage < totalPages ? 'display: none;' : '' %>"
+            >
+              <i class="bi bi-check-circle me-2"></i>All addresses loaded
+            </span>
           </div>
         <% } %>
+
+        <!-- Loading Spinner -->
+        <div id="loadingSpinner" class="text-center py-4" style="display: none;">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p class="text-muted mt-2">Loading addresses...</p>
+        </div>
 
       </div>
     </div>
@@ -300,13 +322,6 @@
   border-color: #dc3545;
 }
 
-/* ✅ PAGINATION WRAPPER: Consistent with wallet/orders */
-.pagination-wrapper {
-  padding: 1.5rem 2rem;
-  border-top: 1px solid #e9ecef;
-  background: #f8f9fa;
-}
-
 /* Modal Styles */
 .modal-content {
   border: none;
@@ -367,12 +382,10 @@
   transform: none;
 }
 
-/* Prevent body scroll when modal is open */
 body.modal-open {
   overflow: hidden;
 }
 
-/* Smooth transitions for address cards */
 .address-card {
   transition: all 0.3s ease;
 }
@@ -381,11 +394,91 @@ body.modal-open {
   transition: opacity 0.3s ease;
 }
 
-/* Loading state for address grid */
 .addresses-grid.loading {
   opacity: 0.6;
   pointer-events: none;
 }
+
+/* ==================== ✅ UPDATED LOAD MORE STYLES ==================== */
+.load-more-container {
+  margin-top: 2rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid #e9ecef;
+}
+
+/* Load More Link - Transparent with black text */
+.load-more-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  user-select: none;
+  padding: 8px 0;
+}
+
+.load-more-link:hover {
+  color: #dc3545;
+}
+
+.load-more-link:hover i {
+  animation: bounce 0.6s ease-in-out infinite;
+}
+
+.load-more-link.loading {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.load-more-link i {
+  transition: transform 0.3s ease;
+  font-size: 14px;
+}
+
+/* All Loaded Message - Black italic text */
+.all-loaded-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #000;
+  font-size: 15px;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.all-loaded-text i {
+  color: #28a745;
+  font-style: normal;
+}
+
+/* Bounce animation for chevron */
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(4px); }
+}
+
+/* ==================== SLIDE-IN ANIMATION ==================== */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.address-card-new {
+  animation: slideInFromBottom 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.address-card-new:nth-child(1) { animation-delay: 0s; }
+.address-card-new:nth-child(2) { animation-delay: 0.1s; }
 </style>
 
 <script>
@@ -399,13 +492,12 @@ class GeoapifyAddressForm {
   }
 
   initializeAutocomplete() {
-    // Create autocomplete for address input
     const addressInput = document.getElementById('addressDetails');
     if (addressInput && typeof GeocoderAutocomplete !== 'undefined') {
       try {
         this.autocomplete = new GeocoderAutocomplete(addressInput, this.apiKey, {
           placeholder: 'Start typing your address...',
-          type: 'locality', // Changed from 'address' to 'locality' for better results
+          type: 'locality',
           lang: 'en',
           countries: ['in'],
           limit: 5,
@@ -414,18 +506,15 @@ class GeoapifyAddressForm {
           skipDetails: false
         });
 
-        // Handle address selection
         this.autocomplete.on('select', (location) => {
           console.log('Address selected:', location);
           this.fillAddressForm(location);
         });
 
-        // Handle suggestions
         this.autocomplete.on('suggestions', (suggestions) => {
           console.log('Address suggestions received:', suggestions);
         });
 
-        // Handle input events
         this.autocomplete.on('input', (query) => {
           console.log('Address input:', query);
         });
@@ -433,7 +522,6 @@ class GeoapifyAddressForm {
         console.log('✅ Geoapify autocomplete initialized successfully');
       } catch (error) {
         console.error('❌ Error initializing Geoapify autocomplete:', error);
-        // Fallback to manual search
         this.setupManualSearch();
       }
     } else {
@@ -478,7 +566,6 @@ class GeoapifyAddressForm {
   }
 
   showManualSuggestions(suggestions) {
-    // Remove existing suggestions
     const existingSuggestions = document.querySelector('.manual-address-suggestions');
     if (existingSuggestions) {
       existingSuggestions.remove();
@@ -532,12 +619,10 @@ class GeoapifyAddressForm {
       suggestionsContainer.appendChild(suggestionItem);
     });
 
-    // Position the suggestions container
     const inputContainer = addressInput.parentNode;
     inputContainer.style.position = 'relative';
     inputContainer.appendChild(suggestionsContainer);
 
-    // Hide suggestions when clicking outside
     document.addEventListener('click', (e) => {
       if (!inputContainer.contains(e.target)) {
         suggestionsContainer.remove();
@@ -548,7 +633,6 @@ class GeoapifyAddressForm {
   fillAddressForm(location) {
     const properties = location.properties;
 
-    // Auto-fill form fields
     if (properties.state) {
       document.getElementById('state').value = properties.state;
       this.updateDistricts(properties.state, properties.county);
@@ -563,18 +647,15 @@ class GeoapifyAddressForm {
     }
 
     if (properties.county) {
-      // Wait for districts to load, then select
       setTimeout(() => {
         document.getElementById('district').value = properties.county;
       }, 100);
     }
 
-    // Clear any validation errors
     this.clearValidationErrors();
   }
 
   setupEventListeners() {
-    // Pincode-based location fetching as fallback
     const pincodeInput = document.getElementById('pincode');
     if (pincodeInput) {
       pincodeInput.addEventListener('blur', async (e) => {
@@ -585,7 +666,6 @@ class GeoapifyAddressForm {
       });
     }
 
-    // Current location button
     this.addCurrentLocationButton();
   }
 
@@ -604,10 +684,8 @@ class GeoapifyAddressForm {
         const location = data.results[0];
         console.log('Auto-filling from pincode:', location);
         
-        // Auto-fill the form with pincode data
         if (location.state) {
           const stateSelect = document.getElementById('state');
-          // Try to match state name to our dropdown options
           const stateOptions = Array.from(stateSelect.options);
           const matchingState = stateOptions.find(option => 
             option.textContent.toLowerCase().includes(location.state.toLowerCase()) ||
@@ -618,17 +696,14 @@ class GeoapifyAddressForm {
             stateSelect.value = matchingState.value;
             console.log(`✅ State set to: ${matchingState.textContent}`);
             
-            // Call the updateDistricts function directly (defined in addresses partial)
             if (typeof updateDistricts === 'function') {
               updateDistricts(matchingState.value);
               console.log(`✅ Districts loaded for state: ${matchingState.textContent}`);
               
-              // Wait for districts to load, then auto-select district
               setTimeout(() => {
                 this.autoSelectDistrict(location.county || location.city);
               }, 300);
             } else {
-              // Fallback: trigger change event
               stateSelect.dispatchEvent(new Event('change'));
               setTimeout(() => {
                 this.autoSelectDistrict(location.county || location.city);
@@ -637,7 +712,6 @@ class GeoapifyAddressForm {
           }
         }
 
-        // Auto-fill city
         if (location.county) {
           document.getElementById('city').value = location.county;
           console.log(`✅ City set to: ${location.county}`);
@@ -646,7 +720,6 @@ class GeoapifyAddressForm {
           console.log(`✅ City set to: ${location.city}`);
         }
 
-        // Show success message
         const pincodeInput = document.getElementById('pincode');
         pincodeInput.style.borderColor = '#28a745';
         setTimeout(() => {
@@ -656,7 +729,6 @@ class GeoapifyAddressForm {
         this.clearValidationErrors();
       } else {
         console.warn('No results found for pincode:', pincode);
-        // Show warning for invalid pincode
         const pincodeInput = document.getElementById('pincode');
         pincodeInput.style.borderColor = '#ffc107';
         setTimeout(() => {
@@ -665,7 +737,6 @@ class GeoapifyAddressForm {
       }
     } catch (error) {
       console.error('Error fetching location by pincode:', error);
-      // Show error state
       const pincodeInput = document.getElementById('pincode');
       pincodeInput.style.borderColor = '#dc3545';
       setTimeout(() => {
@@ -688,19 +759,15 @@ class GeoapifyAddressForm {
 
     console.log(`🔍 Looking for district: ${districtName}`);
     
-    // Try to find matching district option
     const districtOptions = Array.from(districtSelect.options);
     const matchingDistrict = districtOptions.find(option => {
       const optionText = option.textContent.toLowerCase();
       const searchText = districtName.toLowerCase();
       
-      // Try exact match first
       if (optionText === searchText) return true;
       
-      // Try partial matches
       if (optionText.includes(searchText) || searchText.includes(optionText)) return true;
       
-      // Try without common words
       const cleanOptionText = optionText.replace(/\b(district|taluk|tehsil)\b/g, '').trim();
       const cleanSearchText = searchText.replace(/\b(district|taluk|tehsil)\b/g, '').trim();
       
@@ -713,7 +780,6 @@ class GeoapifyAddressForm {
       districtSelect.value = matchingDistrict.value;
       console.log(`✅ District set to: ${matchingDistrict.textContent}`);
       
-      // Add visual feedback
       districtSelect.style.borderColor = '#28a745';
       setTimeout(() => {
         districtSelect.style.borderColor = '';
@@ -722,7 +788,6 @@ class GeoapifyAddressForm {
       console.warn(`❌ Could not find matching district for: ${districtName}`);
       console.log('Available districts:', districtOptions.map(opt => opt.textContent));
       
-      // Show warning that district needs manual selection
       districtSelect.style.borderColor = '#ffc107';
       setTimeout(() => {
         districtSelect.style.borderColor = '';
@@ -733,16 +798,14 @@ class GeoapifyAddressForm {
   addCurrentLocationButton() {
     const addressDetails = document.getElementById('addressDetails');
     if (addressDetails && navigator.geolocation) {
-      // Check if button already exists
       const existingBtn = addressDetails.parentNode.querySelector('.btn-current-location');
       if (existingBtn) {
-        return; // Button already exists, don't add another
+        return;
       }
 
-      // Create "Use Current Location" button
       const locationBtn = document.createElement('button');
       locationBtn.type = 'button';
-      locationBtn.className = 'btn btn-outline-dark btn-sm mt-2 btn-current-location'; // Added unique class
+      locationBtn.className = 'btn btn-outline-dark btn-sm mt-2 btn-current-location';
       locationBtn.innerHTML = '<i class="fas fa-location-arrow me-1"></i>Use Current Location';
       locationBtn.style.cssText = `
         background-color: #000;
@@ -751,7 +814,6 @@ class GeoapifyAddressForm {
         transition: all 0.3s ease;
       `;
       
-      // Add hover effect
       locationBtn.addEventListener('mouseenter', () => {
         locationBtn.style.backgroundColor = '#dc3545';
         locationBtn.style.borderColor = '#dc3545';
@@ -763,6 +825,7 @@ class GeoapifyAddressForm {
         locationBtn.style.borderColor = '#000';
         locationBtn.style.transform = 'translateY(0)';
       });
+      
       locationBtn.addEventListener('click', () => {
         this.getCurrentLocation();
       });
@@ -801,7 +864,6 @@ class GeoapifyAddressForm {
   }
 
   updateDistricts(selectedState, selectedDistrict = '') {
-    // Your existing state-district logic here
     const districtSelect = document.getElementById('district');
     if (typeof stateDistrictData !== 'undefined' && stateDistrictData[selectedState]) {
       districtSelect.disabled = false;
@@ -831,20 +893,17 @@ class GeoapifyAddressForm {
   }
 }
 
-
-
-let addresses = [];
+// ==================== GLOBAL STATE ====================
+let addresses = <%- JSON.stringify(addresses) %>;
 let currentEditingId = null;
-let currentPage = 1;
-let totalPages = 1;
+let currentPage = <%- currentPage %>;
+let totalPages = <%- totalPages %>;
 let isLoading = false;
 
+// ==================== INITIALIZE ====================
 document.addEventListener('DOMContentLoaded', function() {
-  // ✅ Set up pagination callbacks for integration with pagination.js
-  window.fetchCallback = loadAddressesPage;
-  window.paginationCallback = loadAddressesPage;
+  setupLoadMoreButton();
   
-  // Initialize Geoapify when modal is shown
   const addressModal = document.getElementById('addressModal');
   if (addressModal) {
     addressModal.addEventListener('shown.bs.modal', function() {
@@ -853,109 +912,105 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Initialize with current page data
-  currentPage = <%= typeof currentPage !== 'undefined' ? currentPage : 1 %>;
-  totalPages = <%= typeof totalPages !== 'undefined' ? totalPages : 1 %>;
-  
-  console.log(`📄 Address book initialized: page ${currentPage}/${totalPages}`);
+  console.log(`📍 Address book initialized: ${addresses.length} addresses loaded (page ${currentPage}/${totalPages})`);
 });
 
-// ✅ NEW: Load specific page of addresses (called by pagination.js)
-async function loadAddressesPage(page = 1) {
-  if (isLoading) return;
+// ==================== SETUP LOAD MORE BUTTON ====================
+function setupLoadMoreButton() {
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
   
-  isLoading = true;
-  currentPage = page;
-  
-  // Show loading state
-  const grid = document.getElementById('addressesGrid');
-  if (grid) {
-    grid.classList.add('loading');
-  }
-  
-  try {
-    console.log(`🔄 Loading addresses page ${page}...`);
-    
-    const response = await fetch(`/api/addresses/paginated?page=${page}`);
-    
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    console.log('📦 Paginated response:', result);
-
-    if (result && result.success) {
-      addresses = result.data.addresses || [];
-      currentPage = result.data.currentPage;
-      totalPages = result.data.totalPages;
-      
-      console.log(`✅ Loaded ${addresses.length} addresses for page ${currentPage}/${totalPages}`);
-      
-      // Render addresses
-      renderAddresses();
-      
-      // ✅ Update pagination UI using existing utilities
-      if (window.PaginationUtils && totalPages > 1) {
-        window.PaginationUtils.updateState(currentPage, totalPages);
-      }
-      
-    } else {
-      console.error('❌ API returned error:', result ? result.message : 'Unknown error');
-      showError(result && result.message ? result.message : 'Failed to load addresses');
-    }
-  } catch (error) {
-    console.error('❌ Error loading addresses:', error);
-    showError(`Failed to load addresses: ${error.message}`);
-    
-    // Remove loading states from pagination buttons on error
-    if (window.PaginationUtils) {
-      const loadingButtons = document.querySelectorAll('.page-link[data-original-content]');
-      loadingButtons.forEach(button => window.PaginationUtils.removeLoading(button));
-    }
-  } finally {
-    isLoading = false;
-    
-    // Hide loading state
-    if (grid) {
-      grid.classList.remove('loading');
-    }
+  if (loadMoreBtn) {
+    loadMoreBtn.addEventListener('click', function() {
+      loadMoreAddresses();
+    });
   }
 }
 
-// ✅ UPDATED: Render addresses in grid
-function renderAddresses() {
+// ==================== LOAD MORE ADDRESSES ====================
+async function loadMoreAddresses() {
+  if (isLoading) {
+    console.log('⏳ Already loading...');
+    return;
+  }
+
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  const nextPage = currentPage + 1;
+
+  if (nextPage > totalPages) {
+    console.log('✅ All addresses loaded');
+    hideLoadMoreButton();
+    return;
+  }
+
+  isLoading = true;
+  loadMoreBtn.classList.add('loading');
+  loadMoreBtn.querySelector('.load-more-text').textContent = 'Loading...';
+
+  console.log(`📡 Loading page ${nextPage}/${totalPages}...`);
+
+  try {
+    const response = await fetch(`/api/addresses/paginated?page=${nextPage}`);
+    const result = await response.json();
+
+    if (result.success && result.data.addresses.length > 0) {
+      console.log(`✅ Loaded ${result.data.addresses.length} addresses`);
+      
+      addresses = addresses.concat(result.data.addresses);
+      currentPage = result.data.currentPage;
+      totalPages = result.data.totalPages;
+
+      appendAddressesWithAnimation(result.data.addresses);
+      updateAddressCount(addresses.length);
+
+      if (currentPage >= totalPages) {
+        hideLoadMoreButton();
+      } else {
+        loadMoreBtn.querySelector('.load-more-text').textContent = 'Load More Addresses';
+      }
+    } else {
+      console.log('ℹ️ No more addresses to load');
+      hideLoadMoreButton();
+    }
+  } catch (error) {
+    console.error('❌ Error loading addresses:', error);
+    showError('Failed to load addresses. Please try again.');
+    loadMoreBtn.querySelector('.load-more-text').textContent = 'Load More Addresses';
+  } finally {
+    isLoading = false;
+    loadMoreBtn.classList.remove('loading');
+  }
+}
+
+// ==================== APPEND ADDRESSES WITH ANIMATION ====================
+function appendAddressesWithAnimation(newAddresses) {
   const grid = document.getElementById('addressesGrid');
-  if (!grid) {
-    console.error('❌ addressesGrid element not found');
-    return;
-  }
   
-  if (addresses.length === 0) {
-    grid.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">
-          <i class="bi bi-geo-alt"></i>
-        </div>
-        <h4>No addresses found</h4>
-        <p>Add your first delivery address to get started</p>
-        <button class="btn btn-primary" onclick="addNewAddress()">
-          <i class="bi bi-plus me-2"></i> Add Address
-        </button>
-      </div>
-    `;
-    return;
-  }
+  newAddresses.forEach((address, index) => {
+    const addressCard = createAddressCardHTML(address);
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'address-card-new';
+    wrapper.innerHTML = addressCard;
+    
+    grid.appendChild(wrapper);
+    
+    setTimeout(() => {
+      wrapper.style.animationDelay = `${index * 0.1}s`;
+    }, 50);
+  });
+}
+
+// ==================== CREATE ADDRESS CARD HTML ====================
+function createAddressCardHTML(address) {
+  const addressTypeIcon = getAddressIcon(address.addressType);
+  const defaultBadge = address.isDefault ? `<div class="default-badge"><i class="bi bi-star-fill me-1"></i> Default</div>` : '';
   
-  const addressesHTML = addresses.map(address => `
+  return `
     <div class="address-card ${address.isDefault ? 'default' : ''}">
-      ${address.isDefault ? '<div class="default-badge"><i class="bi bi-star-fill me-1"></i> Default</div>' : ''}
-      
+      ${defaultBadge}
       <div class="address-type">
-        <i class="bi bi-${getAddressIcon(address.addressType)}"></i>
-        ${capitalizeFirst(address.addressType)}
+        <i class="bi bi-${addressTypeIcon}"></i> ${capitalizeFirst(address.addressType)}
       </div>
-      
       <div class="address-details">
         <h5>${address.name}</h5>
         <div class="address-text">
@@ -965,7 +1020,6 @@ function renderAddresses() {
           ${address.altPhone ? `<br><strong>Alt Phone:</strong> ${address.altPhone}` : ''}
         </div>
       </div>
-      
       <div class="address-actions">
         <button class="btn btn-outline-primary btn-sm" onclick="editAddress('${address._id}')">
           <i class="bi bi-pencil me-1"></i> Edit
@@ -980,92 +1034,27 @@ function renderAddresses() {
         </button>
       </div>
     </div>
-  `).join('');
-
-  grid.innerHTML = addressesHTML;
+  `;
 }
 
-// ✅ UPDATED: Refresh current page after CRUD operations
-async function setDefaultAddress(addressId) {
-  try {
-    console.log('🔄 Setting default address:', addressId);
-    
-    const response = await fetch(`/api/address/${addressId}/default`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
+// ==================== HELPER FUNCTIONS ====================
+function hideLoadMoreButton() {
+  const loadMoreBtn = document.getElementById('loadMoreBtn');
+  const allLoadedMsg = document.getElementById('allLoadedMessage');
+  
+  if (loadMoreBtn) loadMoreBtn.style.display = 'none';
+  if (allLoadedMsg) allLoadedMsg.style.display = 'inline-flex';
+  
+  console.log('✅ All addresses loaded - hiding button');
+}
 
-    const data = await response.json();
-
-    if (data && data.success) {
-      console.log('✅ Default address set successfully');
-      showSuccess(data.message || 'Default address updated successfully');
-      
-      // ✅ Reload current page to reflect changes
-      await loadAddressesPage(currentPage);
-      
-    } else {
-      showError(data && data.message ? data.message : 'Failed to set default address');
-    }
-  } catch (error) {
-    console.error('❌ Error setting default address:', error);
-    showError(`Failed to set default address: ${error.message}`);
+function updateAddressCount(count) {
+  const countElement = document.getElementById('addressCount');
+  if (countElement) {
+    countElement.textContent = count;
   }
 }
 
-async function deleteAddress(addressId) {
-  // Use SweetAlert for confirmation
-  if (typeof Swal !== 'undefined') {
-    const result = await Swal.fire({
-      title: 'Delete Address?',
-      text: 'Are you sure you want to delete this address? This action cannot be undone.',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#dc3545',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: '<i class="bi bi-trash me-1"></i> Yes, Delete',
-      cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
-      reverseButtons: true
-    });
-
-    if (!result.isConfirmed) {
-      return;
-    }
-  } else {
-    if (!confirm('Are you sure you want to delete this address?')) {
-      return;
-    }
-  }
-
-  try {
-    const response = await fetch(`/api/address/${addressId}`, {
-      method: 'DELETE'
-    });
-
-    const data = await response.json();
-
-    if (data.success) {
-      showSuccess(data.message);
-      
-      // ✅ Smart page handling: if deleting last address on page > 1, go to previous page
-      const currentAddressCount = addresses.length;
-      if (currentAddressCount === 1 && currentPage > 1) {
-        await loadAddressesPage(currentPage - 1);
-      } else {
-        await loadAddressesPage(currentPage);
-      }
-    } else {
-      showError(data.message);
-    }
-  } catch (error) {
-    console.error('Error deleting address:', error);
-    showError('Failed to delete address');
-  }
-}
-
-// ✅ Helper functions
 function getAddressIcon(type) {
   switch(type) {
     case 'home': return 'house';
@@ -1079,6 +1068,67 @@ function capitalizeFirst(str) {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+// ==================== SET DEFAULT ADDRESS ====================
+async function setDefaultAddress(addressId) {
+  try {
+    console.log('🔄 Setting default address:', addressId);
+    
+    const response = await fetch(`/api/address/${addressId}/default`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const data = await response.json();
+
+    if (data && data.success) {
+      console.log('✅ Default address set successfully');
+      showSuccess(data.message || 'Default address updated successfully');
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showError(data?.message || 'Failed to set default address');
+    }
+  } catch (error) {
+    console.error('❌ Error setting default address:', error);
+    showError('Failed to set default address: ' + error.message);
+  }
+}
+
+// ==================== DELETE ADDRESS ====================
+async function deleteAddress(addressId) {
+  if (typeof Swal !== 'undefined') {
+    const result = await Swal.fire({
+      title: 'Delete Address?',
+      text: 'Are you sure you want to delete this address?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#dc3545',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: '<i class="bi bi-trash me-1"></i> Yes, Delete',
+      cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
+      reverseButtons: true
+    });
+    if (!result.isConfirmed) return;
+  } else {
+    if (!confirm('Are you sure you want to delete this address?')) return;
+  }
+  
+  try {
+    const response = await fetch(`/api/address/${addressId}`, { method: 'DELETE' });
+    const data = await response.json();
+    
+    if (data.success) {
+      showSuccess(data.message);
+      setTimeout(() => location.reload(), 1000);
+    } else {
+      showError(data.message);
+    }
+  } catch (error) {
+    console.error('❌ Error deleting address:', error);
+    showError('Failed to delete address');
+  }
+}
+
+// ==================== ADD NEW ADDRESS ====================
 function addNewAddress() {
   currentEditingId = null;
   document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-plus me-2"></i> Add New Address';
@@ -1113,6 +1163,7 @@ function addNewAddress() {
   modal.show();
 }
 
+// ==================== EDIT ADDRESS ====================
 async function editAddress(addressId) {
   currentEditingId = addressId;
   document.getElementById('addressModalLabel').innerHTML = '<i class="bi bi-pencil me-2"></i> Edit Address';
@@ -1167,32 +1218,7 @@ async function editAddress(addressId) {
   modal.show();
 }
 
-// ✅ Handle form submission to refresh current page after add/edit
-document.addEventListener('DOMContentLoaded', function() {
-  const addressModal = document.getElementById('addressModal');
-  if (addressModal) {
-    addressModal.addEventListener('shown.bs.modal', function() {
-      setTimeout(() => {
-        const form = document.getElementById('addressForm');
-        if (form && !form.hasAttribute('data-pagination-handler')) {
-          form.setAttribute('data-pagination-handler', 'true');
-          
-          const originalHandler = form.querySelector('script')?.textContent;
-          
-          // Override the success callback to refresh current page
-          form.addEventListener('submit', async function(e) {
-            // Let the original handler run first
-            // After successful submission, reload current page
-            setTimeout(async () => {
-              await loadAddressesPage(currentPage);
-            }, 2000); // Wait for success message and modal close
-          });
-        }
-      }, 100);
-    });
-  }
-});
-
+// ==================== ALERT FUNCTIONS ====================
 function showSuccess(message) {
   if (typeof Swal !== 'undefined') {
     Swal.fire({

@@ -4,8 +4,8 @@ const ORDER_STATUS = {
   SHIPPED: 'Shipped',
   DELIVERED: 'Delivered',
   CANCELLED: 'Cancelled',
-  PARTIALLY_CANCELLED: 'Partially Cancelled',
   RETURNED: 'Returned',
+  FAILED: 'Failed',
   PARTIALLY_RETURNED: 'Partially Returned',
   PARTIALLY_DELIVERED: 'Partially Delivered',
   PROCESSING_RETURN: 'Processing Return'
@@ -55,7 +55,9 @@ const PAYMENT_METHODS = {
   COD: 'cod',
   CARD: 'card',
   UPI: 'upi',
-  NETBANKING: 'netbanking'
+  PAYPAL: 'paypal',
+  NETBANKING: 'netbanking',
+  WALLET: 'wallet'
 };
 
 const RETURN_STATUS = {

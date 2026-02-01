@@ -5,6 +5,11 @@ const Address = require('../../models/Address');
 const User = require('../../models/User');
 const Return = require('../../models/Return');
 const orderService = require('../../services/orderService');
+const walletService = require('../../services/paymentProviders/walletService');
+const { paypalClient } = require('../../services/paymentProviders/paypal');
+const paypal = require('@paypal/checkout-server-sdk');
+const razorpayService = require('../../services/paymentProviders/razorpay');
+const getPagination = require('../../utils/pagination');
 
 const {
   ORDER_STATUS,
@@ -17,526 +22,108 @@ const {
   getReturnReasonsArray
 } = require('../../constants/orderEnums');
 
-// Helper function to calculate variant-specific final price
-const calculateVariantFinalPrice = (product, variant) => {
-  try {
-    // Try to use product's calculateVariantFinalPrice method if it exists
-    if (typeof product.calculateVariantFinalPrice === 'function') {
-      return product.calculateVariantFinalPrice(variant);
-    }
-    
-    // Fallback to variant base price or product regular price
-    return variant.basePrice || product.regularPrice || 0;
-  } catch (error) {
-    console.error('Error calculating variant price:', error);
-    return variant.basePrice || product.regularPrice || 0;
-  }
-};
 
-// Place order
-exports.placeOrder = async (req, res) => {
-  try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const { deliveryAddressId, paymentMethod } = req.body;
-
-    // Validate input
-    if (!deliveryAddressId || !paymentMethod) {
-      return res.status(400).json({
-        success: false,
-        message: 'Delivery address and payment method are required'
-      });
-    }
-
-    if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'User authentication required'
-      });
-    }
-
-    // Get user data
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    // Get user's cart with populated product data
-    const cart = await Cart.findOne({ userId })
-      .populate({
-        path: 'items.productId',
-        populate: [
-          {
-            path: 'category',
-            select: 'name isActive isDeleted categoryOffer'
-          },
-          {
-            path: 'brand',
-            select: 'name isActive isDeleted brandOffer'
-          }
-        ]
-      });
-
-    if (!cart || !cart.items || cart.items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cart is empty'
-      });
-    }
-
-    // Get delivery address
-    const userAddresses = await Address.findOne({ userId });
-    if (!userAddresses || !userAddresses.address) {
-      return res.status(400).json({
-        success: false,
-        message: 'No addresses found'
-      });
-    }
-
-    const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === deliveryAddressId);
-    if (addressIndex === -1) {
-      return res.status(400).json({
-        success: false,
-        message: 'Delivery address not found'
-      });
-    }
-
-    const deliveryAddress = userAddresses.address[addressIndex];
-
-    // Validate cart items and calculate totals
-    let validItems = [];
-    let subtotal = 0;
-    let totalDiscount = 0;
-    let totalItemCount = 0;
-    let stockIssues = [];
-
-    for (const item of cart.items) {
-      // Check if product exists and is available
-      if (!item.productId ||
-          !item.productId.isListed ||
-          item.productId.isDeleted) {
-        stockIssues.push({
-          productName: item.productId ? item.productId.productName : 'Unknown Product',
-          size: item.size,
-          quantity: item.quantity,
-          error: 'Product is no longer available'
-        });
-        continue;
-      }
-
-      // Check category and brand availability
-      if ((item.productId.category &&
-          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) ||
-          (item.productId.brand && (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true))) {
-        stockIssues.push({
-          productName: item.productId.productName,
-          size: item.size,
-          quantity: item.quantity,
-          error: 'Product category or brand is no longer available'
-        });
-        continue;
-      }
-
-      // Check variant availability
-      if (item.variantId) {
-        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        if (!variant) {
-          stockIssues.push({
-            productName: item.productId.productName,
-            size: item.size,
-            quantity: item.quantity,
-            error: 'Product variant not found'
-          });
-          continue;
-        }
-
-        if (variant.stock === 0) {
-          stockIssues.push({
-            productName: item.productId.productName,
-            size: item.size,
-            quantity: item.quantity,
-            availableStock: 0,
-            error: `Size ${item.size} is out of stock`
-          });
-          continue;
-        }
-
-        if (variant.stock < item.quantity) {
-          stockIssues.push({
-            productName: item.productId.productName,
-            size: item.size,
-            quantity: item.quantity,
-            availableStock: variant.stock,
-            error: `Only ${variant.stock} items available for size ${item.size}`
-          });
-          continue;
-        }
-
-        // Calculate prices
-        const regularPrice = item.productId.regularPrice;
-        const salePrice = calculateVariantFinalPrice(item.productId, variant);
-        const quantity = item.quantity;
-        
-        subtotal += regularPrice * quantity;
-        totalItemCount += quantity;
-        
-        const itemDiscount = (regularPrice - salePrice) * quantity;
-        totalDiscount += itemDiscount;
-
-        validItems.push({
-          productId: item.productId._id,
-          variantId: item.variantId,
-          sku: item.sku,
-          size: item.size,
-          quantity: quantity,
-          price: salePrice,
-          totalPrice: salePrice * quantity,
-          regularPrice: regularPrice
-        });
-
-        // Update product stock
-        variant.stock -= quantity;
-        await item.productId.save();
-      }
-    }
-
-    // If there are any stock issues, return error instead of placing partial order
-    if (stockIssues.length > 0) {
-      let errorMessage = 'Some items in your cart have stock issues and cannot be ordered:\n\n';
-      stockIssues.forEach((item, index) => {
-        errorMessage += `${index + 1}. ${item.productName}`;
-        if (item.size) {
-          errorMessage += ` (Size: ${item.size})`;
-        }
-        errorMessage += `\n   ${item.error}\n\n`;
-      });
-      errorMessage += 'Please return to your cart to fix these issues before placing your order.';
-
-      return res.status(400).json({
-        success: false,
-        message: errorMessage,
-        code: 'STOCK_VALIDATION_FAILED',
-        invalidItems: stockIssues
-      });
-    }
-
-    if (validItems.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'No valid items found in cart',
-        code: 'NO_VALID_ITEMS'
-      });
-    }
-
-    // Calculate final amounts
-    const amountAfterDiscount = subtotal - totalDiscount;
-    const shipping = amountAfterDiscount > 500 ? 0 : 50;
-    const total = amountAfterDiscount + shipping;
-
-    // Generate order ID
-    const orderId = 'ORD' + Date.now() + Math.floor(Math.random() * 1000);
-
-    // Create order with new address reference structure and statusHistory
-    const newOrder = new Order({
-      orderId: orderId,
-      user: userId,
-      items: validItems.map(item => ({
-        productId: item.productId,
-        variantId: item.variantId,
-        sku: item.sku,
-        size: item.size,
-        quantity: item.quantity,
-        price: item.price,
-        totalPrice: item.totalPrice,
-        status: ORDER_STATUS.PENDING,                    
-        paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED
-      })),
-      deliveryAddress: {
-        addressId: userAddresses._id,
-        addressIndex: addressIndex
-      },
-      paymentMethod: paymentMethod,
-      subtotal: Math.round(subtotal),
-      totalDiscount: Math.round(totalDiscount),
-      amountAfterDiscount: Math.round(amountAfterDiscount),
-      shipping: shipping,
-      totalAmount: Math.round(total),
-      totalItemCount: totalItemCount,
-      status: ORDER_STATUS.PENDING,                
-      statusHistory: [{
-        status: ORDER_STATUS.PENDING,                    
-        updatedAt: new Date(),
-        notes: 'Order placed'
-      }],
-      paymentStatus: paymentMethod === 'cod' ? PAYMENT_STATUS.PENDING : PAYMENT_STATUS.COMPLETED 
-    });
-
-    await newOrder.save();
-
-    // Clear cart
-    cart.items = [];
-    await cart.save();
-
-    // For COD, redirect to success page
-    if (paymentMethod === 'cod') {
-      return res.json({
-        success: true,
-        message: 'Order placed successfully',
-        orderId: orderId,
-        redirectUrl: `/order-success/${orderId}`
-      });
-    }
-
-    // For other payment methods, handle payment processing here
-    // For now, just redirect to success page
-    res.json({
-      success: true,
-      message: 'Order placed successfully',
-      orderId: orderId,
-      redirectUrl: `/order-success/${orderId}`
-    });
-
-  } catch (error) {
-    console.error('Error placing order:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to place order'
-    });
-  }
-};
-
-// Load order success page
-exports.loadOrderSuccess = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const userId = req.user ? req.user._id : req.session.userId;
-
-    if (!userId) {
-      return res.redirect('/login');
-    }
-
-    // Get user data
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    // Get order details with populated product data and address
-    const order = await Order.findOne({ orderId: orderId, user: userId })
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage subImages regularPrice salePrice'
-      })
-      .populate({
-        path: 'deliveryAddress.addressId',
-        select: 'address'
-      });
-
-    if (!order) {
-      return res.status(404).send('Order not found');
-    }
-
-    // Get the actual delivery address from the populated address document
-    let actualDeliveryAddress = null;
-    if (order.deliveryAddress && order.deliveryAddress.addressId && order.deliveryAddress.addressId.address) {
-      const addressIndex = order.deliveryAddress.addressIndex;
-      actualDeliveryAddress = order.deliveryAddress.addressId.address[addressIndex];
-    }
-
-    // Create order data with proper product and address information
-    const orderData = {
-      orderId: order.orderId,
-      items: order.items.map(item => {
-        const itemObj = item.toObject();
-        
-        // Ensure product data is available
-        if (item.productId && typeof item.productId === 'object') {
-          itemObj.productId = {
-            _id: item.productId._id,
-            productName: item.productId.productName || 'Product Name',
-            mainImage: item.productId.mainImage || null,
-            subImages: item.productId.subImages || []
-          };
-        } else {
-          // Fallback if product is not populated
-          itemObj.productId = {
-            _id: itemObj.productId,
-            productName: 'Product Name',
-            mainImage: null,
-            subImages: []
-          };
-        }
-        
-        return itemObj;
-      }),
-      deliveryAddress: actualDeliveryAddress || {
-        name: 'Address not found',
-        addressType: 'N/A',
-        landMark: 'N/A',
-        city: 'N/A',
-        state: 'N/A',
-        pincode: 'N/A',
-        phone: 'N/A'
-      },
-      paymentMethod: order.paymentMethod,
-      subtotal: order.subtotal,
-      totalDiscount: order.totalDiscount,
-      amountAfterDiscount: order.amountAfterDiscount,
-      shipping: order.shipping,
-      total: order.totalAmount,
-      totalItemCount: order.totalItemCount,
-      status: order.status,
-      paymentStatus: order.paymentStatus,
-      createdAt: order.createdAt
-    };
-
-    res.render('user/order-success', {
-      user,
-      orderData,
-      title: 'Order Placed Successfully',
-      layout: 'user/layouts/user-layout',
-      active: 'orders'
-    });
-
-  } catch (error) {
-    console.error('Error loading order success page:', error);
-    res.status(500).send('Error loading order success page: ' + error.message);
-  }
-};
 
 // Get all orders for user
-exports.getUserOrders = async (req, res) => {
+const getUserOrders = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // Get user data
     const user = await User.findById(userId);
     if (!user) {
       return res.redirect('/login');
     }
-
-    const cancellationReasons = CANCELLATION_REASONS;
-    const returnReasons = RETURN_REASONS;
 
     const page = 1;
     const limit = 4;
-    
-    // ✅ CORRECTED: Simplified and fixed aggregation pipeline
-    const pipeline = [
-      { $match: { user: userId } },
-      { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.productId',
-          foreignField: '_id',
-          as: 'items.productId'
-        }
-      },
-      {
-        $unwind: {
-          path: '$items.productId',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      {
-        $project: {
-          orderId: 1,
-          orderDate: '$createdAt',
-          paymentMethod: 1,
-          paymentStatus: 1,
-          orderStatus: '$status',
-          totalAmount: 1,
-          itemId: '$items._id',
-          productId: '$items.productId',
-          productName: { $ifNull: ['$items.productId.productName', 'Product'] },
-          productImage: '$items.productId.mainImage',
-          sku: '$items.sku',
-          size: '$items.size',
-          quantity: '$items.quantity',
-          price: '$items.price',
-          totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] }
-        }
-      },
-      { $sort: { orderDate: -1 } },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [
-            { $skip: 0 },
-            { $limit: limit }
-          ]
-        }
-      }
-    ];
 
-    const result = await Order.aggregate(pipeline);
-    const orderItems = result[0].data || [];
-    
-    // ✅ ENHANCED: Better safe access with fallback
-    const metadata = result[0].metadata || [];
-    const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    const filter = { user: userId };
 
-    // ✅ DEBUG: Enhanced logging
-    console.log('🔧 getUserOrders Pagination Debug:', {
-      totalItems,
-      totalPages,
-      orderItemsLength: orderItems.length,
-      metadataLength: metadata.length,
+    const queryBuilder = Order.find(filter)
+      .populate('items.productId', 'productName mainImage')
+      .sort({ createdAt: -1 });
+
+    const { data: orders, totalPages } = await getPagination(
+      queryBuilder,
+      Order,
+      filter,
       page,
       limit
+    );
+
+    // ✅ ADD: Get total orders count
+    const totalOrders = await Order.countDocuments(filter);
+
+    console.log('Order listing debug:', {
+      totalOrders: orders.length,
+      totalPages,
+      totalOrdersCount: totalOrders
     });
 
-    // Get return requests
-    const itemIds = orderItems.map(item => item.itemId);
-    const returnRequests = await Return.find({ itemId: { $in: itemIds } });
-    const returnRequestsMap = {};
-    returnRequests.forEach(returnReq => {
-      returnRequestsMap[returnReq.itemId.toString()] = returnReq;
-    });
-
-    orderItems.forEach(item => {
-      item.returnRequest = returnRequestsMap[item.itemId.toString()] || null;
-    });
+    // ✅ Calculate pagination variables for shop-style pagination
+    const currentPage = page;
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = currentPage - 1;
+    const nextPage = currentPage + 1;
+    
+    // Generate page numbers (show up to 5 pages around current page)
+    const pageNumbers = [];
+    const maxPagesToShow = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+    let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+    
+    if (endPage - startPage + 1 < maxPagesToShow) {
+      startPage = Math.max(1, endPage - maxPagesToShow + 1);
+    }
+    
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
     res.render('user/orders', {
       user,
-      orderItems,
-      currentPage: page,
+      orders,
+      currentPage,
       totalPages,
-      totalItems,
+      hasPrevPage,
+      hasNextPage,
+      prevPage,
+      nextPage,
+      pageNumbers,
+      totalOrders, // ✅ NEW: Add total orders count
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
       active: 'orders',
-      cancellationReasons: getCancellationReasonsArray(), 
+      cancellationReasons: getCancellationReasonsArray(),
       returnReasons: getReturnReasonsArray()
     });
 
   } catch (error) {
-    console.error('Error loading orders:', error);
-    res.status(500).render('errors/server-error', { 
+    console.error('Error loading orders: ', error);
+    res.status(500).render('errors/server-error', {
       message: 'Error loading orders',
       error: error.message,
       title: 'Error',
       layout: 'user/layouts/user-layout',
       active: 'orders',
-      user: null, 
+      user: null,
+      totalOrders: 0, // ✅ NEW: Add default value for error case
       cancellationReasons: CANCELLATION_REASONS,
       returnReasons: RETURN_REASONS
     });
   }
 };
 
-exports.getUserOrdersPaginated = async (req, res) => {
+
+
+const getUserOrdersPaginated = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const page = parseInt(req.query.page) || 1;
     const limit = 4;
-    const status = req.query.status || '';
+    const statusFilter = req.query.status || '';
+    const searchQuery = req.query.search || '';
 
     if (!userId) {
       return res.status(401).json({
@@ -545,89 +132,143 @@ exports.getUserOrdersPaginated = async (req, res) => {
       });
     }
 
-    // ✅ CORRECTED: Simplified and fixed aggregation pipeline
-    const pipeline = [
-      { $match: { user: userId } },
-      { $unwind: '$items' },
-      {
-        $lookup: {
-          from: 'products',
-          localField: 'items.productId',
-          foreignField: '_id',
-          as: 'items.productId'
-        }
-      },
-      {
-        $unwind: {
-          path: '$items.productId',
-          preserveNullAndEmptyArrays: true
-        }
-      },
-      // Add status filter for items if needed
-      ...(status ? [{ $match: { 'items.status': status } }] : []),
-      {
-        $project: {
-          orderId: 1,
-          orderDate: '$createdAt',
-          paymentMethod: 1,
-          paymentStatus: 1,
-          orderStatus: '$status',
-          totalAmount: 1,
-          itemId: '$items._id',
-          productId: '$items.productId',
-          productName: { $ifNull: ['$items.productId.productName', 'Product'] },
-          productImage: '$items.productId.mainImage',
-          sku: '$items.sku',
-          size: '$items.size',
-          quantity: '$items.quantity',
-          price: '$items.price',
-          totalPrice: '$items.totalPrice',
-          status: { $ifNull: ['$items.status', '$status'] }
-        }
-      },
-      { $sort: { orderDate: -1 } },
-      {
-        $facet: {
-          metadata: [{ $count: 'total' }],
-          data: [
-            { $skip: (page - 1) * limit },
-            { $limit: limit }
-          ]
-        }
-      }
-    ];
+    const filter = { user: userId };
 
-    const result = await Order.aggregate(pipeline);
-    const orderItems = result[0].data || [];
-    
-    // ✅ ENHANCED: Better safe access with fallback
-    const metadata = result[0].metadata || [];
-    const totalItems = metadata.length > 0 ? metadata[0].total : orderItems.length;
-    const totalPages = Math.ceil(totalItems / limit);
+    // ✅ CASE 1: NO search and NO filter - Use efficient database pagination
+    if (!searchQuery && !statusFilter) {
+      const queryBuilder = Order.find(filter)
+        .populate({
+          path: 'items.productId',
+          select: 'productName mainImage brand',
+          populate: {
+            path: 'brand',
+            select: 'name'
+          }
+        })
+        .sort({ createdAt: -1 });
 
+      const { data: orders, totalPages } = await getPagination(
+        queryBuilder,
+        Order,
+        filter,
+        page,
+        limit
+      );
 
-    // Get return requests for these items
-    const itemIds = orderItems.map(item => item.itemId);
-    const returnRequests = await Return.find({ itemId: { $in: itemIds } });
-    const returnRequestsMap = {};
-    returnRequests.forEach(returnReq => {
-      returnRequestsMap[returnReq.itemId.toString()] = returnReq;
-    });
+      const currentPage = page;
+      const hasPrevPage = currentPage > 1;
+      const hasNextPage = currentPage < totalPages;
+      const prevPage = currentPage - 1;
+      const nextPage = currentPage + 1;
 
-    // Add return request info to items
-    orderItems.forEach(item => {
-      item.returnRequest = returnRequestsMap[item.itemId.toString()] || null;
-    });
+      // ✅ ADD: Generate page numbers
+      const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+      return res.json({
+        success: true,
+        data: {
+          orders,
+          currentPage,
+          totalPages,
+          hasPrevPage,
+          hasNextPage,
+          prevPage,
+          nextPage,
+          pageNumbers, // ✅ NEW
+          totalOrders: await Order.countDocuments(filter),
+          filters: { status: '', search: '' }
+        }
+      });
+    }
+
+    // ✅ CASE 2: Search OR Filter active - Fetch ALL orders, then filter in memory
+    const allOrders = await Order.find(filter)
+      .populate({
+        path: 'items.productId',
+        select: 'productName mainImage brand',
+        populate: {
+          path: 'brand',
+          select: 'name'
+        }
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    let filteredOrders = allOrders;
+
+    // ✅ Apply search filter
+    if (searchQuery) {
+      filteredOrders = filteredOrders.filter(order => {
+        const searchLower = searchQuery.toLowerCase();
+
+        // Check order ID
+        const orderIdMatch = order.orderId.toLowerCase().includes(searchLower);
+
+        // Check product names
+        const productMatch = order.items.some(item => {
+          const productName = item.productId?.productName;
+          return productName && productName.toLowerCase().includes(searchLower);
+        });
+
+        // Check brand names
+        const brandMatch = order.items.some(item => {
+          const brandName = item.productId?.brand?.name;
+          return brandName && brandName.toLowerCase().includes(searchLower);
+        });
+
+        return orderIdMatch || productMatch || brandMatch;
+      });
+    }
+
+    // ✅ Apply status filter
+    if (statusFilter) {
+      filteredOrders = filteredOrders.map(order => {
+        // Filter items by status
+        const filteredItems = order.items.filter(item => item.status === statusFilter);
+
+        // Only return order if it has items matching the status
+        if (filteredItems.length > 0) {
+          return {
+            ...order,
+            items: filteredItems
+          };
+        }
+        return null;
+      }).filter(order => order !== null);
+    }
+
+    // ✅ Calculate pagination for filtered results
+    const totalFilteredOrders = filteredOrders.length;
+    const totalPages = Math.ceil(totalFilteredOrders / limit) || 1;
+    const currentPage = Math.min(page, totalPages); // Prevent requesting page beyond available
+    const hasPrevPage = currentPage > 1;
+    const hasNextPage = currentPage < totalPages;
+    const prevPage = currentPage - 1;
+    const nextPage = currentPage + 1;
+
+    // ✅ ADD: Generate page numbers
+    const pageNumbers = generatePageNumbers(currentPage, totalPages);
+
+    // ✅ Paginate the filtered results
+    const startIndex = (currentPage - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
 
     res.json({
       success: true,
       data: {
-        orderItems,
-        currentPage: page,
+        orders: paginatedOrders,
+        currentPage,
         totalPages,
-        totalItems,
-        filters: {
-          status
+        hasPrevPage,
+        hasNextPage,
+        prevPage,
+        nextPage,
+        pageNumbers, // ✅ NEW
+        totalOrders: totalFilteredOrders,
+        filters: { 
+          status: statusFilter,
+          search: searchQuery 
         }
       }
     });
@@ -641,8 +282,89 @@ exports.getUserOrdersPaginated = async (req, res) => {
   }
 };
 
+// Helper function to generate page numbers
+function generatePageNumbers(currentPage, totalPages) {
+  const pageNumbers = [];
+  const maxPagesToShow = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxPagesToShow / 2));
+  let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+  
+  if (endPage - startPage + 1 < maxPagesToShow) {
+    startPage = Math.max(1, endPage - maxPagesToShow + 1);
+  }
+  
+  for (let i = startPage; i <= endPage; i++) {
+    pageNumbers.push(i);
+  }
+  
+  return pageNumbers;
+}
+
+
+const searchOrders = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    const searchTerm = req.query.q || '';
+
+    if (!searchTerm) {
+      return res.json({
+        success: false,
+        message: 'Search term required'
+      });
+    }
+
+    const orders = await Order.find({ user: userId})
+    .populate({
+        path: 'items.productId',
+        select: 'productName mainImage brand',
+        populate: {
+          path: 'brand',
+          select: 'name'
+        }
+    })
+    .sort({ createdAt: -1 })
+    .limit(50)
+    .lean();
+
+    const filteredOrders = orders.filter(order => {
+      const searchLower = searchTerm.toLowerCase();
+
+      const orderIdMatch = order.orderId.toLowerCase().includes(searchLower);
+
+      const productMatch = order.items.some(item => {
+        const productName = item.productId?.productName;
+        return productName && productName.toLowerCase().includes(searchLower);
+      });
+
+      const brandMatch = order.items.some(item => {
+        const brandName = item.productId?.brand?.name;
+        return brandName && brandName.toLowerCase().includes(searchLower);
+      });
+
+      return orderIdMatch || productMatch || brandMatch;
+    });
+
+    res.json({
+      success: true,
+      data: { 
+        orders: filteredOrders,
+        totalOrders: filteredOrders.length  // ✅ ADD THIS
+      }
+    });
+
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Search failed'
+    });
+  }
+};
+ 
+
+
 // Get order details
-exports.getOrderDetails = async (req, res) => {
+const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
@@ -654,7 +376,6 @@ exports.getOrderDetails = async (req, res) => {
     // Extract enum values
     const cancellationReasons = CANCELLATION_REASONS;
     const returnReasons = RETURN_REASONS;
-
 
     // Get user data
     const user = await User.findById(userId).select('name email profilePhoto');
@@ -683,6 +404,25 @@ exports.getOrderDetails = async (req, res) => {
         cancellationReasons: CANCELLATION_REASONS,
         returnReasons: RETURN_REASONS
       });
+    }
+
+    // ✅ NEW: Add transaction ID for retry functionality
+    if (order.status === 'Pending' && order.paymentStatus === 'Pending') {
+      try {
+        const transactionService = require('../../services/transactionService');
+        const transactions = await transactionService.getUserTransactions(userId, {
+          orderId: orderId,
+          status: 'FAILED',
+          limit: 1
+        });
+        
+        if (transactions && transactions.length > 0) {
+          order.transactionId = transactions[0].transactionId;
+          order.canRetry = ['upi', 'paypal'].includes(order.paymentMethod);
+        }
+      } catch (error) {
+        console.error('Error fetching transaction for order:', order.orderId, error);
+      }
     }
 
     // Get return requests for this order
@@ -807,107 +547,9 @@ exports.getOrderDetails = async (req, res) => {
 
 
 
-// Enhanced place order with stock validation
-exports.placeOrderWithValidation = async (req, res) => {
-  try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    const { deliveryAddressId, paymentMethod } = req.body;
-
-    // First, validate cart stock
-    const cart = await Cart.findOne({ userId })
-      .populate({
-        path: 'items.productId',
-        populate: [{
-          path: 'category',
-          select: 'name isActive isDeleted categoryOffer'
-        }, {
-          path: 'brand',
-          select: 'name isActive isDeleted brandOffer'
-        }]
-      });
-
-    if (!cart || !cart.items || cart.items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Cart is empty',
-        code: 'EMPTY_CART'
-      });
-    }
-
-    // Validate stock and availability for all items
-    const stockIssues = [];
-    for (const item of cart.items) {
-      if (!item.productId || !item.productId.isListed || item.productId.isDeleted) {
-        stockIssues.push({
-          productName: item.productId ? item.productId.productName : 'Unknown Product',
-          size: item.size,
-          quantity: item.quantity,
-          error: 'Product is no longer available'
-        });
-        continue;
-      }
-
-      // Check category and brand availability
-      if ((item.productId.category &&
-          (item.productId.category.isActive === false || item.productId.category.isDeleted === true)) ||
-          (item.productId.brand && (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true))) {
-        stockIssues.push({
-          productName: item.productId.productName,
-          size: item.size,
-          quantity: item.quantity,
-          error: 'Product category or brand is no longer available'
-        });
-        continue;
-      }
-
-      if (item.variantId) {
-        const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-        if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
-          stockIssues.push({
-            productName: item.productId.productName,
-            size: item.size,
-            quantity: item.quantity,
-            availableStock: variant ? variant.stock : 0,
-            error: variant ? `Only ${variant.stock} items available` : 'Product variant not found'
-          });
-        }
-      }
-    }
-
-    if (stockIssues.length > 0) {
-      let errorMessage = 'Some items in your cart have stock issues and cannot be ordered:\n\n';
-      stockIssues.forEach((item, index) => {
-        errorMessage += `${index + 1}. ${item.productName}`;
-        if (item.size) {
-          errorMessage += ` (Size: ${item.size})`;
-        }
-        errorMessage += `\n   ${item.error}\n\n`;
-      });
-      errorMessage += 'Please return to your cart to fix these issues before placing your order.';
-
-      return res.status(400).json({
-        success: false,
-        message: errorMessage,
-        code: 'STOCK_VALIDATION_FAILED',
-        invalidItems: stockIssues
-      });
-    }
-
-    // If validation passes, proceed with original place order logic
-    return exports.placeOrder(req, res);
-
-  } catch (error) {
-    console.error('Error in place order validation:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to validate and place order',
-      code: 'VALIDATION_ERROR'
-    });
-  }
-};
 
 // Cancel entire order
-exports.cancelOrder = async (req, res) => {
+const cancelOrder = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -962,6 +604,8 @@ exports.cancelOrder = async (req, res) => {
         message: 'Order not found'
       });
     }
+
+  
 
     // ✅ DEBUG: Check status BEFORE cancellation
     console.log('🔍 BEFORE CANCEL ORDER:');
@@ -1034,7 +678,7 @@ exports.cancelOrder = async (req, res) => {
 
 
 // Cancel individual item
-exports.cancelItem = async (req, res) => {
+const cancelItem = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -1166,7 +810,7 @@ exports.cancelItem = async (req, res) => {
 
 
 // Return request for entire order
-exports.requestOrderReturn = async (req, res) => {
+const requestOrderReturn = async (req, res) => {
   try {
     const { orderId } = req.params;
     const { reason } = req.body;
@@ -1224,7 +868,7 @@ exports.requestOrderReturn = async (req, res) => {
 };
 
 // Return request for individual item
-exports.requestItemReturn = async (req, res) => {
+const requestItemReturn = async (req, res) => {
   try {
     const { orderId, itemId } = req.params;
     const { reason } = req.body;
@@ -1283,7 +927,7 @@ exports.requestItemReturn = async (req, res) => {
 
 
 // Download invoice
-exports.downloadInvoice = async (req, res) => {
+const downloadInvoice = async (req, res) => {
   try {
     const { orderId } = req.params;
     const userId = req.user ? req.user._id : req.session.userId;
@@ -1535,10 +1179,16 @@ function generateInvoiceHTML(order) {
                         <td>Subtotal:</td>
                         <td class="text-right">₹${order.subtotal.toLocaleString('en-IN')}</td>
                     </tr>
-                    ${order.totalDiscount > 0 ? `
+                    ${order.productDiscount > 0 ? `
                     <tr>
-                        <td>Discount:</td>
-                        <td class="text-right">-₹${order.totalDiscount.toLocaleString('en-IN')}</td>
+                        <td>Product Discount:</td>
+                        <td class="text-right">-₹${order.productDiscount.toLocaleString('en-IN')}</td>
+                    </tr>
+                    ` : ''}
+                    ${order.couponDiscount > 0 ? `
+                    <tr>
+                        <td>Coupon Discount${order.couponCode ? ` (${order.couponCode})` : ''}:</td>
+                        <td class="text-right">-₹${order.couponDiscount.toLocaleString('en-IN')}</td>
                     </tr>
                     ` : ''}
                     <tr>
@@ -1552,6 +1202,7 @@ function generateInvoiceHTML(order) {
                 </table>
             </div>
 
+
             <!-- Footer -->
             <div class="footer">
                 <p>Thank you for shopping with LacedUp!</p>
@@ -1562,3 +1213,15 @@ function generateInvoiceHTML(order) {
     </body</html>
   `;
 }
+
+module.exports = {
+  getUserOrders,
+  getUserOrdersPaginated,
+  searchOrders,
+  getOrderDetails,
+  cancelOrder,
+  cancelItem,
+  requestOrderReturn,
+  requestItemReturn,
+  downloadInvoice
+};

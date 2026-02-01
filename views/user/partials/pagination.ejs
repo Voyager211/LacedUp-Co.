@@ -1,6 +1,12 @@
 <% if (totalPages && totalPages > 1) { %>
+  <% 
+    const maxButtons = 5;
+    let startPage = 1;
+    let endPage = Math.min(maxButtons, totalPages);
+  %>
+  
   <nav class="mt-4">
-    <ul class="pagination justify-content-center" id="pagination-container" data-total-pages="<%= totalPages %>">
+    <ul class="pagination justify-content-center">
       <!-- Previous Button -->
       <li class="page-item <%= currentPage === 1 ? 'disabled' : '' %>">
         <a class="page-link pagination-btn <%= currentPage === 1 ? 'disabled-btn' : '' %>"
@@ -11,8 +17,8 @@
         </a>
       </li>
 
-      <!-- Page Numbers -->
-      <% for (let i = 1; i <= totalPages; i++) { %>
+      <!-- Page Numbers (max 5) -->
+      <% for (let i = startPage; i <= endPage; i++) { %>
         <li class="page-item <%= i === currentPage ? 'active' : '' %>">
           <a class="page-link pagination-btn" href="#" data-page="<%= i %>"><%= i %></a>
         </li>

@@ -2,14 +2,14 @@ const Product = require('../../models/Product');
 const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
 const { processImages } = require('../../utils/imageProcessor');
-const { getPagination } = require('../../utils/pagination');
+const getPagination = require('../../utils/pagination');
 const { validateBase64Image, validateMultipleImageFiles } = require('../../utils/imageValidation');
 const { getImagesToDelete, deleteFiles } = require('../../utils/fileCleanup');
 const sharp = require('sharp');
 const mongoose = require('mongoose');
 
 // List all products (page render)
-exports.listProducts = async (req, res) => {
+const listProducts = async (req, res) => {
   try {
     const q = req.query.q || '';
     const page = parseInt(req.query.page) || 1;
@@ -17,12 +17,12 @@ exports.listProducts = async (req, res) => {
     const query = { productName: { $regex: q, $options: 'i' }, isDeleted: false };
 
     // Get total count of all non-deleted products
-    const totalProductCount = await Product.countDocuments({ isDeleted: false });
+    const totalRecords = await Product.countDocuments({ isDeleted: false });
 
     const { data: products, totalPages } = await getPagination(
       Product.find(query).populate('category').populate('brand').sort({ createdAt: -1 }),
       Product,
-      query,
+      query, 
       page,
       limit
     );
@@ -35,18 +35,28 @@ exports.listProducts = async (req, res) => {
       brands,
       currentPage: page,
       totalPages,
+      totalRecords,
       searchQuery: q,
-      totalProductCount,
       title: "Product Management"
     });
   } catch (err) {
     console.error(err);
-    res.status(500).send("Server Error");
+    res.status(500).render('admin/products', {
+      products: [],
+      categories: [],
+      brands: [],
+      currentPage: 1,
+      totalPages: 1,
+      totalRecords: 0,
+      searchQuery: '',
+      title: 'Product Management',
+      error: 'Failed to load products'
+    });
   }
 };
 
 // Render add product page
-exports.renderAddPage = async (req, res) => {
+const renderAddPage = async (req, res) => {
   const categories = await Category.find({ isDeleted: false, isActive: true });
   const brands = await Brand.find({ isDeleted: false, isActive: true }).sort({ name: 1 });
   res.render('admin/add-product', {
@@ -58,7 +68,7 @@ exports.renderAddPage = async (req, res) => {
 };
 
 // API: Create new product via base64 images (fetch-based)
-exports.apiSubmitNewProduct = async (req, res) => {
+const apiSubmitNewProduct = async (req, res) => {
   try {
     let base64Images = req.body.base64Images || [];
     if (!Array.isArray(base64Images)) base64Images = [base64Images];
@@ -166,9 +176,8 @@ exports.apiSubmitNewProduct = async (req, res) => {
   }
 };
 
-
 // Soft delete a product (form submit)
-exports.softDeleteProduct = async (req, res) => {
+const softDeleteProduct = async (req, res) => {
   try {
     await Product.findByIdAndUpdate(req.params.id, { isDeleted: true });
     res.redirect('/admin/products');
@@ -179,7 +188,7 @@ exports.softDeleteProduct = async (req, res) => {
 };
 
 // API: List products (fetch)
-exports.apiProducts = async (req, res) => {
+const apiProducts = async (req, res) => {
   try {
     const q = req.query.q || '';
     const page = parseInt(req.query.page) || 1;
@@ -204,10 +213,8 @@ exports.apiProducts = async (req, res) => {
 
     // Brand filter
     if (req.query.brand) {
-      // Handle multiple brand IDs (comma-separated)
       if (req.query.brand.includes(',')) {
         const brandIds = req.query.brand.split(',').filter(id => id.trim());
-        // Convert string IDs to ObjectIds for proper MongoDB querying
         const objectIds = brandIds.map(id => {
           try {
             return new mongoose.Types.ObjectId(id);
@@ -221,7 +228,6 @@ exports.apiProducts = async (req, res) => {
           query.brand = { $in: objectIds };
         }
       } else {
-        // Convert single brand ID to ObjectId
         try {
           query.brand = new mongoose.Types.ObjectId(req.query.brand);
         } catch (error) {
@@ -230,7 +236,7 @@ exports.apiProducts = async (req, res) => {
       }
     }
 
-    // Price range filters (check variants for price range)
+    // Price range filters
     if (req.query.minPrice || req.query.maxPrice) {
       const priceFilter = {};
       if (req.query.minPrice) {
@@ -239,9 +245,6 @@ exports.apiProducts = async (req, res) => {
       if (req.query.maxPrice) {
         priceFilter.$lte = parseFloat(req.query.maxPrice);
       }
-      // Note: Price filtering now needs to be done post-query since sale prices are calculated
-      // We'll filter by regularPrice as an approximation for now
-      // TODO: Implement proper calculated sale price filtering in a future update
       query.regularPrice = priceFilter;
     }
 
@@ -250,7 +253,7 @@ exports.apiProducts = async (req, res) => {
       query.isListed = req.query.status === 'true';
     }
 
-    // Stock filter (using totalStock instead of stock)
+    // Stock filter
     if (req.query.stock) {
       switch (req.query.stock) {
         case 'in-stock':
@@ -294,7 +297,7 @@ exports.apiProducts = async (req, res) => {
     }
 
     // Get total count of all non-deleted products
-    const totalProductCount = await Product.countDocuments({ isDeleted: false });
+    const totalRecords = await Product.countDocuments({ isDeleted: false });
 
     const { data: products, totalPages } = await getPagination(
       Product.find(query).populate('category').populate('brand').sort(sortQuery),
@@ -303,19 +306,21 @@ exports.apiProducts = async (req, res) => {
       page,
       limit
     );
-    res.json({ products, totalPages, currentPage: page, totalProductCount });
+    
+    res.json({ 
+      products, 
+      totalPages, 
+      currentPage: page, 
+      totalRecords 
+    });
   } catch (err) {
     console.error('Fetch Products Error:', err);
-    res.status(500).json({ success: false });
+    res.status(500).json({ success: false, message: 'Failed to fetch products' });
   }
 };
 
-// DEPRECATED METHOD REMOVED - Use apiSubmitNewProduct instead
-
-// API: Update product (fetch) - DEPRECATED: Replaced by main apiUpdateProduct method above
-
 // API: Soft delete (fetch)
-exports.apiSoftDeleteProduct = async (req, res) => {
+const apiSoftDeleteProduct = async (req, res) => {
   try {
     await Product.findByIdAndUpdate(req.params.id, { isDeleted: true });
     res.json({ success: true });
@@ -326,7 +331,7 @@ exports.apiSoftDeleteProduct = async (req, res) => {
 };
 
 // API: Toggle product status (fetch)
-exports.apiToggleProductStatus = async (req, res) => {
+const apiToggleProductStatus = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (product) {
@@ -343,9 +348,8 @@ exports.apiToggleProductStatus = async (req, res) => {
   }
 };
 
-
 // Render edit product page
-exports.renderEditPage = async (req, res) => {
+const renderEditPage = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('category').populate('brand');
     
@@ -392,17 +396,14 @@ exports.renderEditPage = async (req, res) => {
   }
 };
 
-exports.apiUpdateProduct = async (req, res) => {
+// API: Update product
+const apiUpdateProduct = async (req, res) => {
   try {
     const base64Images = req.body.base64Images || [];
     const productId = req.params.id;
 
     if (!Array.isArray(base64Images) || base64Images.length < 3) {
       return res.status(400).json({ success: false, message: 'Minimum 3 images required.' });
-    }
-
-    if (base64Images.length > 6) {
-      return res.status(400).json({ success: false, message: 'Maximum 6 images allowed per product.' });
     }
 
     if (base64Images.length > 6) {
@@ -550,3 +551,14 @@ exports.apiUpdateProduct = async (req, res) => {
   }
 };
 
+module.exports = {
+  listProducts,
+  renderAddPage,
+  apiSubmitNewProduct,
+  softDeleteProduct,
+  apiProducts,
+  apiSoftDeleteProduct,
+  apiToggleProductStatus,
+  renderEditPage,
+  apiUpdateProduct
+};

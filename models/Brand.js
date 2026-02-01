@@ -5,6 +5,7 @@ const brandSchema = new mongoose.Schema({
     name: {type: String, required: true},
     description: {type: String, default: ''},
     slug: {type: String, unique: true},
+    image: {type: String, default: ''}, // ADD THIS LINE
     brandOffer: {
         type: Number,
         default: 0,
@@ -22,17 +23,12 @@ brandSchema.pre('save', function(next) {
     next();
 });
 
-// IMPROVED: Hook to update product prices when brand offer changes
 brandSchema.post('save', async function(doc, next) {
-    // Only trigger if brandOffer was modified
     if (this.isModified('brandOffer')) {
         console.log(`🔄 Brand offer changed for ${doc.name}: ${doc.brandOffer}%`);
         
         try {
-            // Import Product model (avoid circular dependency)
             const Product = mongoose.model('Product');
-            
-            // Find all products of this brand
             const products = await Product.find({ 
                 brand: doc._id, 
                 isDeleted: false 
@@ -40,9 +36,7 @@ brandSchema.post('save', async function(doc, next) {
             
             console.log(`📦 Updating prices for ${products.length} products...`);
             
-            // Update each product to recalculate prices
             for (const product of products) {
-                // Set flag to cache prices during save
                 product.set('_cachePrices', true);
                 await product.save();
             }

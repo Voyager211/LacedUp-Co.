@@ -3,7 +3,7 @@ const passport = require('passport');
 const authController = require('../../controllers/user/authController');
 const nocache = require('../../middlewares/nocache')
 const { preventBackNavigation, preventOtpBackNavigation } = require('../../middlewares/prevent-back-navigation');
-const { isGuest } = require('../../middlewares/auth'); // ✅ Fixed double slashes
+const { isGuest } = require('../../middlewares/auth'); 
 
 const router = express.Router();
 

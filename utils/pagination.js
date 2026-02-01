@@ -1,4 +1,4 @@
-exports.getPagination = async (queryBuilder, model, filter, page = 1, limit = 10) => {
+const getPagination = async (queryBuilder, model, filter, page = 1, limit = 10) => {
   const skip = (page - 1) * limit;
 
   const [data, count] = await Promise.all([
@@ -10,3 +10,5 @@ exports.getPagination = async (queryBuilder, model, filter, page = 1, limit = 10
 
   return { data, totalPages };
 };
+
+module.exports = getPagination;

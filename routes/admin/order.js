@@ -26,6 +26,7 @@ router.get('/api/:orderId', orderController.getOrderDetailsJSON);
 // Update order status
 router.patch('/:orderId', orderController.updateOrderStatus);
 
+
 // Get allowed status transitions
 router.get('/:orderId/transitions', orderController.getAllowedTransitions);
 
@@ -37,6 +38,9 @@ router.patch('/:orderId/cancel', orderController.cancelOrder);
 router.patch('/:orderId/return', orderController.returnOrderRequest);
 
 // ===== ITEM-LEVEL ACTIONS =====
+// Update individual item status
+router.patch('/:orderId/items/:itemId/status', orderController.updateItemStatus);
+
 // Cancel individual item
 router.patch('/:orderId/items/:itemId/cancel', orderController.cancelItem);
 

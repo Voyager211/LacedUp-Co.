@@ -1,0 +1,227 @@
+<style>
+/* Compact Search Bar Styles */
+.order-search-compact {
+  position: relative;
+  flex: 1;
+  max-width: 400px;
+}
+
+.order-search-compact .input-group {
+  position: relative;
+}
+
+.order-search-input {
+  height: 42px;
+  padding-left: 2.5rem;
+  padding-right: 2.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px !important; /* Fully rounded edges */
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #f9fafb;
+}
+
+.order-search-input:focus {
+  border-color: #d1d5db; /* Light gray instead of black */
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(229, 231, 235, 0.5); /* Subtle shadow */
+  outline: none;
+}
+
+.order-search-input::placeholder {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.search-icon-compact {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  pointer-events: none;
+  z-index: 10;
+  font-size: 16px;
+}
+
+.clear-search-compact {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 28px;
+  width: 28px;
+  padding: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent; /* Transparent background */
+  border-radius: 50%; /* Circular */
+  transition: all 0.2s ease;
+  z-index: 10;
+  font-size: 14px;
+  color: #6b7280;
+  cursor: pointer;
+}
+
+.clear-search-compact:hover {
+  background: rgba(0, 0, 0, 0.05); /* Very subtle hover background */
+  color: #111827;
+}
+
+.clear-search-compact:active {
+  background: rgba(0, 0, 0, 0.1);
+  transform: translateY(-50%) scale(0.95);
+}
+
+.search-results {
+  position: absolute;
+  top: 50px;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px; /* More rounded */
+  max-height: 420px;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+}
+
+.search-results-content {
+  padding: 0.5rem;
+}
+
+.search-result-item {
+  padding: 12px;
+  border-radius: 10px; /* Rounded result items */
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background: #f9fafb;
+  transform: translateX(2px);
+}
+
+.search-result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.search-result-order-id {
+  font-weight: 600;
+  color: #111827;
+  font-size: 13px;
+}
+
+.search-result-status {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.search-result-products {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  line-height: 1.4;
+}
+
+.search-result-date {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.search-no-results,
+.search-loading {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.search-no-results i {
+  font-size: 2.5rem;
+  color: #d1d5db;
+  margin-bottom: 0.5rem;
+}
+
+.search-no-results p {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 0.25rem;
+}
+
+.search-no-results .small {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Smooth scrollbar for search results */
+.search-results::-webkit-scrollbar {
+  width: 6px;
+}
+
+.search-results::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.search-results::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 10px;
+}
+
+.search-results::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .order-search-compact {
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .order-search-compact {
+    max-width: 100%;
+    margin-top: 12px;
+  }
+  
+  .order-search-input {
+    height: 40px;
+    font-size: 13px;
+    border-radius: 20px !important;
+  }
+}
+</style>
+
+
+<!-- Compact Search Bar HTML -->
+<div class="order-search-compact">
+  <div class="input-group">
+    <i class="bi bi-search search-icon-compact"></i>
+    <input 
+      type="text" 
+      class="form-control order-search-input" 
+      id="orderSearchInput"
+      placeholder="Search orders..."
+      autocomplete="off">
+    <button class="clear-search-compact" id="clearOrderSearch" type="button">
+      <i class="bi bi-x-lg"></i>
+    </button>
+  </div>
+  <div class="search-results" id="searchResults" style="display: none;">
+    <div class="search-results-content"></div>
+  </div>
+</div>
+

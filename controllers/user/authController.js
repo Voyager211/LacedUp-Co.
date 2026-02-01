@@ -2,8 +2,11 @@ const User = require('../../models/User');
 const crypto = require('crypto');
 const sendOtp = require('../../utils/sendOtp');
 const passport = require('passport');
+const { generateReferralCode } = require('../../utils/referralCodeGenerator');
+const Wallet = require('../../models/Wallet');
+const walletService = require('../../services/paymentProviders/walletService'); 
 
-exports.getSignup = (req, res) => {
+const getSignup = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   res.render('user/auth/signup', {
     title: 'Sign Up',
@@ -11,8 +14,8 @@ exports.getSignup = (req, res) => {
   });
 };
 
-exports.postSignup = async (req, res) => {
-  const { name, email, phone, password, confirmPassword } = req.body;
+const postSignup = async (req, res) => {
+  const { name, email, phone, password, confirmPassword, referralCode } = req.body;
 
   try {
     if (!name || !email || !password || !confirmPassword) {
@@ -28,26 +31,45 @@ exports.postSignup = async (req, res) => {
       return res.status(409).json({ error: 'Email already in use.' });
     }
 
+    // Handle referral code validation BEFORE storing in session
+    let referrer = null;
+    if (referralCode) {
+      referrer = await User.findOne({ 
+        referralCode: referralCode.toUpperCase() 
+      });
+      
+      if (!referrer) {
+        return res.status(400).json({ 
+          error: 'Invalid referral code. Please check and try again.' 
+        });
+      }
+    }
+
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
     const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
-    // Store user data temporarily in session instead of creating user immediately
+    // Store user data temporarily in session with referral info
     req.session.pendingUser = {
       name,
       email,
       phone,
       password,
       otpHash,
-      otpExpiresAt
+      otpExpiresAt,
+      referralCode: referralCode ? referralCode.toUpperCase() : null,
+      referrerId: referrer ? referrer._id : null
     };
 
     // Create a temporary user object for sending email (without saving to DB)
     const tempUser = { name, email };
     await sendOtp(tempUser, otp);
 
-    return res.status(200).json({ success: true, redirect: `/verify-otp?email=${encodeURIComponent(email)}` });
+    return res.status(200).json({ 
+      success: true, 
+      redirect: `/verify-otp?email=${encodeURIComponent(email)}` 
+    });
 
   } catch (err) {
     console.error('Signup Error:', err);
@@ -67,7 +89,8 @@ exports.postSignup = async (req, res) => {
   }
 };
 
-exports.getLogin = (req, res) => {
+
+const getLogin = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
 
   // Handle error messages from URL parameters (fallback when flash is unavailable)
@@ -83,7 +106,7 @@ exports.getLogin = (req, res) => {
   });
 };
 
-exports.postLogin = (req, res, next) => {
+const postLogin = (req, res, next) => {
   passport.authenticate('local', (err, user, info) => {
     if (err) return res.status(500).json({ error: 'Something went wrong.' });
     if (!user) return res.status(401).json({ error: info.message || 'Invalid credentials.' });
@@ -95,7 +118,7 @@ exports.postLogin = (req, res, next) => {
   })(req, res, next);
 };
 
-exports.logout = (req, res) => {
+const logout = (req, res) => {
   req.logout(() => {
     req.session.destroy((err) => {
       if (err) {
@@ -109,7 +132,7 @@ exports.logout = (req, res) => {
 };
 
 // GET: OTP verification page
-exports.getOtpPage = (req, res) => {
+const getOtpPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
 
@@ -123,7 +146,7 @@ exports.getOtpPage = (req, res) => {
 };
 
 // POST: Verify OTP
-exports.postOtpVerification = async (req, res) => {
+const postOtpVerification = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
@@ -136,7 +159,6 @@ exports.postOtpVerification = async (req, res) => {
       const isValid = pendingUser.otpHash === otpHash;
 
       if (isExpired) {
-        // Clear pending user data
         delete req.session.pendingUser;
         return res.status(410).json({ error: 'OTP expired. Please sign up again.' });
       }
@@ -145,7 +167,7 @@ exports.postOtpVerification = async (req, res) => {
         return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
       }
 
-      // OTP is valid, now create the user in database
+      // Create the new user
       const newUser = new User({
         name: pendingUser.name,
         email: pendingUser.email,
@@ -153,7 +175,83 @@ exports.postOtpVerification = async (req, res) => {
         password: pendingUser.password
       });
 
+      // Generate unique referral code for new user
+      newUser.referralCode = await generateReferralCode(newUser._id);
+
+      // Set referral relationship if referrer exists
+      if (pendingUser.referrerId) {
+        newUser.referredBy = pendingUser.referrerId;
+        newUser.hasUsedReferralCode = true;
+      }
+
       await newUser.save();
+
+      // ✅ CREATE WALLET FOR NEW USER
+      let newUserWalletAmount = 0;
+      
+      // If user signed up with referral code, give ₹100 bonus
+      if (pendingUser.referrerId) {
+        newUserWalletAmount = 100;
+      }
+
+      try {
+        // Create wallet with initial balance
+        const newUserWallet = new Wallet({
+          userId: newUser._id,
+          balance: newUserWalletAmount,
+          transactions: []
+        });
+
+        // If referred, add welcome bonus transaction
+        if (pendingUser.referrerId) {
+          const timestamp = Date.now();
+          const random = Math.floor(Math.random() * 10000);
+          const transactionId = `TXN${timestamp}${random}`;
+
+          newUserWallet.transactions.push({
+            transactionId: transactionId,
+            type: 'credit',
+            amount: 100,
+            description: 'Referral welcome bonus',
+            paymentMethod: 'referral_reward',
+            status: 'completed',
+            balanceAfter: 100,
+            date: new Date()
+          });
+        }
+
+        await newUserWallet.save();
+        console.log(`✅ Wallet created for new user: ${newUser.email} (Balance: ₹${newUserWalletAmount})`);
+      } catch (walletError) {
+        console.error('❌ Error creating wallet for new user:', walletError);
+      }
+
+      // ✅ Process referral reward for REFERRER (₹300)
+      if (pendingUser.referrerId) {
+        try {
+          // Use walletService to add ₹300 to referrer's wallet
+          await walletService.addTransaction(pendingUser.referrerId, {
+            type: 'credit',
+            amount: 300,
+            description: `Referral reward for inviting ${newUser.name}`,
+            paymentMethod: 'referral_reward',
+            status: 'completed'
+          });
+
+          // Update referrer's referral count
+          await User.findByIdAndUpdate(pendingUser.referrerId, {
+            $inc: { referralCount: 1 }
+          });
+
+          console.log(`✅ Referral rewards processed:
+            - ₹300 credited to referrer wallet (${pendingUser.referrerId})
+            - ₹100 credited to new user wallet (${newUser.email})`);
+
+        } catch (referralError) {
+          console.error('❌ Error processing referral reward:', referralError);
+          // Don't fail the registration if referral processing fails
+        }
+      }
 
       // Clear pending user data from session
       delete req.session.pendingUser;
@@ -172,7 +270,6 @@ exports.postOtpVerification = async (req, res) => {
       }
 
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-
       const isExpired = user.otpExpiresAt < Date.now();
       const isValid = user.otpHash === otpHash;
 
@@ -184,7 +281,6 @@ exports.postOtpVerification = async (req, res) => {
         return res.status(401).json({ error: 'Incorrect OTP. Try again.' });
       }
 
-      // Clear OTP fields and save
       user.otpHash = undefined;
       user.otpExpiresAt = undefined;
       await user.save();
@@ -201,7 +297,11 @@ exports.postOtpVerification = async (req, res) => {
   }
 };
 
-exports.resendOtp = async (req, res) => {
+
+
+
+
+const resendOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -262,7 +362,7 @@ exports.resendOtp = async (req, res) => {
 
 
 // GET: Forgot password page
-exports.getForgotPassword = (req, res) => {
+const getForgotPassword = (req, res) => {
   res.render('user/auth/forgot-password', {
     title: 'Forgot Password',
     layout: 'user/layouts/auth-layout'
@@ -270,7 +370,7 @@ exports.getForgotPassword = (req, res) => {
 };
 
 // POST: Send OTP for password reset
-exports.sendResetOtp = async (req, res) => {
+const sendResetOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -311,7 +411,7 @@ exports.sendResetOtp = async (req, res) => {
 };
 
 // GET: OTP input page for reset
-exports.getResetOtpPage = (req, res) => {
+const getResetOtpPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
   if (!email) return res.redirect('/forgot-password');
@@ -324,7 +424,7 @@ exports.getResetOtpPage = (req, res) => {
 };
 
 // POST: Verify reset OTP
-exports.verifyResetOtp = async (req, res) => {
+const verifyResetOtp = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
@@ -354,7 +454,7 @@ exports.verifyResetOtp = async (req, res) => {
 };
 
 // GET: Reset password form
-exports.getResetPasswordPage = (req, res) => {
+const getResetPasswordPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
   if (!email) return res.redirect('/forgot-password');
@@ -367,7 +467,7 @@ exports.getResetPasswordPage = (req, res) => {
 };
 
 // POST: Resend OTP for password reset
-exports.resendResetOtp = async (req, res) => {
+const resendResetOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
@@ -406,7 +506,7 @@ exports.resendResetOtp = async (req, res) => {
 };
 
 // POST: Final password update
-exports.resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   const { email, newPassword, confirmPassword } = req.body;
 
   try {
@@ -436,4 +536,22 @@ exports.resetPassword = async (req, res) => {
     console.error('Password Reset Error:', err);
     res.status(500).json({ error: 'Failed to reset password.' });
   }
+};
+
+module.exports = {
+  getSignup,
+  postSignup,
+  getLogin,
+  postLogin,
+  logout,
+  getOtpPage,
+  postOtpVerification,
+  resendOtp,
+  getForgotPassword,
+  sendResetOtp,
+  getResetOtpPage,
+  verifyResetOtp,
+  getResetPasswordPage,
+  resendResetOtp,
+  resetPassword
 };

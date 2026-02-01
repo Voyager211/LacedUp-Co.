@@ -1,0 +1,79 @@
+
+
+<%
+// Decorative Coupon Card
+const context = locals.context || 'user';
+const currentTotal = locals.currentTotal || 0;
+const clickable = typeof locals.clickable !== 'undefined' ? locals.clickable : true;
+const showApplyButton = typeof locals.showApplyButton !== 'undefined' ? locals.showApplyButton : true;
+
+const meetsMinOrder = currentTotal >= (coupon.minimumOrderValue || 0);
+const isApplicable = meetsMinOrder && coupon.isActive && context === 'user';
+const canClick = clickable && isApplicable && context === 'user';
+
+const discountDisplay = coupon.discountType === 'percentage' 
+    ? `${coupon.discountValue}% OFF` 
+    : `₹${coupon.discountValue} OFF`;
+
+const validToDate = new Date(coupon.validTo).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+const now = new Date();
+const isExpired = now > new Date(coupon.validTo);
+let statusBadgeClass = 'badge-active';
+let statusText = 'ACTIVE';
+
+if (isExpired) {
+    statusBadgeClass = 'badge-expired';
+    statusText = 'EXPIRED';
+} else if (!coupon.isActive) {
+    statusBadgeClass = 'badge-inactive';
+    statusText = 'INACTIVE';
+}
+
+const usageText = coupon.usageLimit ? `${coupon.usedCount || 0}/${coupon.usageLimit}` : `${coupon.usedCount || 0}/Infinity`;
+%>
+
+<div class="decorative-coupon-wrapper">
+    <div class="decorative-coupon-inner">
+        <div class="coupon-horizontal-layout">
+            <!-- Left Section: Discount -->
+            <div class="coupon-discount-section">
+                <h2 class="coupon-decorative-discount">GET <%= discountDisplay %></h2>
+            </div>
+
+            <!-- Right Section: Details -->
+            <div class="coupon-details-section">
+                <div class="coupon-header-row">
+                    <p class="coupon-decorative-title"><%= coupon.name || 'Special Offer' %></p>
+                    <% if (context === 'admin') { %>
+                        <span class="coupon-badge-decorative <%= statusBadgeClass %>"><%= statusText %></span>
+                    <% } %>
+                </div>
+
+                <p class="coupon-decorative-description">
+                    <%= coupon.description || 'Enjoy this exclusive discount on your purchase!' %>
+                </p>
+
+                <div class="coupon-code-row">
+                    <span style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Use code:</span>
+                    <span class="coupon-decorative-code"><%= coupon.code %></span>
+                    <% if(coupon.maximumDiscountAmount) { %>
+                        <span class="coupon-max-discount">(Max: ₹<%= coupon.maximumDiscountAmount %>)</span>
+                    <% } %>
+                </div>
+
+                <div class="coupon-footer-row">
+                    <p class="coupon-decorative-validity">Valid Till <%= validToDate %></p>
+                    <% if (context === 'admin') { %>
+                        <div class="coupon-decorative-meta">
+                            <span><i class="bi bi-circle-fill" style="font-size: 6px;"></i> <%= usageText %></span>
+                            <% if(coupon.minimumOrderValue > 0) { %>
+                                <span><i class="bi bi-cart3"></i> Min: ₹<%= coupon.minimumOrderValue %></span>
+                            <% } %>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

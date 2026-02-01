@@ -10,7 +10,7 @@ const dashboardController = require('../../controllers/admin/dashboardController
 router.get('/login', nocache, authController.getLogin);
 router.post('/login', authController.postLogin);
 
-router.get('/dashboard', isAdmin, dashboardController.getDashboard);
+router.get('/dashboard', isAdmin, dashboardController.renderDashboard);
 router.get('/logout', authController.logout);
 
 module.exports = router;

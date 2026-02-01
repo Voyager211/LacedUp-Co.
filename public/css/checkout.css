@@ -233,6 +233,143 @@
     font-weight: 500 !important;
 }
 
+/* ========= WALLET PAYMENT SPECIFIC STYLES ========= */
+#wallet-payment-option {
+    position: relative;
+}
+
+#wallet-payment-option.opacity-50 {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+#wallet-payment-option:hover {
+    border-color: #28a745;
+    background-color: #f8fff8;
+}
+
+#wallet-payment-option.selected {
+    border-color: #28a745;
+    background-color: #f8fff8;
+}
+
+#wallet-balance-text {
+    margin: 0;
+    font-size: 0.9em;
+}
+
+.btn-continue.wallet-payment {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    border: none;
+    color: white;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-continue.wallet-payment::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.btn-continue.wallet-payment:hover::before {
+    left: 100%;
+}
+
+.btn-continue.wallet-payment:hover {
+    background: linear-gradient(135deg, #218838, #1ea87a);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(40, 167, 69, 0.4);
+}
+
+#insufficient-balance-warning {
+    border: 1px solid #ffc107;
+    background-color: #fff3cd;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+    to {
+        opacity: 1;
+        max-height: 100px;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+}
+
+.payment-icon i.bi-wallet2 {
+    color: #28a745;
+    transition: color 0.3s ease;
+}
+
+#wallet-payment-option:hover .payment-icon i.bi-wallet2 {
+    color: #1e7e34;
+}
+
+#wallet-payment-option.selected .payment-icon i.bi-wallet2 {
+    color: #155724;
+}
+
+/* Enhanced wallet balance text states */
+#wallet-balance-text.text-success {
+    color: #28a745 !important;
+    font-weight: 600;
+}
+
+#wallet-balance-text.text-danger {
+    color: #dc3545 !important;
+    font-weight: 600;
+}
+
+#wallet-balance-text.text-warning {
+    color: #ffc107 !important;
+    font-weight: 600;
+}
+
+/* Insufficient balance warning animation */
+#insufficient-balance-warning.d-none {
+    animation: slideUp 0.3s ease-out;
+    animation-fill-mode: forwards;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 1;
+        max-height: 100px;
+        padding-top: 0.75rem;
+        padding-bottom: 0.75rem;
+    }
+    to {
+        opacity: 0;
+        max-height: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+    }
+}
+
+/* Wallet payment loading state */
+.btn-continue.wallet-payment:disabled {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
 /* === ORDER SUMMARY CARD (styled exactly like cart page) === */
 .order-summary {
     background: white;
@@ -379,6 +516,7 @@
     color: #000;
 }
 
+/* ========= PLACE ORDER BUTTON STYLES ========= */
 .btn-continue {
     background-color: #000;
     color: white;
@@ -393,12 +531,32 @@
     transition: all 0.3s ease;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    cursor: pointer;
 }
 
-.btn-continue:hover {
+.btn-continue:hover:not(:disabled):not(.btn-disabled) {
     background-color: #dc3545;
     transform: translateY(-2px);
     box-shadow: 0 8px 20px rgba(220, 53, 69, 0.3);
+}
+
+/* ✅ NEW: Disabled state styles */
+.btn-continue:disabled,
+.btn-continue.btn-disabled {
+    background-color: #6c757d;
+    color: #ffffff;
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn-continue:disabled:hover,
+.btn-continue.btn-disabled:hover {
+    background-color: #6c757d;
+    transform: none;
+    box-shadow: none;
 }
 
 .btn-back {
@@ -459,9 +617,12 @@
         min-height: auto;
     }
     
-    .checkout-left, .checkout-right {
+    .checkout-left, 
+    .checkout-right {
         flex: 1;
-        min-width: auto;
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
     }
     
     .step-indicator {
@@ -476,6 +637,10 @@
     .order-summary {
         position: static;
         margin-top: 2rem;
+        margin-left: 0;
+        margin-right: 0;
+        width: 100%;
+        max-width: 100%;
         min-height: auto;
     }
     
@@ -485,6 +650,8 @@
     
     .section-card {
         min-height: auto;
+        width: 100%;
+        max-width: 100%;
     }
     
     .address-card {
@@ -498,11 +665,28 @@
     .order-item {
         min-height: auto;
     }
+
+    /* Wallet payment mobile adjustments */
+    .btn-continue.wallet-payment {
+        font-size: 0.9rem;
+        padding: 12px 20px;
+    }
+
+    #insufficient-balance-warning {
+        font-size: 0.9rem;
+        padding: 0.6rem;
+    }
 }
 
 @media (max-width: 576px) {
     .checkout-title {
         font-size: 1.5rem;
+    }
+
+    /* Mobile wallet payment styles */
+    .btn-continue.wallet-payment {
+        font-size: 0.85rem;
+        padding: 10px 15px;
     }
 }
 
@@ -521,4 +705,420 @@ p {
 .checkout-content.hidden {
     visibility: hidden;
     opacity: 0;
+}
+
+/* Enhanced accessibility for wallet payment */
+#wallet-payment-option input[type="radio"]:focus + label {
+    outline: 2px solid #28a745;
+    outline-offset: 2px;
+}
+
+#wallet-payment-option input[type="radio"]:disabled + label {
+    cursor: not-allowed;
+}
+
+/* Loading shimmer effect for wallet balance */
+#wallet-balance-text:empty::before {
+    content: "Loading balance...";
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+    border-radius: 4px;
+    display: inline-block;
+    width: 120px;
+    height: 1em;
+}
+
+@keyframes shimmer {
+    0% {
+        background-position: -200% 0;
+    }
+    100% {
+        background-position: 200% 0;
+    }
+}
+
+/* ========= CUSTOM PAYMENT PROCESSING ANIMATIONS ========= */
+
+/* Progress Bar Animations */
+.custom-loader-container,
+.payment-processing-container {
+  padding: 20px;
+  text-align: center;
+}
+
+.custom-progress-bar {
+  width: 100%;
+  height: 8px;
+  background-color: #f0f0f0;
+  border-radius: 20px;
+  overflow: hidden;
+  margin: 20px 0;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.custom-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4CAF50, #45a049, #66bb6a);
+  background-size: 200% 100%;
+  border-radius: 20px;
+  transition: width 0.3s ease;
+  animation: progress-shimmer 2s infinite;
+}
+
+.payment-progress {
+  background: linear-gradient(90deg, #2196F3, #1976D2, #42A5F5);
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.custom-progress-text {
+  font-size: 16px;
+  color: #666;
+  margin: 15px 0;
+  font-weight: 500;
+}
+
+/* Payment Processing Icon */
+.payment-icon-container {
+  margin-bottom: 20px;
+}
+
+.payment-processing-icon {
+  font-size: 48px;
+  color: #2196F3;
+  animation: payment-pulse 1.5s infinite;
+}
+
+@keyframes payment-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* Processing Dots */
+.processing-dots {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin-top: 15px;
+}
+
+.processing-dots span {
+  width: 8px;
+  height: 8px;
+  background-color: #2196F3;
+  border-radius: 50%;
+  animation: processing-bounce 1.4s infinite ease-in-out;
+}
+
+.processing-dots span:nth-child(1) { animation-delay: -0.32s; }
+.processing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes processing-bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* Success Animation */
+.custom-success-container {
+  text-align: center;
+  padding: 20px;
+}
+
+.success-checkmark-container {
+  margin: 20px auto;
+}
+
+.success-checkmark {
+  width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
+
+.success-checkmark-circle {
+  stroke-dasharray: 166;
+  stroke-dashoffset: 166;
+  stroke-width: 3;
+  stroke-miterlimit: 10;
+  stroke: #4CAF50;
+  fill: none;
+}
+
+.success-checkmark-check {
+  transform-origin: 50% 50%;
+  stroke-dasharray: 48;
+  stroke-dashoffset: 48;
+  stroke-width: 3;
+  stroke: #4CAF50;
+}
+
+@keyframes success-circle-draw {
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes success-check-draw {
+  100% { stroke-dashoffset: 0; }
+}
+
+@keyframes success-bounce {
+  0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-10px); }
+  60% { transform: translateY(-5px); }
+}
+
+.success-details h4 {
+  font-size: 24px;
+  color: #4CAF50;
+  font-weight: 600;
+  margin: 10px 0;
+}
+
+.success-method {
+  color: #666;
+  margin: 5px 0;
+  font-size: 16px;
+}
+
+.success-order {
+  color: #888;
+  margin: 5px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Custom Popup Styles */
+.custom-progress-popup,
+.custom-payment-popup {
+  border-radius: 15px !important;
+}
+
+.custom-success-popup {
+  border-radius: 15px !important;
+  box-shadow: 0 20px 60px rgba(76, 175, 80, 0.3) !important;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 480px) {
+  .success-checkmark {
+    width: 60px;
+    height: 60px;
+  }
+  
+  .success-details h4 {
+    font-size: 20px;
+  }
+  
+  .payment-processing-icon {
+    font-size: 36px;
+  }
+}
+
+/* Auto-redirect countdown styling */
+.auto-redirect-info {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e9ecef;
+}
+
+.redirect-text {
+  color: #6c757d;
+  font-size: 14px;
+  margin: 0;
+  text-align: center;
+}
+
+.redirect-text #countdown {
+  color: #28a745;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+/* Optional: Add a subtle pulse animation to countdown */
+#countdown {
+  animation: countdown-pulse 1s infinite;
+}
+
+@keyframes countdown-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1; 
+  }
+  50% { 
+    transform: scale(1.1); 
+    opacity: 0.8; 
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 480px) {
+  .redirect-text {
+    font-size: 13px;
+  }
+  
+  .redirect-text #countdown {
+    font-size: 15px;
+  }
+}
+
+/* PayPal Button Container Styling */
+#paypal-btn-container-main {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  border-radius: 8px;
+  background: #f8f9fa;
+}
+
+#paypal-btn-container-main .paypal-button {
+  border-radius: 8px !important;
+  height: 48px !important;
+}
+
+/* Hide PayPal warnings in console (cosmetic) */
+.paypal-checkout-sandbox .paypal-checkout-logo {
+  display: none;
+}
+
+/* COUPON SECTION */
+/* Container for the View Available Coupons link */
+.view-coupons-container {
+  display: block !important;
+  width: 100% !important;
+  margin-top: 8px !important;
+  clear: both;
+}
+
+/* View Available Coupons styling to match payment method descriptions */
+.view-available-coupons {
+  font-size: 14px;
+  color: #6c757d;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s ease;
+  display: inline-block;
+}
+
+.view-available-coupons:hover {
+  color: #dc3545;
+  text-decoration: none;
+}
+
+/* Ensure input group doesn't have bottom margin that conflicts */
+.section-card .input-group {
+  margin-bottom: 0 !important;
+}
+
+/* Applied coupon styling adjustments */
+#applied-coupon .alert {
+  margin-bottom: 0;
+}
+
+/* ========= LOAD MORE ADDRESSES SPAN ========= */
+.load-more-container {
+    width: 100%;
+    text-align: center;
+    margin-top: 20px;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.load-more-span {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 20px;
+    color: #000;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+    position: relative;
+    user-select: none;
+}
+
+.load-more-span:hover {
+    color: #dc3545;
+    background-color: #f8f9fa;
+    transform: translateY(-2px);
+}
+
+.load-more-span:active {
+    transform: translateY(0);
+}
+
+.load-more-span i {
+    font-size: 18px;
+    transition: transform 0.3s ease;
+}
+
+.load-more-span:hover i {
+    transform: translateY(3px);
+    animation: bounce-down 0.6s ease infinite;
+}
+
+@keyframes bounce-down {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(5px);
+    }
+}
+
+#remainingCount {
+    font-weight: 700;
+    color: #000;
+}
+
+/* Hidden address initial state for sliding animation */
+.address-card.hidden-address {
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transform: translateY(-20px);
+    margin-bottom: 0;
+}
+
+/* Smooth transition when addresses become visible */
+.address-card {
+    transition: max-height 0.5s ease, opacity 0.4s ease, transform 0.4s ease, margin-bottom 0.3s ease;
+}
+
+/* When address is shown, restore margin */
+.address-card:not(.hidden-address) {
+    margin-bottom: 15px;
+}
+
+/* Loading state for addresses */
+.address-card.loading {
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .load-more-span {
+        font-size: 14px;
+        padding: 10px 16px;
+    }
+    
+    .load-more-span i {
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 576px) {
+    .load-more-span {
+        font-size: 13px;
+        padding: 8px 14px;
+    }
+}
+
+/* Add subtle animation when all addresses are shown */
+.load-more-container.hiding {
+    opacity: 0;
+    transform: translateY(-10px);
 }

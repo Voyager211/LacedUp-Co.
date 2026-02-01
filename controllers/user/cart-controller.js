@@ -2,6 +2,7 @@ const Cart = require('../../models/Cart');
 const Product = require('../../models/Product');
 const User = require('../../models/User');
 const Wishlist = require('../../models/Wishlist');
+const walletService = require('../../services/paymentProviders/walletService');
 
 // Helper function to calculate final price with offers
 const calculateFinalPrice = async (product) => {
@@ -22,7 +23,6 @@ const calculateFinalPrice = async (product) => {
 // Helper function to calculate variant-specific final price
 const calculateVariantFinalPrice = (product, variant) => {
   try {
-    // Try to use product's calculateVariantFinalPrice method if it exists
     if (typeof product.calculateVariantFinalPrice === 'function') {
       return product.calculateVariantFinalPrice(variant);
     }
@@ -41,7 +41,7 @@ const calculateItemTotal = (price, quantity) => {
 };
 
 // Add product to cart with comprehensive validation (SKU-based)
-exports.addToCart = async (req, res) => {
+const addToCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId, quantity = 1 } = req.body;
@@ -252,7 +252,7 @@ exports.addToCart = async (req, res) => {
 };
 
 // Get cart count for navbar
-exports.getCartCount = async (req, res) => {
+const getCartCount = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -273,7 +273,7 @@ exports.getCartCount = async (req, res) => {
 };
 
 // Load cart page (SKU-based) - UPDATED VERSION
-exports.loadCart = async (req, res) => {
+const loadCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     
@@ -472,7 +472,7 @@ exports.loadCart = async (req, res) => {
 };
 
 // Remove item from cart (SKU-based)
-exports.removeFromCart = async (req, res) => {
+const removeFromCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -536,7 +536,7 @@ exports.removeFromCart = async (req, res) => {
 };
 
 // Update cart item quantity (SKU-based)
-exports.updateCartQuantity = async (req, res) => {
+const updateCartQuantity = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId, quantity } = req.body;
@@ -710,7 +710,7 @@ exports.updateCartQuantity = async (req, res) => {
 
 
 // Clear entire cart
-exports.clearCart = async (req, res) => {
+const clearCart = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -742,7 +742,7 @@ exports.clearCart = async (req, res) => {
 };
 
 // Remove all out-of-stock items from cart (SKU-based)
-exports.removeOutOfStockItems = async (req, res) => {
+const removeOutOfStockItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -831,7 +831,7 @@ exports.removeOutOfStockItems = async (req, res) => {
 };
 
 // Validate cart items and return availability status (SKU-based)
-exports.validateCartItems = async (req, res) => {
+const validateCartItems = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -928,7 +928,7 @@ exports.validateCartItems = async (req, res) => {
 };
 
 // Check authentication status
-exports.checkAuth = async (req, res) => {
+const checkAuth = async (req, res) => {
   try {
     const isAuthenticated = !!(req.user || req.session.userId);
     res.json({ 
@@ -942,114 +942,12 @@ exports.checkAuth = async (req, res) => {
 };
 
 // Load checkout page
-exports.loadCheckout = async (req, res) => {
-  try {
-    const userId = req.user ? req.user._id : req.session.userId;
-    
-    // Get user data
-    const user = await User.findById(userId).select('fullname email profilePhoto');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    // Get user's addresses
-    const Address = require('../../models/Address');
-    const userAddresses = await Address.findOne({ userId });
-    const addresses = userAddresses ? userAddresses.address : [];
-
-    // Get user's cart with populated product data
-    const cart = await Cart.findOne({ userId })
-      .populate({
-        path: 'items.productId',
-        populate: [
-          {
-            path: 'category',
-            select: 'name isListed isDeleted categoryOffer'
-          },
-          {
-            path: 'brand',
-            select: 'name brandOffer isActive isDeleted'
-          }
-        ]
-      });
-
-    let cartItems = [];
-    let subtotal = 0;
-    let totalItemCount = 0;
-    let totalDiscount = 0;
-
-    if (cart && cart.items) {
-      // Filter out unavailable items and calculate totals
-      cartItems = cart.items.filter(item => {
-        // Check if product exists and is available
-        if (!item.productId || 
-            !item.productId.isListed ||
-            item.productId.isDeleted) {
-          return false;
-        }
-
-        // Check category availability
-        if (item.productId.category && 
-            (item.productId.category.isListed === false || item.productId.category.isDeleted === true)) {
-          return false;
-        }
-
-        // Check brand availability
-        if (item.productId.brand && 
-            (item.productId.brand.isActive === false || item.productId.brand.isDeleted === true)) {
-          return false;
-        }
-
-        // Check variant stock
-        if (item.variantId) {
-          const variant = item.productId.variants.find(v => v._id.toString() === item.variantId.toString());
-          if (!variant || variant.stock === 0 || variant.stock < item.quantity) {
-            return false;
-          }
-        }
-
-        return true;
-      });
-
-      // Calculate totals
-      cartItems.forEach(item => {
-        subtotal += item.totalPrice || (item.price * item.quantity);
-        totalItemCount += item.quantity;
-      });
-    }
-
-    // Calculate shipping (free shipping for orders above ₹500)
-    const shipping = subtotal >= 500 ? 0 : 50;
-    
-    // Calculate total
-    const total = subtotal + shipping - totalDiscount;
-
-    // If cart is empty or no valid items, redirect to cart
-    if (cartItems.length === 0) {
-      return res.redirect('/cart');
-    }
-
-    res.render('user/checkout', {
-      user,
-      addresses,
-      cartItems,
-      subtotal: Math.round(subtotal),
-      totalItemCount,
-      totalDiscount,
-      shipping,
-      total: Math.round(total),
-      title: 'Checkout',
-      layout: 'user/layouts/user-layout',
-      active: 'checkout'
-    });
-  } catch (error) {
-    console.error('Error loading checkout:', error);
-    res.status(500).render('error', { message: 'Error loading checkout page' });
-  }
+const loadCheckout = async (req, res) => {
+  return res.redirect('/checkout');
 };
 
 // Validate cart stock for checkout
-exports.validateCheckoutStock = async (req, res) => {
+const validateCheckoutStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -1203,7 +1101,7 @@ exports.validateCheckoutStock = async (req, res) => {
 };
 
 // Validate cart stock (general validation)
-exports.validateCartStock = async (req, res) => {
+const validateCartStock = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
 
@@ -1332,7 +1230,7 @@ exports.validateCartStock = async (req, res) => {
 };
 
 // Reset cart item quantity to available stock
-exports.resetCartItemQuantity = async (req, res) => {
+const resetCartItemQuantity = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -1422,7 +1320,7 @@ exports.resetCartItemQuantity = async (req, res) => {
 };
 
 // Save item for later (move from cart to wishlist)
-exports.saveForLater = async (req, res) => {
+const saveForLater = async (req, res) => {
   try {
     const userId = req.user ? req.user._id : req.session.userId;
     const { productId, variantId } = req.body;
@@ -1516,3 +1414,59 @@ exports.saveForLater = async (req, res) => {
     });
   }
 };
+
+const getWalletBalanceForCheckout = async (req, res) => {
+  try {
+    const userId = req.user ? req.user._id : req.session.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required',
+        balance: 0
+      });
+    }
+
+    const walletBalance = await walletService.getWalletBalance(userId);
+    
+    if (!walletBalance.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to get wallet balance',
+        balance: 0
+      });
+    }
+
+    res.json({
+      success: true,
+      balance: walletBalance.balance || 0,
+      formatted: `₹${(walletBalance.balance || 0).toLocaleString('en-IN')}`
+    });
+
+  } catch (error) {
+    console.error('Error getting wallet balance for checkout:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error getting wallet balance',
+      balance: 0
+    });
+  }
+};
+
+module.exports = {
+  addToCart,
+  getCartCount,
+  loadCart,
+  removeFromCart,
+  updateCartQuantity,
+  clearCart,
+  removeOutOfStockItems,
+  validateCartItems,
+  checkAuth,
+  loadCheckout,
+  validateCheckoutStock,
+  validateCartStock,
+  resetCartItemQuantity,
+  saveForLater,
+  getWalletBalanceForCheckout
+}
