@@ -97,7 +97,7 @@ const validateProfilePhone = (phone) => {
   return { isValid: true, trimmedValue: digitsOnly };
 };
 
-exports.loadProfile = async (req, res) => {
+const loadProfile = async (req, res) => {
   try {
     // Get userId from session or req.user (Passport.js)
     const userId = req.session.userId || (req.user && req.user._id);
@@ -125,7 +125,7 @@ exports.loadProfile = async (req, res) => {
   }
 };
 
-exports.loadEditProfile = async (req, res) => {
+const loadEditProfile = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -150,7 +150,7 @@ exports.loadEditProfile = async (req, res) => {
   }
 };
 
-exports.loadChangePassword = async (req, res) => {
+const loadChangePassword = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -176,14 +176,14 @@ exports.loadChangePassword = async (req, res) => {
 
 // Note: loadAddresses moved to addressController.js
 // This function is kept for backward compatibility but should use the address controller
-exports.loadAddresses = async (req, res) => {
+const loadAddresses = async (req, res) => {
   // Redirect to the proper address controller route
   res.redirect('/addresses');
 };
 
  
 
-exports.loadOrders = async (req, res) => {
+const loadOrders = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -270,7 +270,7 @@ exports.loadOrders = async (req, res) => {
 };
 
 // Simple email update function (for inline editing with OTP)
-exports.updateEmail = async (req, res) => {
+const updateEmail = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -377,7 +377,7 @@ exports.updateEmail = async (req, res) => {
 };
 
 // Verify OTP and complete email update
-exports.verifyEmailUpdateOtp = async (req, res) => {
+const verifyEmailUpdateOtp = async (req, res) => {
   try {
     const { otp } = req.body;
     const sessionOtp = req.session.emailChangeOtp;
@@ -443,7 +443,7 @@ exports.verifyEmailUpdateOtp = async (req, res) => {
 };
 
 // Resend OTP for email update
-exports.resendEmailUpdateOtp = async (req, res) => {
+const resendEmailUpdateOtp = async (req, res) => {
   try {
     const sessionOtp = req.session.emailChangeOtp;
 
@@ -501,7 +501,7 @@ exports.resendEmailUpdateOtp = async (req, res) => {
 };
 
 // Update profile data (excluding email) with enhanced validation
-exports.updateProfileData = async (req, res) => {
+const updateProfileData = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -593,7 +593,7 @@ exports.updateProfileData = async (req, res) => {
 };
 
 // Verify current email for email change
-exports.verifyCurrentEmail = async (req, res) => {
+const verifyCurrentEmail = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const { currentEmail } = req.body;
@@ -660,7 +660,7 @@ exports.verifyCurrentEmail = async (req, res) => {
 };
 
 // Load email change OTP page
-exports.loadEmailChangeOtp = async (req, res) => {
+const loadEmailChangeOtp = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -692,7 +692,7 @@ exports.loadEmailChangeOtp = async (req, res) => {
 };
 
 // Verify OTP for email change
-exports.verifyEmailChangeOtp = async (req, res) => {
+const verifyEmailChangeOtp = async (req, res) => {
   try {
     const { otp } = req.body;
     const sessionOtp = req.session.emailChangeOtp;
@@ -739,7 +739,7 @@ exports.verifyEmailChangeOtp = async (req, res) => {
 };
 
 // Change email address
-exports.changeEmail = async (req, res) => {
+const changeEmail = async (req, res) => {
   try {
     const { newEmail } = req.body;
     const sessionOtp = req.session.emailChangeOtp;
@@ -809,7 +809,7 @@ exports.changeEmail = async (req, res) => {
 };
 
 // Update password function
-exports.updatePassword = async (req, res) => {
+const updatePassword = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     const { currentPassword, newPassword, confirmPassword } = req.body;
@@ -893,7 +893,7 @@ exports.updatePassword = async (req, res) => {
 };
 
 // Upload profile photo
-exports.uploadProfilePhoto = async (req, res) => {
+const uploadProfilePhoto = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -962,7 +962,7 @@ exports.uploadProfilePhoto = async (req, res) => {
 };
 
 // Delete profile photo
-exports.deleteProfilePhoto = async (req, res) => {
+const deleteProfilePhoto = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     if (!userId) {
@@ -1015,7 +1015,7 @@ exports.deleteProfilePhoto = async (req, res) => {
 };
 
 // Logout function
-exports.logout = async (req, res) => {
+const logout = async (req, res) => {
   try {
     // Check if there's an active session
     const userId = req.session.userId || req.session.googleUserId || (req.user && req.user._id);
@@ -1056,7 +1056,7 @@ exports.logout = async (req, res) => {
   }
 };
 
-exports.getAddressesPaginated = async (req, res) => {
+const getAddressesPaginated = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
     
@@ -1098,3 +1098,24 @@ exports.getAddressesPaginated = async (req, res) => {
     });
   }
 };
+
+module.exports = {
+  loadProfile,
+  loadEditProfile,
+  loadChangePassword,
+  loadAddresses,
+  loadOrders,
+  updateEmail,
+  verifyEmailUpdateOtp,
+  resendEmailUpdateOtp,
+  updateProfileData,
+  verifyCurrentEmail,
+  loadEmailChangeOtp,
+  verifyEmailChangeOtp,
+  changeEmail,
+  updatePassword,
+  uploadProfilePhoto,
+  deleteProfilePhoto,
+  logout,
+  getAddressesPaginated
+}

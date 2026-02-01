@@ -150,7 +150,7 @@ function validateCouponConditions  (coupon, orderTotal, userId, session) {
                 isValid: false,
                 message: 'You have already used this coupon the maximum number of times'
             };
-        }
+        } 
     }
 
     return {

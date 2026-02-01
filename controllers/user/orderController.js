@@ -1179,10 +1179,16 @@ function generateInvoiceHTML(order) {
                         <td>Subtotal:</td>
                         <td class="text-right">₹${order.subtotal.toLocaleString('en-IN')}</td>
                     </tr>
-                    ${order.totalDiscount > 0 ? `
+                    ${order.productDiscount > 0 ? `
                     <tr>
-                        <td>Discount:</td>
-                        <td class="text-right">-₹${order.totalDiscount.toLocaleString('en-IN')}</td>
+                        <td>Product Discount:</td>
+                        <td class="text-right">-₹${order.productDiscount.toLocaleString('en-IN')}</td>
+                    </tr>
+                    ` : ''}
+                    ${order.couponDiscount > 0 ? `
+                    <tr>
+                        <td>Coupon Discount${order.couponCode ? ` (${order.couponCode})` : ''}:</td>
+                        <td class="text-right">-₹${order.couponDiscount.toLocaleString('en-IN')}</td>
                     </tr>
                     ` : ''}
                     <tr>
@@ -1195,6 +1201,7 @@ function generateInvoiceHTML(order) {
                     </tr>
                 </table>
             </div>
+
 
             <!-- Footer -->
             <div class="footer">

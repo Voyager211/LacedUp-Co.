@@ -10,7 +10,12 @@
       <% }) %>
     </div>
   </section>
+</div>
 
+<!-- Category Carousel - Full Width -->
+<%- include('../user/partials/category-carousel') %>
+
+<div class="container py-5">
   <!-- Best Sellers -->
   <section class="mb-5">
     <h3 class="mb-3 fw-bold">Best Sellers</h3>
@@ -20,9 +25,13 @@
       <% }) %>
     </div>
   </section>
+</div>
 
+<!-- Shop by Brands -->
+<%- include('./partials/shop-by-brands', { brands }) %>
+
+<div class="container py-5">
   <%- include('./partials/testimonials') %>
-
 </div>
 
 <%- include('./partials/join-community') %>
@@ -49,23 +58,16 @@ document.addEventListener('DOMContentLoaded', function() {
       const productId = this.dataset.id;
 
       <% if (!user) { %>
-        // User not authenticated - redirect to login
         redirectToLogin();
         return;
       <% } %>
 
-      // User authenticated - redirect to product details for size selection
-      console.log('Redirecting to product details for size selection:', productId);
-
-      // Find the product card to get the slug
       const productCard = this.closest('.product-card');
       const productLink = productCard.querySelector('a[href*="/product/"]');
 
       if (productLink) {
-        // Redirect to product details page for size selection
         window.location.href = productLink.href;
       } else {
-        // Fallback: redirect using product ID
         window.location.href = `/product/${productId}`;
       }
     });
@@ -78,15 +80,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const productId = this.dataset.id;
 
       <% if (!user) { %>
-        // User not authenticated - redirect to login
         redirectToLogin();
         return;
       <% } %>
 
-      // User authenticated - handle wishlist functionality
-      console.log('Adding to wishlist:', productId);
-
-      // Toggle heart icon and color
       const icon = this.querySelector('i');
       if (icon.classList.contains('bi-heart')) {
         icon.classList.remove('bi-heart');
@@ -103,4 +100,3 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 </script>
-

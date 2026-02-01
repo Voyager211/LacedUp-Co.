@@ -1,0 +1,175 @@
+<style>
+/* ========= SHOP BY BRANDS SECTION ========= */
+.shop-by-brands-section {
+  padding: 3rem 0;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+}
+
+.brands-section-title {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.brands-section-title h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.5rem;
+  position: relative;
+  display: inline-block;
+}
+
+.brands-section-title h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 4px;
+  background: linear-gradient(90deg, #e03a2f 0%, #ff6b5a 100%);
+  border-radius: 2px;
+}
+
+.brands-section-title p {
+  color: #6c757d;
+  font-size: 1rem;
+  margin-top: 1.5rem;
+}
+
+.brands-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.brand-thumbnail {
+  position: relative;
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.brand-thumbnail:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 12px 24px rgba(224, 58, 47, 0.15);
+  border-color: #e03a2f;
+}
+
+.brand-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: all 0.3s ease;
+  filter: grayscale(20%);
+}
+
+.brand-thumbnail:hover img {
+  transform: scale(1.1);
+  filter: grayscale(0%);
+}
+
+.brand-thumbnail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(224, 58, 47, 0.05) 0%, rgba(255, 107, 90, 0.05) 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  border-radius: 12px;
+}
+
+.brand-thumbnail:hover::before {
+  opacity: 1;
+}
+
+/* No brands state */
+.no-brands-message {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #6c757d;
+}
+
+.no-brands-message i {
+  font-size: 4rem;
+  color: #dee2e6;
+  margin-bottom: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .brands-section-title h2 {
+    font-size: 1.75rem;
+  }
+  
+  .brands-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+  }
+  
+  .brand-thumbnail {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .brands-section-title h2 {
+    font-size: 1.5rem;
+  }
+  
+  .brands-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .brand-thumbnail {
+    padding: 0.75rem;
+    border-radius: 8px;
+  }
+}
+</style>
+
+<section class="shop-by-brands-section">
+  <div class="container">
+    <div class="brands-section-title">
+      <h2>Shop by Brands</h2>
+      <p>Discover your favorite brands</p>
+    </div>
+
+    <% if (brands && brands.length > 0) { %>
+      <div class="brands-grid">
+        <% brands.forEach(brand => { %>
+          <a href="/shop?brand=<%= brand._id %>" class="brand-thumbnail" title="<%= brand.name %>">
+            <% if (brand.image) { %>
+              <img src="<%= brand.image %>" alt="<%= brand.name %>">
+            <% } else { %>
+              <div style="color: #dee2e6; font-size: 2rem;">
+                <i class="bi bi-bookmark-star"></i>
+              </div>
+            <% } %>
+          </a>
+        <% }) %>
+      </div>
+    <% } else { %>
+      <div class="no-brands-message">
+        <i class="bi bi-bookmark-star"></i>
+        <p>No brands available at the moment</p>
+      </div>
+    <% } %>
+  </div>
+</section>

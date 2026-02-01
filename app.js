@@ -58,8 +58,8 @@ app.use(expressLayouts);
 app.set('layout', 'admin/layout'); // default for admin
 
 // Middlewares
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
 app.use(methodOverride('_method'));
 app.use(express.static('public'));
 app.use(flash());

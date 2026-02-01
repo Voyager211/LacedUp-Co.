@@ -1,5 +1,9 @@
 const Brand = require('../../models/Brand');
 const getPagination = require('../../utils/pagination');
+const { validateBase64Image } = require('../../utils/imageValidation');
+const sharp = require('sharp');
+const path = require('path');
+const fs = require('fs').promises;
 
 // List brands with search and filter
 const listBrands = async (req, res) => {
@@ -113,10 +117,10 @@ const apiGetBrand = async (req, res) => {
   }
 };
 
-// Add brand via fetch
+// Add brand via fetch with image upload
 const apiCreateBrand = async (req, res) => {
   try {
-    const { name, description, brandOffer } = req.body;
+    const { name, description, brandOffer, base64Image } = req.body;
 
     if (!name) {
       return res.status(400).json({ success: false, message: 'Brand name is required' });
@@ -139,11 +143,43 @@ const apiCreateBrand = async (req, res) => {
       });
     }
 
+    // Process image if provided
+    let imageUrl = '';
+    if (base64Image) {
+      // Validate image
+      const validation = validateBase64Image(base64Image);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.message
+        });
+      }
+
+      // Save and process image
+      const buffer = Buffer.from(base64Image.split(',')[1], 'base64');
+      const filename = `brand-${Date.now()}.webp`;
+      const uploadsDir = path.join('public', 'uploads', 'brands');
+      
+      // Ensure directory exists
+      await fs.mkdir(uploadsDir, { recursive: true });
+      
+      const outputPath = path.join(uploadsDir, filename);
+      
+      await sharp(buffer)
+        .resize(800, 800, { fit: 'cover', position: 'center' })
+        .webp({ quality: 90 })
+        .toFile(outputPath);
+      
+      imageUrl = `/uploads/brands/${filename}`;
+    }
+
     await Brand.create({
       name: trimmedName,
       description: description || '',
-      brandOffer: Math.max(0, Math.min(100, parseFloat(brandOffer) || 0))
+      brandOffer: Math.max(0, Math.min(100, parseFloat(brandOffer) || 0)),
+      image: imageUrl
     });
+
     res.json({ success: true, message: 'Brand created successfully' });
   } catch (err) {
     console.error('Create Error:', err);
@@ -159,10 +195,10 @@ const apiCreateBrand = async (req, res) => {
   }
 };
 
-// Update brand via fetch
+// Update brand via fetch with image upload
 const apiUpdateBrand = async (req, res) => {
   try {
-    const { name, description, brandOffer } = req.body;
+    const { name, description, brandOffer, base64Image } = req.body;
     const brandId = req.params.id;
 
     if (!name) {
@@ -187,10 +223,55 @@ const apiUpdateBrand = async (req, res) => {
       });
     }
 
+    const brand = await Brand.findById(brandId);
+    if (!brand || brand.isDeleted) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
+    }
+
+    // Process new image if provided
+    let imageUrl = brand.image || '';
+    if (base64Image) {
+      // Validate image
+      const validation = validateBase64Image(base64Image);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validation.message
+        });
+      }
+
+      // Delete old image if exists
+      if (brand.image) {
+        const oldImagePath = path.join('public', brand.image);
+        try {
+          await fs.unlink(oldImagePath);
+        } catch (err) {
+          console.log('Old image not found or already deleted:', err.message);
+        }
+      }
+
+      // Save new image
+      const buffer = Buffer.from(base64Image.split(',')[1], 'base64');
+      const filename = `brand-${Date.now()}.webp`;
+      const uploadsDir = path.join('public', 'uploads', 'brands');
+      
+      await fs.mkdir(uploadsDir, { recursive: true });
+      
+      const outputPath = path.join(uploadsDir, filename);
+      
+      await sharp(buffer)
+        .resize(800, 800, { fit: 'cover', position: 'center' })
+        .webp({ quality: 90 })
+        .toFile(outputPath);
+      
+      imageUrl = `/uploads/brands/${filename}`;
+    }
+
     await Brand.findByIdAndUpdate(brandId, {
       name: trimmedName,
       description: description || '',
-      brandOffer: Math.max(0, Math.min(100, parseFloat(brandOffer) || 0))
+      brandOffer: Math.max(0, Math.min(100, parseFloat(brandOffer) || 0)),
+      image: imageUrl
     });
 
     res.json({ success: true, message: 'Brand updated successfully' });

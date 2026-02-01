@@ -24,4 +24,4 @@ router.post('/create', couponController.createCoupon);
 router.put('/:id', couponController.updateCoupon);
 
 
-module.exports = router;
+module.exports = router; 

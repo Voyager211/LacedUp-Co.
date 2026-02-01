@@ -11,4 +11,4 @@ const getPagination = async (queryBuilder, model, filter, page = 1, limit = 10) 
   return { data, totalPages };
 };
 
-module.exports = getPagination; 
+module.exports = getPagination;

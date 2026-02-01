@@ -1,0 +1,288 @@
+<!-- Add Lexend Font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ========= CATEGORY CAROUSEL STYLES ========= */
+.category-carousel-section {
+  background-color: #000000;
+  padding: 4rem 0;
+  width: 100%;
+  margin: 0;
+}
+
+.category-carousel-section h2 {
+  font-family: 'Lexend', sans-serif;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 2.5rem;
+  margin-bottom: 3rem;
+  text-align: center;
+}
+
+.category-carousel-wrapper {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+.category-carousel-container {
+  position: relative;
+  overflow: hidden;
+  padding: 0 60px;
+}
+
+.category-carousel-track {
+  display: flex;
+  transition: transform 0.5s ease-in-out;
+  gap: 2rem;
+}
+
+.category-card {
+  flex: 0 0 calc(33.333% - 1.333rem);
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  text-decoration: none;
+  display: block;
+}
+
+.category-card:hover {
+  transform: translateY(-10px);
+}
+
+.category-card-image {
+  width: 100%;
+  height: 350px;
+  object-fit: cover;
+  display: block;
+}
+
+.category-card-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.3) 0%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.3s ease;
+}
+
+.category-card:hover .category-card-overlay {
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.4) 0%,
+    rgba(0, 0, 0, 0.7) 100%
+  );
+}
+
+.category-card-label {
+  font-family: 'Lexend', sans-serif;
+  color: #ffffff;
+  font-size: 1.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+  z-index: 1;
+}
+
+/* Carousel Controls */
+.category-carousel-control {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(255, 255, 255, 0.9);
+  border: none;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.3s ease;
+}
+
+.category-carousel-control:hover {
+  background-color: #ffffff;
+  transform: translateY(-50%) scale(1.1);
+}
+
+.category-carousel-control.prev {
+  left: 10px;
+}
+
+.category-carousel-control.next {
+  right: 10px;
+}
+
+.category-carousel-control i {
+  font-size: 1.5rem;
+  color: #000000;
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .category-card {
+    flex: 0 0 calc(50% - 1rem);
+  }
+  
+  .category-carousel-container {
+    padding: 0 50px;
+  }
+  
+  .category-card-label {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .category-card {
+    flex: 0 0 100%;
+  }
+  
+  .category-carousel-section {
+    padding: 3rem 0;
+  }
+  
+  .category-carousel-section h2 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  .category-card-label {
+    font-size: 1.3rem;
+  }
+  
+  .category-card-image {
+    height: 300px;
+  }
+}
+</style>
+
+<section class="category-carousel-section">
+  <div class="category-carousel-wrapper">
+    <h2>Shop by Category</h2>
+    
+    <div class="category-carousel-container">
+      <!-- Previous Button -->
+      <button class="category-carousel-control prev" id="categoryPrev">
+        <i class="bi bi-chevron-left"></i>
+      </button>
+      
+      <!-- Carousel Track -->
+      <div class="category-carousel-track" id="categoryCarouselTrack">
+        <% categories.forEach(category => { %>
+          <a href="/shop?category=<%= category._id %>" class="category-card">
+            <img 
+              src="<%= category.image || 'https://via.placeholder.com/400x350?text=' + category.name %>" 
+              alt="<%= category.name %>"
+              class="category-card-image"
+            >
+            <div class="category-card-overlay">
+              <div class="category-card-label"><%= category.name %></div>
+            </div>
+          </a>
+        <% }) %>
+      </div>
+      
+      <!-- Next Button -->
+      <button class="category-carousel-control next" id="categoryNext">
+        <i class="bi bi-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const track = document.getElementById('categoryCarouselTrack');
+  const prevBtn = document.getElementById('categoryPrev');
+  const nextBtn = document.getElementById('categoryNext');
+  const cards = document.querySelectorAll('.category-card');
+  
+  if (cards.length === 0) return;
+  
+  let currentIndex = 0;
+  const cardsPerView = window.innerWidth <= 576 ? 1 : window.innerWidth <= 992 ? 2 : 3;
+  const totalCards = cards.length;
+  
+  // Clone cards for infinite loop effect
+  const clonedCards = [];
+  cards.forEach(card => {
+    const clone = card.cloneNode(true);
+    track.appendChild(clone);
+    clonedCards.push(clone);
+  });
+  
+  function updateCarousel(animate = true) {
+    const cardWidth = cards[0].offsetWidth;
+    const gap = 32; // 2rem gap
+    const offset = currentIndex * (cardWidth + gap);
+    
+    if (animate) {
+      track.style.transition = 'transform 0.5s ease-in-out';
+    } else {
+      track.style.transition = 'none';
+    }
+    
+    track.style.transform = `translateX(-${offset}px)`;
+  }
+  
+  function nextSlide() {
+    currentIndex += cardsPerView;
+    
+    if (currentIndex >= totalCards) {
+      updateCarousel(true);
+      
+      setTimeout(() => {
+        currentIndex = 0;
+        updateCarousel(false);
+      }, 500);
+    } else {
+      updateCarousel(true);
+    }
+  }
+  
+  function prevSlide() {
+    currentIndex -= cardsPerView;
+    
+    if (currentIndex < 0) {
+      currentIndex = totalCards - cardsPerView;
+      
+      updateCarousel(false);
+      
+      setTimeout(() => {
+        updateCarousel(true);
+      }, 20);
+    } else {
+      updateCarousel(true);
+    }
+  }
+  
+  nextBtn.addEventListener('click', nextSlide);
+  prevBtn.addEventListener('click', prevSlide);
+  
+  // Handle window resize
+  let resizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function() {
+      currentIndex = 0;
+      updateCarousel(false);
+    }, 250);
+  });
+});
+</script>

@@ -25,10 +25,10 @@ const upload = multer({
 });
 
 // Middleware for handling multiple image uploads
-exports.uploadReviewImages = upload.array('images', 5);
+const uploadReviewImages = upload.array('images', 5);
 
 // Submit a new review
-exports.submitReview = async (req, res) => {
+const submitReview = async (req, res) => {
   try {
     // Check if user is authenticated
     if (!req.isAuthenticated()) {
@@ -185,7 +185,7 @@ exports.submitReview = async (req, res) => {
 };
 
 // Get reviews for a product (optional - for AJAX loading)
-exports.getProductReviews = async (req, res) => {
+const getProductReviews = async (req, res) => {
   try {
     const { productId } = req.params;
     const page = parseInt(req.query.page) || 1;
@@ -229,3 +229,9 @@ exports.getProductReviews = async (req, res) => {
     });
   }
 };
+
+module.exports = {
+  uploadReviewImages,
+  submitReview,
+  getProductReviews
+}

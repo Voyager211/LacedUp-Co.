@@ -22,7 +22,7 @@ const listProducts = async (req, res) => {
     const { data: products, totalPages } = await getPagination(
       Product.find(query).populate('category').populate('brand').sort({ createdAt: -1 }),
       Product,
-      query,
+      query, 
       page,
       limit
     );

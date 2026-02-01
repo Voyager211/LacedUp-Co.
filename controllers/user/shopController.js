@@ -1,11 +1,11 @@
 const Product = require('../../models/Product');
-const Review = require('../../models/Review'); // You'll need to create this
+const Review = require('../../models/Review'); 
 const Category = require('../../models/Category');
 const Brand = require('../../models/Brand');
 const Wishlist = require('../../models/Wishlist');
 const { getPagination } = require('../../utils/pagination');
 
-exports.getProducts = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = 12;
@@ -59,11 +59,54 @@ exports.getProducts = async (req, res) => {
       // Handle multiple brand IDs (comma-separated)
       if (brand.includes(',')) {
         const brandIds = brand.split(',').filter(id => id.trim());
-        filter.brand = { $in: brandIds };
+        
+        // ✅ Validate all brands are active
+        const activeBrands = await Brand.find({
+          _id: { $in: brandIds },
+          isDeleted: false,
+          isActive: true
+        }).select('_id').lean();
+        
+        const activeBrandIds = activeBrands.map(b => b._id.toString());
+        
+        if (activeBrandIds.length > 0) {
+          filter.brand = { $in: activeBrandIds };
+        } else {
+          // No active brands found
+          return res.json({
+            success: true,
+            products: [],
+            pagination: {
+              totalPages: 0,
+              totalProducts: 0,
+              currentPage: page,
+              hasNextPage: false,
+              hasPrevPage: page > 1
+            }
+          });
+        }
       } else {
-        filter.brand = brand;
+        // ✅ Single brand - validate it's active
+        const requestedBrand = await Brand.findById(brand).select('isActive isDeleted').lean();
+        if (requestedBrand && !requestedBrand.isDeleted && requestedBrand.isActive) {
+          filter.brand = brand;
+        } else {
+          // If requested brand is inactive, return empty results
+          return res.json({
+            success: true,
+            products: [],
+            pagination: {
+              totalPages: 0,
+              totalProducts: 0,
+              currentPage: page,
+              hasNextPage: false,
+              hasPrevPage: page > 1
+            }
+          });
+        }
       }
     }
+
     
     if (search) {
       // First, find categories that match the search term (only active ones)
@@ -241,7 +284,7 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-exports.loadShopPage = async (req, res) => {
+const loadShopPage = async (req, res) => {
   try {
     const categories = await Category.find({ isDeleted: false, isActive: true }).lean();
 
@@ -361,6 +404,33 @@ exports.loadShopPage = async (req, res) => {
     // Apply category filter
     if (selectedCategory) {
       filter.category = selectedCategory;
+    }
+
+    const selectedBrand = req.query.brand;
+    if (selectedBrand) {
+      // Handle multiple brand IDs (comma-separated)
+      if (selectedBrand.includes(',')) {
+        const brandIds = selectedBrand.split(',').filter(id => id.trim());
+        
+        // Validate all brands are active
+        const activeBrands = await Brand.find({
+          _id: { $in: brandIds },
+          isDeleted: false,
+          isActive: true
+        }).select('_id').lean();
+        
+        const activeBrandIds = activeBrands.map(b => b._id);
+        
+        if (activeBrandIds.length > 0) {
+          filter.brand = { $in: activeBrandIds };
+        }
+      } else {
+        // Single brand - validate it's active
+        const requestedBrand = await Brand.findById(selectedBrand).select('isActive isDeleted').lean();
+        if (requestedBrand && !requestedBrand.isDeleted && requestedBrand.isActive) {
+          filter.brand = selectedBrand;
+        }
+      }
     }
 
     // Price range filter will be applied after fetching products since we need to calculate sale prices
@@ -508,7 +578,7 @@ exports.loadShopPage = async (req, res) => {
 };
 
 // API: Get search suggestions for dropdown
-exports.getSearchSuggestions = async (req, res) => {
+const getSearchSuggestions = async (req, res) => {
   try {
     const query = req.query.q || '';
 
@@ -599,7 +669,7 @@ exports.getSearchSuggestions = async (req, res) => {
 };
 
 // Product details page
-exports.loadProductDetails = async (req, res) => {
+const loadProductDetails = async (req, res) => {
   try {
     const productSlug = req.params.slug;
 
@@ -799,7 +869,7 @@ exports.loadProductDetails = async (req, res) => {
 };
 
 // API: Get available sizes with stock
-exports.getAvailableSizes = async (req, res) => {
+const getAvailableSizes = async (req, res) => {
   try {
     // Get active category IDs to filter products
     const activeCategories = await Category.find({
@@ -873,3 +943,11 @@ exports.getAvailableSizes = async (req, res) => {
     res.status(500).json({ success: false, message: 'Something went wrong' });
   }
 };
+
+module.exports = {
+  getProducts,
+  loadShopPage,
+  getSearchSuggestions,
+  loadProductDetails,
+  getAvailableSizes
+}

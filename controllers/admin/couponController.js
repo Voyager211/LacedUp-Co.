@@ -201,20 +201,51 @@ const createCoupon = async (req, res) => {
             });
         }
 
+        // ✅ NEW: Discount vs Minimum Order validation
+        const parsedDiscountValue = parseFloat(discountValue);
+        const parsedMinOrderValue = parseFloat(minimumOrderValue) || 0;
+
+        if (parsedMinOrderValue > 0) {
+            if (discountType === 'fixed') {
+                // For fixed discount: discount must be less than minimum order value
+                if (parsedDiscountValue >= parsedMinOrderValue) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid discount configuration',
+                        errors: {
+                            discountValue: `Fixed discount (₹${parsedDiscountValue}) must be less than minimum order value (₹${parsedMinOrderValue})`
+                        }
+                    });
+                }
+            } else if (discountType === 'percentage') {
+                // For percentage discount: calculated discount must be less than minimum order value
+                const calculatedDiscount = (parsedMinOrderValue * parsedDiscountValue) / 100;
+                if (calculatedDiscount >= parsedMinOrderValue) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid discount configuration',
+                        errors: {
+                            discountValue: `${parsedDiscountValue}% discount on min order ₹${parsedMinOrderValue} (₹${calculatedDiscount}) must be less than the minimum order value`
+                        }
+                    });
+                }
+            }
+        }
+
         // Create coupon object
         const couponData = {
             code: code.toUpperCase(),
             name,
             description,
             discountType,
-            discountValue: parseFloat(discountValue),
-            minimumOrderValue: parseFloat(minimumOrderValue) || 0,
+            discountValue: parsedDiscountValue,
+            minimumOrderValue: parsedMinOrderValue,
             userLimit: parseInt(userLimit) || 1,
             usageLimit: Infinity,
             validFrom: fromDate,
             validTo: toDate,
             isActive: Boolean(isActive),
-            createdBy: req.user ? req.user._id: null
+            createdBy: req.user ? req.user._id : null
         };
 
         if (usageLimit && usageLimit !== '' && !isNaN(usageLimit)) {
@@ -223,7 +254,7 @@ const createCoupon = async (req, res) => {
             couponData.usageLimit = Infinity;
         }
 
-        if(maximumDiscountAmount && discountType === 'percentage') {
+        if (maximumDiscountAmount && discountType === 'percentage') {
             couponData.maximumDiscountAmount = parseFloat(maximumDiscountAmount);
         }
 
@@ -231,7 +262,7 @@ const createCoupon = async (req, res) => {
         const newCoupon = new Coupon(couponData);
         const savedCoupon = await newCoupon.save();
 
-        console.log ('New coupon created:', savedCoupon.code);
+        console.log('New coupon created:', savedCoupon.code);
 
         res.status(201).json({
             success: true,
@@ -263,48 +294,6 @@ const createCoupon = async (req, res) => {
         });
     }
 }
-
-// get individual coupon details
-const getCouponById = async (req, res) => {
-    try {
-        const { id } = req.params;
-
-        // validate objectId
-        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid coupon ID format'
-            });
-        }
-
-        const coupon = await Coupon.findById(id);
-
-        if (!coupon) {
-            return res.status(404).json({
-                success: false,
-                message: 'Coupon not found'
-            });
-        }
-
-        console.log('Coupon fetched for editing:', coupon.code);
-
-        res.status(200).json({
-            success: true,
-            message: 'Coupon details retrieved successfully',
-            data: {
-                coupon: coupon
-            }
-        });
-
-    } catch (error) {
-        console.error('Error fetching coupon by ID:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching coupon details',
-            error: error.message
-        });
-    }
-};
 
 const updateCoupon = async (req, res) => {
     try {
@@ -375,8 +364,8 @@ const updateCoupon = async (req, res) => {
         }
 
         // validate date range
-        const fromDate = new Date (validFrom);
-        const toDate = new Date (validTo);
+        const fromDate = new Date(validFrom);
+        const toDate = new Date(validTo);
         if (fromDate > toDate) {
             return res.status(400).json({
                 success: false,
@@ -387,13 +376,44 @@ const updateCoupon = async (req, res) => {
             });
         }
 
+        // ✅ NEW: Discount vs Minimum Order validation
+        const parsedDiscountValue = parseFloat(discountValue);
+        const parsedMinOrderValue = parseFloat(minimumOrderValue) || 0;
+
+        if (parsedMinOrderValue > 0) {
+            if (discountType === 'fixed') {
+                // For fixed discount: discount must be less than minimum order value
+                if (parsedDiscountValue >= parsedMinOrderValue) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid discount configuration',
+                        errors: {
+                            discountValue: `Fixed discount (₹${parsedDiscountValue}) must be less than minimum order value (₹${parsedMinOrderValue})`
+                        }
+                    });
+                }
+            } else if (discountType === 'percentage') {
+                // For percentage discount: calculated discount must be less than minimum order value
+                const calculatedDiscount = (parsedMinOrderValue * parsedDiscountValue) / 100;
+                if (calculatedDiscount >= parsedMinOrderValue) {
+                    return res.status(400).json({
+                        success: false,
+                        message: 'Invalid discount configuration',
+                        errors: {
+                            discountValue: `${parsedDiscountValue}% discount on min order ₹${parsedMinOrderValue} (₹${calculatedDiscount}) must be less than the minimum order value`
+                        }
+                    });
+                }
+            }
+        }
+
         const updateData = {
             code: codeUpperCase,
             name: name.trim(),
             description: description ? description.trim() : '',
             discountType,
-            discountValue: parseFloat(discountValue),
-            minimumOrderValue: parseFloat(minimumOrderValue) || 0,
+            discountValue: parsedDiscountValue,
+            minimumOrderValue: parsedMinOrderValue,
             usageLimit: Infinity,
             userLimit: parseInt(userLimit) || 1,
             validFrom: fromDate,
@@ -417,7 +437,7 @@ const updateCoupon = async (req, res) => {
             { new: true, runValidators: true }
         );
 
-        console.log('Coupon updated:', updateCoupon.code);
+        console.log('Coupon updated:', updatedCoupon.code);
 
         res.status(200).json({
             success: true,
@@ -450,7 +470,51 @@ const updateCoupon = async (req, res) => {
     }
 }
 
-const toggleCouponStatus = async (req, res) => {
+
+// get individual coupon details
+const getCouponById = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        // validate objectId
+        if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid coupon ID format'
+            });
+        }
+
+        const coupon = await Coupon.findById(id);
+
+        if (!coupon) {
+            return res.status(404).json({
+                success: false,
+                message: 'Coupon not found'
+            });
+        }
+
+        console.log('Coupon fetched for editing:', coupon.code);
+
+        res.status(200).json({
+            success: true,
+            message: 'Coupon details retrieved successfully',
+            data: {
+                coupon: coupon
+            }
+        });
+
+    } catch (error) {
+        console.error('Error fetching coupon by ID:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching coupon details',
+            error: error.message
+        });
+    }
+};
+
+
+const toggleCouponStatus = async (req, res) => { 
     try {
         const { id } = req.params;
 
@@ -524,7 +588,7 @@ const deleteCoupon = async (req, res) => {
         console.log(`Coupon ${coupon.code} deleted successfully`);
 
         res.status(200).json({
-            success: true,
+            success: true, 
             message: `Deleted Coupon: ${coupon.code}`,
             data: {
                 deletedCoupon: deletedCouponInfo
@@ -538,7 +602,7 @@ const deleteCoupon = async (req, res) => {
             message: 'Error deleting coupon',
             error: error.message
         });
-    }
+    } 
 }
 
 module.exports = {

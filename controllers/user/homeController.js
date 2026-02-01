@@ -1,8 +1,10 @@
-const { getHomepageProducts } = require('../../utils/product-sections');
+const { getHomepageProducts, getActiveCategories, getActiveBrands } = require('../../utils/product-sections');
 
-exports.getHome = async (req, res) => {
+const getHome = async (req, res) => {
   try {
     const { newArrivals, bestSellers } = await getHomepageProducts();
+    const categories = await getActiveCategories();
+    const brands = await getActiveBrands(); // Add this
 
     res.render('user/home', {
       title: 'Welcome',
@@ -10,6 +12,8 @@ exports.getHome = async (req, res) => {
       active: 'home',
       newArrivals,
       bestSellers,
+      categories,
+      brands, // Add this
       user: req.user || null
     });
   } catch (err) {
@@ -17,3 +21,7 @@ exports.getHome = async (req, res) => {
     res.status(500).send('Failed to load home page');
   }
 };
+
+module.exports = {
+  getHome
+}

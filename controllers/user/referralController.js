@@ -1,7 +1,7 @@
 const User = require('../../models/User');
 const Wallet = require('../../models/Wallet');
 
-exports.getReferralsPage = async (req, res) => {
+const getReferralsPage = async (req, res) => {
   try {
     const userId = req.user._id;
 
@@ -123,8 +123,7 @@ exports.getReferralsPage = async (req, res) => {
   }
 };
 
-// ✅ NEW: API endpoint for paginated referrals
-exports.getPaginatedReferrals = async (req, res) => {
+const getPaginatedReferrals = async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
@@ -176,8 +175,7 @@ exports.getPaginatedReferrals = async (req, res) => {
   }
 };
 
-// ✅ NEW: API endpoint for paginated earnings
-exports.getPaginatedEarnings = async (req, res) => {
+const getPaginatedEarnings = async (req, res) => {
   try {
     const userId = req.user._id;
     const page = parseInt(req.query.page) || 1;
@@ -230,3 +228,9 @@ exports.getPaginatedEarnings = async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to fetch earnings' });
   }
 };
+
+module.exports = {
+  getReferralsPage,
+  getPaginatedReferrals,
+  getPaginatedEarnings
+}
