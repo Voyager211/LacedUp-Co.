@@ -18,7 +18,7 @@ const REFUND_STATUS = {
   PENDING: 'Pending',
   PROCESSED: 'Processed', 
   FAILED: 'Failed'
-};
+}; 
 
 // Get all return requests for admin
 const getAllReturns = async (req, res) => {

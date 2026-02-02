@@ -1,18 +1,29 @@
 <% var title = "Return Management"; %>
 
 <div class="container-fluid py-4">
+  <%- include('./partials/breadcrumbs', {
+    breadcrumbs: [
+      { label: 'Dashboard', url: '/admin/dashboard', icon: 'house-door' },
+      { label: 'Returns', icon: 'arrow-return-left' }
+    ]
+  }) %>
+
   <!-- Page Header -->
   <div class="row mb-4">
     <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h2 class="fw-bold text-black mb-1">Return Management</h2>
-          <p class="text-black mb-0">Manage and process customer return requests</p>
-        </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-dark" id="headerRefreshBtn">
-            <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
-          </button>
+      <div class="page-header-dark">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h2 class="page-title-dark mb-1">
+              Return Management (<span id="return-count"><%= totalReturns || 0 %></span>)
+            </h2>
+            <p class="page-subtitle-dark mb-0">Manage and process customer return requests</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-refresh" id="headerRefreshBtn">
+              <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -95,7 +106,7 @@
 
   <!-- Filters and Search -->
   <%- include('partials/filters-bar', {
-    searchPlaceholder: 'Return ID, Order ID, Customer name, Product name...',
+    searchPlaceholder: 'Return ID, Order ID, Customer name...',
     searchLabel: 'Search Returns',
     formId: 'returnFilterForm',
     apiEndpoint: '/admin/returns/api/filtered',
@@ -142,7 +153,6 @@
     ]
   }) %>
 
-
   <!-- Returns Table -->
   <div class="row">
     <div class="col-12">
@@ -152,43 +162,30 @@
             <table class="table table-hover mb-0 returns-table">
               <thead>
                 <tr>
-                  <th class="border-0 text-black">Return._Id</th>
-                  <th class="border-0 text-black">Product</th>
+                  <th class="border-0 text-black" style="width: 50px;">#</th>
+                  <th class="border-0 text-black">Return ID</th>
                   <th class="border-0 text-black">Customer/Order</th>
-                  <!-- <th class="border-0 text-black">Order ID</th> -->
                   <th class="border-0 text-black">Date</th>
                   <th class="border-0 text-black">Amount</th>
                   <th class="border-0 text-black">Reason</th>
                   <th class="border-0 text-black">Status</th>
-                  <!-- <th class="border-0 text-black">Refund Status</th> -->
                   <th class="border-0 text-center text-black">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 <% if (returns && returns.length > 0) { %>
-                  <% returns.forEach(returnItem => { %>
+                  <% returns.forEach((returnItem, index) => { 
+                    const rowNumber = (currentPage - 1) * 6 + index + 1;
+                  %>
                     <tr class="return-row">
                       <td>
-                        <div class="return-id">
-                          <span class="fw-bold text-black">#<%= returnItem.returnId %></span>
+                        <div class="row-number">
+                          <span class="fw-bold text-black"><%= rowNumber %></span>
                         </div>
                       </td>
                       <td>
-                        <div class="product-info d-flex align-items-center">
-                          <% if (returnItem.productImage) { %>
-                            <img src="<%= returnItem.productImage %>" 
-                                 alt="<%= returnItem.productName %>" 
-                                 class="product-thumb me-3">
-                          <% } else { %>
-                            <div class="product-thumb-placeholder me-3">
-                              <i class="bi bi-image"></i>
-                            </div>
-                          <% } %>
-                          <div class="product-details">
-                            <div class="product-name text-black"><%= returnItem.productName %></div>
-                            <small class="text-muted">Size: <%= returnItem.size %> | Qty: <%= returnItem.quantity %></small>
-                            <br><small class="text-muted">SKU: <%= returnItem.sku %></small>
-                          </div>
+                        <div class="return-id">
+                          <span class="fw-bold text-black">#<%= returnItem.returnId %></span>
                         </div>
                       </td>
                       <td>
@@ -198,14 +195,8 @@
                           </div>
                           <div class="customer-name text-black"><%= returnItem.userId?.name || 'N/A' %></div>
                           <div class="customer-email text-black"><%= returnItem.userId?.email || 'N/A' %></div>
-
                         </div>
                       </td>
-                      <!-- <td>
-                        <div class="order-info">
-                          <span class="fw-bold text-black">#<%= returnItem.orderId %></span>
-                        </div>
-                      </td> -->
                       <td>
                         <div class="date-info">
                           <div class="request-date text-black">
@@ -244,23 +235,9 @@
                             <%= returnItem.status %>
                           </span>
                         </div>
-                        <br>
-                        <!-- <div class="refund-status">
-                          <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
-                            <%= returnItem.refundStatus %>
-                          </span>
-                        </div> -->
                       </td>
-                      <!-- <td> -->
-                        <!-- <div class="refund-status">
-                          <span class="status-badge refund-<%= returnItem.refundStatus.toLowerCase() %>">
-                            <%= returnItem.refundStatus %>
-                          </span>
-                        </div> -->
-                      <!-- </td> -->
                       <td class="text-center">
                         <% if (returnItem.status === RETURN_STATUS.PENDING) { %>
-                          <!-- Show dropdown with actions for PENDING returns -->
                           <div class="actions-dropdown">
                             <div class="dropdown">
                               <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
@@ -282,7 +259,6 @@
                             </div>
                           </div>
                         <% } else { %>
-                          <!-- Show "None" for non-pending returns -->
                           <span class="text-muted fst-italic">None</span>
                         <% } %>
                       </td>
@@ -290,7 +266,7 @@
                   <% }) %>
                 <% } else { %>
                   <tr>
-                    <td colspan="10" class="text-center py-5">
+                    <td colspan="8" class="text-center py-5">
                       <div class="empty-state">
                         <i class="bi bi-arrow-return-left display-1 d-block mb-3 text-black"></i>
                         <h5 class="text-black">No return requests found</h5>
@@ -320,6 +296,7 @@
     </div>
   <% } %>
 </div>
+
 
 <!-- Approve Return Modal -->
 <div class="modal fade" id="approveReturnModal" tabindex="-1">
@@ -401,6 +378,45 @@
 
 <style>
 
+/* ========= DARK PAGE HEADER ========= */
+.page-header-dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.page-title-dark {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.page-subtitle-dark {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.btn-refresh {
+  background-color: #ef4444 !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-refresh:hover {
+  background-color: #dc2626 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
 .btn {
   border-radius: 6px;
   font-weight: 500;
@@ -447,6 +463,18 @@
 .return-row:hover {
   background-color: #f8f9fa;
   transform: none !important;
+}
+
+/* Row Number Styling */
+.row-number {
+  text-align: center;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #6c757d;
+  font-size: 0.9rem;
 }
 
 /* Return ID Styling */
@@ -892,106 +920,102 @@ function updateReturnsTable(data) {
     return;
   }
   
-  const rowsHtml = returns.map(returnItem => `
-    <tr class="return-row">
-      <td>
-        <div class="return-id">
-          <span class="fw-bold text-black">#${returnItem.returnId}</span>
-        </div>
-      </td>
-      <td>
-        <div class="product-info d-flex align-items-center">
-          ${returnItem.productImage ? 
-            `<img src="${returnItem.productImage}" alt="${returnItem.productName}" class="product-thumb me-3">` :
-            `<div class="product-thumb-placeholder me-3"><i class="bi bi-image"></i></div>`
-          }
-          <div class="product-details">
-            <div class="product-name text-black">${returnItem.productName}</div>
-            <small class="text-muted">Size: ${returnItem.size} | Qty: ${returnItem.quantity}</small>
-            <br><small class="text-muted">SKU: ${returnItem.sku}</small>
+  const rowsHtml = returns.map((returnItem, index) => {
+    const rowNumber = (data.currentPage - 1) * 6 + index + 1;
+    return `
+      <tr class="return-row">
+        <td>
+          <div class="row-number">
+            <span class="fw-bold text-black">${rowNumber}</span>
           </div>
-        </div>
-      </td>
-      <td>
-        <div class="customer-info">
-          <div class="order-info">
-            <span class="fw-bold text-black">#${returnItem.orderId}</span>
+        </td>
+        <td>
+          <div class="return-id">
+            <span class="fw-bold text-black">#${returnItem.returnId}</span>
           </div>
-          <div class="customer-name text-black">${returnItem.userId?.name || 'N/A'}</div>
-          <div class="customer-email text-black">${returnItem.userId?.email || 'N/A'}</div>
-        </div>
-      </td>
-      <td>
-        <div class="date-info">
-          <div class="request-date text-black">
-            ${new Date(returnItem.requestDate).toLocaleDateString('en-IN', { 
-              day: 'numeric', 
-              month: 'short', 
-              year: 'numeric' 
-            })}
+        </td>
+        <td>
+          <div class="customer-info">
+            <div class="order-info">
+              <span class="fw-bold text-black">#${returnItem.orderId}</span>
+            </div>
+            <div class="customer-name text-black">${returnItem.userId?.name || 'N/A'}</div>
+            <div class="customer-email text-black">${returnItem.userId?.email || 'N/A'}</div>
           </div>
-          <div class="request-time text-black">
-            ${new Date(returnItem.requestDate).toLocaleTimeString('en-IN', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
-          </div>
-        </div>
-      </td>
-      <td>
-        <div class="amount-info">
-          <div class="return-amount text-black fw-bold">₹${returnItem.totalPrice.toLocaleString('en-IN')}</div>
-          ${returnItem.refundAmount && returnItem.refundAmount !== returnItem.totalPrice ? 
-            `<div class="refund-amount text-muted">Refund: ₹${returnItem.refundAmount.toLocaleString('en-IN')}</div>` : 
-            ''
-          }
-        </div>
-      </td>
-      <td>
-        <div class="reason-info">
-          <span class="text-black" title="${returnItem.reason}">
-            ${returnItem.reason.length > 30 ? returnItem.reason.substring(0, 30) + '...' : returnItem.reason}
-          </span>
-        </div>
-      </td>
-      <td>
-        <div class="return-status">
-          <span class="status-badge return-${returnItem.status.toLowerCase()}">
-            ${returnItem.status}
-          </span>
-        </div>
-      </td>
-      <td class="text-center">
-        ${returnItem.status === 'Pending' ? `
-          <div class="actions-dropdown">
-            <div class="dropdown">
-              <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
-                      data-bs-toggle="dropdown" aria-expanded="false">
-                <i class="bi bi-three-dots-vertical text-black"></i>
-              </button>
-              <ul class="dropdown-menu dropdown-menu-end">
-                <li>
-                  <button class="dropdown-item text-black" onclick="approveReturn('${returnItem._id}')">
-                    <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
-                  </button>
-                </li>
-                <li>
-                  <button class="dropdown-item text-black" onclick="rejectReturn('${returnItem._id}')">
-                    <i class="bi bi-x-circle me-2 text-danger"></i>Reject Return
-                  </button>
-                </li>
-              </ul>
+        </td>
+        <td>
+          <div class="date-info">
+            <div class="request-date text-black">
+              ${new Date(returnItem.requestDate).toLocaleDateString('en-IN', { 
+                day: 'numeric', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </div>
+            <div class="request-time text-black">
+              ${new Date(returnItem.requestDate).toLocaleTimeString('en-IN', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
             </div>
           </div>
-        ` : `
-          <span class="text-muted fst-italic">None</span>
-        `}
-      </td>
-    </tr>
-  `).join('');
+        </td>
+        <td>
+          <div class="amount-info">
+            <div class="return-amount text-black fw-bold">₹${returnItem.totalPrice.toLocaleString('en-IN')}</div>
+            ${returnItem.refundAmount && returnItem.refundAmount !== returnItem.totalPrice ? 
+              `<div class="refund-amount text-muted">Refund: ₹${returnItem.refundAmount.toLocaleString('en-IN')}</div>` : 
+              ''
+            }
+          </div>
+        </td>
+        <td>
+          <div class="reason-info">
+            <span class="text-black" title="${returnItem.reason}">
+              ${returnItem.reason.length > 30 ? returnItem.reason.substring(0, 30) + '...' : returnItem.reason}
+            </span>
+          </div>
+        </td>
+        <td>
+          <div class="return-status">
+            <span class="status-badge return-${returnItem.status.toLowerCase()}">
+              ${returnItem.status}
+            </span>
+          </div>
+        </td>
+        <td class="text-center">
+          ${returnItem.status === 'Pending' ? `
+            <div class="actions-dropdown">
+              <div class="dropdown">
+                <button class="btn btn-sm btn-outline-dark dropdown-toggle action-btn" type="button" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                  <i class="bi bi-three-dots-vertical text-black"></i>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <button class="dropdown-item text-black" onclick="approveReturn('${returnItem._id}')">
+                      <i class="bi bi-check-circle me-2 text-success"></i>Approve Return
+                    </button>
+                  </li>
+                  <li>
+                    <button class="dropdown-item text-black" onclick="rejectReturn('${returnItem._id}')">
+                      <i class="bi bi-x-circle me-2 text-danger"></i>Reject Return
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          ` : `
+            <span class="text-muted fst-italic">None</span>
+          `}
+        </td>
+      </tr>
+    `;
+  }).join('');
   
   tbody.innerHTML = rowsHtml;
 }
+
 
 function updateStatistics(data) {
   const pendingElement = document.querySelector('.col-xl-3:nth-child(1) h3');

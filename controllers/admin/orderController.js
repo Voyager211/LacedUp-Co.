@@ -407,73 +407,198 @@ const getFilteredOrders = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
 
-    // Build filter
-    const filter = {};
+    // ✅ BUILD AGGREGATION PIPELINE FOR PROPER SEARCH
+    const pipeline = [];
 
-    if (paymentMethod) filter.paymentMethod = paymentMethod;
-    if (paymentStatus) filter.paymentStatus = paymentStatus;
-    if (status) filter['items.status'] = status;
+    // Step 1: Initial match for order-level filters
+    const orderMatch = {};
+    if (paymentMethod) orderMatch.paymentMethod = paymentMethod;
+    if (paymentStatus) orderMatch.paymentStatus = paymentStatus;
+    if (status) orderMatch['items.status'] = status;
 
-    // Search
-    if (search && search.trim()) {
-      const searchTerm = search.trim();
-      const orderIdSearchTerm = searchTerm.startsWith('ORD-') 
-        ? searchTerm.substring(4) 
-        : searchTerm;
-
-      filter.$or = [
-        { orderId: new RegExp(orderIdSearchTerm, 'i') }
-      ];
+    if (Object.keys(orderMatch).length > 0) {
+      pipeline.push({ $match: orderMatch });
     }
 
-    // Query
-    const queryBuilder = Order.find(filter)
-      .populate({
-        path: 'user',
-        select: 'name email phone'
-      })
-      .populate({
-        path: 'items.productId',
-        select: 'productName mainImage'
-      })
-      .populate({
-        path: 'deliveryAddress.addressId',
-        select: 'address'
-      })
-      .sort({ [sortBy]: sortOrder });
+    // Step 2: Lookup user for search
+    pipeline.push({
+      $lookup: {
+        from: 'users',
+        localField: 'user',
+        foreignField: '_id',
+        as: 'userDoc'
+      }
+    });
+    pipeline.push({ 
+      $unwind: { 
+        path: '$userDoc', 
+        preserveNullAndEmptyArrays: true 
+      } 
+    });
 
-    // Use pagination utility (already imported at top)
-    const { data: orders, totalPages } = await getPagination(
-      queryBuilder,
-      Order,
-      filter,
-      page,
-      limit
-    );
+    // Step 3: Lookup delivery address
+    pipeline.push({
+      $lookup: {
+        from: 'addresses',
+        localField: 'deliveryAddress.addressId',
+        foreignField: '_id',
+        as: 'deliveryAddressDoc'
+      }
+    });
 
-    // Get total count for response
-    const totalCount = await Order.countDocuments(filter);
+    // Step 4: Enhanced search across multiple fields
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      // Handle '#' or 'ORD-' prefix for order ID search
+      let orderIdSearchTerm = searchTerm;
+      if (searchTerm.startsWith('#')) {
+        orderIdSearchTerm = searchTerm.substring(1);
+      } else if (searchTerm.startsWith('ORD-')) {
+        orderIdSearchTerm = searchTerm.substring(4);
+      }
 
-    // Process orders
+      const searchMatch = {
+        $or: [
+          { orderId: { $regex: orderIdSearchTerm, $options: 'i' } },
+          { 'userDoc.name': { $regex: searchTerm, $options: 'i' } },
+          { 'userDoc.email': { $regex: searchTerm, $options: 'i' } },
+          { 'userDoc.phone': { $regex: searchTerm, $options: 'i' } }
+        ]
+      };
+
+      pipeline.push({ $match: searchMatch });
+    }
+
+    // Step 5: Project fields to match expected structure
+    pipeline.push({
+      $project: {
+        _id: 1,
+        orderId: 1,
+        user: '$userDoc._id',
+        userName: '$userDoc.name',
+        userEmail: '$userDoc.email',
+        userPhone: '$userDoc.phone',
+        items: 1,
+        totalAmount: 1,
+        paymentMethod: 1,
+        paymentStatus: 1,
+        status: 1,
+        deliveryAddress: 1,
+        deliveryAddressDoc: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        statusHistory: 1
+      }
+    });
+
+    // Step 6: Sort
+    const sortField = sortBy === 'createdAt' ? 'createdAt' : sortBy;
+    pipeline.push({ $sort: { [sortField]: sortOrder } });
+
+    // ✅ Get total count for pagination
+    const countPipeline = [...pipeline, { $count: 'total' }];
+    const countResult = await Order.aggregate(countPipeline);
+    const totalCount = countResult[0]?.total || 0;
+    const totalPages = Math.ceil(totalCount / limit);
+
+    // ✅ Add pagination to main pipeline
+    pipeline.push({ $skip: (page - 1) * limit });
+    pipeline.push({ $limit: limit });
+
+    // Execute aggregation
+    const orders = await Order.aggregate(pipeline);
+
+    // ✅ Populate product details for items
+    await Order.populate(orders, {
+      path: 'items.productId',
+      select: 'productName mainImage'
+    });
+
+    // Process orders to extract delivery address
     const processedOrders = orders.map(order => {
-      const orderObj = order.toObject();
-      
-      if (orderObj.deliveryAddress && orderObj.deliveryAddress.addressId) {
-        const addressIndex = orderObj.deliveryAddress.addressIndex;
-        const specificAddress = orderObj.deliveryAddress.addressId.address?.[addressIndex];
+      // Reconstruct user object
+      if (order.userName) {
+        order.user = {
+          _id: order.user,
+          name: order.userName,
+          email: order.userEmail,
+          phone: order.userPhone
+        };
+        delete order.userName;
+        delete order.userEmail;
+        delete order.userPhone;
+      }
+
+      // Handle delivery address
+      if (order.deliveryAddress && order.deliveryAddressDoc && order.deliveryAddressDoc.length > 0) {
+        const addressIndex = order.deliveryAddress.addressIndex || 0;
+        const specificAddress = order.deliveryAddressDoc[0].address?.[addressIndex];
         
         if (specificAddress) {
-          orderObj.deliveryAddress = {
-            ...orderObj.deliveryAddress,
+          order.deliveryAddress = {
+            ...order.deliveryAddress,
             ...specificAddress
           };
         }
       }
-      
-      return orderObj;
+      delete order.deliveryAddressDoc;
+
+      return order;
     });
 
-    // ✅ UPDATED: Include complete pagination info for continuous row numbering
+    // ✅ CALCULATE FILTERED STATISTICS
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Build base filter for statistics (reuse aggregation match stages)
+    const statsBasePipeline = pipeline.slice(0, pipeline.findIndex(stage => stage.$skip || stage.$limit || stage.$sort));
+    
+    // Today's orders
+    const todayPipeline = [
+      ...statsBasePipeline,
+      { $match: { createdAt: { $gte: today, $lt: tomorrow } } },
+      { $count: 'total' }
+    ];
+    const todayResult = await Order.aggregate(todayPipeline);
+    const filteredTodayOrders = todayResult[0]?.total || 0;
+
+    // Total items count
+    const itemsPipeline = [
+      ...statsBasePipeline,
+      { $unwind: '$items' },
+      ...(status ? [{ $match: { 'items.status': status } }] : []),
+      { $count: 'total' }
+    ];
+    const itemsResult = await Order.aggregate(itemsPipeline);
+    const filteredTotalItems = itemsResult[0]?.total || 0;
+
+    // Pending items
+    const pendingPipeline = [
+      ...statsBasePipeline,
+      { $unwind: '$items' },
+      { $match: { 'items.status': ORDER_STATUS.PENDING } },
+      { $count: 'total' }
+    ];
+    const pendingResult = await Order.aggregate(pendingPipeline);
+    const filteredPendingItems = pendingResult[0]?.total || 0;
+
+    // Status distribution
+    const statsPipeline = [
+      ...statsBasePipeline,
+      { $unwind: '$items' },
+      ...(status ? [{ $match: { 'items.status': status } }] : []),
+      {
+        $group: {
+          _id: '$items.status',
+          count: { $sum: 1 }
+        }
+      }
+    ];
+    const filteredOrderStats = await Order.aggregate(statsPipeline);
+
+    // ✅ RESPONSE with filtered statistics
     res.json({
       success: true,
       data: {
@@ -482,7 +607,14 @@ const getFilteredOrders = async (req, res) => {
         totalPages: totalPages,
         itemsPerPage: limit,
         totalCount: totalCount,
-        filteredOrdersCount: totalCount
+        filteredOrdersCount: totalCount,
+        statistics: {
+          todayOrders: filteredTodayOrders,
+          totalOrders: totalCount,
+          totalItems: filteredTotalItems,
+          pendingItems: filteredPendingItems,
+          orderStats: filteredOrderStats
+        }
       },
       filters: { 
         status, 
@@ -503,6 +635,7 @@ const getFilteredOrders = async (req, res) => {
     });
   }
 };
+
 
 
 // Get allowed status transitions based on current status

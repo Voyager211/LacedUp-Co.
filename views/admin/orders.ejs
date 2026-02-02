@@ -1,18 +1,30 @@
 <% var title = "Order Management"; %>
 
 <div class="container-fluid py-4">
+  <!-- Breadcrumbs -->
+  <%- include('./partials/breadcrumbs', {
+    breadcrumbs: [
+      { label: 'Dashboard', url: '/admin/dashboard', icon: 'house-door' },
+      { label: 'Orders', icon: 'bag-check' }
+    ]
+  }) %>
+
   <!-- Page Header -->
   <div class="row mb-4">
     <div class="col-12">
-      <div class="d-flex justify-content-between align-items-center">
-        <div>
-          <h2 class="fw-bold text-black mb-1">Order Management</h2>
-          <p class="text-black mb-0">Manage and track all customer orders</p>
-        </div>
-        <div class="d-flex gap-2">
-          <button class="btn btn-dark" id="headerRefreshBtn">
-            <i class="bi bi-arrow-clockwise me-1 text-white"></i>Refresh
-          </button>
+      <div class="page-header-dark">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h2 class="page-title-dark mb-1">
+              Order Management (<span id="order-count"><%= totalOrders || 0 %></span>)
+            </h2>
+            <p class="page-subtitle-dark mb-0">Manage and track all customer orders</p>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-refresh" id="headerRefreshBtn">
+              <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -31,7 +43,10 @@
             </div>
             <div class="flex-grow-1 ms-3">
               <h6 class="text-black mb-1">Today's Orders</h6>
-              <h3 class="fw-bold text-black mb-0"><%= todayOrders || 0 %></h3>
+              <h3 class="fw-bold text-black mb-0" id="stat-today-orders">
+                <%= todayOrders || 0 %>
+              </h3>
+
             </div>
           </div>
         </div>
@@ -49,7 +64,9 @@
             </div>
             <div class="flex-grow-1 ms-3">
               <h6 class="text-black mb-1">Total Orders</h6>
-              <h3 class="fw-bold text-black mb-0"><%= totalOrders || 0 %></h3>
+              <h3 class="fw-bold text-black mb-0" id="stat-total-orders">
+                <%= totalOrders || 0 %>
+              </h3>
             </div>
           </div>
         </div>
@@ -67,7 +84,9 @@
             </div>
             <div class="flex-grow-1 ms-3">
               <h6 class="text-black mb-1">Total Items</h6>
-              <h3 class="fw-bold text-black mb-0"><%= totalItems || 0 %></h3>
+              <h3 class="fw-bold text-black mb-0" id="stat-total-items">
+                <%= totalItems || 0 %>
+              </h3>
             </div>
           </div>
         </div>
@@ -85,7 +104,7 @@
             </div>
             <div class="flex-grow-1 ms-3">
               <h6 class="text-black mb-1">Pending Items</h6>
-              <h3 class="fw-bold text-black mb-0">
+              <h3 class="fw-bold text-black mb-0" id="stat-pending-items">
                 <%= orderStats.find(stat => stat._id === ORDER_STATUS.PENDING)?.count || 0 %>
               </h3>
             </div>
@@ -353,6 +372,47 @@
 
 
 <style>
+
+/* ========= DARK PAGE HEADER ========= */
+.page-header-dark {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.page-title-dark {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.page-subtitle-dark {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.btn-refresh {
+  background-color: #ef4444 !important;
+  border: none !important;
+  color: white !important;
+  font-weight: 600;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn-refresh:hover {
+  background-color: #dc2626 !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+
 /* ========= GENERAL STYLES ========= */
 .card {
   border-radius: 12px;
@@ -909,7 +969,6 @@
   background-repeat: no-repeat;
   background-position: right 50px center;
   background-size: 20px;
-  animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
@@ -1437,16 +1496,26 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // ✅ Reset filters button with enhanced functionality
+  // Reset filters button
   const resetFiltersBtn = document.getElementById('resetFiltersBtn');
   if (resetFiltersBtn) {
-    resetFiltersBtn.addEventListener('click', function(e) {
+    resetFiltersBtn.addEventListener('click', async function(e) {
       e.preventDefault();
-      e.stopPropagation();
-      resetFilters();
-      return false;
+      
+      // Clear all filters
+      if (filterForm) {
+        filterForm.reset();
+      }
+      if (searchInput) {
+        searchInput.value = '';
+        toggleClearButton();
+      }
+      
+      // Reload with no filters (page 1)
+      await applyFilters(1);
     });
   }
+
 });
 
 // ✅ Helper function to get payment status CSS class
@@ -1732,11 +1801,44 @@ function generateOrderRowHTML(order) {
 }
 
 
-// Only show filtered results count (don't update dashboard cards)
+// Function to update statistics based on filtered data
 function updateStatistics(data) {
-  // Console log for debugging
-  console.log(`Showing ${data.filteredOrdersCount} filtered results`);
+  // ✅ Check if filtered statistics are provided
+  if (data.statistics) {
+    // Update statistics with FILTERED data
+    const todayOrdersEl = document.getElementById('stat-today-orders');
+    const totalOrdersEl = document.getElementById('stat-total-orders');
+    const totalItemsEl = document.getElementById('stat-total-items');
+    const pendingItemsEl = document.getElementById('stat-pending-items');
+    const titleCount = document.getElementById('order-count');
+    
+    if (todayOrdersEl) {
+      todayOrdersEl.textContent = data.statistics.todayOrders || 0;
+    }
+    
+    if (totalOrdersEl) {
+      totalOrdersEl.textContent = data.statistics.totalOrders || 0;
+    }
+    
+    if (totalItemsEl) {
+      totalItemsEl.textContent = data.statistics.totalItems || 0;
+    }
+    
+    if (pendingItemsEl) {
+      pendingItemsEl.textContent = data.statistics.pendingItems || 0;
+    }
+    
+    // ✅ Update title bar count
+    if (titleCount) {
+      titleCount.textContent = data.statistics.totalOrders || 0;
+    }
+    
+    console.log('✅ Statistics updated with filtered data:', data.statistics);
+  } else {
+    console.warn('⚠️ No statistics data received from server');
+  }
 }
+
 
 // Update pagination function
 function updatePagination(data) {
