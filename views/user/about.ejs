@@ -1,0 +1,759 @@
+<!-- Google Fonts - Lexend -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ========= GLOBAL STYLES ========= */
+body {
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 600;
+}
+
+/* ========= HERO BANNER (IMAGE ONLY) ========= */
+.hero-banner {
+  background-image: url('https://res.cloudinary.com/daqfxkc3u/image/upload/v1770017356/Untitled_design_fntubu.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.hero-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+/* ========= PAGE INTRO SECTION ========= */
+.page-intro-section {
+  padding: 4rem 0;
+  background-color: #000000;
+  text-align: center;
+}
+
+.page-intro-section h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  letter-spacing: -1px;
+  color: #ffffff;
+}
+
+.page-intro-section .tagline {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #e03a2f;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+
+.page-intro-section .subtitle {
+  font-size: 1.125rem;
+  color: #a0a0a0;
+  font-weight: 300;
+}
+
+/* ========= SECTION BACKGROUNDS ========= */
+.bg-dark {
+  background-color: #0a0a0a !important;
+}
+
+.bg-darker {
+  background-color: #000000 !important;
+}
+
+/* ========= OUR STORY SECTION ========= */
+.story-section {
+  padding: 6rem 0;
+  background-color: #0a0a0a;
+}
+
+.story-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  color: #ffffff;
+}
+
+.story-section p {
+  font-size: 1.125rem;
+  color: #b0b0b0;
+  line-height: 1.8;
+}
+
+.about-image-container {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(224, 58, 47, 0.2);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
+  min-height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.about-image-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.about-image-placeholder {
+  color: #333;
+  font-size: 3rem;
+}
+
+/* ========= CURATOR SECTION ========= */
+.curator-section {
+  padding: 6rem 0;
+  background-color: #000000;
+}
+
+.curator-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.curator-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 3rem;
+}
+
+.founder-profile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.curator-avatar {
+  width: 280px;
+  height: 280px;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 5px solid #e03a2f;
+  flex-shrink: 0;
+}
+
+.curator-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+}
+
+.curator-avatar i {
+  font-size: 5rem;
+  color: #ffffff;
+}
+
+.founder-info {
+  text-align: left;
+  flex: 1;
+  max-width: 400px;
+}
+
+.founder-info h3 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+  font-family: 'Lexend', sans-serif;
+}
+
+.founder-info .linkedin-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #0077B5;
+  text-decoration: none;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+}
+
+.founder-info .linkedin-link:hover {
+  color: #0095D9;
+  transform: translateX(5px);
+}
+
+.founder-info .linkedin-link i {
+  font-size: 1.5rem;
+}
+
+.founder-info .title {
+  font-size: 1.25rem;
+  color: #b0b0b0;
+  font-weight: 400;
+  margin-top: 0.5rem;
+}
+
+.curator-card h4 {
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.curator-card p {
+  font-size: 1.125rem;
+  color: #b0b0b0;
+  line-height: 1.8;
+}
+
+.curator-card .quote {
+  color: #e03a2f;
+  font-style: italic;
+  font-size: 1rem;
+  border-left: 4px solid #e03a2f;
+  padding-left: 1.5rem;
+  margin-top: 2rem;
+}
+
+/* ========= PHILOSOPHY SECTION ========= */
+.philosophy-section {
+  padding: 6rem 0;
+  background-color: #0a0a0a;
+}
+
+.philosophy-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.philosophy-section .intro-text {
+  font-size: 1.25rem;
+  color: #b0b0b0;
+  margin-bottom: 4rem;
+}
+
+.philosophy-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 2.5rem;
+  height: 100%;
+  transition: all 0.3s ease;
+}
+
+.philosophy-card:hover {
+  border-color: #e03a2f;
+  transform: translateY(-8px);
+  box-shadow: 0 20px 40px rgba(224, 58, 47, 0.2);
+}
+
+.philosophy-icon {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #e03a2f 0%, #ff6b5a 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.5rem;
+}
+
+.philosophy-icon i {
+  font-size: 2.5rem;
+  color: #ffffff;
+}
+
+.philosophy-card h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.philosophy-card p {
+  font-size: 1rem;
+  color: #b0b0b0;
+  line-height: 1.7;
+  margin-bottom: 0;
+}
+
+/* ========= PROMISE SECTION ========= */
+.promise-section {
+  padding: 6rem 0;
+  background-color: #000000;
+}
+
+.promise-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #ffffff;
+}
+
+.promise-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  padding: 3rem;
+}
+
+.promise-item {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.promise-item:last-child {
+  margin-bottom: 0;
+}
+
+.promise-icon {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #e03a2f 0%, #ff6b5a 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 1.5rem;
+  flex-shrink: 0;
+}
+
+.promise-icon i {
+  font-size: 1.5rem;
+  color: #ffffff;
+}
+
+.promise-item h4 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.promise-item p {
+  font-size: 1rem;
+  color: #b0b0b0;
+  line-height: 1.7;
+  margin-bottom: 0;
+}
+
+/* ========= CTA SECTION ========= */
+.cta-section {
+  padding: 8rem 0;
+  position: relative;
+  overflow: hidden;
+  background-image: url('https://res.cloudinary.com/daqfxkc3u/image/upload/v1770011699/download_cbwsc9.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.cta-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+.cta-content {
+  position: relative;
+  z-index: 2;
+}
+
+.cta-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.cta-section p {
+  font-size: 1.125rem;
+  color: #ffffff;
+  margin-bottom: 2rem;
+  text-shadow: 1px 1px 4px rgba(0, 0, 0, 0.5);
+}
+
+/* ========= BUTTONS ========= */
+.btn-red {
+  background-color: #e03a2f;
+  color: #ffffff;
+  border: 2px solid #e03a2f;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  font-family: 'Lexend', sans-serif;
+}
+
+.btn-red:hover {
+  background-color: #c82e24;
+  border-color: #c82e24;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(224, 58, 47, 0.4);
+}
+
+.btn-white {
+  background-color: #ffffff;
+  color: #000000;
+  border: 2px solid #ffffff;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  font-family: 'Lexend', sans-serif;
+}
+
+.btn-white:hover {
+  background-color: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+}
+
+.btn-outline-white {
+  background-color: transparent;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  text-decoration: none;
+  display: inline-block;
+  font-family: 'Lexend', sans-serif;
+}
+
+.btn-outline-white:hover {
+  background-color: #ffffff;
+  color: #e03a2f;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2);
+}
+
+/* ========= RESPONSIVE ========= */
+@media (max-width: 992px) {
+  .page-intro-section h1 {
+    font-size: 2.5rem;
+  }
+  
+  .page-intro-section .tagline {
+    font-size: 1.25rem;
+  }
+  
+  .story-section h2,
+  .curator-section h2,
+  .philosophy-section h2,
+  .promise-section h2,
+  .cta-section h2 {
+    font-size: 2rem;
+  }
+  
+  .founder-profile {
+    flex-direction: column;
+    gap: 2rem;
+  }
+  
+  .founder-info {
+    text-align: center;
+    max-width: 100%;
+  }
+  
+  .founder-info h3 {
+    font-size: 2rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-banner {
+    height: 250px;
+  }
+  
+  .page-intro-section {
+    padding: 3rem 0;
+  }
+  
+  .page-intro-section h1 {
+    font-size: 2rem;
+  }
+  
+  .page-intro-section .tagline {
+    font-size: 1rem;
+    letter-spacing: 2px;
+  }
+  
+  .story-section,
+  .curator-section,
+  .philosophy-section,
+  .promise-section,
+  .cta-section {
+    padding: 4rem 0;
+  }
+  
+  .curator-card,
+  .promise-card {
+    padding: 2rem;
+  }
+  
+  .about-image-container {
+    min-height: 300px;
+  }
+  
+  .curator-avatar {
+    width: 200px;
+    height: 200px;
+  }
+  
+  .founder-info h3 {
+    font-size: 1.75rem;
+  }
+  
+  .founder-info .title {
+    font-size: 1rem;
+  }
+}
+</style>
+
+<!-- Hero Banner (Image Only) -->
+<section class="hero-banner"></section>
+
+<!-- Page Intro Section -->
+<section class="page-intro-section">
+  <div class="container">
+    <h1>About LacedUp</h1>
+    <p class="tagline">WHERE STYLE MEETS PASSION</p>
+    <p class="subtitle">Elevating sneaker culture, one step at a time</p>
+  </div>
+</section>
+
+<!-- Our Story Section -->
+<section class="story-section">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-6 mb-4 mb-lg-0">
+        <h2>Our Story</h2>
+        <p class="mb-4">
+          LacedUp was born from a deep passion for sneaker culture and a belief that the right pair of kicks can transform not just your outfit, but your entire attitude. In a world where sneakers have become more than footwear—they're a statement, an identity, a lifestyle—we saw the need for a destination that truly understands sneakerheads.
+        </p>
+        <p class="mb-4">
+          We're not just another sneaker retailer. We're curators of style, collectors of the freshest drops, and guides for those looking to elevate their game. From iconic classics to limited releases, every sneaker in our collection is handpicked for its quality, authenticity, and cultural impact.
+        </p>
+        <p>
+          Whether you're a seasoned collector hunting for grails or someone taking their first steps into sneaker culture, LacedUp is your destination. Because we believe that everyone deserves to walk in confidence, style, and authenticity.
+        </p>
+      </div>
+      <div class="col-lg-6">
+        <div class="about-image-container">
+          <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1770016559/download_1_r3ums4.jpg" alt="LacedUp Sneaker Collection">
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Curator Section -->
+<section class="curator-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <h2>Meet the Founder</h2>
+        <div class="curator-card">
+          <!-- Founder Profile -->
+          <div class="founder-profile">
+            <div class="curator-avatar">
+              <img src="https://res.cloudinary.com/daqfxkc3u/image/upload/v1770014676/WhatsApp_Image_2026-02-02_at_12.13.56_PM_xw9qbi.jpg" alt="Mohammed Al Fahad">
+            </div>
+            <div class="founder-info">
+              <h3>Mohammed Al Fahad</h3>
+              <a href="https://www.linkedin.com/in/mohammed-al-fahad-39971933a/" target="_blank" rel="noopener noreferrer" class="linkedin-link">
+                <i class="bi bi-linkedin"></i>
+                Connect on LinkedIn
+              </a>
+              <p class="title">Full Stack Developer | Sneakerhead</p>
+            </div>
+          </div>
+          
+          <!-- Bio Section -->
+          <h4>Built by Sneakerheads, For Sneakerheads</h4>
+          <p class="mb-4">
+            My journey with sneakers began years ago, but it's evolved into something much deeper than just collecting kicks. I've spent countless nights camping out for releases, trading rare finds, and building a rotation that tells my story. Every pair in my collection represents a moment, a memory, or a milestone.
+          </p>
+          <p class="mb-4">
+            As a web developer and sneaker enthusiast, I saw an opportunity to merge two of my biggest passions. LacedUp isn't just an e-commerce platform—it's a carefully crafted digital experience built from the ground up with the same attention to detail I give to choosing sneakers. From the backend architecture to the user interface, every line of code reflects my commitment to quality and authenticity.
+          </p>
+          <p class="mb-4">
+            I created LacedUp to bring that same passion to every customer. Each sneaker is personally selected based on quality, authenticity, and cultural relevance. Whether you're a seasoned collector or just starting your sneaker journey, I'm here to help you find the kicks that speak to your style and story.
+          </p>
+          <p class="mb-4">
+            Building web applications has taught me the importance of user experience, and that philosophy carries over to how I run LacedUp. Every feature, every product description, every interaction is designed to make your shopping experience as smooth as breaking in a fresh pair of kicks.
+          </p>
+          <p class="quote">
+            "Sneakers aren't just shoes. They're art, history, and self-expression all laced into one."
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Our Philosophy Section -->
+<section class="philosophy-section">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-8 mx-auto text-center mb-5">
+        <h2>What We Stand For</h2>
+        <p class="intro-text">
+          At LacedUp, every sneaker represents quality, authenticity, and the spirit of sneaker culture.
+        </p>
+      </div>
+    </div>
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="philosophy-card text-center">
+          <div class="philosophy-icon">
+            <i class="bi bi-award"></i>
+          </div>
+          <h3>Authenticity Guaranteed</h3>
+          <p>
+            Every pair is 100% authentic, sourced from trusted suppliers and verified by our team. We stand behind every sneaker we sell with complete transparency.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="philosophy-card text-center">
+          <div class="philosophy-icon">
+            <i class="bi bi-gem"></i>
+          </div>
+          <h3>Curated Selection</h3>
+          <p>
+            From timeless classics to the latest hype releases, our collection is handpicked to represent the best of sneaker culture across all styles and brands.
+          </p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="philosophy-card text-center">
+          <div class="philosophy-icon">
+            <i class="bi bi-stars"></i>
+          </div>
+          <h3>Style Elevation</h3>
+          <p>
+            We're here to help you find kicks that match your vibe, upgrade your rotation, and express your unique style—because great sneakers are more than a purchase, they're an investment in yourself.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Our Promise Section -->
+<section class="promise-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-10">
+        <div class="promise-card">
+          <h2 class="text-center mb-5">The LacedUp Promise</h2>
+          <div class="row g-4">
+            <div class="col-md-6">
+              <div class="promise-item">
+                <div class="promise-icon">
+                  <i class="bi bi-shield-check"></i>
+                </div>
+                <div>
+                  <h4>100% Authentic</h4>
+                  <p>Every sneaker is verified for authenticity. No fakes, no replicas—just the real deal.</p>
+                </div>
+              </div>
+              <div class="promise-item">
+                <div class="promise-icon">
+                  <i class="bi bi-lightning-charge"></i>
+                </div>
+                <div>
+                  <h4>Latest Releases</h4>
+                  <p>Stay ahead of the game with access to the newest drops and exclusive collaborations.</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="promise-item">
+                <div class="promise-icon">
+                  <i class="bi bi-heart"></i>
+                </div>
+                <div>
+                  <h4>Passion-Driven Service</h4>
+                  <p>We're sneakerheads first, retailers second. Expect advice, recommendations, and genuine enthusiasm.</p>
+                </div>
+              </div>
+              <div class="promise-item">
+                <div class="promise-icon">
+                  <i class="bi bi-people"></i>
+                </div>
+                <div>
+                  <h4>Community Focus</h4>
+                  <p>Join a community of like-minded sneaker enthusiasts who share your passion for the culture.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Call to Action Section -->
+<section class="cta-section">
+  <div class="container">
+    <div class="row justify-content-center">
+      <div class="col-lg-8 text-center cta-content">
+        <h2>Ready to Step Up?</h2>
+        <p>
+          Explore our curated collection of premium sneakers and find your next grail. Whether you're building your rotation or hunting for that one special pair, we've got you covered.
+        </p>
+        <div class="d-flex flex-column flex-sm-row gap-3 justify-content-center">
+          <a href="/shop" class="btn-white">Browse Collection</a>
+          <a href="/contact" class="btn-outline-white">Get Style Advice</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

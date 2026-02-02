@@ -1,0 +1,878 @@
+<!-- Google Fonts - Lexend -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ========= GLOBAL STYLES ========= */
+body {
+  background-color: #000000;
+  color: #ffffff;
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Lexend', sans-serif;
+  font-weight: 600;
+}
+
+/* ========= HERO BANNER ========= */
+.help-hero-banner {
+  background-image: url('https://res.cloudinary.com/daqfxkc3u/image/upload/v1770017356/Untitled_design_fntubu.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  height: 400px;
+  position: relative;
+  overflow: hidden;
+}
+
+.help-hero-banner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 1;
+}
+
+/* ========= PAGE INTRO ========= */
+.help-intro-section {
+  padding: 4rem 0;
+  background-color: #000000;
+  text-align: center;
+}
+
+.help-intro-section h1 {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.help-intro-section p {
+  font-size: 1.125rem;
+  color: #a0a0a0;
+}
+
+/* ========= FAQ SECTION ========= */
+.faq-section {
+  padding: 6rem 0;
+  background-color: #0a0a0a;
+}
+
+.faq-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.faq-section .intro-text {
+  font-size: 1.125rem;
+  color: #b0b0b0;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.faq-accordion {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.faq-item {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.faq-item:hover {
+  border-color: #e03a2f;
+}
+
+.faq-question {
+  width: 100%;
+  padding: 1.5rem;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+.faq-question:hover {
+  color: #e03a2f;
+}
+
+.faq-question i {
+  font-size: 1.5rem;
+  transition: transform 0.3s ease;
+}
+
+.faq-question.active i {
+  transform: rotate(180deg);
+}
+
+.faq-answer {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.faq-answer-content {
+  padding: 0 1.5rem 1.5rem;
+  color: #b0b0b0;
+  line-height: 1.8;
+}
+
+/* ========= CONTACT FORM SECTION ========= */
+.contact-section {
+  padding: 6rem 0;
+  background-color: #000000;
+}
+
+.contact-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 3rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.contact-card {
+  background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid #2a2a2a;
+  border-radius: 16px;
+  overflow: hidden;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.contact-info {
+  background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+  padding: 3rem;
+}
+
+.contact-info h3 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+}
+
+.contact-info > p {
+  color: #b0b0b0;
+  margin-bottom: 2rem;
+}
+
+.contact-item {
+  margin-bottom: 2rem;
+}
+
+.contact-item:last-child {
+  margin-bottom: 0;
+}
+
+.contact-item-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.contact-item-header i {
+  font-size: 1.5rem;
+  color: #e03a2f;
+  margin-right: 1rem;
+}
+
+.contact-item h4 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+}
+
+.contact-item p {
+  color: #b0b0b0;
+  margin: 0;
+  padding-left: 2.5rem;
+}
+
+.contact-form {
+  padding: 3rem;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background-color: #0a0a0a;
+  border: 1px solid #2a2a2a;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #e03a2f;
+  box-shadow: 0 0 0 3px rgba(224, 58, 47, 0.1);
+}
+
+.form-control::placeholder {
+  color: #666;
+}
+
+textarea.form-control {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.error-message {
+  color: #ff6b6b;
+  font-size: 0.875rem;
+  margin-top: 0.5rem;
+  display: none;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-message.show {
+  display: block;
+}
+
+.form-control.error {
+  border-color: #ff6b6b;
+  animation: shake 0.3s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 1rem 2rem;
+  background-color: #e03a2f;
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background-color: #c82e24;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(224, 58, 47, 0.4);
+}
+
+.btn-submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-submit.success {
+  background-color: #28a745;
+  animation: successPulse 0.5s ease;
+}
+
+@keyframes successPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+.btn-submit i {
+  font-size: 1.25rem;
+}
+
+/* ========= MAP SECTION ========= */
+.map-section {
+  padding: 6rem 0;
+  background-color: #0a0a0a;
+}
+
+.map-section h2 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: #ffffff;
+  text-align: center;
+}
+
+.map-section p {
+  color: #b0b0b0;
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.map-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(224, 58, 47, 0.2);
+}
+
+.map-container iframe {
+  width: 100%;
+  height: 450px;
+  border: none;
+}
+
+/* ========= RESPONSIVE ========= */
+@media (max-width: 768px) {
+  .help-hero-banner {
+    height: 250px;
+  }
+
+  .help-intro-section h1 {
+    font-size: 2rem;
+  }
+
+  .faq-section,
+  .contact-section,
+  .map-section {
+    padding: 4rem 0;
+  }
+
+  .contact-info,
+  .contact-form {
+    padding: 2rem;
+  }
+
+  .map-container iframe {
+    height: 350px;
+  }
+}
+</style>
+
+<!-- Hero Banner -->
+<section class="help-hero-banner"></section>
+
+<!-- Page Intro -->
+<section class="help-intro-section">
+  <div class="container">
+    <h1>Help & Support</h1>
+    <p>We're here to help you step up your sneaker game</p>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="faq-section">
+  <div class="container">
+    <h2>Frequently Asked Questions</h2>
+    <p class="intro-text">Find answers to common questions about LacedUp</p>
+    
+    <div class="faq-accordion">
+      <!-- FAQ Item 1 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>What is your shipping policy?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            We offer free shipping on all orders above ₹2,000 within India. For orders below ₹2,000, a delivery charge of ₹99-₹199 will be applied based on your location. Orders are typically processed within 1-2 business days and delivered within 5-7 business days depending on your location.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 2 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>What is your return and exchange policy?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            We accept returns and exchanges within 7 days of delivery. Sneakers must be in original, unworn condition with all tags and packaging intact. Once we receive and inspect your return, we'll process your refund or exchange within 5-7 business days. Please note that original shipping charges are non-refundable.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 3 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>Do you accept Cash on Delivery (COD)?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            Yes, we accept Cash on Delivery for orders below ₹10,000. For orders above ₹10,000, we only accept online payment methods including Credit/Debit Cards, UPI, Net Banking, and Digital Wallets. This policy helps us ensure secure transactions for high-value purchases.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 4 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>How are delivery charges calculated?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            Delivery charges are calculated based on your location and order value. For metropolitan cities, we charge ₹99 for orders below ₹2,000. For tier-2 and tier-3 cities, delivery charges range from ₹149-₹199. Orders above ₹2,000 qualify for free shipping nationwide. The exact delivery charge will be displayed during checkout before payment.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 5 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>What payment methods do you accept?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            We accept multiple payment methods including Credit Cards (Visa, Mastercard, American Express), Debit Cards, UPI (Google Pay, PhonePe, Paytm), Net Banking, and Digital Wallets. For orders below ₹10,000, Cash on Delivery is also available. All online transactions are secured with industry-standard encryption.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 6 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>How do I know if a sneaker is authentic?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            Every sneaker at LacedUp is 100% authentic and sourced directly from authorized retailers and trusted suppliers. Each pair comes with original packaging, tags, and authentication certificates where applicable. We personally verify every sneaker before listing it on our platform. If you have any concerns about authenticity, please contact our support team.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 7 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>How can I track my order?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            Once your order is shipped, you'll receive a tracking number via email and SMS. You can track your order in real-time by clicking the tracking link or visiting the "My Orders" section in your account. If you have any issues with tracking, our support team is here to help.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 8 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>Do you offer size exchanges?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            Yes, we offer size exchanges within 7 days of delivery, subject to availability. The sneakers must be unworn and in original condition with all tags attached. If your desired size is not available, we'll process a full refund. Exchange requests can be initiated through your account or by contacting our support team.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 9 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>What if my sneakers arrive damaged?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            If your sneakers arrive damaged or defective, please contact us within 48 hours of delivery with photos of the damage. We'll arrange for a free return pickup and either send you a replacement or process a full refund, including original shipping charges. Your satisfaction is our priority.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 10 -->
+      <div class="faq-item">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>Do you restock sold-out sneakers?</span>
+          <i class="bi bi-chevron-down"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-content">
+            We try our best to restock popular models, but availability depends on our suppliers. You can sign up for restock notifications on product pages to get alerted when your desired sneakers are back in stock. For limited edition releases, we recommend acting fast as they sell out quickly.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Contact Form Section -->
+<section class="contact-section">
+  <div class="container">
+    <h2>Still Have Questions?</h2>
+    
+    <div class="contact-card">
+      <div class="row g-0">
+        <div class="col-lg-5">
+          <div class="contact-info">
+            <h3>Get In Touch</h3>
+            <p>Our team is here to help you with any questions or concerns about your sneaker journey.</p>
+            
+            <div class="contact-item">
+              <div class="contact-item-header">
+                <i class="bi bi-geo-alt-fill"></i>
+                <h4>Visit Us</h4>
+              </div>
+              <p>Kanayannur, Kerala<br>India</p>
+            </div>
+
+            <div class="contact-item">
+              <div class="contact-item-header">
+                <i class="bi bi-envelope-fill"></i>
+                <h4>Email Us</h4>
+              </div>
+              <p>support@lacedup.com</p>
+            </div>
+
+            <div class="contact-item">
+              <div class="contact-item-header">
+                <i class="bi bi-clock-fill"></i>
+                <h4>Response Time</h4>
+              </div>
+              <p>We typically respond within 24 hours</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-lg-7">
+          <div class="contact-form">
+            <form id="contactForm" onsubmit="handleFormSubmit(event)" novalidate>
+              <div class="form-group">
+                <label for="name" class="form-label">Full Name</label>
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  id="name" 
+                  name="name" 
+                  placeholder="Your name"
+                  onblur="validateField('name')"
+                  oninput="clearError('name')"
+                >
+                <div class="error-message" id="name-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  id="email" 
+                  name="email" 
+                  placeholder="your@email.com"
+                  onblur="validateField('email')"
+                  oninput="clearError('email')"
+                >
+                <div class="error-message" id="email-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="subject" class="form-label">Subject</label>
+                <select 
+                  class="form-control" 
+                  id="subject" 
+                  name="subject"
+                  onchange="validateField('subject')"
+                  onfocus="clearError('subject')"
+                >
+                  <option value="">Choose a subject...</option>
+                  <option value="general">General Inquiry</option>
+                  <option value="order">Order Support</option>
+                  <option value="shipping">Shipping Question</option>
+                  <option value="return">Return/Exchange</option>
+                  <option value="authentication">Authentication Inquiry</option>
+                  <option value="payment">Payment Issue</option>
+                  <option value="other">Other</option>
+                </select>
+                <div class="error-message" id="subject-error"></div>
+              </div>
+
+              <div class="form-group">
+                <label for="message" class="form-label">Message</label>
+                <textarea 
+                  class="form-control" 
+                  id="message" 
+                  name="message" 
+                  rows="5" 
+                  placeholder="Tell us how we can help..."
+                  onblur="validateField('message')"
+                  oninput="clearError('message')"
+                ></textarea>
+                <div class="error-message" id="message-error"></div>
+              </div>
+              
+              <button type="submit" class="btn-submit" id="submitBtn">
+                <span id="btnText">Send Message</span>
+                <i class="bi bi-send" id="btnIcon"></i>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Map Section -->
+<section class="map-section">
+  <div class="container">
+    <h2>Find Us</h2>
+    <p>Located in Kanayannur, Kerala</p>
+    
+    <div class="map-container">
+      <iframe 
+        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d62855.87577347771!2d76.28520437910156!3d9.985652300000008!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3b0872c70f5f6b5b%3A0x1e8e5e5e5e5e5e5e!2sKanayannur%2C%20Kerala!5e0!3m2!1sen!2sin!4v1234567890"
+        allowfullscreen="" 
+        loading="lazy" 
+        referrerpolicy="no-referrer-when-downgrade">
+      </iframe>
+    </div>
+  </div>
+</section>
+
+<script>
+// ========= FAQ FUNCTIONALITY =========
+function toggleFAQ(button) {
+  const answer = button.nextElementSibling;
+  const isActive = button.classList.contains('active');
+  
+  // Close all other FAQs
+  document.querySelectorAll('.faq-question').forEach(q => {
+    q.classList.remove('active');
+    q.nextElementSibling.style.maxHeight = '0';
+  });
+  
+  // Toggle current FAQ
+  if (!isActive) {
+    button.classList.add('active');
+    answer.style.maxHeight = answer.scrollHeight + 'px';
+  }
+}
+
+// ========= FORM VALIDATION FUNCTIONS =========
+
+// Validate individual field
+function validateField(fieldId) {
+  const field = document.getElementById(fieldId);
+  const value = field.value.trim();
+  let errorMessage = '';
+  let isValid = true;
+
+  switch(fieldId) {
+    case 'name':
+      if (value === '') {
+        errorMessage = 'Please enter your full name';
+        isValid = false;
+      } else if (value.length < 2) {
+        errorMessage = 'Name must be at least 2 characters';
+        isValid = false;
+      } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+        errorMessage = 'Name can only contain letters and spaces';
+        isValid = false;
+      }
+      break;
+
+    case 'email':
+      if (value === '') {
+        errorMessage = 'Please enter your email address';
+        isValid = false;
+      } else if (!isValidEmail(value)) {
+        errorMessage = 'Please enter a valid email address';
+        isValid = false;
+      }
+      break;
+
+    case 'subject':
+      if (value === '') {
+        errorMessage = 'Please select a subject';
+        isValid = false;
+      }
+      break;
+
+    case 'message':
+      if (value === '') {
+        errorMessage = 'Please enter your message';
+        isValid = false;
+      } else if (value.length < 10) {
+        errorMessage = 'Message must be at least 10 characters';
+        isValid = false;
+      } else if (value.length > 1000) {
+        errorMessage = 'Message must not exceed 1000 characters';
+        isValid = false;
+      }
+      break;
+  }
+
+  if (!isValid) {
+    showError(fieldId, errorMessage);
+  } else {
+    clearError(fieldId);
+  }
+
+  return isValid;
+}
+
+// Show error message
+function showError(fieldId, message) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(`${fieldId}-error`);
+  
+  field.classList.add('error');
+  error.textContent = message;
+  error.classList.add('show');
+}
+
+// Clear error message
+function clearError(fieldId) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(`${fieldId}-error`);
+  
+  field.classList.remove('error');
+  error.classList.remove('show');
+}
+
+// Validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}
+
+// Validate all fields
+function validateAllFields() {
+  const fields = ['name', 'email', 'subject', 'message'];
+  let isValid = true;
+
+  fields.forEach(fieldId => {
+    if (!validateField(fieldId)) {
+      isValid = false;
+    }
+  });
+
+  return isValid;
+}
+
+// ========= FORM SUBMISSION =========
+async function handleFormSubmit(event) {
+  event.preventDefault();
+  
+  // Validate all fields
+  if (!validateAllFields()) {
+    // Scroll to first error
+    const firstError = document.querySelector('.form-control.error');
+    if (firstError) {
+      firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      firstError.focus();
+    }
+    return;
+  }
+  
+  // Get form values
+  const name = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const subject = document.getElementById('subject').value;
+  const message = document.getElementById('message').value.trim();
+  
+  // Get button elements
+  const submitBtn = document.getElementById('submitBtn');
+  const btnText = document.getElementById('btnText');
+  const btnIcon = document.getElementById('btnIcon');
+  
+  // Disable button and show loading state
+  submitBtn.disabled = true;
+  btnText.textContent = 'Sending...';
+  btnIcon.className = 'bi bi-hourglass-split';
+  
+  try {
+    const formData = {
+      name: name,
+      email: email,
+      subject: subject,
+      message: message
+    };
+    
+    const response = await fetch('/help/contact', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(formData)
+    });
+    
+    const data = await response.json();
+    
+    if (data.success) {
+      // Show success state with animation
+      submitBtn.classList.add('success');
+      btnText.textContent = 'Message Sent!';
+      btnIcon.className = 'bi bi-check-circle-fill';
+      
+      // Clear form
+      document.getElementById('contactForm').reset();
+      
+      // Button stays disabled until page refresh
+      // No sessionStorage - will reset on page reload
+      
+    } else {
+      throw new Error(data.message || 'Failed to send message');
+    }
+    
+  } catch (error) {
+    console.error('Error:', error);
+    
+    // Show user-friendly error message
+    submitBtn.classList.remove('success');
+    btnText.textContent = 'Failed - Try Again';
+    btnIcon.className = 'bi bi-x-circle';
+    
+    // Reset button after 3 seconds
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      btnText.textContent = 'Send Message';
+      btnIcon.className = 'bi bi-send';
+    }, 3000);
+  }
+}
+</script>
