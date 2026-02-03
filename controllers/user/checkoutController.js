@@ -1975,18 +1975,16 @@ const verifyRetryRazorpayPayment = async (req, res) => {
         throw new Error(`Stock deduction failed on retry: ${stockError.message}`);
       }
 
-      // Step 3: Update coupon usage for retry payment (NOT updated during initial failure)
       if (paymentFailure.orderData.appliedCouponId) {
         try {
           await increaseCouponUsage(paymentFailure.orderData.appliedCouponId, userId, paymentFailure.orderId);
-          console.log('✅ Coupon usage updated for retry payment');
+          console.log('Coupon usage updated for retry payment');
         } catch (couponError) {
-          console.error('❌ Error updating coupon usage on retry:', couponError);
+          console.error('Error updating coupon usage on retry:', couponError);
           throw new Error(`Coupon update failed on retry: ${couponError.message}`);
         }
       }
 
-      // Step 4: Update existing failed order to successful
       const updateResult = await Order.updateOne(
         { _id: paymentFailure.orderId },
         {
@@ -2012,7 +2010,6 @@ const verifyRetryRazorpayPayment = async (req, res) => {
         throw new Error('Order not found for retry');
       }
 
-      // Step 5: Update all order items status
       await Order.updateOne(
         { _id: paymentFailure.orderId },
         {
@@ -2031,9 +2028,8 @@ const verifyRetryRazorpayPayment = async (req, res) => {
       );
 
       const order = await Order.findById(paymentFailure.orderId);
-      console.log(`✅ Retry payment successful. Order updated: ${order.orderId}`);
+      console.log(`Retry payment successful. Order updated: ${order.orderId}`);
 
-      // Step 6: Clear cart after successful retry payment
       try {
         let userCart = await Cart.findOne({ user: userId });
         if (!userCart) {
@@ -2045,13 +2041,12 @@ const verifyRetryRazorpayPayment = async (req, res) => {
           userCart.totalItems = 0;
           userCart.totalPrice = 0;
           await userCart.save();
-          console.log('✅ Cart cleared after successful retry payment');
+          console.log('Cart cleared after successful retry payment');
         }
       } catch (cartError) {
-        console.error('⚠️ Error clearing cart:', cartError);
+        console.error('Error clearing cart:', cartError);
       }
 
-      // Step 7: Clear session data
       delete req.session.paymentFailure;
       delete req.session.appliedCoupon;
 
@@ -2066,24 +2061,23 @@ const verifyRetryRazorpayPayment = async (req, res) => {
       });
 
     } catch (processingError) {
-      console.error('❌ Error processing retry payment:', processingError);
+      console.error('Error processing retry payment:', processingError);
 
-      // Restore stock and coupon on retry error
-      console.log('🔄 Restoring stock and coupon on retry payment error...');
+      console.log('Restoring stock and coupon on retry payment error...');
 
       try {
         await restoreStock(paymentFailure.orderData.items);
-        console.log('✅ Stock restored after retry payment error');
+        console.log('Stock restored after retry payment error');
       } catch (restoreError) {
-        console.error('⚠️ Error restoring stock:', restoreError);
+        console.error('Error restoring stock:', restoreError);
       }
 
       if (paymentFailure.orderData.appliedCouponId) {
         try {
           await decreaseCouponUsage(paymentFailure.orderData.appliedCouponId, userId, paymentFailure.orderId);
-          console.log('✅ Coupon usage restored after retry payment error');
+          console.log('Coupon usage restored after retry payment error');
         } catch (couponRestoreError) {
-          console.error('⚠️ Error restoring coupon usage:', couponRestoreError);
+          console.error('Error restoring coupon usage:', couponRestoreError);
         }
       }
 
@@ -2096,7 +2090,7 @@ const verifyRetryRazorpayPayment = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Error verifying retry payment:', error);
+    console.error('Error verifying retry payment:', error);
     return res.status(500).json({
       success: false,
       message: 'Error verifying retry payment',
@@ -2129,10 +2123,9 @@ const handleRetryPaymentFailure = async (req, res) => {
       });
     }
 
-    console.log('❌ Retry payment also failed for order:', paymentFailure.orderId);
+    console.log('Retry payment also failed for order:', paymentFailure.orderId);
 
     try {
-      // ✅ Update order: paymentStatus = FAILED, status = FAILED
       const updateResult = await Order.findByIdAndUpdate(
         paymentFailure.orderId,
         {
@@ -2165,7 +2158,6 @@ const handleRetryPaymentFailure = async (req, res) => {
         });
       }
 
-      // Update all items status to FAILED
       await Order.updateOne(
         { _id: paymentFailure.orderId },
         {
@@ -2176,12 +2168,10 @@ const handleRetryPaymentFailure = async (req, res) => {
         }
       );
 
-      console.log('✅ Order marked as FAILED - No more retry attempts allowed');
-      console.log('⏸️ Stock NOT deducted - Order failed');
-      console.log('⏸️ Coupon usage NOT updated - Order failed');
+      console.log('Order marked as FAILED - No more retry attempts allowed');
+      console.log('Stock NOT deducted - Order failed');
+      console.log('Coupon usage NOT updated - Order failed');
 
-      // ✅ CRITICAL FIX: Keep paymentFailure in session with orderNumber
-      // So loadOrderFailure() can reconstruct it if needed
       req.session.paymentFailure = {
         ...paymentFailure,
         transactionId: razorpayOrderId || paymentFailure.transactionId,
@@ -2192,7 +2182,6 @@ const handleRetryPaymentFailure = async (req, res) => {
         success: true,
         message: 'Order marked as failed. Please place a new order.',
         data: {
-          // ✅ Return orderNumber instead of razorpayOrderId for URL
           redirectUrl: `/checkout/order-failure/${paymentFailure.orderNumber}`,
           orderId: paymentFailure.orderId,
           orderNumber: paymentFailure.orderNumber,
@@ -2201,7 +2190,7 @@ const handleRetryPaymentFailure = async (req, res) => {
       });
 
     } catch (updateError) {
-      console.error('❌ Error updating order on retry failure:', updateError);
+      console.error('Error updating order on retry failure:', updateError);
       return res.status(500).json({
         success: false,
         message: 'Error processing retry payment failure',
@@ -2211,7 +2200,7 @@ const handleRetryPaymentFailure = async (req, res) => {
     }
 
   } catch (error) {
-    console.error('❌ Error handling retry payment failure:', error);
+    console.error('Error handling retry payment failure:', error);
     return res.status(500).json({
       success: false,
       message: 'Error handling retry payment failure',
@@ -2221,7 +2210,6 @@ const handleRetryPaymentFailure = async (req, res) => {
   }
 };
 
-// ✅ NEW: Handle Wallet Payment for Checkout
 const handleWalletPayment = async (req, res) => {
   try {
     const userId = req.user?._id || req.session?.userId;
@@ -2243,7 +2231,6 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    // ✅ ADDED: Validate delivery address
     const addressDoc = await Address.findById(deliveryAddressId).lean();
 
     if (!addressDoc) {
@@ -2254,7 +2241,6 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    // ✅ ADDED: Verify the specific address at the index exists
     const parsedAddressIndex = parseInt(addressIndex);
     if (!addressDoc.address || !Array.isArray(addressDoc.address) || !addressDoc.address[parsedAddressIndex]) {
       return res.status(400).json({
@@ -2264,8 +2250,8 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    console.log(`✅ Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
-    console.log('💳 Processing wallet payment...');
+    console.log(`Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
+    console.log('Processing wallet payment...');
 
     // Step 1: Fetch and validate cart
     const cart = await Cart.findOne({ userId })
@@ -2285,7 +2271,6 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    // Step 2: Calculate totals and validate coupon
     const totals = calculateOrderTotals(cart.items);
     let couponDiscount = 0;
     let appliedCouponId = null;
@@ -2346,7 +2331,7 @@ const handleWalletPayment = async (req, res) => {
 
         couponDiscount = req.session.appliedCoupon.discountAmount || 0;
         appliedCouponId = req.session.appliedCoupon._id;
-        console.log(`✅ Coupon validated: ${coupon.code} (₹${couponDiscount} off)`);
+        console.log(`Coupon validated: ${coupon.code} (₹${couponDiscount} off)`);
 
       } catch (couponError) {
         console.error('Error validating coupon:', couponError);
@@ -2361,7 +2346,6 @@ const handleWalletPayment = async (req, res) => {
 
     const finalTotal = Math.max(0, totals.total - couponDiscount);
 
-    // Step 3: Check wallet balance
     let wallet;
     try {
       wallet = await walletService.getOrCreateWallet(userId);
@@ -2386,9 +2370,8 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    console.log(`✅ Wallet balance verified: ₹${wallet.balance} (Required: ₹${finalTotal})`);
+    console.log(`Wallet balance verified: ₹${wallet.balance} (Required: ₹${finalTotal})`);
 
-    // Step 4: Validate all items availability
     const stockIssues = [];
     for (const item of cart.items) {
       const productName = item.productId?.productName || 'Unknown Product';
@@ -2431,9 +2414,8 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    console.log('✅ All items validated for wallet payment');
+    console.log('All items validated for wallet payment');
 
-    // Step 5: Prepare order items
     const orderItems = cart.items.map(item => ({
       productId: item.productId._id,
       variantId: item.variantId,
@@ -2451,12 +2433,11 @@ const handleWalletPayment = async (req, res) => {
       }]
     }));
 
-    // Step 6: Deduct stock
     try {
       await deductStock(orderItems);
-      console.log('✅ Stock deducted for wallet order');
+      console.log('Stock deducted for wallet order');
     } catch (stockError) {
-      console.error('❌ Stock deduction failed:', stockError);
+      console.error('Stock deduction failed:', stockError);
       return res.status(400).json({
         success: false,
         message: 'Failed to process order due to stock issues',
@@ -2465,7 +2446,6 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    // Step 7: Create order document
     const addressObjectId = new mongoose.Types.ObjectId(deliveryAddressId);
 
     const order = new Order({
@@ -2499,9 +2479,9 @@ const handleWalletPayment = async (req, res) => {
       await order.save();
       order.orderDocumentId = order._id;
       await order.save();
-      console.log(`✅ Order created: ${order.orderId}`);
+      console.log(`Order created: ${order.orderId}`);
     } catch (saveError) {
-      console.error('❌ Error saving order:', saveError);
+      console.error('Error saving order:', saveError);
       await restoreStock(orderItems);
       return res.status(500).json({
         success: false,
@@ -2510,7 +2490,6 @@ const handleWalletPayment = async (req, res) => {
       });
     }
 
-    // Step 8: Debit from wallet
     try {
       await walletService.addTransaction(userId, {
         type: 'debit',
@@ -2520,34 +2499,29 @@ const handleWalletPayment = async (req, res) => {
         orderId: order._id,
         status: 'completed'
       });
-      console.log(`✅ Wallet debited: ₹${finalTotal}`);
+      console.log(`Wallet debited: ₹${finalTotal}`);
     } catch (walletError) {
-      console.error('❌ Error debiting wallet:', walletError);
-      // Don't fail the order, wallet debit is secondary
-      // But log it for investigation
+      console.error('Error debiting wallet:', walletError);
     }
 
-    // Step 9: Update coupon usage
     if (appliedCouponId) {
       try {
         await increaseCouponUsage(appliedCouponId, userId, order._id);
-        console.log(`✅ Coupon usage updated`);
+        console.log(`Coupon usage updated`);
       } catch (couponError) {
-        console.error('❌ Error updating coupon usage:', couponError);
-        // Don't fail the order for coupon error
+        console.error('Error updating coupon usage:', couponError);
+
       }
     }
 
-    // Step 10: Clear cart
     try {
       cart.items = [];
       await cart.save();
-      console.log('✅ Cart cleared after wallet payment');
+      console.log('Cart cleared after wallet payment');
     } catch (cartError) {
-      console.error('⚠️ Error clearing cart:', cartError);
+      console.error('Error clearing cart:', cartError);
     }
 
-    // Step 11: Clear session data
     delete req.session.appliedCoupon;
 
     return res.json({
@@ -2562,7 +2536,7 @@ const handleWalletPayment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error processing wallet payment:', error);
+    console.error('Error processing wallet payment:', error);
     return res.status(500).json({
       success: false,
       message: 'Failed to process wallet payment',

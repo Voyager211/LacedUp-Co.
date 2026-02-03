@@ -31,7 +31,6 @@ const postSignup = async (req, res) => {
       return res.status(409).json({ error: 'Email already in use.' });
     }
 
-    // Handle referral code validation BEFORE storing in session
     let referrer = null;
     if (referralCode) {
       referrer = await User.findOne({ 
@@ -45,12 +44,10 @@ const postSignup = async (req, res) => {
       }
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
+    const otpExpiresAt = Date.now() + 60 * 1000;
 
-    // Store user data temporarily in session with referral info
     req.session.pendingUser = {
       name,
       email,
@@ -62,7 +59,6 @@ const postSignup = async (req, res) => {
       referrerId: referrer ? referrer._id : null
     };
 
-    // Create a temporary user object for sending email (without saving to DB)
     const tempUser = { name, email };
     await sendOtp(tempUser, otp);
 
@@ -74,7 +70,6 @@ const postSignup = async (req, res) => {
   } catch (err) {
     console.error('Signup Error:', err);
 
-    // Provide specific error messages for email issues
     if (err.message && err.message.includes('Email authentication failed')) {
       return res.status(500).json({
         error: 'Email service configuration error. Please contact support.'
@@ -93,7 +88,6 @@ const postSignup = async (req, res) => {
 const getLogin = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
 
-  // Handle error messages from URL parameters (fallback when flash is unavailable)
   let errorMessage = null;
   if (req.query.error) {
     errorMessage = decodeURIComponent(req.query.error);
@@ -123,15 +117,14 @@ const logout = (req, res) => {
     req.session.destroy((err) => {
       if (err) {
         console.error('Error destroying session:', err);
-        return res.redirect('/home'); // fallback
+        return res.redirect('/home');
       }
-      res.clearCookie('connect.sid'); // clear cookie manually
+      res.clearCookie('connect.sid');
       return res.redirect('/');
     });
   });
 };
 
-// GET: OTP verification page
 const getOtpPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
@@ -145,12 +138,10 @@ const getOtpPage = (req, res) => {
   });
 };
 
-// POST: Verify OTP
 const postOtpVerification = async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    // Check if this is a signup OTP verification (user data in session)
     if (req.session.pendingUser && req.session.pendingUser.email === email) {
       const pendingUser = req.session.pendingUser;
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
@@ -175,10 +166,8 @@ const postOtpVerification = async (req, res) => {
         password: pendingUser.password
       });
 
-      // Generate unique referral code for new user
       newUser.referralCode = await generateReferralCode(newUser._id);
 
-      // Set referral relationship if referrer exists
       if (pendingUser.referrerId) {
         newUser.referredBy = pendingUser.referrerId;
         newUser.hasUsedReferralCode = true;
@@ -186,23 +175,19 @@ const postOtpVerification = async (req, res) => {
 
       await newUser.save();
 
-      // ✅ CREATE WALLET FOR NEW USER
       let newUserWalletAmount = 0;
       
-      // If user signed up with referral code, give ₹100 bonus
       if (pendingUser.referrerId) {
         newUserWalletAmount = 100;
       }
 
       try {
-        // Create wallet with initial balance
         const newUserWallet = new Wallet({
           userId: newUser._id,
           balance: newUserWalletAmount,
           transactions: []
         });
 
-        // If referred, add welcome bonus transaction
         if (pendingUser.referrerId) {
           const timestamp = Date.now();
           const random = Math.floor(Math.random() * 10000);
@@ -221,15 +206,13 @@ const postOtpVerification = async (req, res) => {
         }
 
         await newUserWallet.save();
-        console.log(`✅ Wallet created for new user: ${newUser.email} (Balance: ₹${newUserWalletAmount})`);
+        console.log(`Wallet created for new user: ${newUser.email} (Balance: ₹${newUserWalletAmount})`);
       } catch (walletError) {
-        console.error('❌ Error creating wallet for new user:', walletError);
+        console.error('Error creating wallet for new user:', walletError);
       }
 
-      // ✅ Process referral reward for REFERRER (₹300)
       if (pendingUser.referrerId) {
         try {
-          // Use walletService to add ₹300 to referrer's wallet
           await walletService.addTransaction(pendingUser.referrerId, {
             type: 'credit',
             amount: 300,
@@ -238,32 +221,27 @@ const postOtpVerification = async (req, res) => {
             status: 'completed'
           });
 
-          // Update referrer's referral count
           await User.findByIdAndUpdate(pendingUser.referrerId, {
             $inc: { referralCount: 1 }
           });
 
-          console.log(`✅ Referral rewards processed:
+          console.log(`Referral rewards processed:
             - ₹300 credited to referrer wallet (${pendingUser.referrerId})
             - ₹100 credited to new user wallet (${newUser.email})`);
 
         } catch (referralError) {
-          console.error('❌ Error processing referral reward:', referralError);
-          // Don't fail the registration if referral processing fails
+          console.error('Error processing referral reward:', referralError);
         }
       }
 
-      // Clear pending user data from session
       delete req.session.pendingUser;
 
-      // Log the user in
       req.login(newUser, (err) => {
         if (err) return res.status(500).json({ error: 'Account created but login failed.' });
         return res.status(200).json({ success: true });
       });
 
     } else {
-      // This is for existing users (password reset flow)
       const user = await User.findOne({ email });
       if (!user || !user.otpHash) {
         return res.status(400).json({ error: 'Invalid request or OTP expired.' });
@@ -305,16 +283,13 @@ const resendOtp = async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Check if this is a signup OTP resend (user data in session)
     if (req.session.pendingUser && req.session.pendingUser.email === email) {
       const pendingUser = req.session.pendingUser;
 
-      // Generate new OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
       const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
 
-      // Update pending user data with new OTP
       req.session.pendingUser.otpHash = otpHash;
       req.session.pendingUser.otpExpiresAt = otpExpiresAt;
 
@@ -325,14 +300,13 @@ const resendOtp = async (req, res) => {
       return res.status(200).json({ success: true });
 
     } else {
-      // This is for existing users (password reset flow)
       const user = await User.findOne({ email });
       if (!user) return res.status(404).json({ error: 'User not found.' });
 
       // Generate new OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-      const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
+      const otpExpiresAt = Date.now() + 60 * 1000;
 
       user.otpHash = otpHash;
       user.otpExpiresAt = otpExpiresAt;
@@ -345,7 +319,6 @@ const resendOtp = async (req, res) => {
   } catch (err) {
     console.error('Resend OTP Error:', err);
 
-    // Provide specific error messages for email issues
     if (err.message && err.message.includes('Email authentication failed')) {
       return res.status(500).json({
         error: 'Email service configuration error. Please contact support.'
@@ -361,7 +334,6 @@ const resendOtp = async (req, res) => {
 };
 
 
-// GET: Forgot password page
 const getForgotPassword = (req, res) => {
   res.render('user/auth/forgot-password', {
     title: 'Forgot Password',
@@ -369,7 +341,6 @@ const getForgotPassword = (req, res) => {
   });
 };
 
-// POST: Send OTP for password reset
 const sendResetOtp = async (req, res) => {
   const { email } = req.body;
 
@@ -380,13 +351,13 @@ const sendResetOtp = async (req, res) => {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     console.log (otp);
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
+    const otpExpiresAt = Date.now() + 60 * 1000;
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
     await user.save();
 
-    await sendOtp(user, otp); // ✅ Must pass user object
+    await sendOtp(user, otp);
 
     return res.status(200).json({
       success: true,
@@ -395,7 +366,6 @@ const sendResetOtp = async (req, res) => {
   } catch (err) {
     console.error('Reset OTP Error:', err);
 
-    // Provide specific error messages for email issues
     if (err.message && err.message.includes('Email authentication failed')) {
       return res.status(500).json({
         error: 'Email service configuration error. Please contact support.'
@@ -410,7 +380,6 @@ const sendResetOtp = async (req, res) => {
   }
 };
 
-// GET: OTP input page for reset
 const getResetOtpPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
@@ -423,7 +392,6 @@ const getResetOtpPage = (req, res) => {
   });
 };
 
-// POST: Verify reset OTP
 const verifyResetOtp = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -453,7 +421,6 @@ const verifyResetOtp = async (req, res) => {
   }
 };
 
-// GET: Reset password form
 const getResetPasswordPage = (req, res) => {
   if (req.isAuthenticated()) return res.redirect('/home');
   const { email } = req.query;
@@ -466,7 +433,6 @@ const getResetPasswordPage = (req, res) => {
   });
 };
 
-// POST: Resend OTP for password reset
 const resendResetOtp = async (req, res) => {
   const { email } = req.body;
 
@@ -474,11 +440,10 @@ const resendResetOtp = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
-    // Generate new OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     console.log('Reset OTP resend:', otp);
     const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    const otpExpiresAt = Date.now() + 60 * 1000; // 1 minute
+    const otpExpiresAt = Date.now() + 60 * 1000;
 
     user.otpHash = otpHash;
     user.otpExpiresAt = otpExpiresAt;
@@ -490,7 +455,6 @@ const resendResetOtp = async (req, res) => {
   } catch (err) {
     console.error('Resend Reset OTP Error:', err);
 
-    // Provide specific error messages for email issues
     if (err.message && err.message.includes('Email authentication failed')) {
       return res.status(500).json({
         error: 'Email service configuration error. Please contact support.'
@@ -505,7 +469,6 @@ const resendResetOtp = async (req, res) => {
   }
 };
 
-// POST: Final password update
 const resetPassword = async (req, res) => {
   const { email, newPassword, confirmPassword } = req.body;
 
@@ -517,7 +480,6 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found.' });
 
-    // Check if new password is the same as current password
     const isSamePassword = await user.comparePassword(newPassword);
     if (isSamePassword) {
       return res.status(400).json({ 

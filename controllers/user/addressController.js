@@ -1,7 +1,6 @@
 const Address = require('../../models/Address');
 const User = require('../../models/User');
 
-// ==================== ADD NEW ADDRESS ====================
 const addAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -13,7 +12,6 @@ const addAddress = async (req, res) => {
       });
     }
 
-    // Validate required fields
     const { fullName, mobileNumber, addressDetails, state, district, city, pincode, addressType } = req.body;
     
     if (!fullName || !mobileNumber || !addressDetails || !state || !district || !city || !pincode || !addressType) {
@@ -23,7 +21,6 @@ const addAddress = async (req, res) => {
       });
     }
 
-    // Validate field formats
     if (fullName.trim().length < 4) {
       return res.status(400).json({
         success: false,
@@ -73,7 +70,6 @@ const addAddress = async (req, res) => {
       });
     }
 
-    // Create new address object
     const newAddress = {
       addressType: addressType,
       name: fullName.trim(),
@@ -86,7 +82,6 @@ const addAddress = async (req, res) => {
       isDefault: false
     };
 
-    // Add coordinates if provided
     if (req.body.coordinates && req.body.coordinates.lat && req.body.coordinates.lon) {
       newAddress.coordinates = {
         lat: req.body.coordinates.lat,
@@ -94,27 +89,22 @@ const addAddress = async (req, res) => {
       };
     }
 
-    // Find or create user's address document
     let userAddresses = await Address.findOne({ userId });
     
     if (!userAddresses) {
-      // First address for user - make it default
       newAddress.isDefault = true;
       userAddresses = new Address({
         userId: userId,
         address: [newAddress]
       });
     } else {
-      // Check if user wants this as default or if it's their first address
       if (req.body.makeDefault === true || userAddresses.address.length === 0) {
-        // Unset all existing defaults
         userAddresses.address.forEach(addr => {
           addr.isDefault = false;
         });
         newAddress.isDefault = true;
       }
       
-      // Add new address to array
       userAddresses.address.push(newAddress);
     }
 
@@ -134,7 +124,6 @@ const addAddress = async (req, res) => {
   }
 };
 
-// ==================== UPDATE EXISTING ADDRESS ====================
 const updateAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -147,7 +136,6 @@ const updateAddress = async (req, res) => {
       });
     }
 
-    // Validate required fields
     const { fullName, mobileNumber, addressDetails, state, district, city, pincode, addressType } = req.body;
     
     if (!fullName || !mobileNumber || !addressDetails || !state || !district || !city || !pincode || !addressType) {
@@ -157,7 +145,6 @@ const updateAddress = async (req, res) => {
       });
     }
 
-    // Validate field formats (same as add)
     if (fullName.trim().length < 4) {
       return res.status(400).json({
         success: false,
@@ -207,7 +194,6 @@ const updateAddress = async (req, res) => {
       });
     }
 
-    // Find user's address document
     const userAddresses = await Address.findOne({ userId });
 
     if (!userAddresses) {
@@ -217,7 +203,6 @@ const updateAddress = async (req, res) => {
       });
     }
 
-    // Find the specific address to update
     const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === addressId);
 
     if (addressIndex === -1) {
@@ -227,7 +212,6 @@ const updateAddress = async (req, res) => {
       });
     }
 
-    // Update address fields
     const addressToUpdate = userAddresses.address[addressIndex];
     addressToUpdate.addressType = addressType;
     addressToUpdate.name = fullName.trim();
@@ -238,7 +222,6 @@ const updateAddress = async (req, res) => {
     addressToUpdate.phone = mobileNumber.trim();
     addressToUpdate.altPhone = req.body.altPhone ? req.body.altPhone.trim() : '';
 
-    // Update coordinates if provided
     if (req.body.coordinates && req.body.coordinates.lat && req.body.coordinates.lon) {
       addressToUpdate.coordinates = {
         lat: req.body.coordinates.lat,
@@ -246,9 +229,7 @@ const updateAddress = async (req, res) => {
       };
     }
 
-    // Handle default address setting
     if (req.body.makeDefault === true) {
-      // Unset all existing defaults
       userAddresses.address.forEach(addr => {
         addr.isDefault = false;
       });
@@ -271,7 +252,6 @@ const updateAddress = async (req, res) => {
   }
 };
 
-// ==================== GET ALL ADDRESSES ====================
 const getAddresses = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -299,7 +279,6 @@ const getAddresses = async (req, res) => {
   }
 };
 
-// ==================== GET SINGLE ADDRESS ====================
 const getAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -312,7 +291,6 @@ const getAddress = async (req, res) => {
       });
     }
 
-    // Find user's address document
     const userAddresses = await Address.findOne({ userId }).lean();
 
     if (!userAddresses) {
@@ -322,7 +300,6 @@ const getAddress = async (req, res) => {
       });
     }
 
-    // Find the specific address
     const address = userAddresses.address.find(addr => addr._id.toString() === addressId);
 
     if (!address) {
@@ -345,7 +322,6 @@ const getAddress = async (req, res) => {
   }
 };
 
-// ==================== DELETE ADDRESS ====================
 const deleteAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -358,7 +334,6 @@ const deleteAddress = async (req, res) => {
       });
     }
 
-    // Find user's address document
     const userAddresses = await Address.findOne({ userId });
 
     if (!userAddresses) {
@@ -368,7 +343,6 @@ const deleteAddress = async (req, res) => {
       });
     }
 
-    // Find the specific address to delete
     const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === addressId);
 
     if (addressIndex === -1) {
@@ -378,13 +352,10 @@ const deleteAddress = async (req, res) => {
       });
     }
 
-    // Check if this is the only address and it's default
     const isDefault = userAddresses.address[addressIndex].isDefault;
     
-    // Remove the address
     userAddresses.address.splice(addressIndex, 1);
 
-    // If the deleted address was default and there are other addresses, make the first one default
     if (isDefault && userAddresses.address.length > 0) {
       userAddresses.address[0].isDefault = true;
     }
@@ -405,7 +376,6 @@ const deleteAddress = async (req, res) => {
   }
 };
 
-// ==================== SET DEFAULT ADDRESS ====================
 const setDefaultAddress = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -418,7 +388,6 @@ const setDefaultAddress = async (req, res) => {
       });
     }
 
-    // Find user's address document
     const userAddresses = await Address.findOne({ userId });
 
     if (!userAddresses) {
@@ -428,7 +397,6 @@ const setDefaultAddress = async (req, res) => {
       });
     }
 
-    // Find the specific address to set as default
     const addressIndex = userAddresses.address.findIndex(addr => addr._id.toString() === addressId);
 
     if (addressIndex === -1) {
@@ -438,7 +406,6 @@ const setDefaultAddress = async (req, res) => {
       });
     }
 
-    // Unset all defaults and set the selected one as default
     userAddresses.address.forEach((addr, index) => {
       addr.isDefault = index === addressIndex;
     });
@@ -459,7 +426,6 @@ const setDefaultAddress = async (req, res) => {
   }
 };
 
-// ==================== LOAD ADDRESSES PAGE ====================
 const loadAddresses = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -473,21 +439,17 @@ const loadAddresses = async (req, res) => {
       return res.redirect('/login');
     }
 
-    // Get pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = 2; // 2 addresses per page
+    const limit = 2;
     const skip = (page - 1) * limit;
 
-    // Get all user addresses
     const userAddresses = await Address.findOne({ userId }).lean();
     const allAddresses = userAddresses ? userAddresses.address : [];
     
-    // Calculate pagination
     const totalAddresses = allAddresses.length;
     const totalPages = Math.ceil(totalAddresses / limit) || 1;
-    const currentPage = Math.min(page, totalPages); // Prevent going beyond last page
+    const currentPage = Math.min(page, totalPages);
     
-    // Get paginated addresses
     const addresses = allAddresses.slice(skip, skip + limit);
 
     console.log(`📍 Address Book - Page ${currentPage}/${totalPages} (${addresses.length} addresses, ${totalAddresses} total)`);
@@ -497,7 +459,7 @@ const loadAddresses = async (req, res) => {
       addresses,
       currentPage: currentPage,
       totalPages: totalPages,
-      totalAddresses: totalAddresses, // ✅ Added for count display
+      totalAddresses: totalAddresses,
       hasPrevPage: currentPage > 1,
       hasNextPage: currentPage < totalPages,
       prevPage: currentPage - 1,
@@ -513,16 +475,13 @@ const loadAddresses = async (req, res) => {
   }
 };
 
-// ==================== GET STATES AND DISTRICTS ====================
 const getStatesAndDistricts = async (req, res) => {
   try {
-    // Indian states and districts data
     const stateDistrictData = {
       "andhra-pradesh": {
         name: "Andhra Pradesh",
         districts: ["Anantapur", "Chittoor", "East Godavari", "Guntur", "Krishna", "Kurnool", "Nellore", "Prakasam", "Srikakulam", "Visakhapatnam", "Vizianagaram", "West Godavari", "YSR Kadapa"]
       },
-      // ... (keep all your existing state/district data)
       "puducherry": {
         name: "Puducherry",
         districts: ["Karaikal", "Mahe", "Puducherry", "Yanam"]
@@ -542,7 +501,6 @@ const getStatesAndDistricts = async (req, res) => {
   }
 };
 
-// ==================== GET PAGINATED ADDRESSES (AJAX) ====================
 const getAddressesPaginated = async (req, res) => {
   try {
     const userId = req.session.userId || (req.user && req.user._id);
@@ -554,26 +512,23 @@ const getAddressesPaginated = async (req, res) => {
       });
     }
 
-    // Get pagination parameters
     const page = parseInt(req.query.page) || 1;
-    const limit = 2; // 2 addresses per page
+    const limit = 2;
     const skip = (page - 1) * limit;
 
     console.log(`📡 AJAX: Fetching addresses page ${page} (limit: ${limit}, skip: ${skip})`);
 
-    // Get all user addresses
     const userAddresses = await Address.findOne({ userId }).lean();
     const allAddresses = userAddresses ? userAddresses.address : [];
 
-    // Calculate pagination
     const totalAddresses = allAddresses.length;
     const totalPages = Math.ceil(totalAddresses / limit) || 1;
-    const currentPage = Math.min(page, totalPages); // Prevent going beyond last page
+    const currentPage = Math.min(page, totalPages); 
     
-    // Get addresses for current page
+
     const addresses = allAddresses.slice(skip, skip + limit);
 
-    console.log(`✅ AJAX: Returning ${addresses.length} addresses for page ${currentPage}/${totalPages}`);
+    console.log(`AJAX: Returning ${addresses.length} addresses for page ${currentPage}/${totalPages}`);
 
     res.json({
       success: true,
@@ -598,7 +553,7 @@ const getAddressesPaginated = async (req, res) => {
   }
 };
 
-// ==================== EXPORTS ====================
+
 module.exports = {
   addAddress,
   updateAddress,
