@@ -18,7 +18,7 @@ const getDateRange = (period = 'monthly') => {
     switch (period) {
         case 'weekly':
             startDate = subWeeks(now, 12);
-            endDate = now;
+            endDate = now; 
             break;
         case 'yearly':
             startDate = subYears(now, 5);
@@ -354,12 +354,14 @@ const getRevenueDistribution = async (req, res) => {
 };
 
 // ============================================
-// GET BEST SELLING PRODUCTS (TOP 5 - FILTERED)
+// ✅ UPDATED: GET BEST SELLING PRODUCTS (WITH IMAGE)
 // ============================================
 const getBestSellingProducts = async (req, res) => {
     try {
-        const { period = 'monthly' } = req.query;
-        console.log('📊 getBestSellingProducts called with period:', period);
+        const { period = 'monthly', limit = 5 } = req.query;
+        const limitNum = parseInt(limit) || 5;
+        
+        console.log(`📊 getBestSellingProducts called with period: ${period}, limit: ${limitNum}`);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -383,7 +385,7 @@ const getBestSellingProducts = async (req, res) => {
                 }
             },
             { $sort: { totalQuantity: -1 } },
-            { $limit: 5 },
+            { $limit: limitNum },
             {
                 $lookup: {
                     from: 'products',
@@ -406,13 +408,15 @@ const getBestSellingProducts = async (req, res) => {
                 $project: {
                     productName: '$productDetails.productName',
                     brand: { $ifNull: ['$brandDetails.name', 'Unknown'] },
+                    mainImage: '$productDetails.mainImage',  // ✅ ADD THIS
+                    subImages: '$productDetails.subImages',  // ✅ ADD THIS
                     totalQuantity: 1,
                     totalRevenue: 1
                 }
             }
         ]);
 
-        console.log('✅ Best products count:', bestProducts.length);
+        console.log(`✅ Top ${limitNum} products loaded:`, bestProducts.length);
 
         res.json({
             success: true,
@@ -426,6 +430,186 @@ const getBestSellingProducts = async (req, res) => {
         });
     }
 };
+
+
+// ============================================
+// ✅ UPDATED: GET BEST SELLING CATEGORIES (WITH IMAGE)
+// ============================================
+const getBestSellingCategories = async (req, res) => {
+    try {
+        const { period = 'monthly', limit = 10 } = req.query;
+        const limitNum = parseInt(limit) || 10;
+        
+        console.log(`📊 getBestSellingCategories called with period: ${period}, limit: ${limitNum}`);
+        
+        const { startDate, endDate } = getDateRange(period);
+
+        const bestCategories = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
+            { $unwind: '$items' },
+            {
+                $match: {
+                    'items.status': { $in: ['Delivered', 'Shipped', 'Processing'] }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'items.productId',
+                    foreignField: '_id',
+                    as: 'productDetails'
+                }
+            },
+            { $unwind: '$productDetails' },
+            {
+                $group: {
+                    _id: '$productDetails.category',
+                    totalQuantity: { $sum: '$items.quantity' },
+                    totalRevenue: { $sum: '$items.totalPrice' },
+                    totalOrders: { $sum: 1 },
+                    productIds: { $addToSet: '$items.productId' }
+                }
+            },
+            {
+                $project: {
+                    totalQuantity: 1,
+                    totalRevenue: 1,
+                    totalOrders: 1,
+                    totalProducts: { $size: '$productIds' }
+                }
+            },
+            { $sort: { totalRevenue: -1 } },
+            { $limit: limitNum },
+            {
+                $lookup: {
+                    from: 'categories',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'categoryDetails'
+                }
+            },
+            { $unwind: '$categoryDetails' },
+            {
+                $project: {
+                    categoryName: '$categoryDetails.name',
+                    categoryImage: '$categoryDetails.image',  // ✅ ADD THIS
+                    totalQuantity: 1,
+                    totalRevenue: 1,
+                    totalOrders: 1,
+                    totalProducts: 1
+                }
+            }
+        ]);
+
+        console.log(`✅ Top ${limitNum} categories loaded:`, bestCategories.length);
+
+        res.json({
+            success: true,
+            data: bestCategories
+        });
+    } catch (error) {
+        console.error('❌ Error fetching best selling categories:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching best selling categories'
+        });
+    }
+};
+
+
+// ============================================
+// ✅ UPDATED: GET BEST SELLING BRANDS (WITH IMAGE)
+// ============================================
+const getBestSellingBrands = async (req, res) => {
+    try {
+        const { period = 'monthly', limit = 10 } = req.query;
+        const limitNum = parseInt(limit) || 10;
+        
+        console.log(`📊 getBestSellingBrands called with period: ${period}, limit: ${limitNum}`);
+        
+        const { startDate, endDate } = getDateRange(period);
+
+        const bestBrands = await Order.aggregate([
+            {
+                $match: {
+                    createdAt: { $gte: startDate, $lte: endDate }
+                }
+            },
+            { $unwind: '$items' },
+            {
+                $match: {
+                    'items.status': { $in: ['Delivered', 'Shipped', 'Processing'] }
+                }
+            },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'items.productId',
+                    foreignField: '_id',
+                    as: 'productDetails'
+                }
+            },
+            { $unwind: '$productDetails' },
+            {
+                $group: {
+                    _id: '$productDetails.brand',
+                    totalQuantity: { $sum: '$items.quantity' },
+                    totalRevenue: { $sum: '$items.totalPrice' },
+                    totalOrders: { $sum: 1 },
+                    productIds: { $addToSet: '$items.productId' }
+                }
+            },
+            {
+                $project: {
+                    totalQuantity: 1,
+                    totalRevenue: 1,
+                    totalOrders: 1,
+                    totalProducts: { $size: '$productIds' }
+                }
+            },
+            { $sort: { totalRevenue: -1 } },
+            { $limit: limitNum },
+            {
+                $lookup: {
+                    from: 'brands',
+                    localField: '_id',
+                    foreignField: '_id',
+                    as: 'brandDetails'
+                }
+            },
+            { $unwind: '$brandDetails' },
+            {
+                $project: {
+                    brandName: '$brandDetails.name',
+                    brandImage: '$brandDetails.image',  // ✅ ADD THIS
+                    totalQuantity: 1,
+                    totalRevenue: 1,
+                    totalOrders: 1,
+                    totalProducts: 1
+                }
+            }
+        ]);
+
+        console.log(`✅ Top ${limitNum} brands loaded:`, bestBrands.length);
+
+        res.json({
+            success: true,
+            data: bestBrands
+        });
+    } catch (error) {
+        console.error('❌ Error fetching best selling brands:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error fetching best selling brands'
+        });
+    }
+};
+
+
 
 // ============================================
 // GET BEST SELLING CATEGORY (FILTERED)
@@ -641,7 +825,10 @@ module.exports = {
     getSalesData,
     getRevenueDistribution,
     getBestSellingProducts,
+    getBestSellingCategories,
+    getBestSellingBrands,
     getBestSellingCategory,
     getBestSellingBrand,
     exportLedgerPDF
 };
+

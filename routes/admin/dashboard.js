@@ -6,7 +6,6 @@ const isAdmin = require('../../middlewares/isAdmin');
 // Apply admin authentication middleware to all routes
 router.use(isAdmin);
 
-
 // ============================================
 // DASHBOARD PAGE RENDER
 // ============================================
@@ -27,13 +26,21 @@ router.get('/api/sales', dashboardController.getSalesData);
 // Revenue distribution by payment method
 router.get('/api/revenue-distribution', dashboardController.getRevenueDistribution);
 
-// Best selling products (top 5)
+// ✅ UPDATED: Best selling products (supports limit parameter)
 router.get('/api/best-selling-products', dashboardController.getBestSellingProducts);
 
-// Best selling category
-router.get('/api/best-selling-category', dashboardController.getBestSellingCategory);
+// ✅ NEW: Best selling categories (top 10)
+router.get('/api/best-selling-categories', dashboardController.getBestSellingCategories);
 
-// Best selling brand
+// ✅ NEW: Best selling brands (top 10)
+router.get('/api/best-selling-brands', dashboardController.getBestSellingBrands);
+
+// ============================================
+// BACKWARDS COMPATIBILITY (OPTIONAL)
+// ============================================
+
+// ✅ Keep old endpoints for backwards compatibility (return first item from list)
+router.get('/api/best-selling-category', dashboardController.getBestSellingCategory);
 router.get('/api/best-selling-brand', dashboardController.getBestSellingBrand);
 
 // ============================================

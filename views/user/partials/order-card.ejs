@@ -1,3 +1,30 @@
+<style>
+/* ========= ORDER CARD PRODUCT PREVIEW ========= */
+.product-thumb-link {
+  display: block;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.product-thumb-link:hover {
+  transform: scale(1.05);
+  opacity: 0.85;
+}
+
+.product-thumb {
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.product-name-link {
+  transition: color 0.3s ease;
+}
+
+.product-name-link:hover {
+  color: var(--color-accent-red) !important;
+}
+
+</style>
+
 <div class="order-card mb-3" data-status="<%= item.status %>">
   <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
@@ -12,7 +39,7 @@
                 year: 'numeric', 
                 month: 'short', 
                 day: 'numeric' 
-              }) %>
+              }) %> 
             </small>
             <div class="mt-1">
               <small class="text-muted">Size: <%= item.size %> | Qty: <%= item.quantity %></small>
@@ -24,18 +51,22 @@
         <div class="col-lg-3 col-md-6 mb-3 mb-lg-0">
           <div class="product-preview d-flex align-items-center">
             <% if (item.productImage) { %>
-              <img src="<%= item.productImage %>" 
-                   alt="<%= item.productName %>" 
-                   class="product-thumb me-3">
+              <a href="/product/<%= item.productId.slug %>" class="product-thumb-link">
+                <img src="<%= item.productImage %>" 
+                    alt="<%= item.productName %>" 
+                    class="product-thumb me-3">
+              </a>
             <% } else { %>
               <div class="product-thumb-placeholder me-3">
                 <i class="bi bi-image"></i>
               </div>
             <% } %>
             <div class="product-info">
-              <div class="fw-semibold text-dark">
-                <%= item.productName %>
-              </div>
+              <a href="/product/<%= item.productId.slug %>" class="text-decoration-none">
+                <div class="fw-semibold text-dark product-name-link">
+                  <%= item.productName %>
+                </div>
+              </a>
               <small class="text-muted">SKU: <%= item.sku %></small>
             </div>
           </div>

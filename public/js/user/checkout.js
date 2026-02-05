@@ -51,33 +51,33 @@ async function validateCheckoutOnLoad() {
     console.log('📡 Calling validateCheckoutStock() API...');
     const v = await validateCheckoutStock();
     
-    console.log('✅ API Response Received:');
+    console.log('API Response Received:');
     console.log('   success:', v.success);
     console.log('   message:', v.message);
     console.log('   validationResults:', v.validationResults);
     
     if (v.validationResults) {
-      console.log('\n📊 Validation Arrays:');
-      console.log('   ✅ validItems:', v.validationResults.validItems?.length || 0);
-      console.log('   ❌ invalidItems:', v.validationResults.invalidItems?.length || 0);
+      console.log('\nValidation Arrays:');
+      console.log('   validItems:', v.validationResults.validItems?.length || 0);
+      console.log('   invalidItems:', v.validationResults.invalidItems?.length || 0);
     }
     
     const hasIssues = !v.success || (v.validationResults && v.validationResults.invalidItems?.length > 0);
     
-    console.log('\n🎯 Final Decision:');
+    console.log('\n Final Decision:');
     console.log('   hasIssues:', hasIssues);
     
     if (hasIssues) {
-      console.log('❌ Triggering error modal in 1 second...');
+      console.log(' Triggering error modal in 1 second...');
       setTimeout(() => showCheckoutValidationError(v), 1000);
     } else {
-      console.log('✅ Checkout validation PASSED');
+      console.log(' Checkout validation PASSED');
     }
     
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
     
   } catch (err) {
-    console.error('❌ [FRONTEND] Error validating checkout on load:', err);
+    console.error('[FRONTEND] Error validating checkout on load:', err);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
   }
 }
@@ -111,6 +111,46 @@ function selectPayment(radio) {
   });
 
   console.log(`Payment method selected: ${radio.value}`);
+}
+
+function validateCODEligibility() {
+  const currentTotal = window.orderTotal || 0;
+  const codRadio = document.querySelector('input[name="paymentMethod"][value="cod"]');
+  const codPaymentOption = document.querySelector('.payment-option:has(input[value="cod"])');
+  const codWarning = document.getElementById('cod-warning-message');
+  
+  if (!codRadio || !codPaymentOption) return;
+  
+  const COD_LIMIT = 10000;
+  
+  if (currentTotal >= COD_LIMIT) {
+    // Disable COD
+    codRadio.disabled = true;
+    codRadio.checked = false;
+    codPaymentOption.style.opacity = '0.6';
+    codPaymentOption.style.pointerEvents = 'none';
+    
+    // Show warning
+    if (codWarning) {
+      codWarning.style.display = 'block';
+      codWarning.querySelector('.cod-warning-text').textContent = 
+        `Cash on Delivery is not available for orders ₹${COD_LIMIT.toLocaleString('en-IN')} or above. Please select an online payment method.`;
+    }
+    
+    console.log(`❌ COD disabled: Order total ₹${currentTotal} >= ₹${COD_LIMIT}`);
+  } else {
+    // Enable COD
+    codRadio.disabled = false;
+    codPaymentOption.style.opacity = '1';
+    codPaymentOption.style.pointerEvents = 'auto';
+    
+    // Hide warning
+    if (codWarning) {
+      codWarning.style.display = 'none';
+    }
+    
+    console.log(`✅ COD enabled: Order total ₹${currentTotal} < ₹${COD_LIMIT}`);
+  }
 }
 
 
@@ -562,6 +602,19 @@ async function handleCODOrder(deliveryAddressId, addressIndex) {
     Swal.close();
 
     if (!response.ok || !data.success) {
+      // ✅ HANDLE COD VALIDATION ERROR
+      if (data.code === 'COD_NOT_AVAILABLE') {
+        Swal.fire({
+          icon: 'warning',
+          title: 'COD Not Available',
+          html: `<p>${data.message}</p>
+                 <p class="text-muted mt-2">Your order total is <strong>₹${data.data?.orderTotal?.toLocaleString('en-IN')}</strong></p>
+                 <p class="text-muted">Please select an online payment method.</p>`,
+          confirmButtonText: 'Choose Payment Method',
+          confirmButtonColor: '#007bff'
+        });
+        return;
+      }
       throw new Error(data.message || 'Failed to place order');
     }
 
@@ -584,6 +637,7 @@ async function handleCODOrder(deliveryAddressId, addressIndex) {
     });
   }
 }
+
 
 // Handle UPI Payment
 async function handleUPIPayment(deliveryAddressId, addressIndex) {
@@ -1852,8 +1906,12 @@ function updateOrderSummaryUI(orderSummary) {
     }
   });
   
-  console.log('Order summary UI fully updated - Final Total:', finalTotal);
+  console.log('✅ Order summary UI fully updated - Final Total:', finalTotal);
+  
+  // ✅ VALIDATE COD ELIGIBILITY WHEN TOTAL CHANGES
+  validateCODEligibility();
 }
+
 
 
 
@@ -1941,6 +1999,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('💰 Order total set:', window.orderTotal);
     }
     
+    // ✅ VALIDATE COD ON PAGE LOAD
+    validateCODEligibility();
+    
     // Load addresses if container is empty
     const addressContainer = document.getElementById('addressContainer');
     const hasAddresses = addressContainer && addressContainer.children.length > 0 && !addressContainer.querySelector('.text-center');
@@ -1994,6 +2055,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('✅ Checkout initialization complete');
 });
+
 
 
 // Expose functions globally

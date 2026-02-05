@@ -261,7 +261,7 @@
                 </div>
 
                 <!-- Cash on Delivery -->
-                <div class="payment-option">
+                <div class="payment-option" id="cod-payment-option">
                     <label class="d-flex align-items-center">
                         <input type="radio" name="paymentMethod" value="cod" onclick="selectPayment(this)">
                         <div class="payment-icon">
@@ -272,6 +272,14 @@
                             <p>Pay when your order is delivered</p>
                         </div>
                     </label>
+                    
+                    <!-- COD Warning Message -->
+                    <div id="cod-warning-message" class="mt-2 alert alert-warning" style="display: none;">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <span class="cod-warning-text">
+                            Cash on Delivery is not available for orders ₹10,000 or above. Please select an online payment method.
+                        </span>
+                    </div>
                 </div>
             </div>
 

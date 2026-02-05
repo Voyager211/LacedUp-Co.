@@ -103,9 +103,11 @@
                             <!-- Product Image -->
                             <div class="item-image me-3">
                               <% if (item.productId && item.productId.mainImage) { %>
-                                <img src="<%= item.productId.mainImage %>" 
-                                    alt="<%= item.productId.productName %>" 
-                                    class="product-thumb">
+                                <a href="/product/<%= item.productId.slug %>" class="product-thumb-link">
+                                  <img src="<%= item.productId.mainImage %>" 
+                                      alt="<%= item.productId.productName %>" 
+                                      class="product-thumb">
+                                </a>
                               <% } else { %>
                                 <div class="product-thumb-placeholder">
                                   <i class="bi bi-image"></i>
@@ -115,9 +117,17 @@
 
                             <!-- Product Info -->
                             <div class="item-info flex-grow-1">
-                              <div class="fw-semibold text-dark">
-                                <%= item.productId ? item.productId.productName : 'Product' %>
-                              </div>
+                              <% if (item.productId && item.productId.slug) { %>
+                                <a href="/product/<%= item.productId.slug %>" class="text-decoration-none">
+                                  <div class="fw-semibold text-dark product-name-link">
+                                    <%= item.productId.productName %>
+                                  </div>
+                                </a>
+                              <% } else { %>
+                                <div class="fw-semibold text-dark">
+                                  <%= item.productId ? item.productId.productName : 'Product' %>
+                                </div>
+                              <% } %>
                               <small class="text-muted">
                                 Size: <%= item.size %> | Qty: <%= item.quantity %>
                               </small>
@@ -855,6 +865,35 @@
     box-shadow: none !important;
   }
 }
+
+/* ========= ORDER CARD PRODUCT LINKS ========= */
+.product-thumb-link {
+  display: block;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.product-thumb-link:hover {
+  transform: scale(1.08);
+  opacity: 0.85;
+}
+
+.product-thumb-link .product-thumb {
+  cursor: pointer;
+}
+
+.product-name-link {
+  transition: color 0.3s ease;
+  cursor: pointer;
+}
+
+.product-name-link:hover {
+  color: #e03a2f !important;
+}
+
+.item-info a {
+  text-decoration: none;
+}
+
 </style>
 
 
@@ -1139,18 +1178,30 @@ function generateOrderCardHTML(order) {
 
   let itemsHTML = '';
   displayItems.forEach((item, index) => {
-    const productImageHTML = item.productId && item.productId.mainImage
+    // Product image with link
+    const productImageHTML = item.productId && item.productId.mainImage && item.productId.slug
+      ? `<a href="/product/${item.productId.slug}" class="product-thumb-link">
+          <img src="${item.productId.mainImage}" alt="${item.productId.productName}" class="product-thumb">
+        </a>`
+      : item.productId && item.productId.mainImage
       ? `<img src="${item.productId.mainImage}" alt="${item.productId.productName}" class="product-thumb">`
       : `<div class="product-thumb-placeholder"><i class="bi bi-image"></i></div>`;
 
+    // Product name with link
     const productName = item.productId ? item.productId.productName : 'Product';
+    const productNameHTML = item.productId && item.productId.slug
+      ? `<a href="/product/${item.productId.slug}" class="text-decoration-none">
+          <div class="fw-semibold text-dark product-name-link">${productName}</div>
+        </a>`
+      : `<div class="fw-semibold text-dark">${productName}</div>`;
+
     const borderClass = index < displayItems.length - 1 ? 'border-bottom' : '';
 
     itemsHTML += `
       <div class="item-row d-flex align-items-center py-2 ${borderClass}">
         <div class="item-image me-3">${productImageHTML}</div>
         <div class="item-info flex-grow-1">
-          <div class="fw-semibold text-dark">${productName}</div>
+          ${productNameHTML}
           <small class="text-muted">Size: ${item.size} • Qty: ${item.quantity}</small>
         </div>
         <div class="item-price text-end">
@@ -1160,6 +1211,7 @@ function generateOrderCardHTML(order) {
       </div>
     `;
   });
+
 
   if (remainingCount > 0) {
     itemsHTML += `

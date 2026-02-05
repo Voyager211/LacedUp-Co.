@@ -3,12 +3,14 @@
    LACEDUP CO ADMIN DASHBOARD STYLES
    ============================================ */
 
+
 /* Container & Layout */
 .dashboard-container {
     padding: 2rem 0;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     line-height: 1.6;
 }
+
 
 /* Page Header */
 .page-header {
@@ -19,6 +21,7 @@
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
+
 .header-content {
     display: flex;
     justify-content: space-between;
@@ -27,6 +30,7 @@
     gap: 1rem;
 }
 
+
 .header-left h1 {
     color: white;
     font-size: 2rem;
@@ -34,16 +38,19 @@
     margin: 0;
 }
 
+
 .header-left p {
     color: rgba(255, 255, 255, 0.85);
     margin: 0.5rem 0 0 0;
 }
+
 
 .header-right {
     display: flex;
     align-items: center;
     gap: 1rem;
 }
+
 
 .ledger-btn-header {
     display: inline-flex;
@@ -59,11 +66,13 @@
     transition: all 0.2s ease;
 }
 
+
 .ledger-btn-header:hover {
     background-color: #dc2626;
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 }
+
 
 .date-display {
     display: flex;
@@ -76,12 +85,14 @@
     font-weight: 600;
 }
 
+
 /* Breadcrumbs */
 .breadcrumb {
     background: none;
     padding: 0;
     margin-bottom: 1rem;
 }
+
 
 .breadcrumb-item a {
     color: #3b82f6;
@@ -90,13 +101,16 @@
     transition: color 0.2s;
 }
 
+
 .breadcrumb-item a:hover {
     color: #2563eb;
 }
 
+
 .breadcrumb-item.active {
     color: #6b7280;
 }
+
 
 /* ✅ Metrics Grid - BLACK THEME WITH RED HOVER */
 .metrics-grid {
@@ -105,6 +119,7 @@
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
+
 
 .metric-card {
     background: white;
@@ -118,10 +133,12 @@
     border: 1px solid #f3f4f6;
 }
 
+
 .metric-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
 }
+
 
 /* ✅ All icons have black background */
 .metric-icon {
@@ -137,6 +154,7 @@
     transition: all 0.3s ease;
 }
 
+
 /* ✅ Icons turn red on card hover */
 .metric-card:hover .metric-icon {
     background-color: #ef4444;
@@ -144,9 +162,11 @@
     transform: scale(1.1);
 }
 
+
 .metric-content {
     flex: 1;
 }
+
 
 .metric-number {
     font-size: 2rem;
@@ -155,6 +175,7 @@
     margin-bottom: 0.25rem;
 }
 
+
 .metric-label {
     color: #6b7280;
     font-size: 0.875rem;
@@ -162,6 +183,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
+
 
 .metric-trend {
     display: flex;
@@ -172,6 +194,7 @@
     margin-top: 0.5rem;
 }
 
+
 /* ============================================
    ANALYTICS CONTAINER - FIXED HEIGHT
    ============================================ */
@@ -179,15 +202,18 @@
     margin-bottom: 2rem;
 }
 
+
 /* ✅ Equal height for all cards */
 .analytics-container .row {
     display: flex;
     flex-wrap: wrap;
 }
 
+
 .analytics-container .row > div {
     display: flex;
 }
+
 
 .analytics-card {
     background: white;
@@ -200,10 +226,12 @@
     min-height: 600px;
 }
 
+
 .analytics-card .card-header {
     background-color: #f9fafb;
     flex-shrink: 0;
 }
+
 
 .analytics-card .card-header h3 {
     font-size: 1.25rem;
@@ -212,11 +240,13 @@
     margin: 0;
 }
 
+
 .analytics-card .card-header p {
     font-size: 0.875rem;
     color: #6b7280;
     margin: 0;
 }
+
 
 .period-selector {
     border: 1px solid #e5e7eb;
@@ -229,11 +259,13 @@
     background-color: white;
 }
 
+
 .period-selector:focus {
     border-color: #3b82f6;
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     outline: none;
 }
+
 
 /* ✅ Chart Wrapper - Fills available space */
 .chart-wrapper {
@@ -244,6 +276,7 @@
     justify-content: center;
 }
 
+
 /* ✅ Chart Container - Fills wrapper */
 .chart-container {
     position: relative;
@@ -252,10 +285,12 @@
     max-height: 400px;
 }
 
+
 /* ✅ Chart Canvas Smoothing */
 .chart-container canvas {
     border-radius: 8px;
 }
+
 
 /* ✅ Revenue Legend - Fixed height */
 .revenue-legend {
@@ -265,6 +300,7 @@
     flex-shrink: 0;
 }
 
+
 .legend-item {
     display: flex;
     align-items: center;
@@ -273,9 +309,11 @@
     border-bottom: 1px solid #f3f4f6;
 }
 
+
 .legend-item:last-child {
     border-bottom: none;
 }
+
 
 .legend-color {
     width: 20px;
@@ -283,17 +321,20 @@
     border-radius: 4px;
 }
 
+
 .legend-label {
     font-size: 0.875rem;
     color: #374151;
     font-weight: 500;
 }
 
+
 .no-data {
     text-align: center;
     padding: 2rem;
     color: #9ca3af;
 }
+
 
 .no-data i {
     font-size: 3rem;
@@ -302,86 +343,97 @@
     color: #e5e7eb;
 }
 
+
 /* ============================================
-   INTELLIGENCE DASHBOARD - EQUAL HEIGHT FIX
+   ✅ UNIFIED INTELLIGENCE SECTION WITH TABS
    ============================================ */
-.intelligence-dashboard {
+
+.intelligence-unified {
     margin-bottom: 2rem;
 }
 
-/* ✅ Equal height for all intelligence cards */
-.intelligence-dashboard .row {
-    display: flex;
-    flex-wrap: wrap;
-}
 
-.intelligence-dashboard .row > div {
-    display: flex;
-}
-
-.intelligence-card {
+.intelligence-unified .intelligence-card {
     background: white;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
     overflow: hidden;
+}
+
+
+/* Tab Navigation */
+.intelligence-tabs {
     display: flex;
-    flex-direction: column;
-    width: 100%;
-    height: 100%;
+    gap: 0;
+    flex-wrap: wrap;
 }
 
-.intelligence-card .card-header {
+
+.intel-tab {
+    flex: 1;
+    min-width: 200px;
+    padding: 1rem 1.5rem;
     background-color: #f9fafb;
-    flex-shrink: 0;
-}
-
-/* ✅ ALL header icons have BLACK background with WHITE icons */
-.intelligence-card .header-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
+    color: #6b7280;
+    border: none;
+    border-right: 1px solid #e5e7eb;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    white-space: nowrap;
+}
+
+
+.intel-tab:last-child {
+    border-right: none;
+}
+
+
+/* ✅ Active tab - BLACK background */
+.intel-tab.active {
     background-color: #111827;
     color: white;
-    flex-shrink: 0;
 }
 
-/* ✅ Remove colored backgrounds - all stay black */
-.intelligence-card .header-icon.category-icon,
-.intelligence-card .header-icon.brand-icon {
-    background-color: #111827;
+
+/* ✅ Inactive tabs turn RED on hover */
+.intel-tab:not(.active):hover {
+    background-color: #ef4444;
+    color: white;
 }
 
-.intelligence-card .header-content h3 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
+
+/* Tab Content */
+.intel-content {
+    display: none;
+    animation: fadeIn 0.3s ease;
 }
 
-.intelligence-card .header-content p {
-    font-size: 0.875rem;
+
+.intel-content.active {
+    display: block;
+}
+
+
+.intel-subtitle {
     color: #6b7280;
-    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
 }
 
-/* ✅ Body fills remaining space with equal height */
+
+/* Body Container */
 .intelligence-body {
-    min-height: 450px;
-    flex: 1;
-    display: flex;
-    flex-direction: column;
+    min-height: 500px;
 }
 
-/* ✅ Product list container */
-#bestProductsList {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
 
 /* Loading State */
 .loading-state {
@@ -393,10 +445,12 @@
     color: #9ca3af;
 }
 
+
 .loading-state i {
     font-size: 2rem;
     margin-bottom: 1rem;
 }
+
 
 /* Error State */
 .error-state {
@@ -408,55 +462,85 @@
     color: #ef4444;
 }
 
+
 .error-state i {
     font-size: 2rem;
     margin-bottom: 1rem;
 }
 
+
 /* ============================================
-   PRODUCT ITEM - SIMPLE NUMBERING
+   PRODUCT/CATEGORY/BRAND ITEM STYLES
    ============================================ */
-.product-item {
+
+/* ✅ ITEM IMAGE STYLES (like checkout summary) */
+.item-image {
+    width: 50px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid #e5e7eb;
+    flex-shrink: 0;
+    background-color: #f9fafb;
+}
+
+
+/* Update item containers to include image */
+.product-item,
+.category-item,
+.brand-item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 0.75rem;
     padding: 1rem;
     border-bottom: 1px solid #f3f4f6;
     transition: background-color 0.2s;
 }
 
-.product-item:last-child {
+
+.product-item:last-child,
+.category-item:last-child,
+.brand-item:last-child {
     border-bottom: none;
 }
 
-.product-item:hover {
+
+.product-item:hover,
+.category-item:hover,
+.brand-item:hover {
     background-color: #f9fafb;
 }
 
-/* ✅ Simple text numbering instead of blocks */
-.product-rank {
+
+/* ✅ Unified ranking number for all lists */
+.item-rank {
     font-weight: 700;
     color: #111827;
     font-size: 1rem;
     line-height: 1.5;
     padding-top: 0.1rem;
     flex-shrink: 0;
-    min-width: 1.5rem;
+    min-width: 2rem;
 }
 
-.product-details {
+
+/* ✅ Unified item details */
+.item-details {
     flex: 1;
     min-width: 0;
 }
 
-.product-name {
+
+.item-name {
     font-weight: 700;
     color: #111827;
     margin-bottom: 0.25rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+    font-size: 1rem;
 }
+
 
 .product-brand {
     color: #6b7280;
@@ -464,72 +548,30 @@
     margin-bottom: 0.5rem;
 }
 
-.product-metrics {
+
+.item-metrics {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+    margin-top: 0.5rem;
 }
 
-.product-metrics .metric {
+
+.item-metrics .metric {
     color: #374151;
     font-size: 0.875rem;
     font-weight: 500;
 }
 
-.product-metrics .revenue {
+
+.item-metrics .revenue {
     color: #10b981;
     font-weight: 700;
     font-size: 1rem;
 }
 
-/* ✅ Category & Brand Showcase - Fill available space */
-.category-showcase,
-.brand-showcase {
-    padding: 2rem;
-    text-align: center;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-
-.category-name,
-.brand-name {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #111827;
-    margin-bottom: 1.5rem;
-}
-
-.category-metrics,
-.brand-metrics {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.metric-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background-color: #f9fafb;
-    border-radius: 8px;
-}
-
-.metric-label {
-    color: #6b7280;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-.metric-value {
-    color: #111827;
-    font-weight: 700;
-    font-size: 1.1rem;
-}
 
 /* ============================================
    QUICK ACTIONS PANEL - RED HOVER
@@ -538,9 +580,11 @@
     margin-bottom: 2rem;
 }
 
+
 .actions-header {
     margin-bottom: 2rem;
 }
+
 
 .section-title {
     font-size: 1.75rem;
@@ -549,16 +593,19 @@
     margin-bottom: 0.5rem;
 }
 
+
 .section-subtitle {
     color: #6b7280;
     font-size: 1rem;
 }
+
 
 .actions-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
 }
+
 
 .action-card {
     background: white;
@@ -573,11 +620,13 @@
     border: 1px solid #f3f4f6;
 }
 
+
 .action-card:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
     border-color: #111827;
 }
+
 
 .action-icon {
     width: 50px;
@@ -592,15 +641,18 @@
     transition: all 0.3s ease;
 }
 
+
 /* ✅ Icon turns RED on card hover */
 .action-card:hover .action-icon {
     background-color: #ef4444;
     transform: scale(1.1);
 }
 
+
 .action-content {
     flex: 1;
 }
+
 
 .action-title {
     font-size: 1rem;
@@ -609,11 +661,13 @@
     margin: 0 0 0.25rem 0;
 }
 
+
 .action-description {
     font-size: 0.875rem;
     color: #6b7280;
     margin: 0;
 }
+
 
 .action-arrow {
     color: #9ca3af;
@@ -621,10 +675,12 @@
     transition: transform 0.2s;
 }
 
+
 .action-card:hover .action-arrow {
     transform: translateX(4px);
     color: #111827;
 }
+
 
 /* ============================================
    RESPONSIVE DESIGN
@@ -635,10 +691,12 @@
         align-items: flex-start;
     }
 
+
     .header-right {
         width: 100%;
         flex-direction: column;
     }
+
 
     .ledger-btn-header,
     .date-display {
@@ -646,17 +704,21 @@
         justify-content: center;
     }
 
+
     .metrics-grid {
         grid-template-columns: 1fr;
     }
+
 
     .actions-grid {
         grid-template-columns: 1fr;
     }
 
+
     .metric-number {
         font-size: 1.75rem;
     }
+
 
     /* ✅ Auto height on mobile */
     .analytics-card {
@@ -672,14 +734,25 @@
         display: block;
     }
     
-    .intelligence-dashboard .row > div {
-        display: block;
-    }
-    
     .intelligence-body {
         min-height: auto;
     }
+
+    /* ✅ Tab responsive */
+    .intelligence-tabs {
+        flex-direction: column;
+    }
+    
+    .intel-tab {
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .intel-tab:last-child {
+        border-bottom: none;
+    }
 }
+
 
 /* ✅ Desktop Chart Enhancement */
 @media (min-width: 992px) {
@@ -692,6 +765,7 @@
     }
 }
 
+
 /* ============================================
    ANIMATIONS
    ============================================ */
@@ -700,14 +774,25 @@
     animation: spin 1s linear infinite;
 }
 
+
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+
+/* ✅ Fade-in animation for tab content */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 </style>
-
-
-
 
 
 <!-- Main Content -->
@@ -859,77 +944,66 @@
         </div>
     </div>
 
-    <!-- Business Intelligence Dashboard -->
-    <div class="intelligence-dashboard">
-        <div class="row g-4">
-            <!-- Best Selling Products -->
-            <div class="col-lg-4">
-                <div class="intelligence-card">
-                    <div class="card-header p-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="header-icon me-3">
-                                <i class="bi bi-trophy-fill"></i>
-                            </div>
-                            <div class="header-content">
-                                <h3 class="mb-1 fw-bold">Best Selling Products</h3>
-                                <p class="mb-0 text-muted">Top 5 performers by quantity</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="intelligence-body p-3" id="bestProductsList">
+    <!-- ✅ UNIFIED Business Intelligence Section with Tabs -->
+    <div class="intelligence-unified">
+        <div class="intelligence-card">
+            <!-- Tab Header -->
+            <div class="card-header p-3 border-bottom">
+                <div class="intelligence-tabs">
+                    <button class="intel-tab active" data-tab="products">
+                        <i class="bi bi-trophy-fill me-2"></i>
+                        Best Selling Products
+                    </button>
+                    <button class="intel-tab" data-tab="categories">
+                        <i class="bi bi-tags-fill me-2"></i>
+                        Best Selling Categories
+                    </button>
+                    <button class="intel-tab" data-tab="brands">
+                        <i class="bi bi-award-fill me-2"></i>
+                        Best Selling Brands
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Body -->
+            <div class="intelligence-body p-3">
+                <!-- Products List -->
+                <div class="intel-content active" id="products-content">
+                    <p class="intel-subtitle"><i class="fas fa-cube me-2"></i>Top 10 by units sold</p>
+                    <div id="bestProductsList">
                         <div class="loading-state">
                             <i class="fas fa-spinner fa-spin"></i>
                             <p>Loading products...</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Best Selling Category -->
-            <div class="col-lg-4">
-                <div class="intelligence-card">
-                    <div class="card-header p-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="header-icon me-3">
-                                <i class="bi bi-tags-fill"></i>
-                            </div>
-                            <div class="header-content">
-                                <h3 class="mb-1 fw-bold">Top Category</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="intelligence-body p-3" id="bestCategoryCard">
+                <!-- Categories List -->
+                <div class="intel-content" id="categories-content">
+                    <p class="intel-subtitle"><i class="fas fa-tags me-2"></i>Top 10 by revenue</p>
+                    <div id="bestCategoriesList">
                         <div class="loading-state">
                             <i class="fas fa-spinner fa-spin"></i>
-                            <p>Loading category data...</p>
+                            <p>Loading categories...</p>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Best Selling Brand -->
-            <div class="col-lg-4">
-                <div class="intelligence-card">
-                    <div class="card-header p-3 border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="header-icon me-3">
-                                <i class="bi bi-award-fill"></i>
-                            </div>
-                            <div class="header-content">
-                                <h3 class="mb-1 fw-bold">Top Brand</h3>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="intelligence-body p-3" id="bestBrandCard">
+                <!-- Brands List -->
+                <div class="intel-content" id="brands-content">
+                    <p class="intel-subtitle"><i class="fas fa-award me-2"></i>Top 10 by revenue</p>
+                    <div id="bestBrandsList">
                         <div class="loading-state">
                             <i class="fas fa-spinner fa-spin"></i>
-                            <p>Loading brand data...</p>
+                            <p>Loading brands...</p>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+
 
     <!-- Quick Actions Panel -->
     <div class="actions-panel">
@@ -1044,83 +1118,119 @@
     // SETUP EVENT LISTENERS
     // ============================================
     function setupEventListeners() {
-        // ✅ Sales period change handler - UPDATE ALL DATA
-        const salesPeriodSelect = document.getElementById('salesPeriod');
-        if (salesPeriodSelect) {
-            salesPeriodSelect.addEventListener('change', function(e) {
-                currentPeriod = e.target.value;
-                console.log('📊 Period changed to:', currentPeriod);
-                
-                // Reload ALL dashboard data with new period
-                loadAllDashboardData(currentPeriod);
-            });
-        }
+    // ✅ Sales period change handler - UPDATE ALL DATA
+    const salesPeriodSelect = document.getElementById('salesPeriod');
+    if (salesPeriodSelect) {
+        salesPeriodSelect.addEventListener('change', function(e) {
+            currentPeriod = e.target.value;
+            console.log('📊 Period changed to:', currentPeriod);
+            
+            // Reload ALL dashboard data with new period
+            loadAllDashboardData(currentPeriod);
+        });
+    }
 
-        // Handle sidebar navigation (if exists)
-        const navItems = document.querySelectorAll('.nav-item[data-route]');
-        const mobileToggle = document.getElementById('mobileToggle');
-        const sidebar = document.getElementById('sidebar');
+    // Handle sidebar navigation (if exists)
+    const navItems = document.querySelectorAll('.nav-item[data-route]');
+    const mobileToggle = document.getElementById('mobileToggle');
+    const sidebar = document.getElementById('sidebar');
 
-        // Set Dashboard as active
-        const dashboardNav = document.querySelector('[data-route="dashboard"]');
-        if (dashboardNav) {
-            dashboardNav.classList.add('active');
-        }
+    // Set Dashboard as active
+    const dashboardNav = document.querySelector('[data-route="dashboard"]');
+    if (dashboardNav) {
+        dashboardNav.classList.add('active');
+    }
 
-        navItems.forEach(item => {
-            item.addEventListener('click', function (e) {
-                navItems.forEach(nav => nav.classList.remove('active'));
-                this.classList.add('active');
+    navItems.forEach(item => {
+        item.addEventListener('click', function (e) {
+            navItems.forEach(nav => nav.classList.remove('active'));
+            this.classList.add('active');
 
-                if (window.innerWidth <= 768 && sidebar) {
-                    sidebar.classList.remove('show');
-                }
-            });
+            if (window.innerWidth <= 768 && sidebar) {
+                sidebar.classList.remove('show');
+            }
+        });
+    });
+
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', function () {
+            sidebar.classList.toggle('show');
         });
 
-        if (mobileToggle && sidebar) {
-            mobileToggle.addEventListener('click', function () {
-                sidebar.classList.toggle('show');
-            });
-
-            document.addEventListener('click', function (e) {
-                if (window.innerWidth <= 768) {
-                    if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
-                        sidebar.classList.remove('show');
-                    }
+        document.addEventListener('click', function (e) {
+            if (window.innerWidth <= 768) {
+                if (!sidebar.contains(e.target) && !mobileToggle.contains(e.target)) {
+                    sidebar.classList.remove('show');
                 }
-            });
-        }
+            }
+        });
+    }
 
-        // Logout functionality (if exists)
-        const logoutBtn = document.getElementById('logoutBtn');
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', function (e) {
-                e.preventDefault();
+    // Logout functionality (if exists)
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function (e) {
+            e.preventDefault();
 
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Are you sure?',
-                        text: "You will be logged out of the admin panel",
-                        icon: 'warning',
-                        showCancelButton: true,
-                        confirmButtonColor: '#111827',
-                        cancelButtonColor: '#6c757d',
-                        confirmButtonText: 'Yes, logout',
-                        cancelButtonText: 'Cancel'
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = '/admin/logout';
-                        }
-                    });
-                } else {
-                    if (confirm('Are you sure you want to logout?')) {
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    title: 'Are you sure?',
+                    text: "You will be logged out of the admin panel",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#111827',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: 'Yes, logout',
+                    cancelButtonText: 'Cancel'
+                }).then((result) => {
+                    if (result.isConfirmed) {
                         window.location.href = '/admin/logout';
                     }
+                });
+            } else {
+                if (confirm('Are you sure you want to logout?')) {
+                    window.location.href = '/admin/logout';
                 }
-            });
-        }
+            }
+        });
     }
+
+    // ✅ Setup intelligence tabs
+    setupIntelligenceTabs();
+}
+    
+
+    // ============================================
+    // ✅ TAB SWITCHING FOR UNIFIED INTELLIGENCE SECTION
+    // ============================================
+    function setupIntelligenceTabs() {
+        const tabs = document.querySelectorAll('.intel-tab');
+        const contents = document.querySelectorAll('.intel-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Remove active class from all contents
+                contents.forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding content
+                const targetContent = document.getElementById(`${targetTab}-content`);
+                if (targetContent) {
+                    targetContent.classList.add('active');
+                }
+                
+                console.log(`✅ Switched to ${targetTab} tab`);
+            });
+        });
+    }
+
 
     // ============================================
     // INITIALIZE DASHBOARD
@@ -1142,8 +1252,8 @@
                 loadDynamicSalesChart(period),
                 loadRevenueDistribution(period),
                 loadBestSellingProducts(period),
-                loadBestSellingCategory(period),
-                loadBestSellingBrand(period)
+                loadBestSellingCategories(period),  // ✅ UPDATED
+                loadBestSellingBrands(period)       // ✅ UPDATED
             ]);
             
             console.log('✅ Dashboard data loaded successfully');
@@ -1152,6 +1262,7 @@
             showErrorMessage('Failed to load dashboard data');
         }
     }
+
 
     // ============================================
     // LOAD DASHBOARD STATS (WITH PERIOD FILTER)
@@ -1421,6 +1532,77 @@
         }
     }
 
+
+    // ============================================
+    // ✅ UPDATED: LOAD BEST SELLING PRODUCTS WITH IMAGES
+    // ============================================
+    async function loadBestSellingProducts(period = 'monthly') {
+        try {
+            const response = await fetch(`/admin/dashboard/api/best-selling-products?period=${period}&limit=10`);
+            const data = await response.json();
+            
+            const container = document.getElementById('bestProductsList');
+            if (!container) return;
+
+            if (data.success && data.data.length > 0) {
+                container.innerHTML = '';
+                data.data.forEach((product, index) => {
+                    // ✅ Determine image source
+                    let imageSrc = '/images/placeholder.svg';
+                    if (product.mainImage) {
+                        imageSrc = product.mainImage.startsWith('/') ? 
+                                product.mainImage : 
+                                '/uploads/products/' + product.mainImage;
+                    } else if (product.subImages && product.subImages.length > 0) {
+                        const subImage = product.subImages[0];
+                        imageSrc = subImage.startsWith('/') ? 
+                                subImage : 
+                                '/uploads/products/' + subImage;
+                    }
+                    
+                    const productElement = document.createElement('div');
+                    productElement.className = 'product-item';
+                    productElement.innerHTML = `
+                        <span class="item-rank">${index + 1}.</span>
+                        <img src="${imageSrc}" 
+                            alt="${product.productName}" 
+                            class="item-image"
+                            onerror="this.src='/images/placeholder.svg';"
+                            loading="lazy">
+                        <div class="item-details">
+                            <div class="item-name">${product.productName}</div>
+                            <div class="product-brand"><i class="fas fa-copyright me-1"></i>${product.brand}</div>
+                            <div class="item-metrics">
+                                <span class="metric"><i class="fas fa-cube me-1"></i>${product.totalQuantity} units</span>
+                                <span class="revenue">₹${product.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(productElement);
+                });
+                console.log('✅ Top 10 Products loaded for', period);
+            } else {
+                container.innerHTML = `
+                    <div class="no-data">
+                        <i class="fas fa-box-open"></i>
+                        <p>No product sales data available</p>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            console.error('❌ Error loading best selling products:', error);
+            const container = document.getElementById('bestProductsList');
+            if (container) {
+                container.innerHTML = `
+                    <div class="error-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Failed to load products</p>
+                    </div>
+                `;
+            }
+        }
+    }
+
     // ============================================
     // UPDATE REVENUE LEGEND
     // ============================================
@@ -1446,56 +1628,73 @@
     }
 
     // ============================================
-    // LOAD BEST SELLING PRODUCTS (WITH PERIOD FILTER)
+    // ✅ UPDATED: LOAD BEST SELLING CATEGORIES WITH IMAGES
     // ============================================
-    async function loadBestSellingProducts(period = 'monthly') {
+    async function loadBestSellingCategories(period = 'monthly') {
         try {
-            const response = await fetch(`/admin/dashboard/api/best-selling-products?period=${period}`);
+            const response = await fetch(`/admin/dashboard/api/best-selling-categories?period=${period}&limit=10`);
             const data = await response.json();
             
-            const container = document.getElementById('bestProductsList');
+            const container = document.getElementById('bestCategoriesList');
             if (!container) return;
 
             if (data.success && data.data.length > 0) {
                 container.innerHTML = '';
-                data.data.forEach((product, index) => {
-                    const productElement = document.createElement('div');
-                    productElement.className = 'product-item';
-                    productElement.innerHTML = `
-                        <span class="product-rank">${index + 1}.</span>
-                        <div class="product-details">
-                            <div class="product-name">${product.productName}</div>
-                            <div class="product-brand"><i class="fas fa-copyright me-1"></i>${product.brand}</div>
-                            <div class="product-metrics">
-                                <span class="metric"><i class="fas fa-cube me-1"></i>${product.totalQuantity} units</span>
-                                <span class="revenue">₹${product.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                data.data.forEach((category, index) => {
+                    // ✅ Determine image source
+                    let imageSrc = '/images/placeholder.svg';
+                    if (category.categoryImage) {
+                        imageSrc = category.categoryImage.startsWith('/') ? 
+                                category.categoryImage : 
+                                '/uploads/categories/' + category.categoryImage;
+                    }
+                    
+                    const categoryElement = document.createElement('div');
+                    categoryElement.className = 'category-item';
+                    categoryElement.innerHTML = `
+                        <span class="item-rank">${index + 1}.</span>
+                        <img src="${imageSrc}" 
+                            alt="${category.categoryName}" 
+                            class="item-image"
+                            onerror="this.src='/images/placeholder.svg';"
+                            loading="lazy">
+                        <div class="item-details">
+                            <div class="item-name">${category.categoryName}</div>
+                            <div class="item-metrics">
+                                <span class="metric"><i class="fas fa-cube me-1"></i>${category.totalQuantity} units</span>
+                                <span class="revenue">₹${category.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                            <div class="item-metrics mt-1">
+                                <span class="metric"><i class="fas fa-shopping-cart me-1"></i>${category.totalOrders} orders</span>
+                                <span class="metric"><i class="fas fa-box me-1"></i>${category.totalProducts || 0} products</span>
                             </div>
                         </div>
                     `;
-                    container.appendChild(productElement);
+                    container.appendChild(categoryElement);
                 });
-                console.log('✅ Products loaded for', period);
+                console.log('✅ Top 10 Categories loaded for', period);
             } else {
                 container.innerHTML = `
                     <div class="no-data">
-                        <i class="fas fa-box-open"></i>
-                        <p>No product sales data available</p>
+                        <i class="fas fa-tags"></i>
+                        <p>No category data available</p>
                     </div>
                 `;
             }
         } catch (error) {
-            console.error('❌ Error loading best selling products:', error);
-            const container = document.getElementById('bestProductsList');
+            console.error('❌ Error loading best selling categories:', error);
+            const container = document.getElementById('bestCategoriesList');
             if (container) {
                 container.innerHTML = `
                     <div class="error-state">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p>Failed to load products</p>
+                        <p>Failed to load categories</p>
                     </div>
                 `;
             }
         }
     }
+
 
     // ============================================
     // LOAD BEST SELLING CATEGORY (WITH PERIOD FILTER)
@@ -1551,38 +1750,54 @@
         }
     }
 
+
+
     // ============================================
-    // LOAD BEST SELLING BRAND (WITH PERIOD FILTER)
+    // ✅ UPDATED: LOAD BEST SELLING BRANDS WITH IMAGES
     // ============================================
-    async function loadBestSellingBrand(period = 'monthly') {
+    async function loadBestSellingBrands(period = 'monthly') {
         try {
-            const response = await fetch(`/admin/dashboard/api/best-selling-brand?period=${period}`);
+            const response = await fetch(`/admin/dashboard/api/best-selling-brands?period=${period}&limit=10`);
             const data = await response.json();
             
-            const container = document.getElementById('bestBrandCard');
+            const container = document.getElementById('bestBrandsList');
             if (!container) return;
 
-            if (data.success && data.data) {
-                container.innerHTML = `
-                    <div class="brand-showcase">
-                        <div class="brand-name">${data.data.brandName}</div>
-                        <div class="brand-metrics">
-                            <div class="metric-row">
-                                <span class="metric-label"><i class="fas fa-rupee-sign me-1"></i>Revenue</span>
-                                <span class="metric-value">₹${data.data.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            if (data.success && data.data.length > 0) {
+                container.innerHTML = '';
+                data.data.forEach((brand, index) => {
+                    // ✅ Determine image source
+                    let imageSrc = '/images/placeholder.svg';
+                    if (brand.brandImage) {
+                        imageSrc = brand.brandImage.startsWith('/') ? 
+                                brand.brandImage : 
+                                '/uploads/brands/' + brand.brandImage;
+                    }
+                    
+                    const brandElement = document.createElement('div');
+                    brandElement.className = 'brand-item';
+                    brandElement.innerHTML = `
+                        <span class="item-rank">${index + 1}.</span>
+                        <img src="${imageSrc}" 
+                            alt="${brand.brandName}" 
+                            class="item-image"
+                            onerror="this.src='/images/placeholder.svg';"
+                            loading="lazy">
+                        <div class="item-details">
+                            <div class="item-name">${brand.brandName}</div>
+                            <div class="item-metrics">
+                                <span class="metric"><i class="fas fa-cube me-1"></i>${brand.totalQuantity} units</span>
+                                <span class="revenue">₹${brand.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                             </div>
-                            <div class="metric-row">
-                                <span class="metric-label"><i class="fas fa-cube me-1"></i>Units Sold</span>
-                                <span class="metric-value">${data.data.totalQuantity.toLocaleString()}</span>
-                            </div>
-                            <div class="metric-row">
-                                <span class="metric-label"><i class="fas fa-box me-1"></i>Products</span>
-                                <span class="metric-value">${data.data.totalProducts.toLocaleString()}</span>
+                            <div class="item-metrics mt-1">
+                                <span class="metric"><i class="fas fa-shopping-cart me-1"></i>${brand.totalOrders || 0} orders</span>
+                                <span class="metric"><i class="fas fa-box me-1"></i>${brand.totalProducts} products</span>
                             </div>
                         </div>
-                    </div>
-                `;
-                console.log('✅ Brand loaded for', period);
+                    `;
+                    container.appendChild(brandElement);
+                });
+                console.log('✅ Top 10 Brands loaded for', period);
             } else {
                 container.innerHTML = `
                     <div class="no-data">
@@ -1592,18 +1807,19 @@
                 `;
             }
         } catch (error) {
-            console.error('❌ Error loading best selling brand:', error);
-            const container = document.getElementById('bestBrandCard');
+            console.error('❌ Error loading best selling brands:', error);
+            const container = document.getElementById('bestBrandsList');
             if (container) {
                 container.innerHTML = `
                     <div class="error-state">
                         <i class="fas fa-exclamation-triangle"></i>
-                        <p>Failed to load brand</p>
+                        <p>Failed to load brands</p>
                     </div>
                 `;
             }
         }
     }
+
 
     // ============================================
     // SHOW ERROR MESSAGE

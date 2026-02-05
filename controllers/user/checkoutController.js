@@ -639,7 +639,6 @@ const handleCODOrder = async (req, res, cart) => {
 
     console.log('Processing COD order for user:', userId);
 
-    // ✅ ADDED: Validate delivery address
     if (!deliveryAddressId) {
       return res.status(400).json({
         success: false,
@@ -648,7 +647,6 @@ const handleCODOrder = async (req, res, cart) => {
       });
     }
 
-    // ✅ ADDED: Verify the address document exists
     const addressDoc = await Address.findById(deliveryAddressId).lean();
 
     if (!addressDoc) {
@@ -659,7 +657,7 @@ const handleCODOrder = async (req, res, cart) => {
       });
     }
 
-    // ✅ ADDED: Verify the specific address at the index exists
+
     const parsedAddressIndex = parseInt(addressIndex);
     if (!addressDoc.address || !Array.isArray(addressDoc.address) || !addressDoc.address[parsedAddressIndex]) {
       return res.status(400).json({
@@ -669,7 +667,7 @@ const handleCODOrder = async (req, res, cart) => {
       });
     }
 
-    console.log(`✅ Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
+    console.log(`Delivery address validated: ${addressDoc.address[parsedAddressIndex].name || 'N/A'}`);
 
     const totals = calculateOrderTotals(cart.items);
 
@@ -689,7 +687,7 @@ const handleCODOrder = async (req, res, cart) => {
             code: 'INVALID_COUPON'
           });
         }
-
+ 
         const now = new Date();
         if (now < new Date(coupon.validFrom) || now > new Date(coupon.validTo)) {
           delete req.session.appliedCoupon;
@@ -745,6 +743,20 @@ const handleCODOrder = async (req, res, cart) => {
     }
 
     const finalTotal = Math.max(0, totals.total - couponDiscount);
+
+    if (finalTotal >= 10000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cash on Delivery is not available for orders of ₹10,000 or more. Please choose an online payment method.',
+        code: 'COD_NOT_AVAILABLE',
+        data: {
+          orderTotal: finalTotal,
+          codLimit: 10000
+        }
+      });
+    }
+
+    console.log(`COD validation passed. Order total: ₹${finalTotal}`);
     
     // prepare order items
     const orderItems = cart.items.map(item => ({
@@ -764,6 +776,7 @@ const handleCODOrder = async (req, res, cart) => {
       }]
     }));
 
+
     try {
       await deductStock(orderItems);
       console.log('Stock deducted successfully!');
@@ -776,6 +789,8 @@ const handleCODOrder = async (req, res, cart) => {
           code: 'STOCK_DEDUCTION_FAILED'
       });
     }
+
+
 
     const addressObjectId = new mongoose.Types.ObjectId(deliveryAddressId);
 

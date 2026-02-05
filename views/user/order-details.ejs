@@ -13,7 +13,7 @@
   <div class="order-details-content">
     <div class="row g-4">
       <!-- Left Column: Order Details -->
-      <div class="col-lg-8">
+      <div class="col-lg-8"> 
         <div class="order-details-card">
           <!-- Order Header -->
           <div class="order-header mb-4">
@@ -101,9 +101,17 @@
                   <div class="row align-items-center">
                     <div class="col-md-2">
                       <% if (item.productId && item.productId.mainImage) { %>
-                        <img src="<%= item.productId.mainImage %>" 
-                             alt="<%= item.productId.productName %>" 
-                             class="product-image-large">
+                        <% if (item.productId.slug) { %>
+                          <a href="/product/<%= item.productId.slug %>" class="product-image-link">
+                            <img src="<%= item.productId.mainImage %>" 
+                                alt="<%= item.productId.productName %>" 
+                                class="product-image-large">
+                          </a>
+                        <% } else { %>
+                          <img src="<%= item.productId.mainImage %>" 
+                              alt="<%= item.productId.productName %>" 
+                              class="product-image-large">
+                        <% } %>
                       <% } else { %>
                         <div class="product-image-placeholder">
                           <i class="bi bi-image"></i>
@@ -111,9 +119,17 @@
                       <% } %>
                     </div>
                     <div class="col-md-4">
-                      <h6 class="fw-bold mb-1">
-                        <%= item.productId ? item.productId.productName : 'Product Name' %>
-                      </h6>
+                      <% if (item.productId && item.productId.slug) { %>
+                        <a href="/product/<%= item.productId.slug %>" class="text-decoration-none">
+                          <h6 class="fw-bold mb-1 product-name-link">
+                            <%= item.productId ? item.productId.productName : 'Product Name' %>
+                          </h6>
+                        </a>
+                      <% } else { %>
+                        <h6 class="fw-bold mb-1">
+                          <%= item.productId ? item.productId.productName : 'Product Name' %>
+                        </h6>
+                      <% } %>
                       <div class="product-details">
                         <span class="detail-item">Size: <strong><%= item.size %></strong></span>
                         <span class="detail-item">Quantity: <strong><%= item.quantity %></strong></span>
@@ -178,6 +194,7 @@
               <% }) %>
             </div>
           </div>
+
 
           <!-- Delivery Address -->
           <div class="order-section mb-4">
@@ -700,6 +717,36 @@
     border: 1px solid #000;
   }
 }
+
+/* ========= PRODUCT IMAGE & NAME LINKS ========= */
+.product-image-link {
+  display: block;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.product-image-link:hover {
+  transform: scale(1.05);
+  opacity: 0.85;
+}
+
+.product-image-link .product-image-large {
+  cursor: pointer;
+}
+
+.product-name-link {
+  transition: color 0.3s ease;
+  cursor: pointer;
+  color: #000;
+}
+
+.product-name-link:hover {
+  color: #e03a2f !important;
+}
+
+.col-md-4 a {
+  text-decoration: none;
+}
+
 </style>
 
 
@@ -715,11 +762,8 @@
   console.log('Is cancellation reasons array:', Array.isArray(window.cancellationReasons));
 </script>
 
-<!-- ✅ Load the common orders module -->
-<script src="/js/user/orders-common.js"></script>
 
 <script>
-  // ✅ Page-specific wrapper functions that use the common module
   function cancelOrder(orderId) {
     cancelOrderCommon(orderId, () => {
       window.location.href = '/orders';

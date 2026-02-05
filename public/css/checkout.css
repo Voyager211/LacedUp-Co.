@@ -1122,3 +1122,30 @@ p {
     opacity: 0;
     transform: translateY(-10px);
 }
+
+
+/* ========= COD WARNING STYLES ========= */
+#cod-warning-message {
+    font-size: 0.875rem;
+    margin-left: 3.5rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    color: #856404;
+}
+
+#cod-warning-message i {
+    color: #ffc107;
+}
+
+/* Disabled COD payment option */
+.payment-option:has(input[value="cod"]:disabled) {
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.payment-option:has(input[value="cod"]:disabled) .payment-info h6,
+.payment-option:has(input[value="cod"]:disabled) .payment-info p {
+    color: #6c757d;
+}

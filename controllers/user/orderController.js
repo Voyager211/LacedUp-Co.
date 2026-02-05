@@ -13,7 +13,7 @@ const getPagination = require('../../utils/pagination');
 
 const {
   ORDER_STATUS,
-  PAYMENT_STATUS,
+  PAYMENT_STATUS, 
   CANCELLATION_REASONS, 
   RETURN_REASONS,
   getOrderStatusArray,
@@ -40,7 +40,7 @@ const getUserOrders = async (req, res) => {
     const filter = { user: userId };
 
     const queryBuilder = Order.find(filter)
-      .populate('items.productId', 'productName mainImage')
+      .populate('items.productId', 'productName mainImage slug')
       .sort({ createdAt: -1 });
 
     const { data: orders, totalPages } = await getPagination(
@@ -134,12 +134,11 @@ const getUserOrdersPaginated = async (req, res) => {
 
     const filter = { user: userId };
 
-    // ✅ CASE 1: NO search and NO filter - Use efficient database pagination
     if (!searchQuery && !statusFilter) {
       const queryBuilder = Order.find(filter)
         .populate({
           path: 'items.productId',
-          select: 'productName mainImage brand',
+          select: 'productName mainImage slug brand',
           populate: {
             path: 'brand',
             select: 'name'
@@ -185,7 +184,7 @@ const getUserOrdersPaginated = async (req, res) => {
     const allOrders = await Order.find(filter)
       .populate({
         path: 'items.productId',
-        select: 'productName mainImage brand',
+        select: 'productName mainImage slug brand',
         populate: {
           path: 'brand',
           select: 'name'
@@ -316,7 +315,7 @@ const searchOrders = async (req, res) => {
     const orders = await Order.find({ user: userId})
     .populate({
         path: 'items.productId',
-        select: 'productName mainImage brand',
+        select: 'productName mainImage slug brand',
         populate: {
           path: 'brand',
           select: 'name'
@@ -387,7 +386,7 @@ const getOrderDetails = async (req, res) => {
     const order = await Order.findOne({ orderId: orderId, user: userId })
       .populate({
         path: 'items.productId',
-        select: 'productName mainImage subImages regularPrice salePrice'
+        select: 'productName mainImage subImages regularPrice salePrice slug'
       })
       .populate({
         path: 'deliveryAddress.addressId',

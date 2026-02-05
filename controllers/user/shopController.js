@@ -866,7 +866,7 @@ const loadProductDetails = async (req, res) => {
       active: 'shop'
     });
   }
-};
+}; 
 
 // API: Get available sizes with stock
 const getAvailableSizes = async (req, res) => {
