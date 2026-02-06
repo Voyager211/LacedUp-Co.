@@ -374,60 +374,117 @@
   border-radius: 6px;
 }
 
-/* Action Buttons */
-.btn-edit {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
+/* ============================================
+   ✅ COLUMN WIDTH ADJUSTMENTS
+   ============================================ */
+/* Product Name Column - Allow wrapping */
+.modern-table thead th:nth-child(2),
+.modern-table tbody td:nth-child(2) {
+  max-width: 200px;
+  min-width: 150px;
+  word-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+  line-height: 1.4;
 }
 
-.btn-edit:hover {
-  background-color: #2563eb;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-  color: white;
+/* Created Date Column - Ensure sufficient width */
+.modern-table thead th:nth-child(8),
+.modern-table tbody td:nth-child(8) {
+  min-width: 110px;
+  white-space: nowrap;
 }
 
-.btn-delete {
-  background-color: #ef4444;
-  color: white;
-  padding: 0.375rem 0.75rem;
-  border-radius: 6px;
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  transition: all 0.2s ease;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-}
 
-.btn-delete:hover {
-  background-color: #dc2626;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-}
-
-/* Toggle Switch */
+/* ============================================
+   ✅ TOGGLE SWITCH - SMALLER SIZE
+   ============================================ */
 .form-check-input {
-  cursor: pointer;
-  width: 3rem;
-  height: 1.5rem;
+    cursor: pointer;
+    width: 3rem !important;
+    height: 1.5rem !important;
+    border-radius: 2rem !important;
+    transition: all 0.3s ease;
+    background-size: contain;
+    flex-shrink: 0;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2) !important;
+    border-color: #10b981 !important;
 }
 
 .form-check-input:checked {
-  background-color: #10b981;
-  border-color: #10b981;
+    background-color: #10b981 !important;
+    border-color: #10b981 !important;
+}
+
+.form-check-input:not(:checked) {
+    background-color: #e5e7eb !important;
+    border-color: #d1d5db !important;
+}
+
+/* Remove default form-check styling */
+.form-check.form-switch {
+    padding-left: 0;
+    min-height: auto;
+}
+
+.form-check.form-switch .form-check-input {
+    margin-left: 0;
+    margin-right: 0;
+}
+
+/* ============================================
+   ✅ ACTION BUTTONS - SMALLER & COMPACT
+   ============================================ */
+.action-buttons {
+    display: flex;
+    gap: 0.375rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-edit,
+.btn-delete {
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    cursor: pointer;
+    min-width: 40px;
+    height: 40px;
+}
+
+.btn-edit {
+    background-color: #3b82f6;
+    color: white;
+}
+
+.btn-edit:hover {
+    background-color: #2563eb;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-delete {
+    background-color: #ef4444;
+    color: white;
+}
+
+.btn-delete:hover {
+    background-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Responsive */
@@ -564,6 +621,48 @@
   .pagination {
     gap: 0.25rem;
   }
+}
+
+/* ============================================
+   ✅ CLICKABLE PRODUCT NAME
+   ============================================ */
+.product-name-link {
+  color: #111827;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  display: inline-block;
+  position: relative;
+}
+
+.product-name-link:hover {
+  color: #ef4444;
+  transform: translateX(3px);
+}
+
+.product-name-link:hover::after {
+  content: '→';
+  position: absolute;
+  right: -18px;
+  color: #ef4444;
+  font-weight: bold;
+  animation: arrowSlide 0.3s ease;
+}
+
+@keyframes arrowSlide {
+  from {
+    opacity: 0;
+    right: -10px;
+  }
+  to {
+    opacity: 1;
+    right: -18px;
+  }
+}
+
+/* Keep cursor pointer for table rows */
+.modern-table tbody tr {
+  transition: all 0.2s ease;
 }
 </style>
 
@@ -744,7 +843,6 @@
           <th>Image</th>
           <th>Price</th>
           <th>Stock</th>
-          <th>Status</th>
           <th>Created</th>
           <th>Actions</th>
         </tr>
@@ -754,7 +852,11 @@
           <% products.forEach((product, index) => { %>
             <tr>
               <td><%= index + 1 + ((currentPage - 1) * 10) %></td>
-              <td><%= product.productName %></td>
+              <td>
+                <a href="/admin/products/<%= product._id %>" class="product-name-link">
+                  <%= product.productName %>
+                </a>
+              </td>
               <td><%= product.brand?.name || '—' %></td>
               <td><%= product.category?.name || '—' %></td>
               <td>
@@ -762,30 +864,30 @@
               </td>
               <td>₹<%= product.regularPrice || 0 %></td>
               <td><%= product.totalStock || 0 %></td>
-              <td>
-                <div class="form-check form-switch d-flex justify-content-center">
-                  <input 
-                    class="form-check-input toggle-status" 
-                    type="checkbox" 
-                    data-id="<%= product._id %>" 
-                    <%= product.isListed ? 'checked' : '' %>
-                  >
-                </div>
-              </td>
               <td><%= product.createdAt.toISOString().split('T')[0] %></td>
               <td>
-                <a href="/admin/products/<%= product._id %>/edit" class="btn-edit me-1">
-                  <i class="bi bi-pencil-square"></i> Edit
-                </a>
-                <button class="btn-delete" data-id="<%= product._id %>">
-                  <i class="bi bi-trash"></i> Delete
-                </button>
+                <div class="action-buttons">
+                  <a href="/admin/products/<%= product._id %>/edit" class="btn-edit">
+                    <i class="bi bi-pencil-square"></i>
+                  </a>
+                  <div class="form-check form-switch">
+                    <input 
+                      class="form-check-input toggle-status" 
+                      type="checkbox" 
+                      data-id="<%= product._id %>" 
+                      <%= product.isListed ? 'checked' : '' %>
+                    >
+                  </div>
+                  <button class="btn-delete" data-id="<%= product._id %>">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
               </td>
             </tr>
           <% }); %>
         <% } else { %>
           <tr>
-            <td colspan="10" class="text-center py-5">
+            <td colspan="9" class="text-center py-5">
               <i class="bi bi-inbox" style="font-size: 3rem; color: #e5e7eb;"></i>
               <p class="mt-2 text-muted">No products found</p>
             </td>
@@ -850,7 +952,67 @@
 </div>
 
 <script>
+// ============================================
+// 🔔 SWEETALERT TOAST HELPER FUNCTIONS
+// ============================================
+
+// Show success toast
+function showSuccessToast(message) {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', Swal.stopTimer);
+      toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+  });
+}
+
+// Show error toast
+function showErrorToast(message) {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'error',
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', Swal.stopTimer);
+      toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+  });
+}
+
+// Show info toast
+function showInfoToast(message) {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'info',
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', Swal.stopTimer);
+      toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  // ============================================
+  // ✅ REMOVED: Product update success check
+  // Now handled in product detail page
+  // ============================================
+
   const searchInput = document.getElementById('search-input');
   const clearSearchBtn = document.getElementById('clear-search');
   const searchBtn = document.getElementById('search-btn');
@@ -879,6 +1041,18 @@ document.addEventListener('DOMContentLoaded', () => {
     stock: '',
     sort: ''
   };
+
+  // ============================================
+  // 🎯 BIND TOGGLE STATUS LISTENERS ON INITIAL LOAD
+  // ============================================
+  function bindToggleListeners() {
+    document.querySelectorAll('.toggle-status').forEach(input => {
+      input.addEventListener('change', toggleProductStatus);
+    });
+  }
+
+  // Bind listeners on initial page load
+  bindToggleListeners();
 
   // Toggle clear button
   function toggleClearButton() {
@@ -1061,25 +1235,34 @@ document.addEventListener('DOMContentLoaded', () => {
         const rows = data.products.map((product, index) => `
           <tr>
             <td>${startIndex + index + 1}</td>
-            <td>${product.productName}</td>
+            <td>
+              <a href="/admin/products/${product._id}" class="product-name-link">
+                ${product.productName}
+              </a>
+            </td>
             <td>${product.brand?.name || '—'}</td>
             <td>${product.category?.name || '—'}</td>
             <td><img src="${product.mainImage}" alt="product" class="product-image" /></td>
             <td>₹${product.regularPrice || 0}</td>
             <td>${product.totalStock || 0}</td>
-            <td>
-              <div class="form-check form-switch d-flex justify-content-center">
-                <input class="form-check-input toggle-status" type="checkbox" data-id="${product._id}" ${product.isListed ? 'checked' : ''}>
-              </div>
-            </td>
             <td>${new Date(product.createdAt).toISOString().split('T')[0]}</td>
             <td>
-              <a href="/admin/products/${product._id}/edit" class="btn-edit me-1">
-                <i class="bi bi-pencil-square"></i> Edit
-              </a>
-              <button class="btn-delete" data-id="${product._id}">
-                <i class="bi bi-trash"></i> Delete
-              </button>
+              <div class="action-buttons">
+                <a href="/admin/products/${product._id}/edit" class="btn-edit">
+                  <i class="bi bi-pencil-square"></i>
+                </a>
+                <div class="form-check form-switch">
+                  <input 
+                    class="form-check-input toggle-status" 
+                    type="checkbox" 
+                    data-id="${product._id}" 
+                    ${product.isListed ? 'checked' : ''}
+                  >
+                </div>
+                <button class="btn-delete" data-id="${product._id}">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
             </td>
           </tr>
         `).join('');
@@ -1087,7 +1270,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         tableBody.innerHTML = `
           <tr>
-            <td colspan="10" class="text-center py-5">
+            <td colspan="9" class="text-center py-5">
               <i class="bi bi-inbox" style="font-size: 3rem; color: #e5e7eb;"></i>
               <p class="mt-2 text-muted">No products found</p>
             </td>
@@ -1095,10 +1278,8 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
       }
 
-      // Re-bind toggle listeners
-      document.querySelectorAll('.toggle-status').forEach(input => {
-        input.addEventListener('change', toggleProductStatus);
-      });
+      // ✅ Re-bind toggle listeners after dynamic update
+      bindToggleListeners();
 
       updatePagination({
         currentPage: data.currentPage,
@@ -1111,60 +1292,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (error) {
       console.error('Error fetching products:', error);
-      Swal.fire('Error', 'Failed to load products', 'error');
+      showErrorToast('Failed to load products');
     }
   }
 
-  // Toggle product status
+  // ============================================
+  // 🔄 TOGGLE PRODUCT STATUS (WITH TOAST)
+  // ============================================
   async function toggleProductStatus(e) {
+    e.preventDefault();
     const id = e.target.getAttribute('data-id');
     const isCurrentlyListed = e.target.checked;
     const actionText = isCurrentlyListed ? 'activate' : 'deactivate';
 
-    const confirmed = await Swal.fire({
-      icon: 'question',
-      title: `Are you sure you want to ${actionText} this product?`,
-      text: `This will ${isCurrentlyListed ? 'show' : 'hide'} the product on the shop page.`,
-      showCancelButton: true,
-      confirmButtonText: `Yes, ${actionText} it!`,
-      confirmButtonColor: isCurrentlyListed ? '#28a745' : '#dc3545',
-      cancelButtonColor: '#6c757d',
-      reverseButtons: true
-    });
-
-    if (!confirmed.isConfirmed) {
-      e.target.checked = !e.target.checked;
-      return;
-    }
-
+    // Disable the toggle to prevent double-clicking
     e.target.disabled = true;
 
     try {
       const res = await fetch(`/admin/products/api/${id}/toggle`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
+
       const data = await res.json();
 
-      if (!data.success) throw new Error(data.message || 'Toggle failed');
+      if (!data.success) {
+        throw new Error(data.message || 'Toggle failed');
+      }
 
-      await Swal.fire({
-        icon: 'success',
-        title: 'Success!',
-        text: `Product has been ${actionText}d successfully.`,
-        confirmButtonColor: '#111',
-        timer: 2000,
-        showConfirmButton: false
-      });
+      // ✅ Show success toast
+      showSuccessToast(`Product ${actionText}d successfully!`);
 
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Toggle Failed',
-        text: err.message || 'Something went wrong',
-        confirmButtonColor: '#d33'
-      });
+      console.error('Toggle error:', err);
+      
+      // ✅ Show error toast
+      showErrorToast(err.message || 'Failed to toggle product status');
+      
+      // Revert the toggle state on error
       e.target.checked = !e.target.checked;
     } finally {
+      // Re-enable the toggle
       e.target.disabled = false;
     }
   }
@@ -1267,48 +1437,85 @@ document.addEventListener('DOMContentLoaded', () => {
   toggleClearButton();
 });
 
-// Delete product
+// ============================================
+// 🗑️ DELETE PRODUCT (WITH TOAST, NO RELOAD)
+// ============================================
 document.addEventListener('click', async (e) => {
   if (e.target.closest('.btn-delete')) {
     const btn = e.target.closest('.btn-delete');
     const productId = btn.dataset.id;
 
+    // Show confirmation dialog
     const confirmed = await Swal.fire({
       icon: 'warning',
       title: 'Are you sure?',
       text: 'This product will be moved to trash.',
       showCancelButton: true,
       confirmButtonText: 'Yes, delete it!',
-      confirmButtonColor: '#d33',
-      cancelButtonColor: '#6c757d'
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      reverseButtons: true
     });
 
     if (!confirmed.isConfirmed) return;
 
+    // Disable the delete button
+    btn.disabled = true;
+    btn.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+
     try {
       const res = await fetch(`/admin/products/api/${productId}/delete`, {
-        method: 'PATCH'
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       const data = await res.json();
+      
       if (data.success) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Deleted!',
-          text: 'The product has been soft deleted.',
-          confirmButtonColor: '#111'
-        });
-        window.location.reload();
+        // ✅ Show success toast
+        showSuccessToast('Product deleted successfully!');
+        
+        // ✅ Remove the row from the table without page reload
+        const row = btn.closest('tr');
+        row.style.transition = 'all 0.3s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-20px)';
+        
+        setTimeout(() => {
+          row.remove();
+          
+          // Update product count
+          const productCount = document.getElementById('product-count');
+          const currentCount = parseInt(productCount.textContent);
+          productCount.textContent = Math.max(0, currentCount - 1);
+          
+          // If no products left in table, show empty message
+          const tableBody = document.getElementById('product-table-body');
+          if (tableBody.querySelectorAll('tr').length === 0) {
+            tableBody.innerHTML = `
+              <tr>
+                <td colspan="9" class="text-center py-5">
+                  <i class="bi bi-inbox" style="font-size: 3rem; color: #e5e7eb;"></i>
+                  <p class="mt-2 text-muted">No products found</p>
+                </td>
+              </tr>
+            `;
+          }
+        }, 300);
       } else {
-        throw new Error(data.message || 'Delete failed.');
+        throw new Error(data.message || 'Delete failed');
       }
     } catch (err) {
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops!',
-        text: err.message || 'Something went wrong.',
-        confirmButtonColor: '#d33'
-      });
+      console.error('Delete error:', err);
+      
+      // ✅ Show error toast
+      showErrorToast(err.message || 'Failed to delete product');
+      
+      // Re-enable the button
+      btn.disabled = false;
+      btn.innerHTML = '<i class="bi bi-trash"></i>';
     }
   }
 });

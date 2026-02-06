@@ -1,171 +1,3 @@
-<!-- <h1><%= title %></h1> -->
-
-<div class="container my-4">
-
-  <% if (message && message.length > 0) { %>
-    <div class="alert alert-danger" role="alert">
-      <%= message %>
-    </div>
-  <% } %>
-
-  <form id="edit-product-form" novalidate>
-    <!-- Basic Info -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Product Name *</label>
-          <input type="text" name="productName" class="form-control" value="<%= product.productName %>" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Brand *</label>
-          <select name="brand" class="form-select" required>
-            <% brands.forEach(brand => { %>
-              <% if (brand.isCurrentInactive) { %>
-                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= brand.name %> (Currently Blocked)</option>
-              <% } else { %>
-                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %>><%= brand.name %></option>
-              <% } %>
-            <% }) %>
-          </select>
-          <% 
-            if (product.brand && !product.brand.isActive) { 
-          %>
-            <div class="form-text text-warning">
-              <i class="bi bi-exclamation-triangle me-1"></i>
-              The current brand "<%= product.brand.name %>" is blocked. Please select an active brand.
-            </div>
-          <% } %>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Category *</label>
-          <select name="category" class="form-select" required>
-            <% categories.forEach(cat => { %>
-              <% if (cat.isCurrentInactive) { %>
-                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= cat.name %> (Currently Blocked)</option>
-              <% } else { %>
-                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
-              <% } %>
-            <% }) %>
-          </select>
-          <% if (product.category && !product.category.isActive) { %>
-            <div class="form-text text-warning">
-              <i class="bi bi-exclamation-triangle me-1"></i>
-              The current category "<%= product.category.name %>" is blocked. Please select an active category.
-            </div>
-          <% } %>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Features *</label>
-          <input type="text" name="features" class="form-control" value="<%= product.features %>" required>
-        </div>
-      </div>
-    </div>
-
-    <!-- Pricing -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-cash-coin me-2"></i>Pricing & Offers</h5>
-      <div class="row">
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Regular Price *</label>
-          <input type="number" name="regularPrice" class="form-control" value="<%= product.regularPrice %>" required>
-        </div>
-        <div class="col-md-6 mb-3">
-          <label class="form-label">Product Offer (%)</label>
-          <input type="number" name="productOffer" class="form-control" value="<%= product.productOffer %>">
-        </div>
-      </div>
-    </div>
-
-        <!-- Active Offers -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-tags me-2"></i>Active Offers</h5>
-      <div id="active-offers-container">
-        <div class="alert alert-info small" role="alert">
-          <i class="bi bi-info-circle me-2"></i>
-          Active offers will be displayed here based on your selected brand and category. These offers will be automatically applied to the product's final pricing.
-        </div>
-        <div id="offers-display" class="d-flex flex-wrap gap-2">
-          <!-- Offers will be dynamically populated here -->
-        </div>
-      </div>
-    </div>
-
-
-
-    <!-- Product Variants -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
-      <div class="alert alert-info small" role="alert">
-        <ul class="mb-0 ps-3">
-          <li>📏 Edit different sizes with individual base prices and variant-specific offers</li>
-          <li>✅ At least <strong>one variant</strong> is required</li>
-          <li>🇬🇧 Use UK size format (e.g., "UK 6", "UK 7", etc.)</li>
-          <li>💰 Base Price: The intended selling price for each variant</li>
-          <li>🎯 Variant Specific Offer: Optional discount percentage (0-100%) applied to base price</li>
-          <li>📊 Final Price: Automatically calculated as Base Price - Variant Specific Offer</li>
-          <li>➕ Click "Add Variant" to add more sizes</li>
-        </ul>
-      </div>
-
-      <div id="variants-container">
-        <!-- Variants will be dynamically added here -->
-      </div>
-
-      <button type="button" id="add-variant-btn" class="btn btn-outline-dark">
-        <i class="bi bi-plus-lg me-2"></i>Add Variant
-      </button>
-    </div>
-
-    <!-- Description -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-card-text me-2"></i>Product Details</h5>
-      <div class="mb-3">
-        <label class="form-label">Description *</label>
-        <textarea name="description" class="form-control" rows="4" required><%= product.description %></textarea>
-      </div>
-    </div>
-
-    <!-- Images -->
-    <div class="border rounded p-4 mb-4 bg-light-subtle">
-      <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
-      <div class="alert alert-info small" role="alert">
-        <ul class="mb-0 ps-3">
-          <li>⭐ Click the star icon to set a main image (currently handled by upload order)</li>
-          <li>📥 Upload at least <strong>3 images</strong></li>
-          <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
-        </ul>
-      </div>
-      <div class="mb-3">
-        <label class="form-label">Product Images (Min: 3, Max: 6)</label>
-
-        <!-- Bulk upload button -->
-        <div class="mb-3">
-          <button type="button" id="bulk-upload-btn" class="btn btn-outline-dark">
-            <i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)
-          </button>
-          <small class="text-muted ms-2">Select multiple images at once, or use the '+' placeholders below for individual uploads</small>
-        </div>
-
-        <!-- Hidden file inputs -->
-        <input type="file" id="image-input" accept="image/*" class="d-none">
-        <input type="file" id="bulk-input" accept="image/*" multiple class="d-none">
-        <input type="hidden" name="mainImageIndex" id="mainImageIndex">
-
-        <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
-      </div>
-    </div>
-
-    <!-- Submit -->
-    <div class="d-flex justify-content-end gap-2">
-      <a href="/admin/products" class="btn btn-outline-secondary">Cancel</a>
-      <button type="submit" class="btn btn-dark">
-        <i class="bi bi-save me-1"></i> Save Changes
-      </button>
-    </div>
-  </form>
-</div>
-
 <style>
   .image-wrapper {
     position: relative;
@@ -586,6 +418,176 @@
   }
 </style>
 
+<!-- <h1><%= title %></h1> -->
+
+<div class="container my-4">
+
+  <% if (message && message.length > 0) { %>
+    <div class="alert alert-danger" role="alert">
+      <%= message %> 
+    </div>
+  <% } %>
+
+  <form id="edit-product-form" novalidate>
+    <!-- Basic Info -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-info-circle me-2"></i>Basic Information</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Name *</label>
+          <input type="text" name="productName" class="form-control" value="<%= product.productName %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Brand *</label>
+          <select name="brand" class="form-select" required>
+            <% brands.forEach(brand => { %>
+              <% if (brand.isCurrentInactive) { %>
+                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= brand.name %> (Currently Blocked)</option>
+              <% } else { %>
+                <option value="<%= brand._id %>" <%= product.brand && product.brand._id && product.brand._id.toString() === brand._id.toString() ? 'selected' : '' %>><%= brand.name %></option>
+              <% } %>
+            <% }) %>
+          </select>
+          <% 
+            if (product.brand && !product.brand.isActive) { 
+          %>
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              The current brand "<%= product.brand.name %>" is blocked. Please select an active brand.
+            </div>
+          <% } %>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Category *</label>
+          <select name="category" class="form-select" required>
+            <% categories.forEach(cat => { %>
+              <% if (cat.isCurrentInactive) { %>
+                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %> style="color: #dc3545; font-style: italic;"><%= cat.name %> (Currently Blocked)</option>
+              <% } else { %>
+                <option value="<%= cat._id %>" <%= product.category._id.toString() === cat._id.toString() ? 'selected' : '' %>><%= cat.name %></option>
+              <% } %>
+            <% }) %>
+          </select>
+          <% if (product.category && !product.category.isActive) { %>
+            <div class="form-text text-warning">
+              <i class="bi bi-exclamation-triangle me-1"></i>
+              The current category "<%= product.category.name %>" is blocked. Please select an active category.
+            </div>
+          <% } %>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Features *</label>
+          <input type="text" name="features" class="form-control" value="<%= product.features %>" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pricing -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-cash-coin me-2"></i>Pricing & Offers</h5>
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Regular Price *</label>
+          <input type="number" name="regularPrice" class="form-control" value="<%= product.regularPrice %>" required>
+        </div>
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Product Offer (%)</label>
+          <input type="number" name="productOffer" class="form-control" value="<%= product.productOffer %>">
+        </div>
+      </div>
+    </div>
+
+        <!-- Active Offers -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-tags me-2"></i>Active Offers</h5>
+      <div id="active-offers-container">
+        <div class="alert alert-info small" role="alert">
+          <i class="bi bi-info-circle me-2"></i>
+          Active offers will be displayed here based on your selected brand and category. These offers will be automatically applied to the product's final pricing.
+        </div>
+        <div id="offers-display" class="d-flex flex-wrap gap-2">
+          <!-- Offers will be dynamically populated here -->
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- Product Variants -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-grid-3x3-gap me-2"></i>Product Variants <small class="text-muted">(UK Shoe Sizes)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>📏 Edit different sizes with individual base prices and variant-specific offers</li>
+          <li>✅ At least <strong>one variant</strong> is required</li>
+          <li>🇬🇧 Use UK size format (e.g., "UK 6", "UK 7", etc.)</li>
+          <li>💰 Base Price: The intended selling price for each variant</li>
+          <li>🎯 Variant Specific Offer: Optional discount percentage (0-100%) applied to base price</li>
+          <li>📊 Final Price: Automatically calculated as Base Price - Variant Specific Offer</li>
+          <li>➕ Click "Add Variant" to add more sizes</li>
+        </ul>
+      </div>
+
+      <div id="variants-container">
+        <!-- Variants will be dynamically added here -->
+      </div>
+
+      <button type="button" id="add-variant-btn" class="btn btn-outline-dark">
+        <i class="bi bi-plus-lg me-2"></i>Add Variant
+      </button>
+    </div>
+
+    <!-- Description -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-card-text me-2"></i>Product Details</h5>
+      <div class="mb-3">
+        <label class="form-label">Description *</label>
+        <textarea name="description" class="form-control" rows="4" required><%= product.description %></textarea>
+      </div>
+    </div>
+
+    <!-- Images -->
+    <div class="border rounded p-4 mb-4 bg-light-subtle">
+      <h5 class="fw-semibold mb-3"><i class="bi bi-images me-2"></i>Product Images <small class="text-muted">(Minimum 3 required)</small></h5>
+      <div class="alert alert-info small" role="alert">
+        <ul class="mb-0 ps-3">
+          <li>⭐ Click the star icon to set a main image (currently handled by upload order)</li>
+          <li>📥 Upload at least <strong>3 images</strong></li>
+          <li>📐 Images will be <strong>cropped & resized</strong> automatically</li>
+        </ul>
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Product Images (Min: 3, Max: 6)</label>
+
+        <!-- Bulk upload button -->
+        <div class="mb-3">
+          <button type="button" id="bulk-upload-btn" class="btn btn-outline-dark">
+            <i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)
+          </button>
+          <small class="text-muted ms-2">Select multiple images at once, or use the '+' placeholders below for individual uploads</small>
+        </div>
+
+        <!-- Hidden file inputs -->
+        <input type="file" id="image-input" accept="image/*" class="d-none">
+        <input type="file" id="bulk-input" accept="image/*" multiple class="d-none">
+        <input type="hidden" name="mainImageIndex" id="mainImageIndex">
+
+        <div id="image-preview-container" class="d-flex flex-wrap gap-3 mt-3"></div>
+      </div>
+    </div>
+
+    <!-- Submit -->
+    <div class="d-flex justify-content-end gap-2">
+      <a href="/admin/products" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-dark">
+        <i class="bi bi-save me-1"></i> Save Changes
+      </button>
+    </div>
+  </form>
+</div>
+
+
+
 <script src="/js/validation.js"></script>
 <script src="/utils/imageValidation.js"></script>
 <script>
@@ -602,20 +604,55 @@
 
   let filesToCrop = [];
   let currentFileIndex = 0;
-  let currentUploadSlot = -1; // Track which slot is being uploaded to
-  let isProcessingBulk = false; // Track bulk upload state
+  let currentUploadSlot = -1;
+  let isProcessingBulk = false;
   const MAX_IMAGES = 6;
   const MIN_IMAGES = 3;
 
   // Track original images for cleanup
   let originalImages = [];
-  let imageUrlToBase64Map = new Map(); // Map original URLs to their base64 equivalents
+  let imageUrlToBase64Map = new Map();
 
   // Variants management
   let variants = [];
   let variantCounter = 0;
   const variantsContainer = document.getElementById('variants-container');
   const addVariantBtn = document.getElementById('add-variant-btn');
+
+  // ============================================
+  // 🔔 TOAST HELPER FUNCTIONS
+  // ============================================
+  function showSuccessToast(message) {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'success',
+      title: message,
+      showConfirmButton: false,
+      timer: 3000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
+  }
+
+  function showErrorToast(message) {
+    Swal.fire({
+      toast: true,
+      position: 'top-end',
+      icon: 'error',
+      title: message,
+      showConfirmButton: false,
+      timer: 4000,
+      timerProgressBar: true,
+      didOpen: (toast) => {
+        toast.addEventListener('mouseenter', Swal.stopTimer);
+        toast.addEventListener('mouseleave', Swal.resumeTimer);
+      }
+    });
+  }
 
   // Validation error display functions
   function showValidationErrors(errors) {
@@ -648,7 +685,6 @@
     container.id = 'validation-errors';
     container.style.marginBottom = '1rem';
 
-    // Insert before the image preview container
     const imageContainer = document.getElementById('image-preview-container');
     imageContainer.parentNode.insertBefore(container, imageContainer);
 
@@ -660,7 +696,6 @@
   const existingSubs = <%- JSON.stringify(product.subImages) %>;
   const preloadedImages = [existingMain, ...existingSubs];
 
-  // Store original images for cleanup tracking
   originalImages = [...preloadedImages];
 
   preloadedImages.forEach((url, index) => {
@@ -670,50 +705,41 @@
         const reader = new FileReader();
         reader.onload = () => {
           base64Images.push(reader.result);
-          // Map the original URL to its base64 equivalent
           imageUrlToBase64Map.set(url, reader.result);
-          renderThumbnails(); // This will render with crop button too
+          renderThumbnails();
           if (index === 0) {
             mainIndexInput.value = 0;
           }
         };
         reader.readAsDataURL(blob);
       });
-});
+  });
 
-  // Individual upload handler (enhanced)
+  // Individual upload handler
   input.addEventListener('change', (e) => {
-    const file = e.target.files[0]; // Single file selection
+    const file = e.target.files[0];
 
     if (!file) return;
 
-    // Check maximum images limit
     if (base64Images.length >= MAX_IMAGES) {
       showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
       e.target.value = '';
       return;
     }
 
-    // Validate the selected file
     const validation = ImageValidator.validateImageFile(file);
 
     if (!validation.isValid) {
-      // Show validation errors
       showValidationErrors([`${file.name}: ${validation.message}`]);
-      // Clear the input
       e.target.value = '';
       return;
     }
 
-    // Clear any previous validation errors
     clearValidationErrors();
 
-    // Process single file - ONLY OPENS CROPPER, DOES NOT SUBMIT
     const reader = new FileReader();
     reader.onload = () => {
       showCropModal(reader.result, () => {
-        // Image processing is handled by the crop save handler
-        // Just clean up after cropping is complete
         e.target.value = '';
         currentUploadSlot = -1;
       });
@@ -721,13 +747,11 @@
     reader.readAsDataURL(file);
   });
 
-  // Function to trigger file selection for a specific slot
   function selectImageForSlot(slotIndex = -1) {
     currentUploadSlot = slotIndex;
     input.click();
   }
 
-  // Bulk upload button event listener
   bulkUploadBtn.addEventListener('click', () => {
     if (isProcessingBulk) {
       showValidationErrors(['Please wait for the current upload to complete.']);
@@ -736,13 +760,11 @@
     bulkInput.click();
   });
 
-  // Bulk input change handler
   bulkInput.addEventListener('change', (e) => {
     const files = Array.from(e.target.files);
 
     if (!files.length) return;
 
-    // Check if adding these files would exceed maximum
     let filesToProcess = files;
     if (base64Images.length + files.length > MAX_IMAGES) {
       const availableSlots = MAX_IMAGES - base64Images.length;
@@ -756,11 +778,9 @@
       showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed. Only the first ${availableSlots} images have been selected.`]);
     }
 
-    // Validate all selected files
     const validation = ImageValidator.validateMultipleImageFiles(filesToProcess);
 
     if (!validation.isValid) {
-      // Show validation errors but continue with valid files if any
       showValidationErrors(validation.errors);
       if (validation.validFiles.length === 0) {
         e.target.value = '';
@@ -768,18 +788,13 @@
       }
       filesToProcess = validation.validFiles;
     } else {
-      // Clear any previous validation errors
       clearValidationErrors();
     }
 
-    // Start bulk processing - ONLY OPENS CROPPERS, DOES NOT SUBMIT
     processBulkUpload(filesToProcess);
-
-    // Clear the input for next use
     e.target.value = '';
   });
 
-  // Bulk upload processing function
   function processBulkUpload(files) {
     if (files.length === 0) return;
 
@@ -787,17 +802,14 @@
     filesToCrop = files;
     currentFileIndex = 0;
 
-    // Update button state
     bulkUploadBtn.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Processing...';
     bulkUploadBtn.disabled = true;
 
-    // Start processing first image
     cropNextBulkImage();
   }
 
   function cropNextBulkImage() {
     if (currentFileIndex >= filesToCrop.length) {
-      // Bulk processing complete
       isProcessingBulk = false;
       bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
       bulkUploadBtn.disabled = false;
@@ -811,7 +823,7 @@
     reader.onload = () => {
       showCropModal(reader.result, () => {
         currentFileIndex++;
-        cropNextBulkImage(); // Process next image
+        cropNextBulkImage();
       });
     };
     reader.readAsDataURL(file);
@@ -831,47 +843,30 @@
   }
 
   function handleCropCancel() {
-    // Clean up cropper instance
     if (cropper) {
       cropper.destroy();
       cropper = null;
     }
 
-    // Reset file input
     input.value = '';
-
-    // Reset current upload slot
     currentUploadSlot = -1;
 
-    // Handle bulk upload cancellation
     if (isProcessingBulk) {
       isProcessingBulk = false;
       bulkUploadBtn.innerHTML = '<i class="bi bi-images me-2"></i>Choose Files (Bulk Upload)';
       bulkUploadBtn.disabled = false;
       filesToCrop = [];
       currentFileIndex = 0;
-      bulkInput.value = ''; // Clear bulk input as well
+      bulkInput.value = '';
     }
 
-    // Clear any validation errors that might be showing
     clearValidationErrors();
   }
 
-  /**
-   * Shows the image cropping modal with enhanced user workflow
-   * This function ensures that:
-   * 1. The modal opens with the image ready for cropping
-   * 2. NO AUTOMATIC SUBMISSION occurs - user must explicitly click "Crop & Add"
-   * 3. Proper cleanup happens on cancel or completion
-   * 4. Clear feedback is provided to the user
-   * 5. NO SWEETALERT OR FORM SUBMISSION until user clicks main form submit
-   */
   function showCropModal(imageSrc, onCropDone) {
-    // Remove any existing modal to prevent conflicts
     const existing = document.getElementById('cropModal');
     if (existing) existing.remove();
 
-    // Create the cropping modal with clear action buttons
     const modalHtml = `
       <div class="modal fade" id="cropModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog modal-dialog-centered cropper-modal-custom">
@@ -902,27 +897,23 @@
       </div>
     `;
 
-    // Add modal to DOM
     document.body.insertAdjacentHTML('beforeend', modalHtml);
     const modalEl = document.getElementById('cropModal');
     const cropModal = new bootstrap.Modal(modalEl, {
-      backdrop: 'static', // Prevent closing by clicking outside
-      keyboard: false     // Prevent closing with ESC key
+      backdrop: 'static',
+      keyboard: false
     });
     
-    // Show the modal
     cropModal.show();
 
     const imageEl = document.getElementById('crop-image');
     
-    // Initialize cropper when image loads
     imageEl.onload = () => {
-      // Initialize the cropper with optimal settings
       cropper = new Cropper(imageEl, {
-        aspectRatio: NaN, // Allow free aspect ratio
-        viewMode: 1,      // Restrict crop box to not exceed canvas
-        dragMode: 'move', // Allow dragging the image
-        autoCropArea: 0.6, // Initial crop area size
+        aspectRatio: NaN,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.6,
         restore: false,
         guides: true,
         center: true,
@@ -947,58 +938,46 @@
         zoomOnWheel: true,
         wheelZoomRatio: 0.1,
         ready: function () {
-          // Optimize initial display when cropper is ready
           this.cropper.reset();
           const containerData = this.cropper.getContainerData();
           const imageData = this.cropper.getImageData();
 
-          // Calculate optimal scale to fit image in container
           const scaleX = containerData.width / imageData.naturalWidth;
           const scaleY = containerData.height / imageData.naturalHeight;
-          const scale = Math.min(scaleX, scaleY) * 0.8; // Leave some padding
+          const scale = Math.min(scaleX, scaleY) * 0.8;
 
-          // Center and scale the image optimally
           this.cropper.zoomTo(scale);
           this.cropper.center();
         }
       });
     };
 
-    // Handle explicit cancel button click
     const cancelBtn = modalEl.querySelector('#crop-cancel');
     cancelBtn.onclick = (e) => {
       e.preventDefault();
-      // Mark as cancelled and handle cleanup
       modalEl.classList.add('crop-cancelled');
       handleCropCancel();
       cropModal.hide();
     };
 
-    // Handle modal hidden event for cleanup
     modalEl.addEventListener('hidden.bs.modal', (e) => {
-      // Only run cancel cleanup if not already handled and not completed
       if (!e.target.classList.contains('crop-completed') && !e.target.classList.contains('crop-cancelled')) {
         handleCropCancel();
       }
 
-      // Clean up modal and backdrop
       modalEl.remove();
       const backdrop = document.querySelector('.modal-backdrop');
       if (backdrop) backdrop.remove();
     });
 
-    // Handle explicit "Crop & Add" button click - ONLY ACTION THAT SAVES THE IMAGE
-    // THIS DOES NOT SUBMIT THE FORM OR SHOW SWEETALERT
     const cropSaveBtn = modalEl.querySelector('#crop-save');
     cropSaveBtn.onclick = (e) => {
       e.preventDefault();
       
-      // Disable button to prevent double-clicking
       cropSaveBtn.disabled = true;
       cropSaveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Processing...';
 
       try {
-        // Generate the cropped image
         const croppedCanvas = cropper.getCroppedCanvas({
           width: 800,
           height: 800,
@@ -1008,44 +987,34 @@
 
         const croppedImageData = croppedCanvas.toDataURL('image/jpeg', 0.9);
 
-        // Save the cropped image to the appropriate slot - NO FORM SUBMISSION
         if (currentUploadSlot >= 0 && currentUploadSlot < base64Images.length) {
-          // Replace existing image (re-cropping scenario)
           base64Images[currentUploadSlot] = croppedImageData;
         } else {
-          // Add new image
           base64Images.push(croppedImageData);
         }
 
-        // Update the thumbnail display - NO FORM SUBMISSION
         renderThumbnails();
 
-        // Mark as completed to avoid cancel cleanup
         modalEl.classList.add('crop-completed');
         
-        // Hide the modal
         cropModal.hide();
 
-        // Handle post-hide cleanup and callback
         modalEl.addEventListener('hidden.bs.modal', () => {
           modalEl.remove();
           const backdrop = document.querySelector('.modal-backdrop');
           if (backdrop) backdrop.remove();
 
-          // Execute the completion callback if provided - NO FORM SUBMISSION
           if (typeof onCropDone === 'function') {
             onCropDone();
           }
-        }, { once: true }); // Use once to prevent multiple executions
+        }, { once: true });
 
       } catch (error) {
         console.error('Error during image cropping:', error);
         
-        // Re-enable button on error
         cropSaveBtn.disabled = false;
         cropSaveBtn.innerHTML = '<i class="bi bi-check-lg me-1"></i>Crop & Add';
         
-        // Show error message
         showValidationErrors(['Failed to process the cropped image. Please try again.']);
       }
     };
@@ -1054,13 +1023,11 @@
   function renderThumbnails() {
     container.innerHTML = '';
 
-    // Render existing images
     base64Images.forEach((img, index) => {
       const wrapper = document.createElement('div');
       wrapper.classList.add('image-wrapper');
       if (parseInt(mainIndexInput.value) === index) wrapper.classList.add('main');
 
-      // FIXED: Added type="button" to all buttons to prevent form submission
       wrapper.innerHTML = `
         <img src="${img}" />
         <button type="button" class="btn-remove" onclick="removeImage(${index})">×</button>
@@ -1070,20 +1037,16 @@
       container.appendChild(wrapper);
     });
 
-    // Add placeholders based on current state
     const currentImageCount = base64Images.length;
 
     if (currentImageCount < MIN_IMAGES) {
-      // Show placeholders to reach minimum requirement
       const placeholdersNeeded = MIN_IMAGES - currentImageCount;
       for (let i = 0; i < placeholdersNeeded; i++) {
         addPlaceholder();
       }
     } else if (currentImageCount >= MIN_IMAGES && currentImageCount < MAX_IMAGES) {
-      // After minimum met: show 1 additional placeholder
       addPlaceholder();
     }
-    // If currentImageCount >= MAX_IMAGES, show no placeholders
   }
 
   function addPlaceholder() {
@@ -1096,13 +1059,12 @@
       </div>
     `;
 
-    // Add click handler to trigger file selection
     placeholder.addEventListener('click', () => {
       if (base64Images.length >= MAX_IMAGES) {
         showValidationErrors([`Maximum of ${MAX_IMAGES} images allowed per product`]);
         return;
       }
-      selectImageForSlot(-1); // -1 indicates new image, not replacement
+      selectImageForSlot(-1);
     });
 
     container.appendChild(placeholder);
@@ -1116,48 +1078,30 @@
   function removeImage(index) {
     if (index < 0 || index >= base64Images.length) return;
 
-    // Remove from base64Images array
     base64Images.splice(index, 1);
 
-    // Reset main image index if the removed image was the main image
     if (mainIndexInput.value == index) {
       mainIndexInput.value = '';
     } else if (mainIndexInput.value > index) {
-      // Adjust main image index if it's after the removed image
       mainIndexInput.value = parseInt(mainIndexInput.value) - 1;
     }
 
     renderThumbnails();
   }
 
-  /**
-   * Initiates re-cropping workflow for an existing image
-   * This function:
-   * 1. Opens the cropper modal with the existing image
-   * 2. Allows user to adjust the crop area
-   * 3. Only saves the new crop when user explicitly clicks "Crop & Add"
-   * 4. Does NOT automatically submit or show alerts
-   */
   function recropImage(index) {
     if (index < 0 || index >= base64Images.length) return;
 
-    // Set the current upload slot to the index being re-cropped
     currentUploadSlot = index;
 
-    // Open crop modal with the existing image for re-cropping
-    // The modal will handle all user interactions and only save on explicit confirmation
     showCropModal(base64Images[index], () => {
-      // Reset upload slot after re-cropping is complete
       currentUploadSlot = -1;
-      
-      // Optional: Show a subtle success indicator (not a SweetAlert)
       console.log('Image re-cropped successfully');
     });
   }
 
   // ========= VARIANTS MANAGEMENT FUNCTIONS =========
 
-  // Preview calculation for final price (backend will be the source of truth)
   function previewFinalPrice(variantId) {
     const variantElement = document.querySelector(`[data-variant-id="${variantId}"]`);
     if (!variantElement) return;
@@ -1171,18 +1115,15 @@
     const productOffer = parseFloat(document.querySelector('input[name="productOffer"]').value) || 0;
     const maxOffer = Math.max(productOffer, variantOffer);
 
-    // Validate base price against regular price
     const regularPriceField = document.querySelector('input[name="regularPrice"]');
     const regularPrice = regularPriceField ? parseFloat(regularPriceField.value) || 0 : 0;
 
     if (basePrice > 0) {
-      // Check if base price exceeds regular price
       if (regularPrice > 0 && basePrice >= regularPrice) {
         finalPriceInput.value = 'Invalid';
-        finalPriceInput.style.color = '#dc3545'; // Red to indicate error
+        finalPriceInput.style.color = '#dc3545';
         finalPriceInput.title = `Base price must be less than regular price (₹${Math.round(regularPrice)})`;
 
-        // Trigger validation if validator is available
         if (typeof editProductValidator !== 'undefined') {
           const result = editProductValidator.validateVariantBasePrice(basePriceInput);
           if (!result.isValid) {
@@ -1193,17 +1134,15 @@
         const previewPrice = basePrice * (1 - maxOffer / 100);
         finalPriceInput.value = previewPrice.toFixed(2);
 
-        // Check if this is a stored value or preview
         const isStoredValue = finalPriceInput.dataset.isStored === 'true';
         if (isStoredValue) {
-          finalPriceInput.style.color = '#198754'; // Green for stored values
+          finalPriceInput.style.color = '#198754';
           finalPriceInput.title = 'Stored final price from database';
         } else {
-          finalPriceInput.style.color = '#6c757d'; // Gray for preview
+          finalPriceInput.style.color = '#6c757d';
           finalPriceInput.title = 'Preview - Final price will be calculated on save';
         }
 
-        // Clear any validation errors
         if (typeof editProductValidator !== 'undefined') {
           editProductValidator.clearFieldError(basePriceInput);
         }
@@ -1261,7 +1200,6 @@
     variants.push({ id: variantId, size, stock, basePrice, variantSpecificOffer, finalPrice });
     updateVariantNumbers();
 
-    // Add validation to the new base price field
     setTimeout(() => {
       const newBasePriceField = document.querySelector(`[data-variant-id="${variantId}"] .variant-base-price`);
       if (newBasePriceField && editProductValidator) {
@@ -1279,7 +1217,6 @@
         });
       }
 
-      // Calculate initial preview for final price if not stored
       if (!isStored) {
         previewFinalPrice(variantId);
       }
@@ -1363,7 +1300,6 @@
     return { isValid: errors.length === 0, errors };
   }
 
-  // Add variant button event listener
   addVariantBtn.addEventListener('click', () => {
     addVariant();
   });
@@ -1381,28 +1317,23 @@
     input.value = '';
   }
 
-  // NOTE: NO AUTOMATIC FORM SUBMISSION EVENT LISTENER
-  // Base64 images are attached manually in the submitForm function only
-  // This prevents automatic form submission during cropping operations
-
   // Initialize form validation
   const editProductValidator = new FormValidator('edit-product-form');
 
-  // Add custom validation for variant base prices
   editProductValidator.addCustomValidation('.variant-base-price', (field) => {
     return editProductValidator.validateVariantBasePrice(field);
   });
 
-  // Add validation when regular price changes
   const regularPriceField = document.querySelector('input[name="regularPrice"]');
   if (regularPriceField) {
     regularPriceField.addEventListener('blur', () => {
-      // Re-validate all variant base prices when regular price changes
       editProductValidator.validateAllVariantBasePrices();
     });
   }
 
-  // Override submit function with validation
+  // ============================================
+  // ✅ FORM SUBMISSION WITH IMMEDIATE REDIRECT
+  // ============================================
   editProductValidator.submitForm = async function() {
     const form = document.getElementById('edit-product-form');
     const formData = new FormData(form);
@@ -1442,7 +1373,7 @@
       return;
     }
 
-    // ONLY HERE: Attach base64 images manually when form is actually being submitted
+    // Attach base64 images
     base64Images.forEach((b64, i) => {
       formData.append('base64Images[]', b64);
     });
@@ -1464,30 +1395,25 @@
 
       const data = await res.json();
       if (res.ok && data.success) {
-        await Swal.fire({
-          icon: 'success',
-          title: 'Product Edited Successfully!',
-          text: 'Your product changes were saved.',
-          confirmButtonColor: '#111'
-        });
-        window.location.href = '/admin/products';
+        // ✅ Store success flag in sessionStorage
+        sessionStorage.setItem('productUpdateSuccess', 'true');
+        
+        // ✅ Redirect immediately (no delay or toast here)
+        window.location.href = `/admin/products/${productId}`;
       } else {
         throw new Error(data.message || 'Failed to update');
       }
     } catch (err) {
       console.error('Form submission error:', err);
       console.error('Variants data that was sent:', getVariantsData());
-      Swal.fire({
-        icon: 'error',
-        title: 'Oops!',
-        text: err.message || 'An error occurred while saving the product',
-        confirmButtonColor: '#d33'
-      });
+      
+      // ✅ Show error toast (only on error)
+      showErrorToast(err.message || 'Failed to save product');
     }
   };
+
   // ========= ACTIVE OFFERS FUNCTIONALITY =========
   
-  // Function to fetch and display active offers
   async function updateActiveOffers() {
     const brandSelect = document.querySelector('select[name="brand"]');
     const categorySelect = document.querySelector('select[name="category"]');
@@ -1500,7 +1426,6 @@
     const categoryId = categorySelect.value;
     const productOffer = parseFloat(productOfferInput?.value) || 0;
     
-    // Clear current offers display
     offersDisplay.innerHTML = '';
     
     if (!brandId && !categoryId && productOffer === 0) {
@@ -1509,7 +1434,6 @@
     }
     
     try {
-      // Fetch brand and category data to get offers
       const promises = [];
       
       if (brandId) {
@@ -1528,7 +1452,6 @@
       
       const offers = [];
       
-      // Add brand offer if exists
       if (brandData?.brand?.brandOffer && brandData.brand.brandOffer > 0) {
         offers.push({
           type: 'brand',
@@ -1539,7 +1462,6 @@
         });
       }
       
-      // Add category offer if exists
       if (categoryData?.category?.categoryOffer && categoryData.category.categoryOffer > 0) {
         offers.push({
           type: 'category',
@@ -1550,7 +1472,6 @@
         });
       }
       
-      // Add product offer if exists
       if (productOffer > 0) {
         offers.push({
           type: 'product',
@@ -1561,7 +1482,6 @@
         });
       }
       
-      // Display offers
       if (offers.length === 0) {
         offersDisplay.innerHTML = '<span class="text-muted small">No active offers</span>';
       } else {
@@ -1574,7 +1494,6 @@
         
         offersDisplay.innerHTML = offersHtml;
         
-        // Show highest offer info
         const maxOffer = Math.max(...offers.map(o => o.value));
         const maxOfferType = offers.find(o => o.value === maxOffer);
         
@@ -1596,7 +1515,6 @@
     }
   }
   
-  // Add event listeners for brand and category changes
   document.addEventListener('DOMContentLoaded', function() {
     const brandSelect = document.querySelector('select[name="brand"]');
     const categorySelect = document.querySelector('select[name="category"]');
@@ -1615,11 +1533,9 @@
       productOfferInput.addEventListener('change', updateActiveOffers);
     }
     
-    // Initial load
     updateActiveOffers();
   });
   
-  // Debounce function to limit API calls
   function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -1632,17 +1548,13 @@
     };
   }
 
-
-
-  // Initialize the interface with placeholders on page load
+  // Initialize the interface
   document.addEventListener('DOMContentLoaded', function() {
     renderThumbnails();
 
-    // Load existing variants or add default ones
     const existingVariants = <%- JSON.stringify(product.variants || []) %>;
     if (existingVariants && existingVariants.length > 0) {
       existingVariants.forEach(variant => {
-        // Use actual basePrice from database, fallback to regularPrice only if truly missing
         const basePrice = variant.basePrice || <%= product.regularPrice %>;
         const productOffer = <%= product.productOffer || 0 %>;
         const variantSpecificOffer = variant.variantSpecificOffer || 0;
@@ -1652,7 +1564,6 @@
         addVariant(variant.size, variant.stock, Math.round(basePrice).toString(), variantSpecificOffer.toString(), finalPrice.toFixed(2), isStored);
       });
     } else {
-      // Add default variants if none exist
       const defaultSizes = ['UK 6', 'UK 7', 'UK 8', 'UK 9', 'UK 10'];
       const defaultStocks = [10, 15, 20, 12, 8];
       defaultSizes.forEach((size, index) => {
@@ -1660,5 +1571,4 @@
       });
     }
   });
-
 </script>

@@ -1,0 +1,907 @@
+<style>
+/* ============================================
+   PRODUCT DETAIL PAGE STYLES
+   ============================================ */
+.product-detail-container {
+  padding: 2rem 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* Page Header */
+.detail-page-header {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header-left h1 {
+  color: white;
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.header-left p {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0.5rem 0 0 0;
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.btn-back, .btn-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-back {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-back:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.btn-edit {
+  background-color: #ef4444;
+  color: white;
+}
+
+.btn-edit:hover {
+  background-color: #dc2626;
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* Top Section - Images & Info Side by Side */
+.product-top-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Section 1: Image Carousel */
+.images-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.carousel-container {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f9fafb;
+}
+
+.carousel-inner img {
+  width: 100%;
+  height: 500px;
+  object-fit: contain;
+  background: white;
+}
+
+.carousel-control-prev,
+.carousel-control-next {
+  width: 50px;
+  height: 50px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.carousel-control-prev {
+  left: 1rem;
+}
+
+.carousel-control-next {
+  right: 1rem;
+}
+
+.carousel-control-prev:hover,
+.carousel-control-next:hover {
+  background: rgba(0, 0, 0, 0.7);
+}
+
+/* ============================================
+   ✅ SLIDE COUNTER (TOP RIGHT)
+   ============================================ */
+.slide-counter {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 10;
+}
+
+/* ============================================
+   ✅ THUMBNAIL GALLERY (BELOW CAROUSEL)
+   ============================================ */
+.thumbnail-gallery {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.thumbnail-item {
+  width: 100px;
+  height: 100px;
+  border: 3px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.thumbnail-item:hover {
+  border-color: #9ca3af;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.thumbnail-item.active {
+  border-color: #ef4444;
+  border-width: 3px;
+  box-shadow: 0 0 0 1px #ef4444;
+}
+
+.thumbnail-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 0.25rem;
+}
+
+/* Section 2: Product Info */
+.info-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+.info-group {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.info-group:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.info-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.info-value {
+  font-size: 1.125rem;
+  color: #111827;
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.info-value.large {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ef4444;
+}
+
+.badge-brand, .badge-category {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.badge-brand {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.badge-category {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.offer-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+/* ============================================
+   ACTIVE OFFERS LIST STYLES
+   ============================================ */
+.active-offers-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  margin-bottom: 2rem;
+}
+
+.applied-offer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: white;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.other-offers-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: 1rem;
+}
+
+.other-offers-list li {
+  padding: 0.5rem 0;
+  color: #374151;
+  font-size: 1rem;
+  line-height: 1.6;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.other-offers-list li:before {
+  content: "•";
+  color: #6b7280;
+  font-weight: bold;
+  font-size: 1.25rem;
+  line-height: 1.6;
+}
+
+/* ✅ Offer type badge styling */
+.offer-type {
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 0.875rem;
+  margin-left: 0.25rem;
+}
+
+.applied-offer-badge .offer-type {
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.no-offers-message {
+  color: #6b7280;
+  font-style: italic;
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.description-text {
+  color: #374151;
+  line-height: 1.8;
+  font-size: 1rem;
+}
+
+/* Section 3: Variants Table */
+.variants-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.variants-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 1rem;
+}
+
+.variants-table thead th {
+  background-color: #f3f4f6;
+  color: #374151;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+  letter-spacing: 0.5px;
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 2px solid #e9ecef;
+}
+
+.variants-table thead th:first-child {
+  border-top-left-radius: 8px;
+}
+
+.variants-table thead th:last-child {
+  border-top-right-radius: 8px;
+}
+
+.variants-table tbody td {
+  padding: 1.25rem 1rem;
+  border-bottom: 1px solid #f1f3f4;
+  vertical-align: middle;
+  color: #374151;
+  font-size: 1rem;
+}
+
+.variants-table tbody tr {
+  transition: all 0.2s ease;
+}
+
+.variants-table tbody tr:hover {
+  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.variants-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.price-cell {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #111827;
+}
+
+.offer-cell {
+  font-weight: 600;
+  color: #ef4444;
+  font-size: 1.125rem;
+}
+
+.final-price-cell {
+  font-weight: 700;
+  font-size: 1.25rem;
+  color: #10b981;
+}
+
+/* ✅ Applied Offer Cell (NEW) */
+.applied-offer-cell {
+  font-weight: 700;
+  font-size: 1.125rem;
+  color: #ef4444;
+}
+
+.applied-offer-type {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 600;
+  display: block;
+  margin-top: 0.25rem;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.status-active {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-inactive {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Responsive Design */
+@media (max-width: 992px) {
+  .product-top-section {
+    grid-template-columns: 1fr;
+  }
+
+  .carousel-inner img {
+    height: 400px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    width: 100%;
+  }
+
+  .btn-back, .btn-edit {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .carousel-inner img {
+    height: 300px;
+  }
+
+  .thumbnail-item {
+    width: 80px;
+    height: 80px;
+  }
+
+  .variants-table {
+    font-size: 0.875rem;
+  }
+
+  .variants-table thead th,
+  .variants-table tbody td {
+    padding: 0.75rem 0.5rem;
+  }
+}
+</style>
+
+<div class="product-detail-container">
+  <!-- Breadcrumbs -->
+  <%- include('./partials/breadcrumbs', {
+    breadcrumbs: [
+      { label: 'Dashboard', url: '/admin/dashboard', icon: 'house-door' },
+      { label: 'Products', url: '/admin/products', icon: 'box-seam' },
+      { label: product.productName }
+    ] 
+  }) %>
+
+  <!-- Page Header -->
+  <div class="detail-page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <h1><%= product.productName %></h1>
+      </div>
+      <div class="header-actions">
+        <a href="/admin/products" class="btn-back">
+          <i class="bi bi-arrow-left"></i>
+          <span>Back to List</span>
+        </a>
+        <a href="/admin/products/<%= product._id %>/edit" class="btn-edit">
+          <i class="bi bi-pencil-square"></i>
+          <span>Edit Product</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Section: Images + Info -->
+  <div class="product-top-section">
+    <!-- Section 1: Image Carousel (LEFT) -->
+    <div class="images-section">
+      <h2 class="section-title">
+        <i class="bi bi-images"></i>
+        Product Images
+      </h2>
+      
+      <!-- Main Carousel -->
+      <div id="productCarousel" class="carousel slide carousel-container">
+        
+        <!-- Slides -->
+        <div class="carousel-inner">
+          <% allImages.forEach((image, index) => { %>
+            <div class="carousel-item <%= index === 0 ? 'active' : '' %>">
+              <img src="<%= image %>" class="d-block w-100" alt="<%= product.productName %> - Image <%= index + 1 %>">
+            </div>
+          <% }) %>
+        </div>
+
+        <!-- ✅ Slide Counter (Bottom Right) -->
+        <% if (allImages.length > 1) { %>
+          <div class="slide-counter" id="slideCounter">
+            <span id="currentSlide">1</span> / <span id="totalSlides"><%= allImages.length %></span>
+          </div>
+
+          <!-- Controls -->
+          <button class="carousel-control-prev" type="button" data-bs-target="#productCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Previous</span>
+          </button>
+          <button class="carousel-control-next" type="button" data-bs-target="#productCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+            <span class="visually-hidden">Next</span>
+          </button>
+        <% } %>
+      </div>
+
+      <!-- ✅ Thumbnail Gallery (Below Carousel) -->
+      <% if (allImages.length > 1) { %>
+        <div class="thumbnail-gallery" id="thumbnailGallery">
+          <% allImages.forEach((image, index) => { %>
+            <div class="thumbnail-item <%= index === 0 ? 'active' : '' %>" 
+                 data-slide-to="<%= index %>"
+                 data-bs-target="#productCarousel"
+                 data-bs-slide-to="<%= index %>">
+              <img src="<%= image %>" alt="Thumbnail <%= index + 1 %>">
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+
+    <!-- Section 2: Product Info (RIGHT) -->
+    <div class="info-section">
+      <h2 class="section-title">
+        Product Information
+      </h2>
+
+      <div class="info-group">
+        <div class="info-label">
+          Product Name
+        </div>
+        <div class="info-value large">
+          <%= product.productName %>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          Description
+        </div>
+        <div class="info-value description-text">
+          <%= product.description %>
+        </div>
+      </div>
+
+      <!-- active badge -->
+      <div class="info-group">
+        <div class="info-label">
+          Status
+        </div>
+        <div class="info-value">
+          <span class="status-badge <%= product.isListed ? 'status-active' : 'status-inactive' %>">
+            <i class="bi <%= product.isListed ? 'bi-check-circle-fill' : 'bi-x-circle-fill' %>"></i>
+            <%= product.isListed ? 'Active' : 'Inactive' %>
+          </span>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          Brand
+        </div>
+        <div class="info-value">
+          <span class="badge-brand">
+            <%= product.brand?.name || 'N/A' %>
+          </span>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          Category
+        </div>
+        <div class="info-value">
+          <span class="badge-category">
+            <i class="bi bi-folder"></i>
+            <%= product.category?.name || 'N/A' %>
+          </span>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          Features
+        </div>
+        <div class="info-value">
+          <%= product.features %>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          Regular Price
+        </div>
+        <div class="info-value large">
+          ₹<%= Math.round(product.regularPrice) %>
+        </div>
+      </div>
+
+      <div class="info-group">
+        <div class="info-label">
+          <i class="bi bi-percent"></i>
+          Product Offer
+        </div>
+        <div class="info-value">
+          <% if (product.productOffer > 0) { %>
+            <span class="offer-badge">
+              <%= product.productOffer %>% OFF
+            </span>
+          <% } else { %>
+            <span style="color: #6b7280;">No offer applied</span>
+          <% } %>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+
+  <!-- ============================================ -->
+  <!-- ✅ SECTION: ACTIVE OFFERS (WITH TYPE)       -->
+  <!-- ============================================ -->
+  <% if (activeOffers && activeOffers.length > 0) { %>
+    <div class="active-offers-section">
+      <h2 class="section-title">
+        <i class="bi bi-tags-fill"></i>
+        Active Offers
+      </h2>
+      
+      <!-- Highest offer (Applied) with type -->
+      <div>
+        <span class="applied-offer-badge">
+          <i class="bi bi-check-circle-fill"></i>
+          Applied: <%= activeOffers[0].label %> <span class="offer-type">(<%= activeOffers[0].type %> Offer)</span>
+        </span>
+      </div>
+      
+      <!-- Other offers (if any) with type -->
+      <% if (activeOffers.length > 1) { %>
+        <ul class="other-offers-list">
+          <% for (let i = 1; i < activeOffers.length; i++) { %>
+            <li><%= activeOffers[i].label %> <span class="offer-type">(<%= activeOffers[i].type %> Offer)</span></li>
+          <% } %>
+        </ul>
+      <% } %>
+    </div>
+  <% } else { %>
+    <div class="active-offers-section">
+      <h2 class="section-title">
+        <i class="bi bi-tags-fill"></i>
+        Active Offers
+      </h2>
+      <div class="no-offers-message">
+        <i class="bi bi-info-circle me-2"></i>
+        No active offers available for this product
+      </div>
+    </div>
+  <% } %>
+
+  <!-- Section 3: Variants Table (BELOW) -->
+  <div class="variants-section">
+    <h2 class="section-title">
+      <i class="bi bi-grid-3x3-gap"></i>
+      Product Variants
+    </h2>
+
+    <% if (product.variants && product.variants.length > 0) { %>
+      <table class="variants-table">
+        <thead>
+          <tr>
+            <th>SIZE</th>
+            <th>STOCK</th>
+            <th>BASE PRICE (₹)</th>
+            <th>VARIANT OFFER (%)</th>
+            <th>APPLIED OFFER</th>
+            <th>FINAL PRICE (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% product.variants.forEach(variant => { %>
+            <tr>
+              <td style="font-weight: 700; font-size: 1rem; color: #111827;">
+                <%= variant.size %>
+              </td>
+              
+              <td style="font-weight: 600; font-size: 1rem; color: <%= variant.stock > 10 ? '#065f46' : variant.stock > 0 ? '#92400e' : '#991b1b' %>;">
+                <%= variant.stock %> units
+              </td>
+              
+              <td class="price-cell">
+                ₹<%= Math.round(variant.basePrice) %>
+              </td>
+              
+              <td class="offer-cell">
+                <%= variant.variantSpecificOffer || 0 %>%
+              </td>
+              
+              <!-- ✅ NEW: Applied Offer Column -->
+              <td class="applied-offer-cell">
+                <%= variant.appliedOffer || 0 %>%
+                <span class="applied-offer-type">(<%= variant.offerSource %> Offer)</span>
+              </td>
+              
+              <td class="final-price-cell">
+                ₹<%= Math.round(variant.calculatedFinalPrice || variant.finalPrice || variant.basePrice) %>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } else { %>
+      <div class="text-center py-5">
+        <i class="bi bi-inbox" style="font-size: 3rem; color: #e5e7eb;"></i>
+        <p class="mt-2 text-muted">No variants available</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<script>
+// ============================================
+// 🔔 SWEETALERT TOAST HELPER FUNCTION
+// ============================================
+function showSuccessToast(message) {
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: message,
+    showConfirmButton: false,
+    timer: 3000,
+    timerProgressBar: true,
+    didOpen: (toast) => {
+      toast.addEventListener('mouseenter', Swal.stopTimer);
+      toast.addEventListener('mouseleave', Swal.resumeTimer);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  // ============================================
+  // ✅ CHECK FOR SUCCESS MESSAGE FROM EDIT PAGE
+  // ============================================
+  const updateSuccess = sessionStorage.getItem('productUpdateSuccess');
+  if (updateSuccess === 'true') {
+    // Clear the flag immediately
+    sessionStorage.removeItem('productUpdateSuccess');
+    
+    // Show success toast
+    showSuccessToast('Product updated successfully!');
+  }
+
+  // ============================================
+  // 🎨 CAROUSEL INITIALIZATION
+  // ============================================
+  const carouselElement = document.getElementById('productCarousel');
+  
+  if (!carouselElement) {
+    console.error('❌ Carousel element not found');
+    return;
+  }
+
+  const carouselItems = carouselElement.querySelectorAll('.carousel-item');
+  
+  if (carouselItems.length <= 1) {
+    console.log('ℹ️ Only one image - carousel not needed');
+    return;
+  }
+
+  try {
+    // Initialize Bootstrap 5 carousel
+    const carousel = new bootstrap.Carousel(carouselElement, {
+      interval: 5000,
+      wrap: true,
+      keyboard: true,
+      pause: 'hover',
+      touch: true
+    });
+    
+    console.log('✅ Carousel initialized');
+
+    // ============================================
+    // ✅ THUMBNAIL CLICK HANDLERS
+    // ============================================
+    const thumbnails = document.querySelectorAll('.thumbnail-item');
+    const currentSlideEl = document.getElementById('currentSlide');
+    
+    thumbnails.forEach((thumbnail, index) => {
+      thumbnail.addEventListener('click', function() {
+        // Navigate to the clicked slide
+        carousel.to(index);
+        
+        // Update active thumbnail
+        updateActiveThumbnail(index);
+        
+        // Update counter
+        if (currentSlideEl) {
+          currentSlideEl.textContent = index + 1;
+        }
+      });
+    });
+
+    // ============================================
+    // ✅ SYNC THUMBNAILS WITH CAROUSEL SLIDE EVENT
+    // ============================================
+    carouselElement.addEventListener('slide.bs.carousel', function(event) {
+      const slideIndex = event.to; // Index of the slide being navigated to
+      
+      // Update active thumbnail
+      updateActiveThumbnail(slideIndex);
+      
+      // Update counter
+      if (currentSlideEl) {
+        currentSlideEl.textContent = slideIndex + 1;
+      }
+    });
+
+    // ============================================
+    // ✅ UPDATE ACTIVE THUMBNAIL HELPER
+    // ============================================
+    function updateActiveThumbnail(activeIndex) {
+      thumbnails.forEach((thumb, idx) => {
+        if (idx === activeIndex) {
+          thumb.classList.add('active');
+        } else {
+          thumb.classList.remove('active');
+        }
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Carousel initialization error:', error);
+  }
+});
+</script>

@@ -1,6 +1,6 @@
 /* ========= SMOKED CONCRETE PALETTE ========= */
 :root {
-  --color-bg-main: #f2f2f2;
+  --color-bg-main: #fdf8f3;  /* ✅ Changed from #f2f2f2 to match admin pages */
   --color-card: #F2F2F2;
   --color-text-primary: #1A1A1A;
   --color-text-secondary: #555555;
@@ -48,7 +48,6 @@ h1, h2, h3, h4 {
   transform: scale(1.015);
   box-shadow: 0 0 8px rgba(255, 59, 48, 0.4);
 }
-
 
 .btn-primary-custom:active {
   transform: scale(0.97);
@@ -475,7 +474,6 @@ a:hover {
   color: #ccc;
   padding-bottom: 3rem; /* ✅ add this for spacing below the footer */
 }
-
 
 .footer-black a,
 .footer-black .nav-link,

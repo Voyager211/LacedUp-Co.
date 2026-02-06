@@ -53,7 +53,119 @@ const listProducts = async (req, res) => {
       error: 'Failed to load products'
     });
   }
+}; 
+
+// Render product detail page
+const renderDetailPage = async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id)
+      .populate('category')
+      .populate('brand');
+    
+    if (!product || product.isDeleted) {
+      return res.status(404).render('error', { 
+        message: 'Product not found',
+        title: 'Error'
+      });
+    }
+
+    // ============================================
+    // ✅ CALCULATE FINAL PRICES WITH ALL OFFERS
+    // ============================================
+    
+    // Helper function to calculate variant final price
+    const calculateVariantFinalPrice = (variant, product) => {
+      const basePrice = variant.basePrice || 0;
+      
+      // Get all applicable offers
+      const productOffer = product.productOffer || 0;
+      const brandOffer = product.brand?.brandOffer || 0;
+      const categoryOffer = product.category?.categoryOffer || 0;
+      const variantOffer = variant.variantSpecificOffer || 0;
+      
+      // Find the maximum offer
+      const maxOffer = Math.max(productOffer, brandOffer, categoryOffer, variantOffer);
+      
+      // Calculate final price
+      const finalPrice = basePrice * (1 - maxOffer / 100);
+      
+      return {
+        finalPrice: finalPrice,
+        appliedOffer: maxOffer,
+        offerSource: maxOffer === brandOffer ? 'Brand' 
+                   : maxOffer === categoryOffer ? 'Category' 
+                   : maxOffer === variantOffer ? 'Variant' 
+                   : maxOffer === productOffer ? 'Product' 
+                   : 'None'
+      };
+    };
+
+    // Calculate final prices for all variants
+    const variantsWithCalculatedPrices = product.variants.map(variant => {
+      const priceInfo = calculateVariantFinalPrice(variant, product);
+      return {
+        ...variant.toObject(),
+        calculatedFinalPrice: priceInfo.finalPrice,
+        appliedOffer: priceInfo.appliedOffer,
+        offerSource: priceInfo.offerSource
+      };
+    });
+
+    // ============================================
+    // ✅ COLLECT ACTIVE OFFERS FOR DISPLAY
+    // ============================================
+    const activeOffers = [];
+    
+    if (product.brand?.brandOffer && product.brand.brandOffer > 0) {
+      activeOffers.push({
+        type: 'Brand',
+        name: product.brand.name,
+        value: product.brand.brandOffer,
+        label: `${product.brand.brandOffer}% off on all ${product.brand.name} products`
+      });
+    }
+    
+    if (product.category?.categoryOffer && product.category.categoryOffer > 0) {
+      activeOffers.push({
+        type: 'Category',
+        name: product.category.name,
+        value: product.category.categoryOffer,
+        label: `${product.category.categoryOffer}% off on all ${product.category.name}`
+      });
+    }
+    
+    if (product.productOffer && product.productOffer > 0) {
+      activeOffers.push({
+        type: 'Product',
+        name: 'This Product',
+        value: product.productOffer,
+        label: `${product.productOffer}% off on this product`
+      });
+    }
+    
+    // Sort offers by value (highest first)
+    activeOffers.sort((a, b) => b.value - a.value);
+
+    // Combine all images for carousel
+    const allImages = [product.mainImage, ...product.subImages];
+
+    res.render('admin/product-detail', {
+      title: `Product Details - ${product.productName}`,
+      product: {
+        ...product.toObject(),
+        variants: variantsWithCalculatedPrices
+      },
+      allImages,
+      activeOffers  // ✅ Pass active offers to view
+    });
+  } catch (err) {
+    console.error('Render Detail Error:', err);
+    res.status(500).send("Error rendering product detail page");
+  }
 };
+
+
+
 
 // Render add product page
 const renderAddPage = async (req, res) => {
@@ -307,7 +419,7 @@ const apiProducts = async (req, res) => {
       limit
     );
     
-    res.json({ 
+    res.json({  
       products, 
       totalPages, 
       currentPage: page, 
@@ -551,8 +663,10 @@ const apiUpdateProduct = async (req, res) => {
   }
 };
 
+
 module.exports = {
   listProducts,
+  renderDetailPage,
   renderAddPage,
   apiSubmitNewProduct,
   softDeleteProduct,
