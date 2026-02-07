@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    console.log('Adding to cart:', { productId, variantId, quantity: 1 });
+    
 
     try {
       const response = await fetch('/cart/add', {

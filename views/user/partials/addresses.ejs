@@ -685,15 +685,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         const isCheckout = isOnCheckoutPage();
         
-        console.log(isCheckout ? '✅ ADDRESSES PARTIAL: On checkout page - initializing states only' : '✅ ADDRESSES PARTIAL: On address book page - full initialization');
+       
         
         // Initialize state/district data (works on both pages)
-        console.log(`✅ ADDRESSES PARTIAL: Loaded ${Object.keys(stateDistrictData).length} states from constants`);
+        
         initializeStateDistrict();
 
         // EARLY EXIT for checkout: Skip form handlers (checkout has its own)
         if (isCheckout) {
-            console.log('🚫 ADDRESSES PARTIAL: Skipping address book form handlers on checkout');
+            
             return;
         }
 
@@ -766,7 +766,7 @@
         if (stateSelect) {
             stateSelect.addEventListener('change', function() {
                 const selectedState = this.value;
-                console.log(`🔄 ADDRESSES PARTIAL: State changed to: ${selectedState}`);
+                
                 updateDistricts(selectedState);
                 
                 const districtField = validationFields.find(f => f.id === 'district');
@@ -787,7 +787,7 @@
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 
-                console.log('📝 ADDRESSES PARTIAL: Form submitted - starting validation...');
+                
 
 
                 let isFormValid = true;
@@ -802,27 +802,25 @@
                         if (!firstInvalidField) {
                             firstInvalidField = field;
                         }
-                        console.log(`❌ ADDRESSES PARTIAL: Field ${field.id} failed validation`);
-                    } else {
-                        console.log(`✅ ADDRESSES PARTIAL: Field ${field.id} passed validation`);
+                    
                     }
                 });
 
 
                 if (!isFormValid) {
-                    console.log('❌ ADDRESSES PARTIAL: Frontend validation failed');
+                    
                     if (firstInvalidField) {
                         const firstInvalidInput = document.getElementById(firstInvalidField.id);
                         if (firstInvalidInput) {
                             firstInvalidInput.focus();
-                            console.log(`🎯 ADDRESSES PARTIAL: Focused on field: ${firstInvalidField.id}`);
+                            
                         }
                     }
                     return;
                 }
 
 
-                console.log('✅ ADDRESSES PARTIAL: Frontend validation passed - proceeding to backend...');
+                
 
 
                 // Get form data
@@ -858,7 +856,7 @@
                 const method = isEdit ? 'PUT' : 'POST';
 
 
-                console.log('🚀 ADDRESSES PARTIAL: Sending to backend:', url, method);
+               
 
 
                 // Backend submission
@@ -871,9 +869,9 @@
                 })
                 .then(response => response.json())
                 .then(data => {
-                    console.log('📥 ADDRESSES PARTIAL: Backend response:', data);
+                   
                     if (data && data.success) {
-                        console.log('✅ ADDRESSES PARTIAL: Address saved successfully');
+                        
                         
                         // Show success and redirect to addresses page
                         showSweetAlert(data.message || 'Address saved successfully', 'success');
@@ -894,10 +892,10 @@
                         }, 1500);
                         
                     } else if (data && data.message) {
-                        console.log('❌ ADDRESSES PARTIAL: Backend validation failed');
+                       
                         showSweetAlert(data.message, 'error');
                     } else {
-                        console.log('❌ ADDRESSES PARTIAL: Unknown error');
+                       
                         showSweetAlert('An unexpected error occurred. Please try again.', 'error');
                     }
                 })
@@ -921,7 +919,7 @@
         if (addressModal) {
             addressModal.addEventListener('shown.bs.modal', function() {
                 // Re-initialize states when modal opens
-                console.log('🔄 ADDRESSES PARTIAL: Re-initializing states on modal open');
+                
                 initializeStateDistrict();
             });
         }

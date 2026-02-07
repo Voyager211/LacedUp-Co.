@@ -751,15 +751,10 @@
 
 
 <script>
-  // ✅ Initialize global variables for the common module
+  // Initialize global variables for the common module
   window.cancellationReasons = <%- JSON.stringify(cancellationReasons) %>;
   window.returnReasons = <%- JSON.stringify(returnReasons) %>;
 
-  // ✅ DEBUG: Log what we received
-  console.log('Raw cancellation reasons from server:', <%- JSON.stringify(cancellationReasons) %>);
-  console.log('Processed cancellation reasons:', window.cancellationReasons);
-  console.log('Type of cancellation reasons:', typeof window.cancellationReasons);
-  console.log('Is cancellation reasons array:', Array.isArray(window.cancellationReasons));
 </script>
 
 

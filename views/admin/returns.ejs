@@ -1145,9 +1145,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const menu = dropdown.querySelector('.dropdown-menu');
     
     if (button && menu) {
-      // ✅ Handle dropdown show event
+      // Handle dropdown show event
       button.addEventListener('show.bs.dropdown', function() {
-        console.log('🔍 Dropdown showing...');
+       
         
         // Boost z-index when showing
         dropdown.style.zIndex = '9999';
@@ -1162,9 +1162,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
       
-      // ✅ Handle dropdown hide event  
+      // Handle dropdown hide event  
       button.addEventListener('hide.bs.dropdown', function() {
-        console.log('🔍 Dropdown hiding...');
+        
         
         const parentRow = button.closest('tr');
         if (parentRow) {
@@ -1176,9 +1176,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       });
       
-      // ✅ Handle dropdown shown event
+      // Handle dropdown shown event
       button.addEventListener('shown.bs.dropdown', function() {
-        console.log('✅ Dropdown shown successfully');
+        
         
         // Force display and positioning
         menu.style.display = 'block';
@@ -1187,38 +1187,24 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Check if menu is visible
         const rect = menu.getBoundingClientRect();
-        console.log('🔍 Dropdown menu position:', {
-          top: rect.top,
-          left: rect.left,
-          width: rect.width,
-          height: rect.height,
-          visible: rect.width > 0 && rect.height > 0
-        });
+        
       });
     }
   });
   
-  // ✅ Debug: Click handler to test dropdown
+  // Click handler to test dropdown
   document.addEventListener('click', function(e) {
     if (e.target.closest('.action-btn')) {
-      console.log('🔍 Action button clicked');
+     
       const button = e.target.closest('.action-btn');
       const dropdown = button.closest('.dropdown');
       const menu = dropdown?.querySelector('.dropdown-menu');
-      
-      if (menu) {
-        console.log('🔍 Dropdown menu found:', {
-          display: getComputedStyle(menu).display,
-          visibility: getComputedStyle(menu).visibility,
-          zIndex: getComputedStyle(menu).zIndex,
-          position: getComputedStyle(menu).position
-        });
-      }
+
     }
   });
 });
 
-// ✅ Additional fix for Bootstrap 5 dropdown issues
+// Additional fix for Bootstrap 5 dropdown issues
 document.addEventListener('DOMContentLoaded', function() {
   // Ensure Bootstrap dropdowns are properly initialized
   const dropdownElementList = [].slice.call(document.querySelectorAll('[data-bs-toggle="dropdown"]'));
@@ -1226,7 +1212,6 @@ document.addEventListener('DOMContentLoaded', function() {
     return new bootstrap.Dropdown(dropdownToggleEl);
   });
   
-  console.log('✅ Initialized', dropdownList.length, 'dropdowns');
 });
 </script>
 

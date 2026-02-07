@@ -538,7 +538,7 @@ function updatePagination(pagination) {
 
     // Filter sidebar toggle functionality - simple static behavior
     function showFilters() {
-      console.log('Showing filters');
+      
 
       // Show sidebar instantly
       filterSidebar.style.display = 'block';
@@ -552,7 +552,7 @@ function updatePagination(pagination) {
     }
 
     function hideFilters() {
-      console.log('Hiding filters');
+     
 
       // Hide sidebar instantly
       filterSidebar.style.display = 'none';
@@ -620,10 +620,9 @@ function updatePagination(pagination) {
 
     // Show suggestions dropdown
     function showSuggestions() {
-      console.log('🔽 Showing suggestions dropdown');
+      
       searchSuggestions.classList.add('show');
-      console.log('🔽 Dropdown classes:', searchSuggestions.className);
-      console.log('🔽 Dropdown computed style:', window.getComputedStyle(searchSuggestions).display);
+      
     }
 
     // Hide suggestions dropdown
@@ -634,7 +633,7 @@ function updatePagination(pagination) {
 
     // Fetch search suggestions
     async function fetchSuggestions(query) {
-      console.log('🔍 Fetching suggestions for:', query);
+     
 
       if (!query || query.length < 2) {
         hideSuggestions();
@@ -648,7 +647,7 @@ function updatePagination(pagination) {
       showSuggestions();
 
       try {
-        console.log('📡 Making API call to:', `/api/search-suggestions?q=${encodeURIComponent(query)}`);
+        
         const response = await fetch(`/api/search-suggestions?q=${encodeURIComponent(query)}`);
 
         if (!response.ok) {
@@ -656,15 +655,15 @@ function updatePagination(pagination) {
         }
 
         const data = await response.json();
-        console.log('📦 API response:', data);
+        
 
         suggestionsLoading.style.display = 'none';
 
         if (data.success && data.suggestions && data.suggestions.length > 0) {
-          console.log('✅ Rendering suggestions:', data.suggestions.length);
+          
           renderSuggestions(data.suggestions);
         } else {
-          console.log('❌ No suggestions found');
+          
           suggestionsEmpty.style.display = 'block';
         }
       } catch (error) {
@@ -676,7 +675,7 @@ function updatePagination(pagination) {
 
     // Render suggestions in dropdown - SIMPLIFIED VERSION (only product names)
     function renderSuggestions(suggestions) {
-      console.log('🎨 Rendering suggestions:', suggestions);
+     
 
       suggestionsList.innerHTML = suggestions.map((product, index) => `
         <div class="suggestion-item" data-index="${index}" data-name="${product.productName}">
@@ -684,12 +683,12 @@ function updatePagination(pagination) {
         </div>
       `).join('');
 
-      console.log('✅ Suggestions HTML rendered, adding click listeners...');
+      
 
       // Add click listeners to suggestions
       suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
         item.addEventListener('click', () => {
-          console.log('🖱️ Suggestion clicked:', item.dataset.name);
+          
           const productName = item.dataset.name;
           topSearchInput.value = productName;
           performSearch();
@@ -1371,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <% } %>
 
       // User authenticated - redirect to product details for size selection
-      console.log('Redirecting to product details for size selection:', productId);
+     
 
       // Find the product card to get the slug
       const productCard = button.closest('.product-card');

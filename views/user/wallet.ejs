@@ -568,9 +568,7 @@
     Promise.all([
       loadPayPalSDK().catch(console.error),
       loadRazorpaySDK().catch(console.error)
-    ]).then(() => {
-      console.log('✅ Payment SDKs loaded successfully');
-    });
+    ]);
   });
 
 
@@ -843,7 +841,7 @@
     
     try {
       if (typeof Razorpay === 'undefined') {
-        console.log('⚠️ Razorpay SDK not loaded, attempting to load...');
+       
         await loadRazorpaySDK();
       }
 
@@ -876,7 +874,7 @@
         description: `Add ₹${amount} to wallet`,
         order_id: data.razorpayOrderId,
         handler: function(response) {
-          console.log('✅ UPI wallet top-up payment successful:', response);
+         
           verifyUPIWalletTopUp({
             razorpayPaymentId: response.razorpay_payment_id,
             razorpayOrderId: response.razorpay_order_id,
@@ -894,7 +892,7 @@
         },
         modal: {
           ondismiss: function() {
-            console.log('⚠️ UPI wallet top-up payment dismissed');
+           
             showAlert('info', 'Payment Cancelled', 'You cancelled the payment. Please try again.');
           }
         }

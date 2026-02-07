@@ -285,7 +285,7 @@ document.getElementById('retry-payment-btn').addEventListener('click', async fun
       },
       modal: {
         ondismiss: async function() {
-          console.log('User closed Razorpay modal during retry payment');
+         
           
           try {
             // ✅ CORRECTED: Use retry-payment-failure endpoint for retries

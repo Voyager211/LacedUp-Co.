@@ -1037,8 +1037,6 @@ table tbody td:nth-child(8) {
             console.error('Chart.js is not loaded! Please add Chart.js CDN to your layout.');
             return;
         }
-
-        console.log('✅ Chart.js loaded successfully');
         
         // Set current date
         updateCurrentDate();
@@ -1076,7 +1074,6 @@ table tbody td:nth-child(8) {
     if (salesPeriodSelect) {
         salesPeriodSelect.addEventListener('change', function(e) {
             currentPeriod = e.target.value;
-            console.log('📊 Period changed to:', currentPeriod);
             
             // Reload ALL dashboard data with new period
             loadAllDashboardData(currentPeriod);
@@ -1179,7 +1176,6 @@ table tbody td:nth-child(8) {
                     targetContent.classList.add('active');
                 }
                 
-                console.log(`✅ Switched to ${targetTab} tab`);
             });
         });
     }
@@ -1197,7 +1193,6 @@ table tbody td:nth-child(8) {
     // ============================================
     async function loadAllDashboardData(period = 'monthly') {
         try {
-            console.log('🔄 Loading all dashboard data for period:', period);
             
             // Load all dashboard data in parallel
             await Promise.all([
@@ -1209,7 +1204,6 @@ table tbody td:nth-child(8) {
                 loadBestSellingBrands(period)       // ✅ UPDATED
             ]);
             
-            console.log('✅ Dashboard data loaded successfully');
         } catch (error) {
             console.error('❌ Error loading dashboard data:', error);
             showErrorMessage('Failed to load dashboard data');
@@ -1230,7 +1224,6 @@ table tbody td:nth-child(8) {
                 document.getElementById('totalOrders').textContent = data.data.totalOrders.toLocaleString();
                 document.getElementById('totalRevenue').textContent = '₹' + data.data.totalRevenue.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                 document.getElementById('pendingOrders').textContent = data.data.pendingOrders.toLocaleString();
-                console.log('✅ Stats loaded for', period);
             }
         } catch (error) {
             console.error('❌ Error loading dashboard stats:', error);
@@ -1247,7 +1240,7 @@ table tbody td:nth-child(8) {
             
             if (data.success) {
                 updateDynamicSalesChart(data.data.labels, data.data.salesData);
-                console.log('✅ Sales chart loaded for', period);
+               
             }
         } catch (error) {
             console.error('❌ Error loading sales chart:', error);
@@ -1391,7 +1384,7 @@ table tbody td:nth-child(8) {
             }
         });
 
-        console.log('✅ Sales chart rendered with', salesData.length, 'data points');
+        
     }
 
     // ============================================
@@ -1454,7 +1447,7 @@ table tbody td:nth-child(8) {
                 });
 
                 updateRevenueLegend(data.data, colors);
-                console.log('✅ Revenue chart loaded for', period);
+           
             } else {
                 // Show default chart if no data
                 revenueChart = new Chart(ctx, {
@@ -1535,7 +1528,7 @@ table tbody td:nth-child(8) {
                     `;
                     container.appendChild(productElement);
                 });
-                console.log('✅ Top 10 Products loaded for', period);
+
             } else {
                 container.innerHTML = `
                     <div class="no-data">
@@ -1628,7 +1621,7 @@ table tbody td:nth-child(8) {
                     `;
                     container.appendChild(categoryElement);
                 });
-                console.log('✅ Top 10 Categories loaded for', period);
+                
             } else {
                 container.innerHTML = `
                     <div class="no-data">
@@ -1683,7 +1676,7 @@ table tbody td:nth-child(8) {
                         </div>
                     </div>
                 `;
-                console.log('✅ Category loaded for', period);
+         
             } else {
                 container.innerHTML = `
                     <div class="no-data">
@@ -1753,7 +1746,7 @@ table tbody td:nth-child(8) {
                     `;
                     container.appendChild(brandElement);
                 });
-                console.log('✅ Top 10 Brands loaded for', period);
+           
             } else {
                 container.innerHTML = `
                     <div class="no-data">
@@ -1833,7 +1826,7 @@ table tbody td:nth-child(8) {
                     document.body.removeChild(link);
                     window.URL.revokeObjectURL(blobUrl);
                     
-                    console.log('✅ PDF downloaded successfully:', filename);
+              
                 } else {
                     throw new Error(`HTTP Error: ${xhr.status}`);
                 }

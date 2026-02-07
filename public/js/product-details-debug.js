@@ -1,20 +1,19 @@
 // Debug version for SKU-based cart system
 
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('Product details debug script loaded');
-  console.log('Product variants:', window.productVariants);
+
   
   // Check if size buttons exist
   const sizeButtons = document.querySelectorAll('.size-btn');
-  console.log('Size buttons found:', sizeButtons.length);
+ 
   
   // Check if add to cart button exists
   const addToCartBtn = document.querySelector('.add-to-cart-btn');
-  console.log('Add to cart button found:', !!addToCartBtn);
+
   
   // Override the existing addToCart function
   window.addToCart = async function(productId, variant) {
-    console.log('addToCart called with:', { productId, variant });
+    
     
     if (!variant) {
       console.error('No variant provided');
@@ -32,14 +31,14 @@ document.addEventListener('DOMContentLoaded', function() {
       if (button.classList.contains('active')) {
         activeButton = button;
         const variantIndex = parseInt(button.dataset.variantIndex);
-        console.log('Active button variant index:', variantIndex);
+       
         
         const productVariants = window.productVariants || [];
-        console.log('Available variants:', productVariants);
+       
         
         if (productVariants[variantIndex]) {
           variantId = productVariants[variantIndex]._id;
-          console.log('Found variant ID:', variantId);
+         
         }
       }
     });
@@ -52,11 +51,7 @@ document.addEventListener('DOMContentLoaded', function() {
       return;
     }
 
-    console.log('Sending request to /cart/add with:', {
-      productId: productId,
-      variantId: variantId,
-      quantity: 1
-    });
+  
 
     try {
       const response = await fetch('/cart/add', {
@@ -71,9 +66,9 @@ document.addEventListener('DOMContentLoaded', function() {
         })
       });
 
-      console.log('Response status:', response.status);
+      
       const result = await response.json();
-      console.log('Response data:', result);
+      
 
       if (response.ok && result.success) {
         alert('Added to cart successfully!');

@@ -50,15 +50,13 @@ function showReasonSelectionAlert(config) {
   } = config;
 
   // ✅ SIMPLIFIED: Remove frontend validation checks - backend will handle them
-  console.log('📋 Proceeding with', reasonType, 'request for:', { orderId, itemId });
+  
 
   // Select appropriate reasons array
   const reasonsArray = reasonType === 'return' ? returnReasons : cancellationReasons;
   const options = buildSelectOptions(reasonsArray);
 
-  // Debug logging
-  console.log(`🔍 ${title} - Available reasons:`, reasonsArray);
-  console.log(`🔍 ${title} - Built options:`, options);
+ 
 
   // ✅ ENHANCED: Check if we have any reasons available
   if (Object.keys(options).length === 0) {
@@ -95,11 +93,7 @@ function showReasonSelectionAlert(config) {
     cancelButtonText: 'Cancel'
   }).then((result) => {
     if (result.isConfirmed) {
-      // Debug logging
-      console.log(`🔍 ${title} - Selected reason:`, result.value);
-      console.log(`🔍 ${title} - Type of reason:`, typeof result.value);
-      console.log(`🔍 ${title} - API URL:`, apiUrl);
-      console.log(`🔍 ${title} - HTTP Method:`, httpMethod);
+   
 
       // Show loading
       Swal.fire({
@@ -117,7 +111,7 @@ function showReasonSelectionAlert(config) {
         reason: result.value
       };
 
-      console.log(`🔍 ${title} - Request body:`, body);
+     
 
       // Make API request
       fetch(apiUrl, {
@@ -128,14 +122,14 @@ function showReasonSelectionAlert(config) {
         body: JSON.stringify(body)
       })
       .then(response => {
-        console.log(`🔍 ${title} - Server response status:`, response.status);
+        
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         return response.json();
       })
       .then(data => {
-        console.log(`🔍 ${title} - Server response data:`, data);
+       
         
         if (data.success) {
           Swal.fire({
@@ -171,7 +165,7 @@ function showReasonSelectionAlert(config) {
  * @param {function} onSuccess - Success callback function
  */
 window.cancelOrderCommon = function(orderId, onSuccess = null) {
-  console.log('🔄 Cancel Order Common called:', { orderId });
+  
   
   showReasonSelectionAlert({
     title: 'Cancel Entire Order?',
@@ -195,7 +189,7 @@ window.cancelOrderCommon = function(orderId, onSuccess = null) {
  * @param {function} onSuccess - Success callback function
  */
 window.cancelItemCommon = function(orderId, itemId, onSuccess = null) {
-  console.log('🔄 Cancel Item Common called:', { orderId, itemId });
+ 
   
   showReasonSelectionAlert({
     title: 'Cancel Item?',
@@ -220,7 +214,7 @@ window.cancelItemCommon = function(orderId, itemId, onSuccess = null) {
  * @param {function} onSuccess - Success callback function
  */
 window.returnItemCommon = function(orderId, itemId, onSuccess = null) {
-  console.log('🔄 Return Item Common called:', { orderId, itemId });
+  
   
   showReasonSelectionAlert({
     title: 'Return Item?',
@@ -243,7 +237,7 @@ window.returnItemCommon = function(orderId, itemId, onSuccess = null) {
  * @param {function} onSuccess - Success callback function
  */
 window.returnOrderCommon = function(orderId, onSuccess = null) {
-  console.log('🔄 Return Order Common called:', { orderId });
+
   
   showReasonSelectionAlert({
     title: 'Return Entire Order?',
@@ -264,7 +258,7 @@ window.returnOrderCommon = function(orderId, onSuccess = null) {
  * @param {string} orderId - Order ID
  */
 window.downloadInvoiceCommon = function(orderId) {
-  console.log('🔄 Download Invoice called:', { orderId });
+  
   
   Swal.fire({
     title: 'Generating Invoice...',
@@ -321,7 +315,7 @@ window.downloadInvoiceCommon = function(orderId) {
  * @param {string} orderId - Order ID
  */
 window.trackOrderCommon = function(orderId) {
-  console.log('🔄 Track Order called:', { orderId });
+  
   
   Swal.fire({
     icon: 'info',
@@ -330,7 +324,3 @@ window.trackOrderCommon = function(orderId) {
     confirmButtonColor: '#007bff'
   });
 };
-
-console.log('✅ Orders Common JS Module Loaded');
-console.log('✅ Available cancellation reasons:', cancellationReasons);
-console.log('✅ Available return reasons:', returnReasons);

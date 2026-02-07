@@ -1,5 +1,4 @@
 // Cart functionality for LacedUp
-console.log('Cart.js: External script loaded');
 
 // Global cart functions
 let cartToastrConfigured = false;
@@ -37,8 +36,6 @@ function safeToast(type, message) {
     showToast[type](message);
   } else if (typeof toastr !== 'undefined') {
     toastr[type](message);
-  } else {
-    console.log(`${type.toUpperCase()}: ${message}`);
   }
 }
 
@@ -133,7 +130,7 @@ function updateOrderSummary(cartSummary) {
 
 // Update cart item quantity
 async function updateQuantity(productId, variantId, newQuantity) {
-  console.log('updateQuantity called:', { productId, variantId, newQuantity });
+  
 
   if (newQuantity < 1) {
     removeFromCart(productId, variantId);
@@ -245,7 +242,7 @@ async function updateQuantity(productId, variantId, newQuantity) {
 
 // Remove item from cart
 async function removeFromCart(productId, variantId) {
-  console.log('removeFromCart called:', { productId, variantId });
+  
 
   try {
     const response = await fetch('/cart/remove', {
@@ -290,7 +287,7 @@ async function removeFromCart(productId, variantId) {
 
 // Clear entire cart
 async function clearCart() {
-  console.log('clearCart called');
+  
 
   try {
     const response = await fetch('/cart/clear', {
@@ -322,7 +319,7 @@ async function clearCart() {
 // Validate cart stock before operations
 async function validateCartStock() {
   try {
-    console.log('Validating cart stock...');
+  
     const response = await fetch('/cart/validate-stock', {
       method: 'GET',
       headers: {
@@ -330,15 +327,10 @@ async function validateCartStock() {
       }
     });
 
-    console.log('Response status:', response.status);
-    console.log('Response ok:', response.ok);
+    
     
     const result = await response.json();
-    console.log('Full validation response:', result);
-    console.log('Response success:', result.success);
-    console.log('Response allValid:', result.allValid);
-    console.log('Response errorMessage:', result.errorMessage);
-    console.log('Response invalidItems:', result.invalidItems);
+   
     
     return result;
   } catch (error) {
@@ -350,7 +342,7 @@ async function validateCartStock() {
 // Reset cart item quantity to 1
 async function resetCartItemQuantity(productId, variantId) {
   try {
-    console.log('Resetting cart item quantity to 1:', { productId, variantId });
+    
     
     const response = await fetch('/cart/reset-quantity', {
       method: 'POST',
@@ -399,7 +391,7 @@ async function resetCartItemQuantity(productId, variantId) {
 
 // Show stock validation error with SweetAlert
 function showStockValidationError(validation) {
-  console.log('Showing stock validation error:', validation);
+ 
   
   if (typeof Swal !== 'undefined') {
     Swal.fire({
@@ -462,7 +454,7 @@ function showStockValidationError(validation) {
 
 // Proceed to checkout with validation
 async function proceedToCheckout() {
-  console.log('🛒 Enhanced checkout process starting...');
+  
 
   const availableItems = document.querySelectorAll('.cart-item-card:not(.item-out-of-stock)');
   const outOfStockItems = document.querySelectorAll('.cart-item-card.item-out-of-stock');
@@ -530,7 +522,7 @@ async function proceedToCheckout() {
     }
 
     // All validation passed - proceed to checkout
-    console.log('✅ All validations passed, proceeding to checkout');
+    
     window.location.href = '/cart/checkout';
 
   } catch (error) {
@@ -791,7 +783,7 @@ async function validateCartOnLoad() {
     return;
   }
 
-  console.log('Validating cart on page load...');
+  
 
   try {
     const validation = await validateCartStock();
@@ -817,7 +809,8 @@ async function validateCartOnLoad() {
 
 // Remove all out-of-stock items
 async function removeAllOutOfStockItems() {
-  console.log('removeAllOutOfStockItems called');
+  
+
 
   const outOfStockItems = document.querySelectorAll('.cart-item-card.item-out-of-stock');
 
@@ -912,7 +905,8 @@ async function removeAllOutOfStockItems() {
 
 // Save item for later (move from cart to wishlist)
 async function saveForLater(productId, variantId) {
-  console.log('saveForLater called:', { productId, variantId });
+  
+  
 
   try {
     const response = await fetch('/cart/save-for-later', {
@@ -1030,7 +1024,8 @@ function initializeCartPage() {
     return;
   }
 
-  console.log('Cart.js: Initializing cart page functionality...');
+  
+  
   
   configureToastr();
 
@@ -1046,14 +1041,14 @@ function initializeCartPage() {
 
   // Add event listeners to all save for later buttons
   const saveForLaterButtons = document.querySelectorAll('.save-later-btn');
-  console.log('Found save for later buttons:', saveForLaterButtons.length);
+  
   saveForLaterButtons.forEach((button, index) => {
-    console.log(`Attaching event to save for later button ${index + 1}`);
+   
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('Save for later button clicked');
+     
       
       const cartItem = this.closest('.cart-item-card');
       if (!cartItem) {
@@ -1064,7 +1059,7 @@ function initializeCartPage() {
       const productId = cartItem.dataset.productId;
       const variantId = cartItem.dataset.variantId;
       
-      console.log('Saving for later:', { productId, variantId });
+      
       saveForLater(productId, variantId);
       return false;
     });
@@ -1072,14 +1067,14 @@ function initializeCartPage() {
 
   // Add event listeners to all quantity buttons
   const qtyButtons = document.querySelectorAll('.qty-btn');
-  console.log('Found quantity buttons:', qtyButtons.length);
+  
   qtyButtons.forEach((button, index) => {
-    console.log(`Attaching event to qty button ${index + 1}:`, button.className);
+   
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('Quantity button clicked:', this.className);
+     
       
       const cartItem = this.closest('.cart-item-card');
       if (!cartItem) {
@@ -1092,15 +1087,15 @@ function initializeCartPage() {
       const qtyInput = cartItem.querySelector('.qty-input');
       const currentQty = parseInt(qtyInput.value);
       
-      console.log('Cart item data:', { productId, variantId, currentQty });
+     
       
       let newQty;
       if (this.classList.contains('qty-decrease')) {
         newQty = Math.max(1, currentQty - 1);
-        console.log('Decreasing quantity to:', newQty);
+       
       } else if (this.classList.contains('qty-increase')) {
         newQty = Math.min(5, currentQty + 1);
-        console.log('Increasing quantity to:', newQty);
+      
       }
       
       if (newQty && newQty !== currentQty) {
@@ -1113,14 +1108,14 @@ function initializeCartPage() {
 
   // Add event listeners to all remove buttons
   const removeButtons = document.querySelectorAll('.remove-btn');
-  console.log('Found remove buttons:', removeButtons.length);
+ 
   removeButtons.forEach((button, index) => {
-    console.log(`Attaching event to remove button ${index + 1}`);
+    
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
       
-      console.log('Remove button clicked');
+    
       
       const cartItem = this.closest('.cart-item-card');
       if (!cartItem) {
@@ -1131,7 +1126,7 @@ function initializeCartPage() {
       const productId = cartItem.dataset.productId;
       const variantId = cartItem.dataset.variantId;
       
-      console.log('Removing item:', { productId, variantId });
+     
       removeFromCart(productId, variantId);
       return false;
     });
@@ -1140,11 +1135,11 @@ function initializeCartPage() {
   // Add event listener to clear cart button
   const clearCartButton = document.querySelector('.btn-clear-cart');
   if (clearCartButton) {
-    console.log('Found clear cart button');
+    
     clearCartButton.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Clear cart button clicked');
+      
       
       // ✅ Enhanced SweetAlert confirmation with loading states
       if (typeof Swal !== 'undefined') {
@@ -1216,11 +1211,11 @@ function initializeCartPage() {
   // Add event listener to checkout button
   const checkoutButton = document.querySelector('.checkout-btn');
   if (checkoutButton) {
-    console.log('Found checkout button');
+    
     checkoutButton.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Checkout button clicked');
+      
       proceedToCheckout();
       return false;
     });
@@ -1228,19 +1223,19 @@ function initializeCartPage() {
 
   // Add event listener to remove all out of stock button
   const removeOutOfStockButtons = document.querySelectorAll('.remove-all-unavailable-btn');
-  console.log('Found remove out of stock buttons:', removeOutOfStockButtons.length);
+ 
   removeOutOfStockButtons.forEach((button, index) => {
-    console.log(`Attaching event to remove out of stock button ${index + 1}`);
+    
     button.addEventListener('click', function(e) {
       e.preventDefault();
       e.stopPropagation();
-      console.log('Remove out of stock button clicked');
+      
       removeAllOutOfStockItems();
       return false;
     });
   });
 
-  console.log('Cart.js: Cart page initialization complete');
+  
   
   // Validate cart on page load after initialization
   setTimeout(() => {
@@ -1258,16 +1253,16 @@ if (document.readyState === 'loading') {
 
 // Test function for debugging validation
 window.testValidation = async function() {
-  console.log('=== TESTING VALIDATION ===');
+  
   try {
     const validation = await validateCartStock();
-    console.log('Test validation result:', validation);
+    
     
     if (!validation.success || !validation.allValid) {
-      console.log('Validation failed - should show error');
+      
       showStockValidationError(validation);
     } else {
-      console.log('Validation passed - no errors');
+      
       alert('Validation passed - no stock issues found');
     }
     
@@ -1285,4 +1280,3 @@ window.proceedToCheckout = proceedToCheckout;
 window.removeAllOutOfStockItems = removeAllOutOfStockItems;
 window.validateCartStock = validateCartStock;
 
-console.log('Cart.js: External script initialization complete');

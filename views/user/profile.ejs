@@ -1303,7 +1303,7 @@ async function submitEmailUpdate() {
     });
     
     const result = await response.json();
-    console.log('Server response:', result);
+   
     
     // Reset button state first
     emailButton.disabled = false;
@@ -1311,16 +1311,16 @@ async function submitEmailUpdate() {
     
     // Check response and handle accordingly
     if (result.success && result.requiresOtp) {
-      console.log('Showing OTP modal');
+      
       clearFieldValidation('email');
       // Show OTP verification modal - this should be the main path
       showOtpVerificationModal(result.currentEmail, result.newEmail);
     } else if (result.success) {
-      console.log('Direct email update (unexpected):', result);
+      
       // This shouldn't happen with OTP flow, but handle it just in case
       completeEmailUpdate(result);
     } else {
-      console.log('Error response:', result.message);
+      
       showFieldError('email', result.message);
     }
   } catch (error) {
@@ -1336,7 +1336,7 @@ async function submitEmailUpdate() {
 
 // Show OTP verification modal
 function showOtpVerificationModal(currentEmail, newEmail) {
-  console.log('Creating OTP modal for:', currentEmail, 'to', newEmail);
+  
   
   // Remove any existing modal
   const existingModal = document.getElementById('otpVerificationModal');
@@ -1403,7 +1403,7 @@ function showOtpVerificationModal(currentEmail, newEmail) {
   });
 
   // Show the modal
-  console.log('Showing OTP modal');
+ 
   otpModal.show();
 
   // Initialize OTP functionality

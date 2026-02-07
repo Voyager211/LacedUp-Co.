@@ -616,7 +616,6 @@ const config = {
   }
 
   function resetFilters() {
-    console.log('🔄 Resetting all filters...');
     
     const filterForm = document.getElementById(FORM_ID);
     const resetBtn = document.getElementById('resetFiltersBtn-' + FORM_ID);
@@ -645,7 +644,6 @@ const config = {
           }
         });
         
-        console.log('✅ Filters reset successfully');
       }, 100);
     }
   }
@@ -731,7 +729,6 @@ const config = {
   }
 
   function showToast(type, message) {
-    console.log(`${type.toUpperCase()}: ${message}`);
     // You can implement your toast function here
   }
 

@@ -507,19 +507,19 @@ class GeoapifyAddressForm {
         });
 
         this.autocomplete.on('select', (location) => {
-          console.log('Address selected:', location);
+         
           this.fillAddressForm(location);
         });
 
         this.autocomplete.on('suggestions', (suggestions) => {
-          console.log('Address suggestions received:', suggestions);
+       
         });
 
         this.autocomplete.on('input', (query) => {
-          console.log('Address input:', query);
+         
         });
 
-        console.log('✅ Geoapify autocomplete initialized successfully');
+       
       } catch (error) {
         console.error('❌ Error initializing Geoapify autocomplete:', error);
         this.setupManualSearch();
@@ -671,18 +671,18 @@ class GeoapifyAddressForm {
 
   async fetchLocationByPincode(pincode) {
     try {
-      console.log(`🔍 Fetching location for pincode: ${pincode}`);
+      
       
       const response = await fetch(
         `https://api.geoapify.com/v1/geocode/search?text=${pincode}&country=IN&format=json&apiKey=${this.apiKey}`
       );
       const data = await response.json();
 
-      console.log('Pincode search results:', data);
+      
 
       if (data.results && data.results.length > 0) {
         const location = data.results[0];
-        console.log('Auto-filling from pincode:', location);
+       
         
         if (location.state) {
           const stateSelect = document.getElementById('state');
@@ -694,11 +694,11 @@ class GeoapifyAddressForm {
           
           if (matchingState) {
             stateSelect.value = matchingState.value;
-            console.log(`✅ State set to: ${matchingState.textContent}`);
+            
             
             if (typeof updateDistricts === 'function') {
               updateDistricts(matchingState.value);
-              console.log(`✅ Districts loaded for state: ${matchingState.textContent}`);
+            
               
               setTimeout(() => {
                 this.autoSelectDistrict(location.county || location.city);
@@ -714,10 +714,10 @@ class GeoapifyAddressForm {
 
         if (location.county) {
           document.getElementById('city').value = location.county;
-          console.log(`✅ City set to: ${location.county}`);
+        
         } else if (location.city) {
           document.getElementById('city').value = location.city;
-          console.log(`✅ City set to: ${location.city}`);
+          
         }
 
         const pincodeInput = document.getElementById('pincode');
@@ -757,7 +757,7 @@ class GeoapifyAddressForm {
       return;
     }
 
-    console.log(`🔍 Looking for district: ${districtName}`);
+   
     
     const districtOptions = Array.from(districtSelect.options);
     const matchingDistrict = districtOptions.find(option => {
@@ -778,7 +778,7 @@ class GeoapifyAddressForm {
 
     if (matchingDistrict) {
       districtSelect.value = matchingDistrict.value;
-      console.log(`✅ District set to: ${matchingDistrict.textContent}`);
+      
       
       districtSelect.style.borderColor = '#28a745';
       setTimeout(() => {
@@ -786,7 +786,7 @@ class GeoapifyAddressForm {
       }, 2000);
     } else {
       console.warn(`❌ Could not find matching district for: ${districtName}`);
-      console.log('Available districts:', districtOptions.map(opt => opt.textContent));
+    
       
       districtSelect.style.borderColor = '#ffc107';
       setTimeout(() => {
@@ -912,7 +912,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  console.log(`📍 Address book initialized: ${addresses.length} addresses loaded (page ${currentPage}/${totalPages})`);
+  
 });
 
 // ==================== SETUP LOAD MORE BUTTON ====================
@@ -929,7 +929,7 @@ function setupLoadMoreButton() {
 // ==================== LOAD MORE ADDRESSES ====================
 async function loadMoreAddresses() {
   if (isLoading) {
-    console.log('⏳ Already loading...');
+    
     return;
   }
 
@@ -937,7 +937,7 @@ async function loadMoreAddresses() {
   const nextPage = currentPage + 1;
 
   if (nextPage > totalPages) {
-    console.log('✅ All addresses loaded');
+ 
     hideLoadMoreButton();
     return;
   }
@@ -946,14 +946,14 @@ async function loadMoreAddresses() {
   loadMoreBtn.classList.add('loading');
   loadMoreBtn.querySelector('.load-more-text').textContent = 'Loading...';
 
-  console.log(`📡 Loading page ${nextPage}/${totalPages}...`);
+  
 
   try {
     const response = await fetch(`/api/addresses/paginated?page=${nextPage}`);
     const result = await response.json();
 
     if (result.success && result.data.addresses.length > 0) {
-      console.log(`✅ Loaded ${result.data.addresses.length} addresses`);
+     
       
       addresses = addresses.concat(result.data.addresses);
       currentPage = result.data.currentPage;
@@ -968,7 +968,7 @@ async function loadMoreAddresses() {
         loadMoreBtn.querySelector('.load-more-text').textContent = 'Load More Addresses';
       }
     } else {
-      console.log('ℹ️ No more addresses to load');
+      
       hideLoadMoreButton();
     }
   } catch (error) {
@@ -1045,7 +1045,7 @@ function hideLoadMoreButton() {
   if (loadMoreBtn) loadMoreBtn.style.display = 'none';
   if (allLoadedMsg) allLoadedMsg.style.display = 'inline-flex';
   
-  console.log('✅ All addresses loaded - hiding button');
+  
 }
 
 function updateAddressCount(count) {
@@ -1071,7 +1071,7 @@ function capitalizeFirst(str) {
 // ==================== SET DEFAULT ADDRESS ====================
 async function setDefaultAddress(addressId) {
   try {
-    console.log('🔄 Setting default address:', addressId);
+ 
     
     const response = await fetch(`/api/address/${addressId}/default`, {
       method: 'PATCH',
@@ -1081,7 +1081,7 @@ async function setDefaultAddress(addressId) {
     const data = await response.json();
 
     if (data && data.success) {
-      console.log('✅ Default address set successfully');
+      
       showSuccess(data.message || 'Default address updated successfully');
       setTimeout(() => location.reload(), 1000);
     } else {
@@ -1154,7 +1154,7 @@ function addNewAddress() {
         districtSelect.disabled = true;
       }
       
-      console.log('✅ Form reset for new address');
+    
     }
     
     this.removeEventListener('shown.bs.modal', resetForm);
@@ -1209,7 +1209,7 @@ async function editAddress(addressId) {
         }, 200);
       }
       
-      console.log('✅ Form populated for editing address:', addressId);
+      
     }
     
     this.removeEventListener('shown.bs.modal', populateForm);

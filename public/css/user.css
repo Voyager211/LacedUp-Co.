@@ -472,7 +472,7 @@ a:hover {
 .footer-black {
   background-color: #000;
   color: #ccc;
-  padding-bottom: 3rem; /* ✅ add this for spacing below the footer */
+  padding-bottom: 0; /* ✅ add this for spacing below the footer */
 }
 
 .footer-black a,
@@ -728,4 +728,22 @@ a:hover {
 .product-card.out-of-stock:hover {
   transform: translateY(-8px);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+}
+
+
+/* ========= JOIN COMMUNITY SECTION SPACING FIX ========= */
+.join-community-section {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.join-community-section .container {
+  padding-bottom: 3rem !important;
+}
+
+/* Ensure no gap before footer */
+.footer-black {
+  margin-top: 0 !important;
+  padding-top: 3rem;
+  padding-bottom: 1.5rem;
 }

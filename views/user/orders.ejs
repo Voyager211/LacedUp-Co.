@@ -1014,7 +1014,7 @@ function setupPaginationHandlers() {
       const page = parseInt(btn.dataset.page);
 
       if (page && page > 0) {
-        console.log('📄 Pagination clicked, page:', page);
+        
         loadOrders(page, currentStatusFilter, currentSearchQuery);
       }
     }
@@ -1024,7 +1024,7 @@ function setupPaginationHandlers() {
 // ==================== LOAD ORDERS (AJAX) - UNIFIED ====================
 async function loadOrders(page = 1, status = '', search = '') {
   if (isLoading) {
-    console.log('⏳ Already loading, ignoring request');
+   
     return;
   }
 
@@ -1035,7 +1035,7 @@ async function loadOrders(page = 1, status = '', search = '') {
   currentStatusFilter = status;
   currentSearchQuery = search;
 
-  console.log('🔄 Loading orders:', { page, status, search });
+ 
 
   showLoadingState();
 
@@ -1047,24 +1047,19 @@ async function loadOrders(page = 1, status = '', search = '') {
     if (search) params.append('search', search);
 
     const url = `/orders/api/filtered?${params.toString()}`;
-    console.log('📡 API Request:', url);
+    
 
     const response = await fetch(url);
     const result = await response.json();
 
-    console.log('📥 API Response:', result);
+    
 
     if (result.success) {
       // Update global state
       currentPage = result.data.currentPage;
       currentOrdersCount = result.data.totalOrders;
 
-      console.log('✅ Data received:', {
-        orders: result.data.orders.length,
-        totalOrders: result.data.totalOrders,
-        currentPage: result.data.currentPage,
-        totalPages: result.data.totalPages
-      });
+     
 
       // Update UI - ALL THREE FUNCTIONS
       updateOrdersContainer(result.data.orders);
@@ -1091,7 +1086,7 @@ function updateOrdersCount(count) {
   const ordersCountElement = document.getElementById('ordersCount');
   if (ordersCountElement) {
     ordersCountElement.textContent = `(${count || 0})`;
-    console.log('📊 Orders count updated to:', count);
+  
   }
 }
 
@@ -1320,7 +1315,6 @@ function updatePagination(data) {
   // Replace pagination content
   paginationWrapper.innerHTML = paginationHTML;
 
-  console.log('📄 Pagination updated:', { currentPage, totalPages, visible: totalPages > 1 });
 }
 
 // ==================== LOADING STATES ====================

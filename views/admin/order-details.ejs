@@ -979,7 +979,6 @@ function getPaymentStatusColor(status) {
 
 // Initialize modal event system when page loads
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('🔍 Initializing modal status update system');
   
   // Set global order ID
   window.currentOrderId = '<%= order.orderId %>';
@@ -1009,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Build and show status modal
 function showStatusModal(itemId, currentStatus, validTransitions) {
-  console.log('🔍 Building status modal for:', itemId);
+ 
   
   let modalHtml = '';
   modalHtml += '<div class="modal fade" id="statusModal" tabindex="-1" aria-labelledby="statusModalLabel" aria-hidden="true">';
@@ -1069,7 +1068,7 @@ function showStatusModal(itemId, currentStatus, validTransitions) {
 
 // Handle status change
 function changeItemStatus(itemId, newStatus) {
-  console.log('🔍 Changing status:', { itemId, newStatus });
+ 
   
   // Close modal
   const modalElement = document.getElementById('statusModal');
@@ -1096,7 +1095,7 @@ function changeItemStatus(itemId, newStatus) {
  * @param {string} newOrderStatus - The new order status
  */
 function updateButtonVisibility(newOrderStatus) {
-  console.log('🔍 Updating button visibility for status:', newOrderStatus);
+
   
   const cancelOrderBtn = document.getElementById('cancelOrderBtn');
   const returnOrderBtn = document.getElementById('returnOrderBtn');
@@ -1126,13 +1125,13 @@ function updateButtonVisibility(newOrderStatus) {
       // Show existing cancel button
       cancelOrderBtn.style.display = 'inline-block';
       cancelOrderBtn.disabled = false;
-      console.log(' Cancel button shown');
+   
     }
   } else {
     if (cancelOrderBtn) {
       // Hide cancel button
       cancelOrderBtn.style.display = 'none';
-      console.log(' Cancel button hidden');
+    
     }
   }
   
@@ -1147,21 +1146,17 @@ function updateButtonVisibility(newOrderStatus) {
       // Show existing return button
       returnOrderBtn.style.display = 'inline-block';
       returnOrderBtn.disabled = false;
-      console.log(' Return button shown');
+      
     }
   } else {
     if (returnOrderBtn) {
       // Hide return button
       returnOrderBtn.style.display = 'none';
-      console.log(' Return button hidden');
+   
     }
   }
   
-  console.log(' Button visibility updated:', {
-    status: newOrderStatus,
-    cancelVisible: showCancelButton,
-    returnVisible: showReturnButton
-  });
+  
 }
 
 /**
@@ -1184,7 +1179,7 @@ function createCancelOrderButton() {
       buttonsContainer.appendChild(cancelBtn);
     }
     
-    console.log(' Cancel button created dynamically');
+    
   }
 }
 
@@ -1203,7 +1198,7 @@ function createReturnOrderButton() {
     // Add to the end of buttons container
     buttonsContainer.appendChild(returnBtn);
     
-    console.log(' Return button created dynamically');
+    
   }
 }
 
@@ -1564,7 +1559,7 @@ function showReturnItemConfirm(orderId, itemId) {
 // Add debugging to modal opening
 function updateOrderStatus(orderId, currentStatus) {
   try {
-    console.log('🔍 Opening modal - Initial parameters:', { orderId, currentStatus });
+  
     
     const actualCurrentStatus = window.currentOrderStatus || currentStatus;
     const currentValidTransitions = window.validTransitions || validTransitions;
@@ -1575,7 +1570,7 @@ function updateOrderStatus(orderId, currentStatus) {
       !restrictedStatuses.includes(status)
     );
     
-    console.log('🔍 Admin allowed transitions:', adminAllowedTransitions);
+   
     
     if (!adminAllowedTransitions || adminAllowedTransitions.length === 0) {
       console.warn('⚠️ No admin-allowed transitions available');
@@ -1614,11 +1609,11 @@ function updateOrderStatus(orderId, currentStatus) {
         option.value = status;
         option.textContent = status;
         statusSelect.appendChild(option);
-        console.log(` Added admin option: ${status}`);
+      
       }
     });
     
-    console.log(' Modal populated with admin-allowed options');
+    
     
     const modal = new bootstrap.Modal(document.getElementById('updateStatusModal'));
     modal.show();
@@ -1770,10 +1765,7 @@ function submitStatusUpdate() {
       showToast('success', data.message);
       bootstrap.Modal.getInstance(document.getElementById('updateStatusModal')).hide();
 
-      console.log('🔍 ORDER UPDATE DEBUG:', {
-        orderStatus: data.order.status,
-        orderPaymentStatus: data.order.paymentStatus
-      });
+     
 
       // Update UI
       updateOrderStatusInUI(data.order.status);
@@ -1782,11 +1774,7 @@ function submitStatusUpdate() {
       // Update all item statuses and payment statuses
       if (data.order.items && data.order.items.length > 0) {
         data.order.items.forEach((item, index) => {
-          console.log(`🔍 UPDATING ITEM ${index}:`, {
-            itemId: item._id,
-            itemStatus: item.status,
-            itemPaymentStatus: item.paymentStatus
-          });
+          
           
           updateItemStatusInUI(item._id, item.status);
           updateItemPaymentStatusInUI(item._id, item.paymentStatus);
@@ -1819,16 +1807,16 @@ function submitStatusUpdate() {
 
 // Add debugging to see what's happening
 function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
-  console.log('🔄 Updating modal data after status change to:', newCurrentStatus);
+
   
   //  Fetch new valid transitions for the updated status
   fetch(`/admin/orders/${orderId}/transitions`)
     .then(response => {
-      console.log('🔍 Transitions fetch response status:', response.status);
+     
       return response.json();
     })
     .then(data => {
-      console.log('🔍 Transitions fetch response data:', data);
+      
       
       if (data.success && data.allowedTransitions) {
         //  Update global variables for next modal open
@@ -1837,11 +1825,7 @@ function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
 
         validTransitions = data.allowedTransitions;
         
-        console.log(' Modal data updated successfully:', {
-          currentStatus: window.currentOrderStatus,
-          validTransitions: window.validTransitions,
-          validTransitionsLength: window.validTransitions.length
-        });
+  
         
       } else {
         console.warn('❌ Could not fetch updated transitions:', data);
@@ -1855,7 +1839,7 @@ function updateModalDataAfterStatusChange(orderId, newCurrentStatus) {
 
 // Update order-level payment status badges via fetch
 function updateOrderPaymentStatusInUI(newPaymentStatus) {
-  console.log('🔍 Updating order payment status in UI:', newPaymentStatus);
+
   
   try {
     // Find order-level payment badges (not item-level ones)
@@ -1868,7 +1852,7 @@ function updateOrderPaymentStatusInUI(newPaymentStatus) {
         return;
       }
       
-      console.log(`Updating order payment badge ${index}:`, badge);
+     
       
       const originalText = badge.textContent;
       badge.textContent = newPaymentStatus;
@@ -1890,10 +1874,10 @@ function updateOrderPaymentStatusInUI(newPaymentStatus) {
       badge.classList.add(newPaymentClass);
       badge.classList.add(`bg-${getPaymentStatusColor(newPaymentStatus)}`);
       
-      console.log(` Order payment badge updated from "${originalText}" to "${newPaymentStatus}"`);
+      
     });
     
-    console.log(' Order payment status updated in UI via fetch');
+   
     
   } catch (error) {
     console.error('❌ Error updating order payment status UI:', error);
@@ -1903,7 +1887,6 @@ function updateOrderPaymentStatusInUI(newPaymentStatus) {
 
 // More precise order status badge update (excludes item badges)
 function updateOrderStatusInUI(newStatus) {
-  console.log('🔍 Starting updateOrderStatusInUI with status:', newStatus);
   
   try {
     // FIXED: More specific selector that EXCLUDES payment badges
@@ -1921,17 +1904,14 @@ function updateOrderStatusInUI(newStatus) {
       // ONLY include order status badges, NOT payment badges
       if (!isInItemRow && isStatusBadge) {
         orderBadges.push(element);
-        console.log('✅ Found ORDER status badge:', element);
-      } else if (!isInItemRow && isPaymentBadge) {
-        console.log('⏭️ Skipping payment badge (will be handled separately):', element);
+     
       }
     });
     
-    console.log(`🔍 Found ${orderBadges.length} ORDER status badges to update`);
+ 
     
     // FIXED: Only update order status badges
     orderBadges.forEach((badge, index) => {
-      console.log(`Updating ORDER status badge ${index}:`, badge);
       
       const originalText = badge.textContent.trim();
       badge.textContent = newStatus;
@@ -1945,13 +1925,13 @@ function updateOrderStatusInUI(newStatus) {
         badge.classList.add('badge');
       }
       
-      console.log(`✅ ORDER status badge updated from "${originalText}" to "${newStatus}"`);
+  
     });
     
     // NEW: Update button visibility based on new status
     updateButtonVisibility(newStatus);
     
-    console.log('✅ updateOrderStatusInUI completed - updated ORDER status badges and button visibility');
+    
     
   } catch (error) {
     console.error('❌ Error updating order status UI:', error);
@@ -1965,7 +1945,7 @@ function updateOrderStatusInUI(newStatus) {
 // Update populateItemStatusModal to include payment status
 // update Item Payment Status in UI
 function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
-  console.log('🔍 Updating payment status in UI:', { itemId, newPaymentStatus });
+
   
   try {
     let targetElement = null;
@@ -1974,7 +1954,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
     //  STRATEGY 1: Find by data-item-id
     targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
     if (targetElement) {
-      console.log(' Found item row:', targetElement);
+    
       
       //  ENHANCED: Multiple selector strategies for payment badge
       paymentBadge = targetElement.querySelector('.payment-badge') ||
@@ -1982,14 +1962,10 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
                     targetElement.querySelector('.badge[class*="payment-"]') ||
                     targetElement.querySelector('td:nth-last-child(2) .badge'); // Payment column badge
       
-      if (paymentBadge) {
-        console.log(' Found payment badge via data-item-id:', paymentBadge);
-      }
     }
     
     //  STRATEGY 2: Fallback search if not found
     if (!paymentBadge) {
-      console.log('🔍 Payment badge not found via data-item-id, searching fallback...');
       const allRows = document.querySelectorAll('tr, .item-row, .order-item');
       
       allRows.forEach(row => {
@@ -1997,7 +1973,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
         buttons.forEach(button => {
           const onclickAttr = button.getAttribute('onclick');
           if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
-            console.log(' Found matching row via button onclick');
+           
             targetElement = row;
             
             //  ENHANCED: Multiple strategies for payment badge in this row
@@ -2006,9 +1982,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
                           row.querySelector('.badge[class*="payment-"]') ||
                           row.querySelector('td:nth-last-child(2) .badge');
                           
-            if (paymentBadge) {
-              console.log(' Found payment badge via fallback:', paymentBadge);
-            }
+            
           }
         });
       });
@@ -2016,14 +1990,14 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
     
     //  STRATEGY 3: Create payment badge if still not found
     if (!paymentBadge && targetElement) {
-      console.log('⚠️ Payment badge not found, attempting to create/find...');
+      
       
       // Look for any badge in the payment column that might have lost its classes
       const paymentColumn = targetElement.querySelector('td:nth-last-child(2)');
       if (paymentColumn) {
         const existingBadge = paymentColumn.querySelector('.badge');
         if (existingBadge) {
-          console.log('🔧 Found existing badge in payment column, will update:', existingBadge);
+        
           paymentBadge = existingBadge;
           
           //  RESTORE: Add missing payment badge class
@@ -2034,7 +2008,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
     
     //  UPDATE: Payment badge found
     if (paymentBadge && targetElement) {
-      console.log(' Updating payment badge:', paymentBadge);
+     
       
       const originalText = paymentBadge.textContent.trim();
       paymentBadge.textContent = newPaymentStatus;
@@ -2069,7 +2043,7 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
       // Update data attribute
       paymentBadge.setAttribute('data-payment-status', newPaymentStatus);
       
-      console.log(` Payment status updated from "${originalText}" to "${newPaymentStatus}"`);
+      
       
       // Visual feedback
       const targetRow = paymentBadge.closest('tr, .item-row, .card');
@@ -2083,28 +2057,17 @@ function updateItemPaymentStatusInUI(itemId, newPaymentStatus) {
       }
       
     } else {
-      console.error('❌ Could not find or create payment badge for item:', itemId);
-      console.log('🔍 Debug info:', {
-        targetElement: targetElement,
-        itemId: itemId,
-        newPaymentStatus: newPaymentStatus
-      });
-      
-      //  LAST RESORT: Log the actual HTML for debugging
-      if (targetElement) {
-        console.log('🔍 Target element HTML:', targetElement.outerHTML);
-      }
+      console.error('Could not find or create payment badge for item:', itemId);
     }
     
   } catch (error) {
-    console.error('❌ Error updating payment status UI:', error);
+    console.error('Error updating payment status UI:', error);
   }
 }
 
 
 // Fetch order status AND update valid transitions
 function fetchAndUpdateOrderStatus(orderId) {
-  console.log('🔍 Fetching updated order status for:', orderId);
   
   fetch(`/admin/orders/api/${orderId}`, {
     method: 'GET',
@@ -2114,7 +2077,6 @@ function fetchAndUpdateOrderStatus(orderId) {
     }
   })
   .then(response => {
-    console.log('🔍 Order status API response status:', response.status);
     
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
@@ -2124,23 +2086,17 @@ function fetchAndUpdateOrderStatus(orderId) {
     return response.json();
   })
   .then(data => {
-    console.log('🔍 Order status API response data:', data);
     
     if (data.success && data.order) {
       const updatedOrderStatus = data.order.status;
-      console.log('🔍 Updated order status from backend:', updatedOrderStatus);
       
-      //  NEW: Update valid transitions if provided
+      //  Update valid transitions if provided
       if (data.validTransitions && Array.isArray(data.validTransitions)) {
         window.validTransitions = data.validTransitions;
-        console.log('🔍 Updated valid transitions for', updatedOrderStatus, ':', data.validTransitions);
       }
       
       if (updatedOrderStatus !== window.currentOrderStatus && updatedOrderStatus !== currentOrderStatus) {
-        console.log(' Order status changed, updating UI:', updatedOrderStatus);
         updateOrderStatusInUI(updatedOrderStatus);
-      } else {
-        console.log('ℹ️ Order status unchanged:', updatedOrderStatus);
       }
     } else {
       console.warn('⚠️ Invalid response format:', data);
@@ -2148,16 +2104,12 @@ function fetchAndUpdateOrderStatus(orderId) {
   })
   .catch(error => {
     console.warn('⚠️ Could not fetch updated order status:', error.message);
-    
-    if (error.message.includes('404') || error.message.includes('not found')) {
-      console.log('ℹ️ Order status API not available, skipping automatic update');
-    }
   });
 }
 
 //  More precise item status UI update
 function updateItemStatusInUI(itemId, newStatus) {
-  console.log('🔍 Starting updateItemStatusInUI:', { itemId, newStatus });
+ 
   
   try {
     let targetElement = null;
@@ -2166,13 +2118,13 @@ function updateItemStatusInUI(itemId, newStatus) {
     // Find the target row using data-item-id
     targetElement = document.querySelector(`[data-item-id="${itemId}"]`);
     if (targetElement) {
-      console.log(' Found item row by data-item-id:', targetElement);
+     
       statusBadge = targetElement.querySelector('.status-badge');
     }
     
     // Fallback: Search by onclick containing itemId
     if (!statusBadge) {
-      console.log('🔍 Fallback: Searching through table rows...');
+     
       const allRows = document.querySelectorAll('tr');
       
       allRows.forEach((row, index) => {
@@ -2180,7 +2132,7 @@ function updateItemStatusInUI(itemId, newStatus) {
         buttons.forEach(button => {
           const onclickAttr = button.getAttribute('onclick');
           if (onclickAttr && (onclickAttr.includes(`'${itemId}'`) || onclickAttr.includes(`"${itemId}"`))) {
-            console.log(` Found matching row ${index} for itemId:`, itemId);
+           
             targetElement = row;
             statusBadge = row.querySelector('.status-badge');
             return;
@@ -2191,7 +2143,7 @@ function updateItemStatusInUI(itemId, newStatus) {
     }
     
     if (statusBadge && targetElement) {
-      console.log(' Found status badge and target row, updating...', statusBadge);
+      
       
       //  UPDATE STATUS BADGE
       const originalText = statusBadge.textContent;
@@ -2202,7 +2154,7 @@ function updateItemStatusInUI(itemId, newStatus) {
       backgroundClasses.forEach(cls => statusBadge.classList.remove(cls));
       statusBadge.classList.add(`bg-${getStatusColor(newStatus)}`);
       
-      console.log(` Status badge updated from "${originalText}" to "${newStatus}"`);
+     
       
       //  UPDATE ACTION BUTTONS
       updateItemActionButtonsInRow(targetElement, newStatus, itemId);
@@ -2214,7 +2166,7 @@ function updateItemStatusInUI(itemId, newStatus) {
         targetElement.style.backgroundColor = '';
       }, 2000);
       
-      console.log(' Successfully updated item status and actions:', { itemId, newStatus });
+     
       
     } else {
       console.warn('⚠️ Could not find status badge for item:', itemId);
@@ -2234,7 +2186,7 @@ function updateItemStatusInUI(itemId, newStatus) {
 
 //  ENHANCED: Improved Payment Status UI Update for Order-Level Changes
 function updatePaymentStatusInUI(newPaymentStatus) {
-  console.log('🔍 Starting updatePaymentStatusInUI with status:', newPaymentStatus);
+ 
   
   try {
     //  FIXED: More specific selectors that match actual payment badge classes
@@ -2246,21 +2198,17 @@ function updatePaymentStatusInUI(newPaymentStatus) {
       '.payment-status'
     );
     
-    console.log('🔍 Found payment elements:', paymentElements.length, paymentElements);
+    
     
     let updated = false;
     
     paymentElements.forEach((element, index) => {
-      console.log(`Payment element ${index}:`, {
-        element: element,
-        text: element.textContent.trim(),
-        classes: element.className
-      });
+     
       
       // Skip item-level payment badges, only update order-level
       const isItemLevel = element.closest('tr, .item-row') !== null;
       if (isItemLevel) {
-        console.log(`Skipping item-level payment badge ${index}`);
+      
         return;
       }
       
@@ -2291,11 +2239,7 @@ function updatePaymentStatusInUI(newPaymentStatus) {
             element.classList.add('payment-badge');
           }
           
-          console.log(` Updated payment element ${index}:`, {
-            originalText: originalText,
-            newText: element.textContent,
-            newClasses: element.className
-          });
+     
         }
         
         updated = true;
@@ -2303,7 +2247,7 @@ function updatePaymentStatusInUI(newPaymentStatus) {
     });
     
     if (updated) {
-      console.log(' Payment status updated in UI:', newPaymentStatus);
+      
       
       // Visual feedback
       const orderSection = document.querySelector('body');
@@ -2367,7 +2311,7 @@ function showToast(type, message, duration = 3000) {
 }
 
 function testReturnModal() {
-  console.log('🔍 Testing return modal...');
+  
   returnItem('TEST_ORDER_ID', 'TEST_ITEM_ID');
 }
 </script>

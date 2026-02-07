@@ -835,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function() {
   const carouselItems = carouselElement.querySelectorAll('.carousel-item');
   
   if (carouselItems.length <= 1) {
-    console.log('ℹ️ Only one image - carousel not needed');
+   
     return;
   }
 
@@ -849,10 +849,10 @@ document.addEventListener('DOMContentLoaded', function() {
       touch: true
     });
     
-    console.log('✅ Carousel initialized');
+  
 
     // ============================================
-    // ✅ THUMBNAIL CLICK HANDLERS
+    // THUMBNAIL CLICK HANDLERS
     // ============================================
     const thumbnails = document.querySelectorAll('.thumbnail-item');
     const currentSlideEl = document.getElementById('currentSlide');

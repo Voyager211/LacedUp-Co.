@@ -1,4 +1,4 @@
-console.log('🛒 Checkout JavaScript loaded');
+
 
 // Global variables
 window.currentEditingId = null;
@@ -9,11 +9,11 @@ let orderTotal = 0;
 /* ========= CHECKOUT VALIDATION FUNCTIONALITY ========= */
 async function validateCheckoutStock() {
   try {
-    console.log('🔍 Validating checkout stock…');
+
     const res = await fetch('/checkout/validate-checkout-stock');
-    console.log('Checkout validation status:', res.status);
+ 
     const json = await res.json();
-    console.log('Checkout validation response:', json);
+   
     return json;
   } catch (err) {
     console.error('Error validating checkout stock:', err);
@@ -22,7 +22,7 @@ async function validateCheckoutStock() {
 }
 
 function showCheckoutValidationError(v) {
-  console.log('Showing checkout validation error:', v);
+  
   const msg = v.message || 'Some items in your cart are no longer available';
 
   if (typeof Swal !== 'undefined') {
@@ -43,42 +43,34 @@ function showCheckoutValidationError(v) {
 }
 
 async function validateCheckoutOnLoad() {
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  console.log('🔍 [FRONTEND] validateCheckoutOnLoad START');
-  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  
   
   try {
-    console.log('📡 Calling validateCheckoutStock() API...');
+    
     const v = await validateCheckoutStock();
     
-    console.log('API Response Received:');
-    console.log('   success:', v.success);
-    console.log('   message:', v.message);
-    console.log('   validationResults:', v.validationResults);
+   
     
     if (v.validationResults) {
-      console.log('\nValidation Arrays:');
-      console.log('   validItems:', v.validationResults.validItems?.length || 0);
-      console.log('   invalidItems:', v.validationResults.invalidItems?.length || 0);
+      
     }
     
     const hasIssues = !v.success || (v.validationResults && v.validationResults.invalidItems?.length > 0);
     
-    console.log('\n Final Decision:');
-    console.log('   hasIssues:', hasIssues);
+   
     
     if (hasIssues) {
-      console.log(' Triggering error modal in 1 second...');
+      
       setTimeout(() => showCheckoutValidationError(v), 1000);
     } else {
-      console.log(' Checkout validation PASSED');
+      
     }
     
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
     
   } catch (err) {
     console.error('[FRONTEND] Error validating checkout on load:', err);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    
   }
 }
 
@@ -110,7 +102,7 @@ function selectPayment(radio) {
     }
   });
 
-  console.log(`Payment method selected: ${radio.value}`);
+  
 }
 
 function validateCODEligibility() {
@@ -137,7 +129,7 @@ function validateCODEligibility() {
         `Cash on Delivery is not available for orders ₹${COD_LIMIT.toLocaleString('en-IN')} or above. Please select an online payment method.`;
     }
     
-    console.log(`❌ COD disabled: Order total ₹${currentTotal} >= ₹${COD_LIMIT}`);
+   
   } else {
     // Enable COD
     codRadio.disabled = false;
@@ -149,7 +141,7 @@ function validateCODEligibility() {
       codWarning.style.display = 'none';
     }
     
-    console.log(`✅ COD enabled: Order total ₹${currentTotal} < ₹${COD_LIMIT}`);
+    
   }
 }
 
@@ -270,7 +262,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (addressForm && window.location.pathname.includes('/checkout')) {
         addressForm.addEventListener('submit', handleCheckoutAddressSubmit);
         attachStateChangeHandler();
-        console.log('✅ CHECKOUT: Form handler attached');
+       
     }
 });
 
@@ -279,20 +271,20 @@ function initializeAddressCount() {
     totalAddresses = allAddresses.length;
     visibleAddressCount = document.querySelectorAll('.address-card:not(.hidden-address)').length;
     
-    console.log(`📍 Address count initialized: ${visibleAddressCount} visible of ${totalAddresses} total`);
+    
     
     updateLoadMoreButton();
 }
 
 function loadMoreAddresses() {
-    console.log('📥 Loading more addresses...');
+   
     
     const hiddenAddresses = document.querySelectorAll('.address-card.hidden-address');
     const loadMoreBtn = document.getElementById('loadMoreAddressesBtn');
     const loadMoreContainer = document.querySelector('.load-more-container');
     
     if (!hiddenAddresses || hiddenAddresses.length === 0) {
-        console.log('❌ No more addresses to load');
+        
         if (loadMoreContainer) {
             loadMoreContainer.style.opacity = '0';
             loadMoreContainer.style.transform = 'translateY(-10px)';
@@ -328,7 +320,7 @@ function loadMoreAddresses() {
     });
     
     visibleAddressCount += loaded;
-    console.log(`✅ Loaded ${loaded} more addresses. Total visible: ${visibleAddressCount}/${totalAddresses}`);
+    
     
     // Update button state
     updateLoadMoreButton();
@@ -368,7 +360,7 @@ function updateLoadMoreButton() {
             loadMoreContainer.style.display = 'none';
         }, 300);
         
-        console.log('✅ All addresses loaded');
+        
     }
 }
 
@@ -424,7 +416,7 @@ function renderCheckoutAddresses() {
     totalAddresses = checkoutAddresses.length;
     visibleAddressCount = initialLimit;
     
-    console.log('✅ Addresses rendered in checkout with load more');
+    
 }
 
 function generateAddressCard(address, index, isSelected = false, isHidden = false) {
@@ -493,8 +485,7 @@ async function proceedToPayment() {
   const addressIndex = addr.dataset.addressIndex;
   const paymentMethod = pay.value;
 
-  console.log(`💳 Payment method selected: ${paymentMethod}`);
-  console.log(`📍 Address: ${deliveryAddressId}, Index: ${addressIndex}`);
+  
 
   // ✅ Route to correct handler based on payment method
   switch(paymentMethod) {
@@ -581,14 +572,14 @@ async function handleCODOrder(deliveryAddressId, addressIndex) {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('📦 Processing COD order...');
+   
     
     const requestPayload = { 
       deliveryAddressId, 
       addressIndex: parseInt(addressIndex),
       paymentMethod: 'cod' 
     };
-    console.log('COD payment request payload:', requestPayload);
+   
 
     const response = await fetch('/checkout/place-order', { 
       method: 'POST',
@@ -597,7 +588,7 @@ async function handleCODOrder(deliveryAddressId, addressIndex) {
     });
 
     const data = await response.json();
-    console.log('COD payment response:', data);
+   
 
     Swal.close();
 
@@ -618,7 +609,7 @@ async function handleCODOrder(deliveryAddressId, addressIndex) {
       throw new Error(data.message || 'Failed to place order');
     }
 
-    console.log('✅ Order placed successfully');
+ 
     
     // Redirect to success page
     if (data.redirectUrl) {
@@ -650,10 +641,10 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('💳 Processing UPI payment...');
+    
 
     // Step 1: Create Razorpay order
-    console.log('📡 Creating Razorpay order...');
+    
     const createOrderResponse = await fetch('/checkout/create-razorpay-order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -665,7 +656,7 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
     });
 
     const createOrderData = await createOrderResponse.json();
-    console.log('✅ Razorpay order created:', createOrderData);
+   
 
     if (!createOrderResponse.ok || !createOrderData.success) {
       throw new Error(createOrderData.message || 'Failed to create payment order');
@@ -687,7 +678,7 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
         contact: createOrderData.data.userPhone
       },
       handler: async function (response) {
-        console.log('✅ Payment successful from Razorpay:', response);
+        
         await verifyRazorpayPayment(
           response.razorpay_order_id,
           response.razorpay_payment_id,
@@ -709,7 +700,7 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
       modal: {
         // ✅ Handle modal close (manual dismiss)
         ondismiss: async function () {
-          console.log('❌ Payment modal closed by user or payment failed');
+      
           
           try {
             const failureResponse = await fetch('/checkout/payment-failure', {
@@ -725,7 +716,7 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
             });
             
             const failureData = await failureResponse.json();
-            console.log('📍 Payment failure handled:', failureData);
+            
 
             if (failureData.success && failureData.data.redirectUrl) {
               window.location.href = failureData.data.redirectUrl;
@@ -740,7 +731,7 @@ async function handleUPIPayment(deliveryAddressId, addressIndex) {
       }
     };
 
-    console.log('🚀 Opening Razorpay checkout...');
+    
     const rzp1 = new Razorpay(options);
     
     // ✅ THE MISSING PIECE: Catch payment failures from the gateway
@@ -819,7 +810,7 @@ async function verifyRazorpayPayment(razorpayOrderId, razorpayPaymentId, razorpa
       didOpen: () => Swal.showLoading()
     });
 
-    console.log('🔐 Verifying payment signature...');
+    
 
     const response = await fetch('/checkout/verify-razorpay-payment', {
       method: 'POST',
@@ -832,7 +823,7 @@ async function verifyRazorpayPayment(razorpayOrderId, razorpayPaymentId, razorpa
     });
 
     const data = await response.json();
-    console.log('✅ Payment verification response:', data);
+    
 
     Swal.close();
 
@@ -840,7 +831,7 @@ async function verifyRazorpayPayment(razorpayOrderId, razorpayPaymentId, razorpa
       throw new Error(data.message || 'Payment verification failed');
     }
 
-    console.log('✅ Payment verified successfully');
+   
 
     // Redirect to success page
     if (data.data.redirectUrl) {
@@ -913,7 +904,7 @@ async function handleWalletPayment(deliveryAddressId, addressIndex) {
       }
     });
 
-    console.log('💳 Wallet payment initiated');
+   
 
     // ✅ STEP 2: Make API request
     const response = await fetch('/checkout/process-wallet-payment', {
@@ -926,7 +917,7 @@ async function handleWalletPayment(deliveryAddressId, addressIndex) {
     });
 
     const data = await response.json();
-    console.log('Wallet payment response:', data);
+   
 
     // Close loader
     Swal.close();
@@ -1034,7 +1025,7 @@ function handleCheckoutAddressSubmit(e) {
   e.preventDefault();
   e.stopImmediatePropagation();
   
-  console.log('🛒 CHECKOUT: Address form submitted');
+ 
   
   const formData = new FormData(e.target);
   const addressData = Object.fromEntries(formData.entries());
@@ -1100,14 +1091,14 @@ function attachStateChangeHandler() {
 
   stateSelect.addEventListener('change', function() {
     const selectedState = this.value;
-    console.log(`🛒 CHECKOUT: State changed to: ${selectedState}`);
+    
     
     if (selectedState) {
       districtSelect.disabled = false;
       
       if (typeof updateDistricts === 'function') {
         updateDistricts(selectedState);
-        console.log('✅ CHECKOUT: Districts updated');
+        
       } else {
         console.warn('updateDistricts function not available');
       }
@@ -1124,14 +1115,14 @@ function attachStateChangeHandler() {
     districtSelect.disabled = true;
   }
   
-  console.log('✅ CHECKOUT: State change handler attached');
+  
 }
 
 
 /* ========= ADDRESS RENDERING ========= */
 async function loadCheckoutAddresses() {
   try {
-    console.log('🔄 Loading addresses for checkout...');
+    
     
     const response = await fetch('/checkout/api/addresses');
     if (!response.ok) {
@@ -1139,11 +1130,11 @@ async function loadCheckoutAddresses() {
     }
     
     const data = await response.json();
-    console.log('📦 Addresses data:', data);
+  
 
     if (data && data.success) {
       checkoutAddresses = data.addresses || [];
-      console.log(`✅ Addresses loaded: ${checkoutAddresses.length} addresses`);
+      
       renderCheckoutAddresses();
     } else {
       console.error('API returned error:', data ? data.message : 'Unknown error');
@@ -1210,7 +1201,7 @@ function renderCheckoutAddresses() {
   `).join('');
 
   container.innerHTML = addressesHTML;
-  console.log('✅ Addresses rendered in checkout');
+  
 }
 
 function showAddressError(message) {
@@ -1239,7 +1230,7 @@ window.couponState = {
 
 // Show available coupons modal
 function showAvailableCouponsModal() {
-  console.log('Opening Available Coupons Modal');
+ 
 
   try {
     const modalElement = document.getElementById('availableCouponsModal');
@@ -1263,19 +1254,14 @@ function showAvailableCouponsModal() {
 
 // Load Available Coupons in Carousel
 async function loadAvailableCoupons() {
-    console.log('🎫 loadAvailableCoupons() called');
+   
     
     const loadingDiv = document.getElementById('coupons-loading');
     const containerDiv = document.getElementById('available-coupons-container');
     const noCouponsDiv = document.getElementById('no-coupons-found');
     const errorDiv = document.getElementById('coupons-error');
     
-    console.log('📍 Elements found:', {
-        loadingDiv: !!loadingDiv,
-        containerDiv: !!containerDiv,
-        noCouponsDiv: !!noCouponsDiv,
-        errorDiv: !!errorDiv
-    });
+    
     
     // Reset states
     loadingDiv?.classList.remove('d-none');
@@ -1284,35 +1270,35 @@ async function loadAvailableCoupons() {
     errorDiv?.classList.add('d-none');
     
     try {
-        console.log('📡 Fetching coupons from /coupons/available...');
+        
         
         const response = await fetch('/coupons/available', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' }
         });
         
-        console.log('✅ Response received:', response.status, response.statusText);
+        
         
         if (!response.ok) {
             throw new Error(`Failed to fetch coupons: ${response.status}`);
         }
         
         const data = await response.json();
-        console.log('📦 Data received:', data);
+        
         
         loadingDiv?.classList.add('d-none');
         
         // ✅ FIX: Access coupons from data.data instead of data.coupons
         const coupons = data.data?.coupons || data.data || [];
-        console.log('🎯 Extracted coupons:', coupons);
+        
         
         if (!coupons || coupons.length === 0) {
-            console.log('⚠️ No coupons available');
+           
             noCouponsDiv?.classList.remove('d-none');
             return;
         }
         
-        console.log(`🎉 Rendering ${coupons.length} coupons in carousel...`);
+       
         
         // Render coupons in carousel
         renderCouponsCarousel(coupons);
@@ -1529,12 +1515,12 @@ function renderCouponsInModal(coupons, currentTotal = 0) {
         const extractedTotal = parseFloat(totalElement.textContent.replace(/[₹,]/g, '')) || 0;
         currentTotal = extractedTotal;
         window.orderTotal = extractedTotal;
-        console.log(`Extracted order total from DOM: ₹${currentTotal}`);
+        
       }
     }
   }
 
-  console.log(`Rendering ${coupons.length} coupons with currentTotal: ₹${currentTotal}`);
+ 
 
   let html = '';
 
@@ -1579,11 +1565,11 @@ function renderCouponsInModal(coupons, currentTotal = 0) {
 
   containerContent.innerHTML = html;
   showModalState('coupons');
-  console.log(`✅ Rendered ${coupons.length} coupons in modal`);
+ 
 }
 
 function applyCouponFromModal(couponCode) {
-  console.log('Applying coupon from modal:', couponCode);
+ 
 
   if(!couponCode) {
     console.error('No coupon code provided');
@@ -1647,7 +1633,7 @@ async function applyCoupon() {
   }
 
   try {
-    console.log('Applying coupon:', couponCode);
+  
 
     setApplyButtonLoading(true);
 
@@ -1673,7 +1659,7 @@ async function applyCoupon() {
     }
 
     const data = await response.json();
-    console.log('Apply coupon response:', data);
+   
 
     if (data.success) {
       window.couponState.appliedCoupon = data.data.appliedCoupon;
@@ -1740,7 +1726,7 @@ async function removeCoupon() {
   }
 
   try {
-    console.log('Removing applied coupon');
+    
 
     setRemoveButtonLoading(true);
 
@@ -1756,7 +1742,7 @@ async function removeCoupon() {
     }
 
     const data = await response.json();
-    console.log('Remove coupon response:', data);
+   
 
     if (data.success) {
       window.couponState.appliedCoupon = null;
@@ -1825,7 +1811,7 @@ function showAppliedCouponUI(coupon) {
     appliedCouponDiv.style.display = 'block';
   }
 
-  console.log('✅ Applied coupon UI updated');
+ 
 }
 
 function showCouponFormUI () {
@@ -1845,11 +1831,11 @@ function showCouponFormUI () {
     couponInput.value = '';
   }
     
-  console.log('Coupon form UI restored');
+
 }
 
 function updateOrderSummaryUI(orderSummary) {
-  console.log('📊 Updating order summary UI with:', orderSummary);
+ 
   
   if (!orderSummary) {
     console.warn('No order summary provided to updateOrderSummaryUI');
@@ -1859,7 +1845,7 @@ function updateOrderSummaryUI(orderSummary) {
   const subtotalEl = document.getElementById('subtotal-amount');
   if (subtotalEl && orderSummary.subtotal !== undefined) {
     subtotalEl.textContent = orderSummary.subtotal.toFixed(2);
-    console.log('Subtotal updated:', orderSummary.subtotal);
+    
   }
 
   const couponRow = document.getElementById('coupon-discount-row');
@@ -1869,12 +1855,12 @@ function updateOrderSummaryUI(orderSummary) {
   if (orderSummary.couponDiscount && orderSummary.couponDiscount > 0) {
     if (couponRow) {
       couponRow.style.display = 'flex';
-      console.log('Showing coupon discount row');
+     
     }
     
     if (discountAmountSpan) {
       discountAmountSpan.textContent = orderSummary.couponDiscount.toFixed(2);
-      console.log('Coupon discount amount updated:', orderSummary.couponDiscount);
+      
     }
     
     // Update coupon code label if available
@@ -1886,7 +1872,7 @@ function updateOrderSummaryUI(orderSummary) {
     // Hide coupon discount row
     if (couponRow) {
       couponRow.style.display = 'none';
-      console.log('Hiding coupon discount row');
+      
     }
     
     // Clear coupon code label
@@ -1906,7 +1892,7 @@ function updateOrderSummaryUI(orderSummary) {
     }
   });
   
-  console.log('✅ Order summary UI fully updated - Final Total:', finalTotal);
+  
   
   // ✅ VALIDATE COD ELIGIBILITY WHEN TOTAL CHANGES
   validateCODEligibility();
@@ -1942,12 +1928,12 @@ function setRemoveButtonLoading(isLoading) {
 }
 
 function initializeCouponEventListeners () {
-  console.log('Initializing coupon event listeners...');
+ 
 
   const applyCouponBtn = document.getElementById('applyCouponBtn');
   if(applyCouponBtn) {
     applyCouponBtn.addEventListener('click', applyCoupon);
-    console.log('Apply coupon button listener added');
+    
   } else {
     console.warn('Apply coupon button not found');
   }
@@ -1955,7 +1941,7 @@ function initializeCouponEventListeners () {
   const removeCouponBtn = document.getElementById('removeCouponBtn');
   if (removeCouponBtn) {
     removeCouponBtn.addEventListener('click', removeCoupon);
-    console.log('Remove coupon button listener added');
+   
   }
 
   const couponInput = document.getElementById('couponCode');
@@ -1971,16 +1957,16 @@ function initializeCouponEventListeners () {
       e.target.value = e.target.value.toUpperCase();
     });
 
-    console.log('Coupon input listeners added');
+   
   }
 
   const viewCouponsBtn = document.getElementById('viewAvailableCouponsBtn');
   if (viewCouponsBtn) {
     viewCouponsBtn.addEventListener('click', showAvailableCouponsModal);
-    console.log('✅ View coupons button listener added');
+    
   }
 
-  console.log('✅ Coupon event listeners initialized');
+  
 }
 
 
@@ -1988,7 +1974,7 @@ function initializeCouponEventListeners () {
 
 // DOM READY INITIALIZATION
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🛒 Checkout DOM ready');
+   
     
     document.querySelector('.checkout-content')?.classList.remove('hidden');
     
@@ -1996,7 +1982,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const totalElement = document.querySelector('.summary-row.total .price-value');
     if (totalElement) {
         window.orderTotal = parseFloat(totalElement.textContent.replace(/[₹,]/g, '')) || 0;
-        console.log('💰 Order total set:', window.orderTotal);
+        
     }
     
     // ✅ VALIDATE COD ON PAGE LOAD
@@ -2009,7 +1995,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!hasAddresses) {
         loadCheckoutAddresses();
     } else {
-        console.log('✅ Addresses already rendered server-side');
+        
     }
     
     // Validate checkout after delay
@@ -2022,10 +2008,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const availableCouponsModal = document.getElementById('availableCouponsModal');
     if (availableCouponsModal) {
         availableCouponsModal.addEventListener('shown.bs.modal', function() {
-            console.log('📋 Modal shown - loading coupons...');
+            
             loadAvailableCoupons();
         });
-        console.log('✅ Coupons modal event listener attached');
+        
     }
     
     // Set up address modal handlers
@@ -2046,14 +2032,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     const newForm = form.cloneNode(true);
                     form.parentNode.replaceChild(newForm, form);
                     newForm.addEventListener('submit', handleCheckoutAddressSubmit, { once: false, capture: true });
-                    console.log('✅ CHECKOUT: Form handler attached');
+                   
                     attachStateChangeHandler();
                 }
             }, 200);
         });
     }
     
-    console.log('✅ Checkout initialization complete');
+   
 });
 
 
@@ -2065,5 +2051,3 @@ window.showAddAddressModal = showAddAddressModal;
 window.editAddress = editAddress;
 window.deleteAddress = deleteAddress;
 
-console.log('✅ Global functions exposed for onclick handlers');
-console.log('✅ Checkout COD-only script loaded successfully');

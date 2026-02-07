@@ -1606,9 +1606,9 @@ function hideLoadingState() {
   // Loading state will be replaced by actual content
 }
 
-// ✅ ENHANCED: Reset all filters function with loading states
+// Reset all filters function with loading states
 function resetFilters() {
-  console.log('🔄 Resetting all filters...');
+ 
   
   const filterForm = document.getElementById('filterForm');
   const resetBtn = document.getElementById('resetFiltersBtn');
@@ -1658,7 +1658,7 @@ function resetFilters() {
         }
       });
       
-      console.log('✅ Filters reset successfully');
+      
     }, 100);
   } else {
     // Fallback if no reset button found
@@ -1833,7 +1833,6 @@ function updateStatistics(data) {
       titleCount.textContent = data.statistics.totalOrders || 0;
     }
     
-    console.log('✅ Statistics updated with filtered data:', data.statistics);
   } else {
     console.warn('⚠️ No statistics data received from server');
   }

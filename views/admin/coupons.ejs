@@ -784,7 +784,6 @@ input:disabled + .toggle-slider {
   let currentStatus = '<%= statusFilter || 'all' %>';
 
   document.addEventListener('DOMContentLoaded', () => {
-    console.log('Coupon Management Page Loaded');
 
     // Handle toggle switches
     document.querySelectorAll('.coupon-toggle').forEach(toggle => {
@@ -1115,7 +1114,6 @@ input:disabled + .toggle-slider {
   // Fetch and populate coupons
   async function fetchAndPopulateCoupons(query = '', status = 'all', page = 1) {
     try {
-      console.log('Fetching coupons...', { query, status, page });
 
       const params = new URLSearchParams();
       if (query) params.append('q', query);
@@ -1128,7 +1126,6 @@ input:disabled + .toggle-slider {
       }
 
       const data = await response.json();
-      console.log('API Response:', data);
 
       if (data.success) {
         clearAndPopulateCoupons(data.data.coupons);
@@ -1137,7 +1134,6 @@ input:disabled + .toggle-slider {
         // Update count badge with total count (not just current page)
         updateCouponCount(data.data.totalCount);
         
-        console.log('Grid updated with', data.data.count, 'coupons on page', page);
 
         Toast.fire({
           icon: 'success',

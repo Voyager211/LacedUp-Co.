@@ -1,5 +1,4 @@
-// Wishlist functionality for LacedUp
-console.log('Wishlist.js: External script loaded');
+
 
 // Global wishlist functions
 let wishlistToastrConfigured = false;
@@ -38,7 +37,7 @@ function safeWishlistToast(type, message, title = '') {
   } else if (typeof toastr !== 'undefined') {
     toastr[type](message, title);
   } else {
-    console.log(`${type.toUpperCase()}: ${message}`);
+    
   }
 }
 
@@ -206,7 +205,7 @@ function handleWishlistClick(button, productId) {
 
 // Initialize wishlist functionality
 function initializeWishlistFunctionality() {
-  console.log('Wishlist.js: Initializing wishlist functionality...');
+  
   
   configureWishlistToastr();
 
@@ -232,7 +231,7 @@ function initializeWishlistFunctionality() {
     }
   });
 
-  console.log('Wishlist.js: Initialization complete');
+  
 }
 
 // Initialize when DOM is ready
@@ -248,8 +247,6 @@ window.addToWishlist = addToWishlist;
 window.removeFromWishlist = removeFromWishlist;
 window.handleWishlistClick = handleWishlistClick;
 window.updateWishlistCounter = updateWishlistCounter;
-
-console.log('Wishlist.js: External script initialization complete');
 
 // Add CSS for spin animation if not already present
 if (!document.querySelector('#wishlist-spin-animation')) {
