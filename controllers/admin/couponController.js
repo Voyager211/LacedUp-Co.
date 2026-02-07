@@ -201,7 +201,7 @@ const createCoupon = async (req, res) => {
             });
         }
 
-        // ✅ NEW: Discount vs Minimum Order validation
+        //  Discount vs Minimum Order validation
         const parsedDiscountValue = parseFloat(discountValue);
         const parsedMinOrderValue = parseFloat(minimumOrderValue) || 0;
 
@@ -376,7 +376,7 @@ const updateCoupon = async (req, res) => {
             });
         }
 
-        // ✅ NEW: Discount vs Minimum Order validation
+        // Discount vs Minimum Order validation
         const parsedDiscountValue = parseFloat(discountValue);
         const parsedMinOrderValue = parseFloat(minimumOrderValue) || 0;
 

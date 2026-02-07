@@ -658,7 +658,7 @@ const apiUpdateProduct = async (req, res) => {
     res.status(200).json({ success: true, message: 'Product Edited Successfully!' });
 
   } catch (err) {
-    console.error('❌ API Edit Error:', err);
+    console.error(' API Edit Error:', err);
     res.status(500).json({ success: false, message: 'Server error while editing product.' });
   }
 };

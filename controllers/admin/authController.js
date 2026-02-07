@@ -1,6 +1,6 @@
 const passport = require('passport');
 
-exports.getLogin = (req, res) => {
+const getLogin = (req, res) => {
     try {
         if (req.isAuthenticated()) return res.redirect('/admin/dashboard');
         res.render('admin/login', {
@@ -15,7 +15,7 @@ exports.getLogin = (req, res) => {
     }
 };
 
-exports.postLogin = (req, res, next) => {
+const postLogin = (req, res, next) => {
     try {
         // Server-side validation before authentication
         const validationResult = validateLoginForm(req.body);
@@ -73,16 +73,9 @@ exports.postLogin = (req, res, next) => {
 };
 
 
-// exports.getDashboard = (req, res) => {
-//     try {
-//         res.render('admin/dashboard', { title: 'Dashboard' });
-//     } catch (error) {
-//         console.error('Error rendering dashboard:', error);
-//         res.status(500).send('Internal Server Error');
-//     }
-// };
 
-exports.logout = (req, res) => {
+
+const logout = (req, res) => {
     try {
         req.logout((err) => {
             if (err) {
@@ -138,4 +131,10 @@ function validateLoginForm(formData) {
     }
 
     return { isValid: true };
+}
+
+module.exports = {
+    getLogin,
+    postLogin,
+    logout
 }

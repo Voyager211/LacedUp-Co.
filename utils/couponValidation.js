@@ -11,7 +11,7 @@ const validateCoupon = async (couponCode, userId, orderTotal) => {
             return { valid: false, message: 'Invalid coupon code' };
         }
 
-        // ✅ FIXED: Improved date validation with inclusive day comparison
+        
         const now = new Date();
         const validFromDate = new Date(coupon.validFrom);
         const validToDate = new Date(coupon.validTo);
@@ -74,7 +74,7 @@ const calculateDiscount = (coupon, orderTotal) => {
         }
     }
     
-    return Math.round(discountAmount * 100) / 100; // Round to 2 decimal places
+    return Math.round(discountAmount * 100) / 100;
 };
 
 module.exports = { validateCoupon, calculateDiscount };

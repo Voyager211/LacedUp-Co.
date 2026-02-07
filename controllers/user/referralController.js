@@ -9,15 +9,15 @@ const getReferralsPage = async (req, res) => {
     const user = await User.findById(userId)
       .select('referralCode referralCount name email');
 
-    // ✅ Pagination parameters
+    //  Pagination parameters
     const referralsPage = parseInt(req.query.referralsPage) || 1;
     const earningsPage = parseInt(req.query.earningsPage) || 1;
     const limit = 10;
 
-    // ✅ Get total count of referred users
+    //  Get total count of referred users
     const totalReferrals = await User.countDocuments({ referredBy: userId });
 
-    // ✅ Get paginated referred users
+    //  Get paginated referred users
     const referredUsers = await User.find({ referredBy: userId })
       .select('name email createdAt')
       .sort({ createdAt: -1 })
@@ -30,7 +30,7 @@ const getReferralsPage = async (req, res) => {
       wallet.transactions.filter(t => t.paymentMethod === 'referral_reward')
         .sort((a, b) => new Date(b.date) - new Date(a.date)) : [];
 
-    // ✅ Paginate referral transactions
+    //  Paginate referral transactions
     const totalEarnings = allReferralTransactions.reduce(
       (sum, t) => sum + (t.type === 'credit' ? t.amount : 0), 
       0
@@ -41,7 +41,7 @@ const getReferralsPage = async (req, res) => {
     const endIndex = startIndex + limit;
     const referralTransactions = allReferralTransactions.slice(startIndex, endIndex);
 
-    // ✅ Calculate pagination data for referrals
+    //  Calculate pagination data for referrals
     const referralsTotalPages = Math.ceil(totalReferrals / limit);
     const referralsHasPrevPage = referralsPage > 1;
     const referralsHasNextPage = referralsPage < referralsTotalPages;
@@ -62,7 +62,7 @@ const getReferralsPage = async (req, res) => {
       referralsPageNumbers.push(i);
     }
 
-    // ✅ Calculate pagination data for earnings
+    //  Calculate pagination data for earnings
     const earningsTotalPages = Math.ceil(totalEarningsCount / limit);
     const earningsHasPrevPage = earningsPage > 1;
     const earningsHasNextPage = earningsPage < earningsTotalPages;

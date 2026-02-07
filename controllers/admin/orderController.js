@@ -85,7 +85,7 @@ function buildOrderItemsPipeline(filters) {
     orderMatch.paymentStatus = filters.paymentStatus;
   }
 
-  // ✅ CRITICAL FIX: Removed search from initial match!
+  //  CRITICAL FIX: Removed search from initial match!
   // Search will ONLY be applied after lookups in the enhanced search stage
 
   if (Object.keys(orderMatch).length > 0) {
@@ -133,15 +133,15 @@ function buildOrderItemsPipeline(filters) {
     }
   });
 
-  // ✅ ENHANCED SEARCH: This is now the ONLY search stage (after all lookups)
+  //  ENHANCED SEARCH: This is now the ONLY search stage (after all lookups)
   if (filters.search && filters.search.trim() !== '') {
-    // ✅ FIX: Handle '#' prefix in order ID search
+    //  FIX: Handle '#' prefix in order ID search
     let searchTerm = filters.search.trim();
     let orderIdSearchTerm = searchTerm.startsWith('#') ? searchTerm.substring(1) : searchTerm;
     
     const searchMatch = {
       $or: [
-        { orderId: { $regex: orderIdSearchTerm, $options: 'i' } }, // ✅ Use cleaned term for orderId
+        { orderId: { $regex: orderIdSearchTerm, $options: 'i' } }, //  Use cleaned term for orderId
         { 'user.name': { $regex: searchTerm, $options: 'i' } },
         { 'user.email': { $regex: searchTerm, $options: 'i' } },
         { 'items.productId.productName': { $regex: searchTerm, $options: 'i' } },
@@ -158,7 +158,7 @@ function buildOrderItemsPipeline(filters) {
   if (filters.status) {
     const statusMatch = { 'items.status': filters.status };
     pipeline.push({ $match: statusMatch });
-    console.log('📊 Added status match:', statusMatch);
+    console.log(' Added status match:', statusMatch);
   }
 
   // Step 7: Project the final structure
@@ -217,7 +217,7 @@ function buildOrderItemsPipeline(filters) {
     filters.sortOrder === 'desc' ? -1 : 1;
   pipeline.push({ $sort: sortObj });
 
-  console.log('✅ Final pipeline length:', pipeline.length);
+  console.log(' Final pipeline length:', pipeline.length);
   console.log('🎯 Search will now work for customer names, product names, order IDs, and SKUs!');
   return pipeline;
 }
@@ -407,7 +407,7 @@ const getFilteredOrders = async (req, res) => {
     const sortBy = req.query.sortBy || 'createdAt';
     const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
 
-    // ✅ BUILD AGGREGATION PIPELINE FOR PROPER SEARCH
+    //  BUILD AGGREGATION PIPELINE FOR PROPER SEARCH
     const pipeline = [];
 
     // Step 1: Initial match for order-level filters
@@ -495,20 +495,20 @@ const getFilteredOrders = async (req, res) => {
     const sortField = sortBy === 'createdAt' ? 'createdAt' : sortBy;
     pipeline.push({ $sort: { [sortField]: sortOrder } });
 
-    // ✅ Get total count for pagination
+    //  Get total count for pagination
     const countPipeline = [...pipeline, { $count: 'total' }];
     const countResult = await Order.aggregate(countPipeline);
     const totalCount = countResult[0]?.total || 0;
     const totalPages = Math.ceil(totalCount / limit);
 
-    // ✅ Add pagination to main pipeline
+    //  Add pagination to main pipeline
     pipeline.push({ $skip: (page - 1) * limit });
     pipeline.push({ $limit: limit });
 
     // Execute aggregation
     const orders = await Order.aggregate(pipeline);
 
-    // ✅ Populate product details for items
+    //  Populate product details for items
     await Order.populate(orders, {
       path: 'items.productId',
       select: 'productName mainImage'
@@ -546,7 +546,7 @@ const getFilteredOrders = async (req, res) => {
       return order;
     });
 
-    // ✅ CALCULATE FILTERED STATISTICS
+    //  CALCULATE FILTERED STATISTICS
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -598,7 +598,7 @@ const getFilteredOrders = async (req, res) => {
     ];
     const filteredOrderStats = await Order.aggregate(statsPipeline);
 
-    // ✅ RESPONSE with filtered statistics
+    //  RESPONSE with filtered statistics
     res.json({
       success: true,
       data: {
@@ -664,7 +664,7 @@ const getOrderDetails = async (req, res) => {
       .lean();
 
     if (!order) {
-      console.log('❌ Order not found:', orderId);
+      console.log(' Order not found:', orderId);
       return res.status(404).render('errors/404', {
         pageTitle: 'Order Not Found',
         message: 'The requested order could not be found.',
@@ -675,7 +675,7 @@ const getOrderDetails = async (req, res) => {
     console.log("📦 Full order object:", JSON.stringify(order, null, 2));
     console.log("📍 Delivery address:", order.deliveryAddress);
 
-    // ✅ FIXED: Handle delivery address properly
+    //  FIXED: Handle delivery address properly
     let finalDeliveryAddress = null;
 
     if (order.deliveryAddress) {
@@ -685,7 +685,7 @@ const getOrderDetails = async (req, res) => {
         const specificAddress = order.deliveryAddress.addressId.address[addressIndex];
         
         if (specificAddress) {
-          console.log("✅ Using referenced address at index:", addressIndex);
+          console.log(" Using referenced address at index:", addressIndex);
           finalDeliveryAddress = {
             ...specificAddress,
             addressIndex: order.deliveryAddress.addressIndex
@@ -694,12 +694,12 @@ const getOrderDetails = async (req, res) => {
       }
       // Case 2: Address is embedded directly in the order (common pattern)
       else if (order.deliveryAddress.name || order.deliveryAddress.city) {
-        console.log("✅ Using embedded address from order");
+        console.log(" Using embedded address from order");
         finalDeliveryAddress = order.deliveryAddress;
       }
       // Case 3: Try to get address from user's saved addresses
       else if (order.user && order.user._id) {
-        console.log("⚠️ AddressId is null, trying to fetch from user addresses");
+        console.log(" AddressId is null, trying to fetch from user addresses");
         try {
           const User = require('../../models/User');
           const userWithAddresses = await User.findById(order.user._id).select('address').lean();
@@ -709,19 +709,19 @@ const getOrderDetails = async (req, res) => {
             const userAddress = userWithAddresses.address[addressIndex];
             
             if (userAddress) {
-              console.log("✅ Using address from user document at index:", addressIndex);
+              console.log(" Using address from user document at index:", addressIndex);
               finalDeliveryAddress = userAddress;
             }
           }
         } catch (err) {
-          console.error("❌ Error fetching user addresses:", err);
+          console.error(" Error fetching user addresses:", err);
         }
       }
     }
 
     // Case 4: Fallback to shippingAddress if it exists
     if (!finalDeliveryAddress && order.shippingAddress) {
-      console.log("✅ Using shippingAddress as fallback");
+      console.log(" Using shippingAddress as fallback");
       finalDeliveryAddress = order.shippingAddress;
     }
 
@@ -730,7 +730,7 @@ const getOrderDetails = async (req, res) => {
 
     console.log("📍 Final delivery address:", order.deliveryAddress);
 
-    // ✅ NEW: Pre-calculate valid transitions for each item
+    //  NEW: Pre-calculate valid transitions for each item
     const { getValidTransitions } = require('../../services/orderService');
     
     order.items = order.items.map(item => {
@@ -860,11 +860,11 @@ const getOrderDetailsJSON = async (req, res) => {
       }
     }
 
-    // ✅ NEW: Get valid transitions for current order status
+    //  NEW: Get valid transitions for current order status
     const validTransitions = await orderService.getValidTransitions(order.status);
 
 
-    // ✅ Return JSON response (not HTML)
+    //  Return JSON response (not HTML)
     res.json({
       success: true,
       order: {
@@ -890,7 +890,7 @@ const getOrderDetailsJSON = async (req, res) => {
         createdAt: order.createdAt,
         updatedAt: order.updatedAt
       },
-      validTransitions: validTransitions // ✅ Include valid transitions
+      validTransitions: validTransitions //  Include valid transitions
     });
 
   } catch (error) {
@@ -976,17 +976,17 @@ const updateOrderStatus = async (req, res) => {
       'admin'
     );
 
-    // ✅ ENHANCED: Comprehensive response with all information needed for UI updates
+    //  ENHANCED: Comprehensive response with all information needed for UI updates
     res.json({
       success: true,
       message: result.message,
       order: {
         orderId: result.order.orderId,
         status: result.order.status,
-        paymentStatus: result.order.paymentStatus, // ✅ Order-level payment status
-        paymentMethod: result.order.paymentMethod, // ✅ Helpful for frontend logic
+        paymentStatus: result.order.paymentStatus, //  Order-level payment status
+        paymentMethod: result.order.paymentMethod, //  Helpful for frontend logic
         totalAmount: result.order.totalAmount,
-        // ✅ ENHANCED: Complete item information for real-time badge updates
+        //  ENHANCED: Complete item information for real-time badge updates
         items: result.order.items.map(item => ({
           _id: item._id,
           productName: item.productId ? item.productId.productName : 'Product',
@@ -995,13 +995,13 @@ const updateOrderStatus = async (req, res) => {
           quantity: item.quantity,
           price: item.price,
           totalPrice: item.totalPrice,
-          status: item.status,                    // ✅ Updated item status
-          paymentStatus: item.paymentStatus,      // ✅ Updated item payment status
-          // ✅ Additional info for debugging/logging
+          status: item.status,                    //  Updated item status
+          paymentStatus: item.paymentStatus,      //  Updated item payment status
+          //  Additional info for debugging/logging
           previousStatus: currentOrder.items.find(ci => ci._id.toString() === item._id.toString())?.status,
           statusChanged: currentOrder.items.find(ci => ci._id.toString() === item._id.toString())?.status !== item.status
         })),
-        // ✅ ENHANCED: Status change summary for frontend
+        //  ENHANCED: Status change summary for frontend
         changes: {
           previousOrderStatus: currentOrder.status,
           newOrderStatus: result.order.status,
@@ -1015,7 +1015,7 @@ const updateOrderStatus = async (req, res) => {
             return originalItem && originalItem.paymentStatus !== item.paymentStatus;
           }).length
         },
-        // ✅ ENHANCED: Metadata for frontend processing
+        //  ENHANCED: Metadata for frontend processing
         updatedAt: result.order.updatedAt,
         updatedBy: 'admin'
       }
@@ -1026,7 +1026,7 @@ const updateOrderStatus = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Error updating order status',
-      // ✅ ENHANCED: Error context for debugging
+      //  ENHANCED: Error context for debugging
       context: {
         orderId: req.params.orderId,
         requestedStatus: req.body.status,
@@ -1088,7 +1088,7 @@ const updateItemStatus = async (req, res) => {
     if (!isValidStatusTransition(currentItem.status, status)) {
       const validTransitions = getValidTransitions(currentItem.status);
       
-      console.log('❌ Invalid item transition:', {
+      console.log(' Invalid item transition:', {
         currentStatus: currentItem.status,
         requestedStatus: status,
         validTransitions: validTransitions
@@ -1109,7 +1109,7 @@ const updateItemStatus = async (req, res) => {
       'admin'
     );
 
-    // ✅ ENHANCED: Comprehensive response with all information needed for UI updates
+    //  ENHANCED: Comprehensive response with all information needed for UI updates
     res.json({
       success: true,
       message: result.message,
@@ -1119,7 +1119,7 @@ const updateItemStatus = async (req, res) => {
         paymentStatus: result.order.paymentStatus,
         paymentMethod: result.order.paymentMethod,
         totalAmount: result.order.totalAmount,
-        // ✅ ENHANCED: Complete item information for real-time badge updates
+        //  ENHANCED: Complete item information for real-time badge updates
         items: result.order.items.map(item => ({
           _id: item._id,
           productName: item.productId ? item.productId.productName : 'Product',
@@ -1130,10 +1130,10 @@ const updateItemStatus = async (req, res) => {
           totalPrice: item.totalPrice,
           status: item.status,
           paymentStatus: item.paymentStatus,
-          // ✅ Mark which item was updated
+          //  Mark which item was updated
           wasUpdated: item._id.toString() === itemId
         })),
-        // ✅ ENHANCED: Update summary for frontend
+        //  ENHANCED: Update summary for frontend
         changes: {
           updatedItemId: itemId,
           previousItemStatus: result.itemUpdated.previousStatus,
@@ -1143,18 +1143,18 @@ const updateItemStatus = async (req, res) => {
           orderStatus: result.order.status,
           orderPaymentStatus: result.order.paymentStatus
         },
-        // ✅ ENHANCED: Metadata for frontend processing
+        //  ENHANCED: Metadata for frontend processing
         updatedAt: result.order.updatedAt,
         updatedBy: 'admin'
       }
     });
 
   } catch (error) {
-    console.error('❌ Error updating item status:', error);
+    console.error(' Error updating item status:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to update item status',
-      // ✅ ENHANCED: Error context for debugging
+      //  ENHANCED: Error context for debugging
       context: {
         orderId: req.params.orderId,
         itemId: req.params.itemId,
@@ -1338,7 +1338,7 @@ const returnOrderRequest = async (req, res) => {
     const { orderId } = req.params;
     const { reason } = req.body;
 
-    // ✅ UPDATED: Use admin return request function (no reason validation required)
+    //  UPDATED: Use admin return request function (no reason validation required)
     const result = await orderService.adminOrderReturnRequest(
       orderId,
       reason || 'Return requested by admin'

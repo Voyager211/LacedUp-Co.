@@ -57,7 +57,7 @@ connectDB();
 // View engine
 app.set('view engine', 'ejs');
 app.use(expressLayouts);
-app.set('layout', 'admin/layout'); // default for admin
+app.set('layout', 'admin/layout'); 
 
 // Middlewares
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -68,7 +68,6 @@ app.use(flash());
 
 // Session configuration with dynamic session names and durations based on route
 app.use((req, res, next) => {
-  // Determine session name and duration based on route
   const isAdminRoute = req.path.startsWith('/admin');
   const sessionName = isAdminRoute ? 'admin.sid' : 'user.sid';
 
@@ -156,7 +155,7 @@ app.use('/admin/sales-report', adminSalesReportRoutes);
 app.use('/admin/dashboard', adminDashboardRoutes);
 
 app.get('coupons/available', (req, res) => {
-    console.log('🚀 /coupons/available route HIT!');
+    console.log('/coupons/available route HIT!');
     userCouponController.getAvailableCoupons(req, res);
 });
 

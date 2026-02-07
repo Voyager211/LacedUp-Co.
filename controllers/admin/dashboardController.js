@@ -8,9 +8,9 @@ const { startOfDay, endOfDay, startOfWeek, endOfWeek,
         subMonths, subWeeks, subYears } = require('date-fns');
 const PDFDocument = require('pdfkit');
 
-// ============================================
+
 // HELPER: GET DATE RANGE BASED ON PERIOD
-// ============================================
+
 const getDateRange = (period = 'monthly') => {
     const now = new Date();
     let startDate, endDate;
@@ -30,13 +30,11 @@ const getDateRange = (period = 'monthly') => {
             endDate = now;
     }
 
-    console.log(`📅 Date range for ${period}:`, { startDate, endDate });
+    console.log(`Date range for ${period}:`, { startDate, endDate });
     return { startDate, endDate };
 };
 
-// ============================================
 // RENDER DASHBOARD PAGE
-// ============================================
 const renderDashboard = async (req, res) => {
     try {
         res.render('admin/dashboard', {
@@ -49,13 +47,11 @@ const renderDashboard = async (req, res) => {
     }
 };
 
-// ============================================
 // GET DASHBOARD STATISTICS (FILTERED BY PERIOD)
-// ============================================
 const getDashboardStats = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
-        console.log('📊 getDashboardStats called with period:', period);
+        console.log('getDashboardStats called with period:', period);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -104,14 +100,14 @@ const getDashboardStats = async (req, res) => {
             pendingOrders
         };
 
-        console.log('✅ Stats response:', responseData);
+        console.log('Stats response:', responseData);
 
         res.json({
             success: true,
             data: responseData
         });
     } catch (error) {
-        console.error('❌ Error fetching dashboard stats:', error);
+        console.error('Error fetching dashboard stats:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching dashboard statistics'
@@ -119,13 +115,11 @@ const getDashboardStats = async (req, res) => {
     }
 };
 
-// ============================================
 // GET SALES DATA (MONTHLY/WEEKLY/YEARLY)
-// ============================================
 const getSalesData = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
-        console.log('📊 getSalesData called with period:', period);
+        console.log('getSalesData called with period:', period);
         
         let salesData, labels;
 
@@ -141,14 +135,14 @@ const getSalesData = async (req, res) => {
                 ({ salesData, labels } = await getMonthlySales());
         }
 
-        console.log('✅ Sales data points:', salesData.length);
+        console.log('Sales data points:', salesData.length);
 
         res.json({
             success: true,
             data: { labels, salesData }
         });
     } catch (error) {
-        console.error('❌ Error fetching sales data:', error);
+        console.error('Error fetching sales data:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching sales data'
@@ -156,9 +150,7 @@ const getSalesData = async (req, res) => {
     }
 };
 
-// ============================================
 // HELPER: GET MONTHLY SALES (LAST 12 MONTHS)
-// ============================================
 const getMonthlySales = async () => {
     const months = [];
     const labels = [];
@@ -203,9 +195,7 @@ const getMonthlySales = async () => {
     return { salesData, labels };
 };
 
-// ============================================
 // HELPER: GET WEEKLY SALES (LAST 12 WEEKS)
-// ============================================
 const getWeeklySales = async () => {
     const weeks = [];
     const labels = [];
@@ -249,9 +239,7 @@ const getWeeklySales = async () => {
     return { salesData, labels };
 };
 
-// ============================================
 // HELPER: GET YEARLY SALES (LAST 5 YEARS)
-// ============================================
 const getYearlySales = async () => {
     const years = [];
     const labels = [];
@@ -295,13 +283,11 @@ const getYearlySales = async () => {
     return { salesData, labels };
 };
 
-// ============================================
 // GET REVENUE DISTRIBUTION BY PAYMENT METHOD (FILTERED)
-// ============================================
 const getRevenueDistribution = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
-        console.log('📊 getRevenueDistribution called with period:', period);
+        console.log('getRevenueDistribution called with period:', period);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -338,14 +324,14 @@ const getRevenueDistribution = async (req, res) => {
             percentage: totalRevenue > 0 ? ((item.totalRevenue / totalRevenue) * 100).toFixed(2) : '0.00'
         }));
 
-        console.log('✅ Formatted revenue data:', formattedData);
+        console.log('Formatted revenue data:', formattedData);
 
         res.json({
             success: true,
             data: formattedData
         });
     } catch (error) {
-        console.error('❌ Error fetching revenue distribution:', error);
+        console.error(' Error fetching revenue distribution:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching revenue distribution'
@@ -353,15 +339,13 @@ const getRevenueDistribution = async (req, res) => {
     }
 };
 
-// ============================================
-// ✅ UPDATED: GET BEST SELLING PRODUCTS (WITH IMAGE)
-// ============================================
+// UPDATED: GET BEST SELLING PRODUCTS (WITH IMAGE)
 const getBestSellingProducts = async (req, res) => {
     try {
         const { period = 'monthly', limit = 5 } = req.query;
         const limitNum = parseInt(limit) || 5;
         
-        console.log(`📊 getBestSellingProducts called with period: ${period}, limit: ${limitNum}`);
+        console.log(` getBestSellingProducts called with period: ${period}, limit: ${limitNum}`);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -408,22 +392,22 @@ const getBestSellingProducts = async (req, res) => {
                 $project: {
                     productName: '$productDetails.productName',
                     brand: { $ifNull: ['$brandDetails.name', 'Unknown'] },
-                    mainImage: '$productDetails.mainImage',  // ✅ ADD THIS
-                    subImages: '$productDetails.subImages',  // ✅ ADD THIS
+                    mainImage: '$productDetails.mainImage',  //  ADD THIS
+                    subImages: '$productDetails.subImages',  //  ADD THIS
                     totalQuantity: 1,
                     totalRevenue: 1
                 }
             }
         ]);
 
-        console.log(`✅ Top ${limitNum} products loaded:`, bestProducts.length);
+        console.log(` Top ${limitNum} products loaded:`, bestProducts.length);
 
         res.json({
             success: true,
             data: bestProducts
         });
     } catch (error) {
-        console.error('❌ Error fetching best selling products:', error);
+        console.error(' Error fetching best selling products:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling products'
@@ -432,15 +416,13 @@ const getBestSellingProducts = async (req, res) => {
 };
 
 
-// ============================================
-// ✅ UPDATED: GET BEST SELLING CATEGORIES (WITH IMAGE)
-// ============================================
+//  UPDATED: GET BEST SELLING CATEGORIES (WITH IMAGE)
 const getBestSellingCategories = async (req, res) => {
     try {
         const { period = 'monthly', limit = 10 } = req.query;
         const limitNum = parseInt(limit) || 10;
         
-        console.log(`📊 getBestSellingCategories called with period: ${period}, limit: ${limitNum}`);
+        console.log(` getBestSellingCategories called with period: ${period}, limit: ${limitNum}`);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -496,7 +478,7 @@ const getBestSellingCategories = async (req, res) => {
             {
                 $project: {
                     categoryName: '$categoryDetails.name',
-                    categoryImage: '$categoryDetails.image',  // ✅ ADD THIS
+                    categoryImage: '$categoryDetails.image',  //  ADD THIS
                     totalQuantity: 1,
                     totalRevenue: 1,
                     totalOrders: 1,
@@ -505,14 +487,14 @@ const getBestSellingCategories = async (req, res) => {
             }
         ]);
 
-        console.log(`✅ Top ${limitNum} categories loaded:`, bestCategories.length);
+        console.log(` Top ${limitNum} categories loaded:`, bestCategories.length);
 
         res.json({
             success: true,
             data: bestCategories
         });
     } catch (error) {
-        console.error('❌ Error fetching best selling categories:', error);
+        console.error(' Error fetching best selling categories:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling categories'
@@ -521,15 +503,13 @@ const getBestSellingCategories = async (req, res) => {
 };
 
 
-// ============================================
-// ✅ UPDATED: GET BEST SELLING BRANDS (WITH IMAGE)
-// ============================================
+//  UPDATED: GET BEST SELLING BRANDS (WITH IMAGE)
 const getBestSellingBrands = async (req, res) => {
     try {
         const { period = 'monthly', limit = 10 } = req.query;
         const limitNum = parseInt(limit) || 10;
         
-        console.log(`📊 getBestSellingBrands called with period: ${period}, limit: ${limitNum}`);
+        console.log(` getBestSellingBrands called with period: ${period}, limit: ${limitNum}`);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -585,7 +565,7 @@ const getBestSellingBrands = async (req, res) => {
             {
                 $project: {
                     brandName: '$brandDetails.name',
-                    brandImage: '$brandDetails.image',  // ✅ ADD THIS
+                    brandImage: '$brandDetails.image',  //  ADD THIS
                     totalQuantity: 1,
                     totalRevenue: 1,
                     totalOrders: 1,
@@ -594,14 +574,14 @@ const getBestSellingBrands = async (req, res) => {
             }
         ]);
 
-        console.log(`✅ Top ${limitNum} brands loaded:`, bestBrands.length);
+        console.log(` Top ${limitNum} brands loaded:`, bestBrands.length);
 
         res.json({
             success: true,
             data: bestBrands
         });
     } catch (error) {
-        console.error('❌ Error fetching best selling brands:', error);
+        console.error(' Error fetching best selling brands:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling brands'
@@ -611,13 +591,11 @@ const getBestSellingBrands = async (req, res) => {
 
 
 
-// ============================================
 // GET BEST SELLING CATEGORY (FILTERED)
-// ============================================
 const getBestSellingCategory = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
-        console.log('📊 getBestSellingCategory called with period:', period);
+        console.log(' getBestSellingCategory called with period:', period);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -671,14 +649,14 @@ const getBestSellingCategory = async (req, res) => {
             }
         ]);
 
-        console.log('✅ Best category:', bestCategory[0]?.categoryName || 'None');
+        console.log(' Best category:', bestCategory[0]?.categoryName || 'None');
 
         res.json({
             success: true,
             data: bestCategory[0] || null
         });
     } catch (error) {
-        console.error('❌ Error fetching best selling category:', error);
+        console.error(' Error fetching best selling category:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling category'
@@ -686,13 +664,11 @@ const getBestSellingCategory = async (req, res) => {
     }
 };
 
-// ============================================
 // GET BEST SELLING BRAND (FILTERED)
-// ============================================
 const getBestSellingBrand = async (req, res) => {
     try {
         const { period = 'monthly' } = req.query;
-        console.log('📊 getBestSellingBrand called with period:', period);
+        console.log(' getBestSellingBrand called with period:', period);
         
         const { startDate, endDate } = getDateRange(period);
 
@@ -753,14 +729,14 @@ const getBestSellingBrand = async (req, res) => {
             }
         ]);
 
-        console.log('✅ Best brand:', bestBrand[0]?.brandName || 'None');
+        console.log(' Best brand:', bestBrand[0]?.brandName || 'None');
 
         res.json({
             success: true,
             data: bestBrand[0] || null
         });
     } catch (error) {
-        console.error('❌ Error fetching best selling brand:', error);
+        console.error(' Error fetching best selling brand:', error);
         res.status(500).json({
             success: false,
             message: 'Error fetching best selling brand'
@@ -768,9 +744,7 @@ const getBestSellingBrand = async (req, res) => {
     }
 };
 
-// ============================================
 // EXPORT LEDGER REPORT AS PDF
-// ============================================
 const exportLedgerPDF = async (req, res) => {
     try {
         const { timePeriod = 'monthly', paymentMethod = 'all', orderStatus = 'all' } = req.query;
@@ -816,9 +790,7 @@ const exportLedgerPDF = async (req, res) => {
     }
 };
 
-// ============================================
 // EXPORTS
-// ============================================
 module.exports = {
     renderDashboard,
     getDashboardStats,

@@ -188,7 +188,7 @@ const createRazorpayOrderHandler = async (req, res) => {
       paymentMethod: 'razorpay'
     });
 
-    // ✅ FIXED: Create Razorpay order using the instance directly
+    //  FIXED: Create Razorpay order using the instance directly
     const razorpayOrderOptions = {
       amount: Math.round(amount * 100), // Amount in paise
       currency: 'INR',

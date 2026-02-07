@@ -18,12 +18,12 @@ const transactionSchema = new mongoose.Schema({
   type: {
     type: String,
     enum: [
-      'ORDER_PAYMENT',    // Payment for placing an order
-      'WALLET_CREDIT',    // Adding money to wallet
+      'ORDER_PAYMENT',    
+      'WALLET_CREDIT',    
       'WALLET_DEBIT',
-      'WALLET_TOPUP',     // Wallet payment for order
-      'REFUND',          // Refund to wallet/original source
-      'CANCELLATION_REFUND' // Refund due to order cancellation
+      'WALLET_TOPUP',    
+      'REFUND',          
+      'CANCELLATION_REFUND' 
     ],
     required: true
   },
@@ -45,14 +45,14 @@ const transactionSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: [
-      'INITIATED',    // Transaction created, payment not started
-      'PENDING',      // Payment gateway initiated
-      'PROCESSING',   // Payment being processed
-      'COMPLETED',    // Payment successful
-      'FAILED',       // Payment failed
-      'CANCELLED',    // User cancelled payment
-      'EXPIRED',      // Payment session expired
-      'REFUNDED'      // Amount refunded
+      'INITIATED',    
+      'PENDING',     
+      'PROCESSING',   
+      'COMPLETED',    
+      'FAILED',       
+      'CANCELLED',    
+      'EXPIRED',     
+      'REFUNDED'      
     ],
     default: 'INITIATED',
     index: true

@@ -8,11 +8,6 @@ const upload = multer();
 // Admin route protection
 router.use(isAdmin);
 
-// ============================================
-// ✅ CORRECT ROUTE ORDER
-// Routes are matched top-to-bottom
-// Specific routes MUST come before dynamic /:id routes
-// ============================================
 
 // 1. API Routes - Most Specific (MUST BE FIRST)
 router.get('/api', productController.apiProducts);

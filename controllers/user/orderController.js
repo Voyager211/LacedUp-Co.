@@ -51,7 +51,7 @@ const getUserOrders = async (req, res) => {
       limit
     );
 
-    // ✅ ADD: Get total orders count
+    //  ADD: Get total orders count
     const totalOrders = await Order.countDocuments(filter);
 
     console.log('Order listing debug:', {
@@ -60,7 +60,7 @@ const getUserOrders = async (req, res) => {
       totalOrdersCount: totalOrders
     });
 
-    // ✅ Calculate pagination variables for shop-style pagination
+    //  Calculate pagination variables for shop-style pagination
     const currentPage = page;
     const hasPrevPage = currentPage > 1;
     const hasNextPage = currentPage < totalPages;
@@ -91,7 +91,7 @@ const getUserOrders = async (req, res) => {
       prevPage,
       nextPage,
       pageNumbers,
-      totalOrders, // ✅ NEW: Add total orders count
+      totalOrders, //  NEW: Add total orders count
       title: 'My Orders',
       layout: 'user/layouts/user-layout',
       active: 'orders',
@@ -108,7 +108,7 @@ const getUserOrders = async (req, res) => {
       layout: 'user/layouts/user-layout',
       active: 'orders',
       user: null,
-      totalOrders: 0, // ✅ NEW: Add default value for error case
+      totalOrders: 0, //  NEW: Add default value for error case
       cancellationReasons: CANCELLATION_REASONS,
       returnReasons: RETURN_REASONS
     });
@@ -160,7 +160,7 @@ const getUserOrdersPaginated = async (req, res) => {
       const prevPage = currentPage - 1;
       const nextPage = currentPage + 1;
 
-      // ✅ ADD: Generate page numbers
+      //  ADD: Generate page numbers
       const pageNumbers = generatePageNumbers(currentPage, totalPages);
 
       return res.json({
@@ -173,14 +173,14 @@ const getUserOrdersPaginated = async (req, res) => {
           hasNextPage,
           prevPage,
           nextPage,
-          pageNumbers, // ✅ NEW
+          pageNumbers, //  NEW
           totalOrders: await Order.countDocuments(filter),
           filters: { status: '', search: '' }
         }
       });
     }
 
-    // ✅ CASE 2: Search OR Filter active - Fetch ALL orders, then filter in memory
+    //  CASE 2: Search OR Filter active - Fetch ALL orders, then filter in memory
     const allOrders = await Order.find(filter)
       .populate({
         path: 'items.productId',
@@ -195,7 +195,7 @@ const getUserOrdersPaginated = async (req, res) => {
 
     let filteredOrders = allOrders;
 
-    // ✅ Apply search filter
+    //  Apply search filter
     if (searchQuery) {
       filteredOrders = filteredOrders.filter(order => {
         const searchLower = searchQuery.toLowerCase();
@@ -219,7 +219,7 @@ const getUserOrdersPaginated = async (req, res) => {
       });
     }
 
-    // ✅ Apply status filter
+    //  Apply status filter
     if (statusFilter) {
       filteredOrders = filteredOrders.map(order => {
         // Filter items by status
@@ -236,7 +236,7 @@ const getUserOrdersPaginated = async (req, res) => {
       }).filter(order => order !== null);
     }
 
-    // ✅ Calculate pagination for filtered results
+    //  Calculate pagination for filtered results
     const totalFilteredOrders = filteredOrders.length;
     const totalPages = Math.ceil(totalFilteredOrders / limit) || 1;
     const currentPage = Math.min(page, totalPages); // Prevent requesting page beyond available
@@ -245,10 +245,10 @@ const getUserOrdersPaginated = async (req, res) => {
     const prevPage = currentPage - 1;
     const nextPage = currentPage + 1;
 
-    // ✅ ADD: Generate page numbers
+    //  ADD: Generate page numbers
     const pageNumbers = generatePageNumbers(currentPage, totalPages);
 
-    // ✅ Paginate the filtered results
+    //  Paginate the filtered results
     const startIndex = (currentPage - 1) * limit;
     const endIndex = startIndex + limit;
     const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
@@ -263,7 +263,7 @@ const getUserOrdersPaginated = async (req, res) => {
         hasNextPage,
         prevPage,
         nextPage,
-        pageNumbers, // ✅ NEW
+        pageNumbers, //  NEW
         totalOrders: totalFilteredOrders,
         filters: { 
           status: statusFilter,
@@ -347,7 +347,7 @@ const searchOrders = async (req, res) => {
       success: true,
       data: { 
         orders: filteredOrders,
-        totalOrders: filteredOrders.length  // ✅ ADD THIS
+        totalOrders: filteredOrders.length  //  ADD THIS
       }
     });
 
@@ -405,7 +405,7 @@ const getOrderDetails = async (req, res) => {
       });
     }
 
-    // ✅ NEW: Add transaction ID for retry functionality
+    //  NEW: Add transaction ID for retry functionality
     if (order.status === 'Pending' && order.paymentStatus === 'Pending') {
       try {
         const transactionService = require('../../services/transactionService');
@@ -554,7 +554,7 @@ const cancelOrder = async (req, res) => {
     const { reason } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // ✅ DEBUGGING - Log all received data
+    //  DEBUGGING - Log all received data
     console.log('🔍 BACKEND DEBUG - Cancel Order:');
     console.log('Request body:', req.body);
     console.log('Reason received:', reason);
@@ -583,9 +583,9 @@ const cancelOrder = async (req, res) => {
       });
     }
 
-    // ✅ SINGLE validation block - no duplicates
+    //  SINGLE validation block - no duplicates
     if (!validReasons.includes(reason)) {
-      console.log('❌ Reason validation failed:', {
+      console.log(' Reason validation failed:', {
         received: reason,
         validOptions: validReasons
       });
@@ -606,7 +606,7 @@ const cancelOrder = async (req, res) => {
 
   
 
-    // ✅ DEBUG: Check status BEFORE cancellation
+    //  DEBUG: Check status BEFORE cancellation
     console.log('🔍 BEFORE CANCEL ORDER:');
     console.log('Order ID:', orderId);
     console.log('Order status before:', order.status);
@@ -627,7 +627,7 @@ const cancelOrder = async (req, res) => {
     // Use OrderService to cancel order
     const result = await orderService.cancelOrder(orderId, reason, userId);
 
-    // ✅ DEBUG: Check status AFTER cancellation
+    //  DEBUG: Check status AFTER cancellation
     console.log('🔍 AFTER CANCEL ORDER:');
     const orderAfter = await Order.findOne({ orderId: orderId });
     console.log('Order status after:', orderAfter.status);
@@ -653,13 +653,13 @@ const cancelOrder = async (req, res) => {
           if (variant) {
             variant.stock += item.quantity;
             await product.save();
-            console.log(`✅ Stock restored: ${item.quantity} units for ${item.size}`);
+            console.log(` Stock restored: ${item.quantity} units for ${item.size}`);
           }
         }
       }
     }
 
-    console.log('✅ Order cancellation completed successfully');
+    console.log(' Order cancellation completed successfully');
 
     res.json({
       success: true,
@@ -667,7 +667,7 @@ const cancelOrder = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error cancelling order:', error);
+    console.error(' Error cancelling order:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to cancel order'
@@ -683,7 +683,7 @@ const cancelItem = async (req, res) => {
     const { reason } = req.body;
     const userId = req.user ? req.user._id : req.session.userId;
 
-    // ✅ DEBUGGING - Log all received data
+    //  DEBUGGING - Log all received data
     console.log('🔍 BACKEND DEBUG - Cancel Item:');
     console.log('Request body:', req.body);
     console.log('Reason received:', reason);
@@ -707,7 +707,7 @@ const cancelItem = async (req, res) => {
       });
     }
 
-    // ✅ SINGLE validation block - declare validReasons only once
+    //  SINGLE validation block - declare validReasons only once
     const validReasons = getCancellationReasonsArray();
     console.log('Valid reasons array:', validReasons);
     console.log('Valid reasons length:', validReasons.length);
@@ -715,7 +715,7 @@ const cancelItem = async (req, res) => {
     console.log('================================');
 
     if (!validReasons.includes(reason)) {
-      console.log('❌ Item cancellation - Reason validation failed:', {
+      console.log(' Item cancellation - Reason validation failed:', {
         received: reason,
         validOptions: validReasons
       });
@@ -743,7 +743,7 @@ const cancelItem = async (req, res) => {
       });
     }
 
-    // ✅ DEBUG: Check status BEFORE item cancellation
+    //  DEBUG: Check status BEFORE item cancellation
     console.log('🔍 BEFORE CANCEL ITEM:');
     console.log('Order ID:', orderId);
     console.log('Item ID:', itemId);
@@ -763,7 +763,7 @@ const cancelItem = async (req, res) => {
     // Use OrderService to cancel item
     const result = await orderService.cancelItem(orderId, itemId, reason, '', userId);
 
-    // ✅ DEBUG: Check status AFTER item cancellation
+    //  DEBUG: Check status AFTER item cancellation
     console.log('🔍 AFTER CANCEL ITEM:');
     const orderAfter = await Order.findOne({ orderId: orderId });
     const itemAfter = orderAfter.items.id(itemId);
@@ -786,11 +786,11 @@ const cancelItem = async (req, res) => {
       if (variant) {
         variant.stock += item.quantity;
         await product.save();
-        console.log(`✅ Stock restored: ${item.quantity} units for ${item.size}`);
+        console.log(` Stock restored: ${item.quantity} units for ${item.size}`);
       }
     }
 
-    console.log('✅ Item cancellation completed successfully');
+    console.log(' Item cancellation completed successfully');
 
     res.json({
       success: true,
@@ -798,7 +798,7 @@ const cancelItem = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ Error cancelling item:', error);
+    console.error(' Error cancelling item:', error);
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to cancel item'

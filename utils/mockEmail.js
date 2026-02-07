@@ -13,7 +13,7 @@ module.exports = async function mockSendEmail(to, subject, html) {
     const timestamp = new Date().toISOString();
     
     // Log to console (faster than file operations)
-    console.log(`📧 MOCK EMAIL SENT:`);
+    console.log(` MOCK EMAIL SENT:`);
     console.log(`   To: ${to}`);
     console.log(`   Subject: ${subject}`);
     console.log(`   Time: ${timestamp}`);
@@ -21,7 +21,7 @@ module.exports = async function mockSendEmail(to, subject, html) {
     // Extract OTP from HTML if present
     const otpMatch = html.match(/<strong[^>]*>(\d{6})<\/strong>/);
     if (otpMatch) {
-      console.log(`   🔑 OTP: ${otpMatch[1]}`);
+      console.log(`    OTP: ${otpMatch[1]}`);
     }
 
     // Async file logging to avoid blocking (optional, faster without it)
@@ -41,9 +41,9 @@ module.exports = async function mockSendEmail(to, subject, html) {
       });
     }
 
-    console.log(`✅ Mock email sent successfully (instant)`);
+    console.log(` Mock email sent successfully (instant)`);
   } catch (err) {
-    console.error(`❌ Mock email failed:`, err);
+    console.error(` Mock email failed:`, err);
     throw err;
   }
 };

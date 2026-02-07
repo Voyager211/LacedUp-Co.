@@ -68,16 +68,16 @@ module.exports = async function sendOtp(user, otp) {
 
     // Send email using either mock or real email service
     if (USE_MOCK_EMAIL) {
-      console.log('📧 Using mock email service for OTP');
+      console.log(' Using mock email service for OTP');
       await mockSendEmail(user.email, 'Your OTP Code - LacedUp', html);
     } else {
       await sendEmail(user.email, 'Your OTP Code - LacedUp', html);
     }
     
-    console.log(`✅ OTP email sent successfully to ${user.email}`);
+    console.log(` OTP email sent successfully to ${user.email}`);
     
   } catch (error) {
-    console.error('❌ Error sending OTP email:', error);
+    console.error(' Error sending OTP email:', error);
     
     // Fallback to basic HTML if template rendering fails
     try {
@@ -89,9 +89,9 @@ module.exports = async function sendOtp(user, otp) {
         await sendEmail(user.email, 'Your OTP Code - LacedUp', basicHtml);
       }
       
-      console.log(`✅ Fallback OTP email sent successfully to ${user.email}`);
+      console.log(` Fallback OTP email sent successfully to ${user.email}`);
     } catch (fallbackError) {
-      console.error('❌ Fallback email also failed:', fallbackError);
+      console.error(' Fallback email also failed:', fallbackError);
       throw error; // Re-throw original error
     }
   }

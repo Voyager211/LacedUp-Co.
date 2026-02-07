@@ -29,7 +29,7 @@ const variantSchema = new mongoose.Schema({
   sku: {
     type: String,
     unique: true,
-    sparse: true // Allows null values but ensures uniqueness when present
+    sparse: true 
   }
   // Removed finalPrice field - all calculations are now real-time only
 }, { _id: true });

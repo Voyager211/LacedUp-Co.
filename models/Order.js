@@ -60,19 +60,19 @@ const orderSchema = new mongoose.Schema({
       },
       status: {
         type: String,
-        enum: getOrderStatusArray(),  // ✅ Using constants
+        enum: getOrderStatusArray(),  
         default: 'Pending'
       },
       paymentStatus: {
         type: String,
-        enum: getPaymentStatusArray(),  // ✅ Using constants
+        enum: getPaymentStatusArray(), 
         default: 'Pending'
       },
       statusHistory: [
         {
           status: {
             type: String,
-            enum: getOrderStatusArray(),  // ✅ Using constants
+            enum: getOrderStatusArray(),  
             required: true
           },
           updatedAt: {
@@ -86,11 +86,11 @@ const orderSchema = new mongoose.Schema({
       ],
       cancellationReason: {
         type: String,
-        enum: getCancellationReasonsArray()  // ✅ Using constants
+        enum: getCancellationReasonsArray()  
       },
       returnReason: {
         type: String,
-        enum: getReturnReasonsArray()  // ✅ Using constants
+        enum: getReturnReasonsArray() 
       },
       returnRequestDate: {
         type: Date
@@ -245,21 +245,6 @@ orderSchema.pre('save', function(next) {
 });
 
 
-// orderSchema.pre('save', function(next) {
-//   // Validate total calculations
-//   const calculatedTotal = this.subtotal - this.totalDiscount - this.couponDiscount + this.shipping;
-//   if (Math.abs(this.totalAmount - calculatedTotal) > 0.01) {
-//     console.error('!!! Total amount calculation mismatch:');
-//     // console.error('   subtotal:', this.subtotal);
-//     // console.error('   totalDiscount:', this.totalDiscount);
-//     // console.error('   couponDiscount:', this.couponDiscount);
-//     // console.error('   shipping:', this.shipping);
-//     // console.error('   Expected total:', calculatedTotal);
-//     // console.error('   Actual totalAmount:', this.totalAmount);
-//     return next(new Error('Total amount calculation mismatch'));
-//   }
-//   next();
-// });
 
 
 // Simple data getters

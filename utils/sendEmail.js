@@ -11,24 +11,24 @@ const createTransporter = () => {
   return nodemailer.createTransport({
     host: 'smtp.gmail.com',
     port: 587,
-    secure: false, // true for 465, false for other ports
+    secure: false, 
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS
     },
-    // Optimized settings for faster sending
-    pool: true, // Use connection pooling
-    maxConnections: 5, // Allow multiple concurrent connections
-    maxMessages: 100, // Reuse connections for multiple messages
-    rateLimit: 10, // Send up to 10 messages per second
+    
+    pool: true, 
+    maxConnections: 5, 
+    maxMessages: 100,
+    rateLimit: 10, 
     tls: {
       ciphers: 'SSLv3',
       rejectUnauthorized: false
     },
     // Reduce timeouts for faster failure detection
-    connectionTimeout: 10000, // 10 seconds
-    greetingTimeout: 5000, // 5 seconds
-    socketTimeout: 30000 // 30 seconds
+    connectionTimeout: 10000, 
+    greetingTimeout: 5000, 
+    socketTimeout: 30000 
   });
 };
 
@@ -42,7 +42,7 @@ if (transporter) {
       isTransporterVerified = true;
     })
     .catch((err) => {
-      console.warn('⚠️ Email transporter pre-verification failed:', err.message);
+      console.warn(' Email transporter pre-verification failed:', err.message);
     });
 }
 
@@ -50,19 +50,19 @@ if (transporter) {
 const testEmailConfig = async () => {
   try {
     if (!transporter) {
-      console.error('❌ Email transporter not initialized');
+      console.error(' Email transporter not initialized');
       return false;
     }
 
-    console.log('🔍 Testing email configuration...');
-    console.log('📧 EMAIL_USER:', process.env.EMAIL_USER);
-    console.log('🔑 EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 'undefined');
+    console.log(' Testing email configuration...');
+    console.log(' EMAIL_USER:', process.env.EMAIL_USER);
+    console.log(' EMAIL_PASS length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 'undefined');
 
     await transporter.verify();
-    console.log('✅ Email configuration verified successfully');
+    console.log(' Email configuration verified successfully');
     return true;
   } catch (err) {
-    console.error('❌ Email configuration test failed:', err.message);
+    console.error(' Email configuration test failed:', err.message);
     return false;
   }
 };
@@ -88,7 +88,7 @@ module.exports = async function sendEmail(to, subject, html) {
     });
 
   } catch (err) {
-    console.error(`❌ Email sending failed to ${to}:`, err);
+    console.error(` Email sending failed to ${to}:`, err);
     
     // Reset verification status on auth errors
     if (err.code === 'EAUTH') {

@@ -58,10 +58,10 @@ function calculateOrderStatus(items) {
   let pending = 0, processing = 0, shipped = 0, delivered = 0, 
       cancelled = 0, failed = 0, processingReturn = 0, returned = 0;
 
-  // ✅ FIX: Loop over items and access .status property
+  //  FIX: Loop over items and access .status property
   for (const item of items) {
-    console.log('📊 DEBUG Item status:', item.status); // ✅ DEBUG
-    switch (item.status) {  // ✅ Access the status property
+    console.log('📊 DEBUG Item status:', item.status); //  DEBUG
+    switch (item.status) {  //  Access the status property
       case ORDER_STATUS.PENDING:
         pending++;
         break;
@@ -92,7 +92,7 @@ function calculateOrderStatus(items) {
   const total = items.length;
   const activeItems = total - cancelled; // active = not cancelled
 
-  console.log('📊 DEBUG Counts:', { // ✅ DEBUG
+  console.log('📊 DEBUG Counts:', { //  DEBUG
     total, 
     delivered, 
     cancelled, 
@@ -107,49 +107,49 @@ function calculateOrderStatus(items) {
 
   // Failed (if any failed)
   if (failed > 0) {
-    console.log('📊 DEBUG Result: Failed'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: Failed'); //  DEBUG
     return failed === total ? ORDER_STATUS.FAILED : 'Failed';
   }
 
   // 1. All cancelled
   if (cancelled === total) {
-    console.log('📊 DEBUG Result: All Cancelled'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: All Cancelled'); //  DEBUG
     return ORDER_STATUS.CANCELLED;
   }
 
   // 2. All processing-return
   if (processingReturn === total) {
-    console.log('📊 DEBUG Result: All Processing Return'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: All Processing Return'); //  DEBUG
     return ORDER_STATUS.PROCESSING_RETURN;
   }
 
   // 3. Returned outranks everything
   if (returned > 0) {
     const result = returned === total ? ORDER_STATUS.RETURNED : ORDER_STATUS.PARTIALLY_RETURNED;
-    console.log('📊 DEBUG Result: Returned ->', result); // ✅ DEBUG
+    console.log('📊 DEBUG Result: Returned ->', result); //  DEBUG
     return result;
   }
 
   // 4. Delivered family
   if (delivered > 0) {
     const result = delivered === total ? ORDER_STATUS.DELIVERED : ORDER_STATUS.PARTIALLY_DELIVERED;
-    console.log('📊 DEBUG Result: Delivered ->', result, '(delivered:', delivered, 'total:', total, ')'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: Delivered ->', result, '(delivered:', delivered, 'total:', total, ')'); //  DEBUG
     return result;
   }
 
   // 5. Shipped vs Processing
   if (activeItems > 0 && shipped === activeItems) {
-    console.log('📊 DEBUG Result: Shipped'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: Shipped'); //  DEBUG
     return ORDER_STATUS.SHIPPED;
   }
 
   if (shipped > 0 || processing > 0) {
-    console.log('📊 DEBUG Result: Processing'); // ✅ DEBUG
+    console.log('📊 DEBUG Result: Processing'); //  DEBUG
     return ORDER_STATUS.PROCESSING;
   }
 
   // 6. Default: Pending (every remaining item is still pending)
-  console.log('📊 DEBUG Result: Pending (default)'); // ✅ DEBUG
+  console.log('📊 DEBUG Result: Pending (default)'); //  DEBUG
   return ORDER_STATUS.PENDING;
 }
 
@@ -176,7 +176,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
 
     const oldStatus = order.status;
     
-    console.log(`🔄 Updating order ${orderId}: ${oldStatus} → ${newStatus}`);
+    console.log(` Updating order ${orderId}: ${oldStatus} → ${newStatus}`);
     console.log(`📋 Order has ${order.items.length} items`);
     
     // Update order status
@@ -193,7 +193,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
       const oldItemStatus = item.status;
       const oldPaymentStatus = item.paymentStatus;
       
-      console.log(`🔄 Processing item ${index + 1}/${order.items.length}:`, {
+      console.log(` Processing item ${index + 1}/${order.items.length}:`, {
         itemId: item._id,
         oldStatus: oldItemStatus,
         oldPaymentStatus: oldPaymentStatus
@@ -209,10 +209,10 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
         notes: `Item status updated to match order status: ${newStatus}`
       });
 
-      // ✅ CRITICAL: Update item payment status based on new status
+      //  CRITICAL: Update item payment status based on new status
       const paymentChanged = updateAutomatedPaymentStatus(order, item, newStatus);
       
-      console.log(`✅ Item ${index + 1} updated:`, {
+      console.log(` Item ${index + 1} updated:`, {
         status: `${oldItemStatus} → ${item.status}`,
         payment: `${oldPaymentStatus} → ${item.paymentStatus}`,
         paymentChanged: paymentChanged
@@ -221,7 +221,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
       itemsUpdated++;
     });
 
-    // ✅ AUTOMATED: Recalculate order-level payment status
+    //  AUTOMATED: Recalculate order-level payment status
     order.paymentStatus = calculatePaymentStatus(order);
 
     console.log(`💾 Saving order with ${itemsUpdated} items updated`);
@@ -229,13 +229,13 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
 
     await order.save();
 
-    // ✅ NEW: COD Transaction Creation - Only when COD order is delivered
+    //  NEW: COD Transaction Creation - Only when COD order is delivered
     if (newStatus === ORDER_STATUS.DELIVERED && 
         order.paymentMethod === 'cod' && 
         order.paymentStatus === PAYMENT_STATUS.COMPLETED) {
       
       try {
-        console.log(`🔄 Creating COD completion transaction for delivered order ${orderId}`);
+        console.log(` Creating COD completion transaction for delivered order ${orderId}`);
         
         const transactionService = require('./transactionService');
         const codTransactionResult = await transactionService.createCODCompletionTransaction({
@@ -252,7 +252,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
         });
 
         if (codTransactionResult.success) {
-          console.log(`✅ COD completion transaction created: ${codTransactionResult.transactionId}`);
+          console.log(` COD completion transaction created: ${codTransactionResult.transactionId}`);
           
           // Add transaction reference to order status history
           order.statusHistory.push({
@@ -263,16 +263,16 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
           
           await order.save(); // Save again with transaction reference
         } else {
-          console.warn('⚠️ Failed to create COD completion transaction:', codTransactionResult.error);
+          console.warn(' Failed to create COD completion transaction:', codTransactionResult.error);
         }
         
       } catch (codTxError) {
-        console.error('❌ Error creating COD completion transaction:', codTxError.message);
+        console.error(' Error creating COD completion transaction:', codTxError.message);
         // Don't throw - allow order status update to succeed even if transaction creation fails
       }
     }
 
-    console.log(`✅ Order ${orderId} updated successfully:`);
+    console.log(` Order ${orderId} updated successfully:`);
     console.log(`   Order Status: ${oldStatus} → ${order.status}`);
     console.log(`   Order Payment: ${order.paymentStatus}`);
     console.log(`   Items Updated: ${itemsUpdated}`);
@@ -284,7 +284,7 @@ const updateOrderStatus = async (orderId, newStatus, notes = '') => {
     };
 
   } catch (error) {
-    console.error('❌ Error updating order status:', error);
+    console.error(' Error updating order status:', error);
     throw error;
   }
 };
@@ -314,7 +314,7 @@ const updateItemStatus = async (orderId, itemId, newStatus, notes = '', updatedB
     const oldStatus = item.status;
     const oldPaymentStatus = item.paymentStatus;
     
-    console.log(`🔄 Updating item ${itemId} status: ${oldStatus} → ${newStatus}`);
+    console.log(` Updating item ${itemId} status: ${oldStatus} → ${newStatus}`);
 
     // Validate status transition using existing validation
     if (!isValidStatusTransition(oldStatus, newStatus)) {
@@ -333,10 +333,10 @@ const updateItemStatus = async (orderId, itemId, newStatus, notes = '', updatedB
       updatedBy: updatedBy
     });
 
-    // ✅ AUTOMATED: Update item payment status using existing logic
+    //  AUTOMATED: Update item payment status using existing logic
     updateAutomatedPaymentStatus(order, item, newStatus);
 
-    // ✅ AUTOMATED: Recalculate order-level status based on all items
+    //  AUTOMATED: Recalculate order-level status based on all items
     const newOrderStatus = calculateOrderStatus(order.items);
     if (newOrderStatus !== order.status) {
       order.status = newOrderStatus;
@@ -348,12 +348,12 @@ const updateItemStatus = async (orderId, itemId, newStatus, notes = '', updatedB
       });
     }
 
-    // ✅ AUTOMATED: Recalculate order-level payment status
+    //  AUTOMATED: Recalculate order-level payment status
     order.paymentStatus = calculatePaymentStatus(order);
 
     await order.save();
 
-    console.log(`✅ Item ${itemId} status updated successfully:`);
+    console.log(` Item ${itemId} status updated successfully:`);
     console.log(`   Item Status: ${oldStatus} → ${item.status}`);
     console.log(`   Item Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
     console.log(`   Order Status: ${order.status}`);
@@ -373,7 +373,7 @@ const updateItemStatus = async (orderId, itemId, newStatus, notes = '', updatedB
     };
 
   } catch (error) {
-    console.error('❌ Error updating item status:', error);
+    console.error(' Error updating item status:', error);
     throw error;
   }
 };
@@ -413,10 +413,10 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
     const originalPaymentStatus = order.paymentStatus;
     const originalPaymentMethod = order.paymentMethod;
 
-    // ✅ Wallet refund for wallet and upi
+    //  Wallet refund for wallet and upi
     if (['wallet', 'upi'].includes(originalPaymentMethod) && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       try {
-        console.log(`🔄 Processing wallet refund for cancelled ${originalPaymentMethod.toUpperCase()} order ${orderId}`);
+        console.log(` Processing wallet refund for cancelled ${originalPaymentMethod.toUpperCase()} order ${orderId}`);
         const refundAmount = order.totalAmount;
         const refundResult = await walletService.addCredit(
           order.user.toString(),
@@ -426,13 +426,13 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
         );
 
         if (!refundResult.success) {
-          console.error('❌ Wallet refund failed', refundResult);
+          console.error(' Wallet refund failed', refundResult);
           throw new Error('Failed to process wallet refund');
         }
 
-        console.log(`✅ Wallet refund successful: ₹${refundAmount} credited for order ${orderId}`);
+        console.log(` Wallet refund successful: ₹${refundAmount} credited for order ${orderId}`);
       } catch (refundError) {
-        console.error('❌ Error processing wallet refund:', refundError);
+        console.error(' Error processing wallet refund:', refundError);
         throw new Error('Order cancellation failed: Unable to process wallet refund. Please contact support.');
       }
     }
@@ -442,13 +442,13 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
 
     if (originalPaymentMethod === 'cod') {
       newPaymentStatus = PAYMENT_STATUS.CANCELLED;
-      console.log(`✅ COD order cancelled - Payment status set to Cancelled for order ${orderId}`);
+      console.log(` COD order cancelled - Payment status set to Cancelled for order ${orderId}`);
     } else if (originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       newPaymentStatus = PAYMENT_STATUS.REFUNDED;
-      console.log(`✅ Online payment order cancelled - Payment status set to Refunded for order ${orderId}`);
+      console.log(` Online payment order cancelled - Payment status set to Refunded for order ${orderId}`);
     } else {
       newPaymentStatus = PAYMENT_STATUS.CANCELLED;
-      console.log(`✅ Unpaid order cancelled - Payment status set to Cancelled for order ${orderId}`);
+      console.log(` Unpaid order cancelled - Payment status set to Cancelled for order ${orderId}`);
     }
 
     // Update order
@@ -479,7 +479,7 @@ const cancelOrder = async (orderId, reason = '', cancelledBy = null) => {
 
     await order.save();
 
-    console.log(`✅ Order ${orderId} cancelled. Items affected: ${updatedItemsCount}, Payment status: ${newPaymentStatus}`);
+    console.log(` Order ${orderId} cancelled. Items affected: ${updatedItemsCount}, Payment status: ${newPaymentStatus}`);
 
     return {
       success: true,
@@ -532,9 +532,9 @@ const calculatePaymentStatus = (order) => {
 
 
 // Comprehensive automated payment status update
-// ✅ FIXED: Separate logic for return request vs return approval
+//  FIXED: Separate logic for return request vs return approval
 const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
-  console.log('🔄 Updating payment status automatically:', {
+  console.log(' Updating payment status automatically:', {
     itemId: item._id,
     newStatus: newItemStatus,
     oldPaymentStatus: item.paymentStatus,
@@ -547,23 +547,23 @@ const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
     case ORDER_STATUS.DELIVERED:
       if (order.paymentMethod === 'cod') {
         item.paymentStatus = PAYMENT_STATUS.COMPLETED;
-        console.log(`✅ COD item delivered - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+        console.log(` COD item delivered - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
       }
       break;
 
     case ORDER_STATUS.CANCELLED:
-      // ✅ ENHANCED: Always set to CANCELLED for cancelled items
+      //  ENHANCED: Always set to CANCELLED for cancelled items
       if (order.paymentMethod === 'cod') {
         item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-        console.log(`✅ COD item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+        console.log(` COD item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
       } else {
         // Online payments
         if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`✅ Online paid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` Online paid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`✅ Online unpaid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` Online unpaid item cancelled - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       }
       break;
@@ -578,18 +578,18 @@ const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
       if (order.paymentMethod === 'cod') {
         if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`✅ COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`✅ COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` COD return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       } else {
         if (oldPaymentStatus === PAYMENT_STATUS.COMPLETED) {
           item.paymentStatus = PAYMENT_STATUS.REFUNDED;
-          console.log(`✅ Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         } else {
           item.paymentStatus = PAYMENT_STATUS.CANCELLED;
-          console.log(`✅ Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
+          console.log(` Online return approved - Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
         }
       }
       break;
@@ -600,15 +600,15 @@ const updateAutomatedPaymentStatus = (order, item, newItemStatus) => {
       break;
   }
 
-  // ✅ ENSURE: Payment status is never undefined
+  //  ENSURE: Payment status is never undefined
   if (!item.paymentStatus) {
     item.paymentStatus = PAYMENT_STATUS.PENDING;
-    console.log(`⚠️ Payment status was undefined, set to PENDING`);
+    console.log(` Payment status was undefined, set to PENDING`);
   }
 
   const changed = item.paymentStatus !== oldPaymentStatus;
   if (changed) {
-    console.log(`✅ Payment status changed: ${oldPaymentStatus} → ${item.paymentStatus}`);
+    console.log(` Payment status changed: ${oldPaymentStatus} → ${item.paymentStatus}`);
   }
 
   return changed;
@@ -678,10 +678,10 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
       notes: `Cancelled${reason ? ` - ${reason}` : ''}${notes ? ` - ${notes}` : ''}`
     });
 
-    // ✅ UPDATED: Process partial wallet refund for BOTH wallet AND upi payments
+    //  UPDATED: Process partial wallet refund for BOTH wallet AND upi payments
     if (['wallet', 'upi'].includes(order.paymentMethod) && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
       try {
-        console.log(`🔄 Processing wallet refund for cancelled ${order.paymentMethod.toUpperCase()} item ${itemId} in order ${orderId}`);
+        console.log(` Processing wallet refund for cancelled ${order.paymentMethod.toUpperCase()} item ${itemId} in order ${orderId}`);
         const refundAmount = item.totalPrice;
         const refundResult = await walletService.addCredit(
           order.user.id.toString(),
@@ -691,21 +691,21 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
         );
 
         if (!refundResult.success) {
-          console.error('❌ Item wallet refund failed', refundResult);
+          console.error(' Item wallet refund failed', refundResult);
           throw new Error('Failed to process item wallet refund');
         }
 
-        console.log(`✅ Item wallet refund successful: ₹${refundAmount} credited for item ${itemId}`);
+        console.log(` Item wallet refund successful: ₹${refundAmount} credited for item ${itemId}`);
       } catch (refundError) {
-        console.error('❌ Error processing item wallet refund:', refundError);
+        console.error(' Error processing item wallet refund:', refundError);
         throw new Error('Item cancellation failed: Unable to process wallet refund. Please contact support.');
       }
     }
 
-    // ✅ PayPal refund logic (unchanged)
+    //  PayPal refund logic (unchanged)
     if (order.paymentMethod === 'paypal' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
       try {
-        console.log(`🔄 Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
+        console.log(` Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
         const captureId = order.paypalCaptureId;
 
         if (captureId) {
@@ -724,12 +724,12 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
           });
 
           const refund = await paypalClient.execute(request);
-          console.log(`✅ PayPal partial refund successful for item ${itemId}:`, refund.result.id);
+          console.log(` PayPal partial refund successful for item ${itemId}:`, refund.result.id);
         } else {
-          console.warn(`⚠️ No PayPal captureId found for order ${orderId}, skipping PayPal refund`);
+          console.warn(` No PayPal captureId found for order ${orderId}, skipping PayPal refund`);
         }
       } catch (refundError) {
-        console.error('❌ Error processing PayPal item refund:', refundError);
+        console.error(' Error processing PayPal item refund:', refundError);
         // Don't throw - allow item cancellation to proceed even if refund fails
       }
     }
@@ -751,7 +751,7 @@ const cancelItem = async (orderId, itemId, reason = '', notes = '', cancelledBy 
 
     await order.save();
 
-    console.log(`✅ Item ${itemId} cancelled successfully`);
+    console.log(` Item ${itemId} cancelled successfully`);
     console.log(`   Status: ${oldStatus} → ${item.status}`);
     console.log(`   Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
     console.log(`   Order Status: ${order.status}`);
@@ -805,7 +805,7 @@ const returnOrder = async (orderId, reason = '') => {
     // Update order status
     order.status = ORDER_STATUS.RETURNED;
     order.statusHistory.push({
-      status: ORDER_STATUS.RETURNED,  // ✅ FIXED: Was 'Returned'
+      status: ORDER_STATUS.RETURNED,  //  FIXED: Was 'Returned'
       notes: reason ? `Order returned. Reason: ${reason}` : 'Order returned',
       updatedAt: new Date()
     });
@@ -814,11 +814,11 @@ const returnOrder = async (orderId, reason = '') => {
     let returnedItemsCount = 0;
     order.items.forEach(item => {
       if (item.status === ORDER_STATUS.DELIVERED) {
-        item.status = ORDER_STATUS.RETURNED;  // ✅ FIXED: Was 'Returned'
+        item.status = ORDER_STATUS.RETURNED;  //  FIXED: Was 'Returned'
         item.returnReason = reason;
         item.returnRequestDate = new Date();
         item.statusHistory.push({
-          status: ORDER_STATUS.RETURNED,  // ✅ FIXED: Was 'Returned'
+          status: ORDER_STATUS.RETURNED,  //  FIXED: Was 'Returned'
           notes: reason ? `Item returned. Reason: ${reason}` : 'Item returned',
           updatedAt: new Date()
         });
@@ -863,26 +863,26 @@ const returnItem = async (orderId, itemId, reason = '', notes = '', returnedBy =
       throw new Error('Item not found');
     }
 
-    // ✅ ADD: Debug logging to see current status
-    console.log('🔍 RETURN DEBUG - Item Status Check:');
+    //  ADD: Debug logging to see current status
+    console.log(' RETURN DEBUG - Item Status Check:');
     console.log('   Order ID:', orderId);
     console.log('   Item ID:', itemId);
     console.log('   Current Item Status:', item.status);
     console.log('   Order Status:', order.status);
     console.log('   Can Return Check:', canReturnItem(order, itemId));
 
-    // ✅ UPDATED: Allow returns from both Delivered and Processing Return status
+    //  UPDATED: Allow returns from both Delivered and Processing Return status
     const allowedStatusesForReturn = [ORDER_STATUS.DELIVERED, ORDER_STATUS.PROCESSING_RETURN];
     
     if (!allowedStatusesForReturn.includes(item.status)) {
-      console.log(`❌ Item status validation failed. Current status: ${item.status}, Allowed: ${allowedStatusesForReturn.join(', ')}`);
+      console.log(` Item status validation failed. Current status: ${item.status}, Allowed: ${allowedStatusesForReturn.join(', ')}`);
       throw new Error(`Item cannot be returned in current status: ${item.status}. Must be Delivered or Processing Return.`);
     }
 
     const oldStatus = item.status;
     const oldPaymentStatus = item.paymentStatus;
 
-    // ✅ UPDATED: When called from approveItemReturn, set to RETURNED, otherwise PROCESSING_RETURN
+    //  UPDATED: When called from approveItemReturn, set to RETURNED, otherwise PROCESSING_RETURN
     if (item.status === ORDER_STATUS.PROCESSING_RETURN) {
       // This is approval - set to RETURNED
       item.status = ORDER_STATUS.RETURNED;
@@ -894,7 +894,7 @@ const returnItem = async (orderId, itemId, reason = '', notes = '', returnedBy =
     item.returnReason = reason;
     item.returnRequestDate = new Date();
 
-    // ✅ AUTOMATED: Update payment status using new automated logic
+    //  AUTOMATED: Update payment status using new automated logic
     updateAutomatedPaymentStatus(order, item, item.status);
 
     // Add to status history
@@ -904,7 +904,7 @@ const returnItem = async (orderId, itemId, reason = '', notes = '', returnedBy =
       notes: `Return ${item.status === ORDER_STATUS.RETURNED ? 'approved' : 'requested'}: ${reason}${notes ? ` - ${notes}` : ''}`
     });
 
-    // ✅ AUTOMATED: Recalculate order status
+    //  AUTOMATED: Recalculate order status
     const newOrderStatus = calculateOrderStatus(order.items);
     if (newOrderStatus !== order.status) {
       order.status = newOrderStatus;
@@ -915,12 +915,12 @@ const returnItem = async (orderId, itemId, reason = '', notes = '', returnedBy =
       });
     }
 
-    // ✅ AUTOMATED: Recalculate order payment status
+    //  AUTOMATED: Recalculate order payment status
     order.paymentStatus = calculatePaymentStatus(order);
 
     await order.save();
 
-    console.log(`✅ Item ${itemId} return processed successfully:`);
+    console.log(` Item ${itemId} return processed successfully:`);
     console.log(`   Status: ${oldStatus} → ${item.status}`);
     console.log(`   Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
     console.log(`   Order Status: ${order.status}`);
@@ -941,11 +941,11 @@ const returnItem = async (orderId, itemId, reason = '', notes = '', returnedBy =
 const canReturnItem = (order, itemId) => {
   const item = order.items.id(itemId);
   if (!item) {
-    console.log('❌ canReturnItem: Item not found');
+    console.log(' canReturnItem: Item not found');
     return false;
   }
   
-  // ✅ UPDATED: Allow returns from both Delivered and Processing Return status
+  //  UPDATED: Allow returns from both Delivered and Processing Return status
   const allowedStatusesForReturn = [ORDER_STATUS.DELIVERED, ORDER_STATUS.PROCESSING_RETURN];
   
   console.log('🔍 canReturnItem Debug:');
@@ -1018,20 +1018,20 @@ const requestOrderReturn = async (orderId, reason = '', requestedBy = null) => {
       returnRequests.push(returnRequest);
 
       // Update item status to 'Processing Return'
-      item.status = ORDER_STATUS.PROCESSING_RETURN;  // ✅ FIXED: Was 'Processing Return'
+      item.status = ORDER_STATUS.PROCESSING_RETURN;  //  FIXED: Was 'Processing Return'
       item.returnReason = reason;
       item.returnRequestDate = new Date();
       item.statusHistory.push({
-        status: ORDER_STATUS.PROCESSING_RETURN,  // ✅ FIXED: Was 'Processing Return'
+        status: ORDER_STATUS.PROCESSING_RETURN,  //  FIXED: Was 'Processing Return'
         notes: reason ? `Return requested for entire order. Reason: ${reason}` : 'Return requested for entire order',
         updatedAt: new Date()
       });
     }
 
     // Update order status to 'Processing Return'
-    order.status = ORDER_STATUS.PROCESSING_RETURN;  // ✅ FIXED: Was 'Processing Return'
+    order.status = ORDER_STATUS.PROCESSING_RETURN;  //  FIXED: Was 'Processing Return'
     order.statusHistory.push({
-      status: ORDER_STATUS.PROCESSING_RETURN,  // ✅ FIXED: Was 'Processing Return'
+      status: ORDER_STATUS.PROCESSING_RETURN,  //  FIXED: Was 'Processing Return'
       notes: 'Return requested for entire order',
       updatedAt: new Date()
     });
@@ -1117,11 +1117,11 @@ const requestItemReturn = async (orderId, itemId, reason = '', requestedBy = nul
     await returnRequest.save();
 
     // Update item status to 'Processing Return'
-    item.status = ORDER_STATUS.PROCESSING_RETURN;  // ✅ FIXED: Was 'Processing Return'
+    item.status = ORDER_STATUS.PROCESSING_RETURN;  //  FIXED: Was 'Processing Return'
     item.returnReason = reason;
     item.returnRequestDate = new Date();
     item.statusHistory.push({
-      status: ORDER_STATUS.PROCESSING_RETURN,  // ✅ FIXED: Was 'Processing Return'
+      status: ORDER_STATUS.PROCESSING_RETURN,  //  FIXED: Was 'Processing Return'
       notes: reason ? `Return requested. Reason: ${reason}` : 'Return requested',
       updatedAt: new Date()
     });
@@ -1179,9 +1179,9 @@ const approveItemReturn = async (returnId, approvedBy = null, customRefundAmount
       throw new Error('Associated item not found in order');
     }
 
-    // ✅ FIXED: Check if item is already returned
+    //  FIXED: Check if item is already returned
     if (item.status === ORDER_STATUS.RETURNED) {
-      console.log('✅ Item already returned, just updating return request status');
+      console.log(' Item already returned, just updating return request status');
       
       // Item is already returned, just update the return request
       const refundAmount = customRefundAmount || returnRequest.totalPrice;
@@ -1212,7 +1212,7 @@ const approveItemReturn = async (returnId, approvedBy = null, customRefundAmount
       };
     }
 
-    // ✅ ORIGINAL LOGIC: For items not yet returned
+    //  ORIGINAL LOGIC: For items not yet returned
     // 3. Use existing returnItem() function to complete the return
     const returnResult = await returnItem(
       returnRequest.orderId,
@@ -1270,7 +1270,7 @@ const approveItemReturn = async (returnId, approvedBy = null, customRefundAmount
 };
 
 
-// ✅ ADD: Missing approveOrderReturn function
+//  ADD: Missing approveOrderReturn function
 const approveOrderReturn = async (orderId, approvedBy = null) => {
   try {
     // 1. Find all pending return requests for this order
@@ -1358,7 +1358,7 @@ const approveOrderReturn = async (orderId, approvedBy = null) => {
   }
 };
 
-// ✅ ADD: Missing rejectItemReturn function
+//  ADD: Missing rejectItemReturn function
 const rejectItemReturn = async (returnId, rejectedBy = null, rejectionReason = '') => {
   try {
     // 1. Get and validate return request
@@ -1426,7 +1426,7 @@ const rejectItemReturn = async (returnId, rejectedBy = null, rejectionReason = '
   }
 };
 
-// ✅ ADD: Missing rejectOrderReturn function
+//  ADD: Missing rejectOrderReturn function
 const rejectOrderReturn = async (orderId, rejectedBy = null, rejectionReason = '') => {
   try {
     // 1. Find all pending return requests for this order
@@ -1548,10 +1548,10 @@ const adminCancelOrder = async (orderId, reason = 'Cancelled by admin', cancelle
     const originalPaymentStatus = order.paymentStatus;
     const originalPaymentMethod = order.paymentMethod;
 
-    // ✅ Process wallet refund for BOTH wallet AND upi payments
+    //  Process wallet refund for BOTH wallet AND upi payments
     if (['wallet', 'upi'].includes(originalPaymentMethod) && originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       try {
-        console.log(`🔄 Admin: Processing wallet refund for cancelled ${originalPaymentMethod.toUpperCase()} order ${orderId}`);
+        console.log(` Admin: Processing wallet refund for cancelled ${originalPaymentMethod.toUpperCase()} order ${orderId}`);
         const refundAmount = order.totalAmount;
         const refundResult = await walletService.addCredit(
           order.user.id.toString(),
@@ -1561,29 +1561,29 @@ const adminCancelOrder = async (orderId, reason = 'Cancelled by admin', cancelle
         );
 
         if (!refundResult.success) {
-          console.error('❌ Admin wallet refund failed', refundResult);
+          console.error(' Admin wallet refund failed', refundResult);
           throw new Error('Failed to process wallet refund');
         }
 
-        console.log(`✅ Admin wallet refund successful: ₹${refundAmount} credited for order ${orderId}`);
+        console.log(` Admin wallet refund successful: ₹${refundAmount} credited for order ${orderId}`);
       } catch (refundError) {
-        console.error('❌ Error processing admin wallet refund:', refundError);
+        console.error(' Error processing admin wallet refund:', refundError);
         throw new Error('Order cancellation failed: Unable to process wallet refund. Please contact support.');
       }
     }
 
-    // ✅ ENHANCED: COD Cancellation Payment Status Logic
+    //  ENHANCED: COD Cancellation Payment Status Logic
     let newPaymentStatus = originalPaymentStatus;
 
     if (originalPaymentMethod === 'cod') {
       newPaymentStatus = PAYMENT_STATUS.CANCELLED;
-      console.log(`✅ COD order cancelled - Payment status set to Cancelled for order ${orderId}`);
+      console.log(` COD order cancelled - Payment status set to Cancelled for order ${orderId}`);
     } else if (originalPaymentStatus === PAYMENT_STATUS.COMPLETED) {
       newPaymentStatus = PAYMENT_STATUS.REFUNDED;
-      console.log(`✅ Online payment order cancelled - Payment status set to Refunded for order ${orderId}`);
+      console.log(` Online payment order cancelled - Payment status set to Refunded for order ${orderId}`);
     } else {
       newPaymentStatus = PAYMENT_STATUS.CANCELLED;
-      console.log(`✅ Unpaid order cancelled - Payment status set to Cancelled for order ${orderId}`);
+      console.log(` Unpaid order cancelled - Payment status set to Cancelled for order ${orderId}`);
     }
 
     // Update order status
@@ -1614,7 +1614,7 @@ const adminCancelOrder = async (orderId, reason = 'Cancelled by admin', cancelle
 
     await order.save();
 
-    console.log(`✅ Admin cancelled order ${orderId}. Items affected: ${updatedItemsCount}, Payment status: ${newPaymentStatus}`);
+    console.log(` Admin cancelled order ${orderId}. Items affected: ${updatedItemsCount}, Payment status: ${newPaymentStatus}`);
 
     return {
       success: true,
@@ -1664,10 +1664,10 @@ const adminCancelItem = async (orderId, itemId, reason = 'Cancelled by admin', c
       notes: `Cancelled by admin: ${reason}`
     });
 
-    // ✅ UPDATED: Process partial wallet refund for BOTH wallet AND upi payments
+    //  UPDATED: Process partial wallet refund for BOTH wallet AND upi payments
     if (['wallet', 'upi'].includes(order.paymentMethod) && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
       try {
-        console.log(`🔄 Admin: Processing wallet refund for cancelled ${order.paymentMethod.toUpperCase()} item ${itemId} in order ${orderId}`);
+        console.log(` Admin: Processing wallet refund for cancelled ${order.paymentMethod.toUpperCase()} item ${itemId} in order ${orderId}`);
         const refundAmount = item.totalPrice;
         const refundResult = await walletService.addCredit(
           order.user.id.toString(),
@@ -1677,21 +1677,21 @@ const adminCancelItem = async (orderId, itemId, reason = 'Cancelled by admin', c
         );
 
         if (!refundResult.success) {
-          console.error('❌ Admin item wallet refund failed', refundResult);
+          console.error(' Admin item wallet refund failed', refundResult);
           throw new Error('Failed to process item wallet refund');
         }
 
-        console.log(`✅ Admin item wallet refund successful: ₹${refundAmount} credited for item ${itemId}`);
+        console.log(` Admin item wallet refund successful: ₹${refundAmount} credited for item ${itemId}`);
       } catch (refundError) {
-        console.error('❌ Error processing admin item wallet refund:', refundError);
+        console.error(' Error processing admin item wallet refund:', refundError);
         throw new Error('Item cancellation failed: Unable to process wallet refund. Please contact support.');
       }
     }
 
-    // ✅ PayPal refund logic (unchanged)
+    //  PayPal refund logic (unchanged)
     if (order.paymentMethod === 'paypal' && item.paymentStatus === PAYMENT_STATUS.REFUNDED) {
       try {
-        console.log(`🔄 Admin: Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
+        console.log(` Admin: Processing PayPal refund for cancelled item ${itemId} in order ${orderId}`);
         const captureId = order.paypalCaptureId;
 
         if (captureId) {
@@ -1710,12 +1710,12 @@ const adminCancelItem = async (orderId, itemId, reason = 'Cancelled by admin', c
           });
 
           const refund = await paypalClient.execute(request);
-          console.log(`✅ Admin PayPal partial refund successful for item ${itemId}:`, refund.result.id);
+          console.log(` Admin PayPal partial refund successful for item ${itemId}:`, refund.result.id);
         } else {
-          console.warn(`⚠️ No PayPal captureId found for order ${orderId}, skipping PayPal refund`);
+          console.warn(` No PayPal captureId found for order ${orderId}, skipping PayPal refund`);
         }
       } catch (refundError) {
-        console.error('❌ Error processing admin PayPal item refund:', refundError);
+        console.error(' Error processing admin PayPal item refund:', refundError);
         // Don't throw - allow item cancellation to proceed even if refund fails
       }
     }
@@ -1736,7 +1736,7 @@ const adminCancelItem = async (orderId, itemId, reason = 'Cancelled by admin', c
 
     await order.save();
 
-    console.log(`✅ Admin cancelled item ${itemId} successfully:`);
+    console.log(` Admin cancelled item ${itemId} successfully:`);
     console.log(`   Status: ${oldStatus} → ${item.status}`);
     console.log(`   Payment: ${oldPaymentStatus} → ${item.paymentStatus}`);
     console.log(`   Order Status: ${order.status}`);
@@ -1955,7 +1955,7 @@ const completeCODPaymentWithTransaction = async (orderId, deliveredBy = 'admin')
       return { success: false, message: 'Order not in delivered status' };
     }
 
-    // ✅ Create COD completion transaction using enhanced transaction service
+    //  Create COD completion transaction using enhanced transaction service
     let codTransactionId = null;
     try {
       const transactionService = require('./transactionService');
@@ -1974,12 +1974,12 @@ const completeCODPaymentWithTransaction = async (orderId, deliveredBy = 'admin')
 
       if (codTransactionResult.success) {
         codTransactionId = codTransactionResult.transactionId;
-        console.log(`✅ COD completion transaction created: ${codTransactionId}`);
+        console.log(` COD completion transaction created: ${codTransactionId}`);
       } else {
-        console.warn('⚠️ Failed to create COD completion transaction:', codTransactionResult.error);
+        console.warn(' Failed to create COD completion transaction:', codTransactionResult.error);
       }
     } catch (codTxError) {
-      console.warn('⚠️ COD transaction creation failed:', codTxError.message);
+      console.warn(' COD transaction creation failed:', codTxError.message);
     }
 
     // Update payment status to completed (cash collected)
@@ -2001,7 +2001,7 @@ const completeCODPaymentWithTransaction = async (orderId, deliveredBy = 'admin')
 
     await order.save();
 
-    console.log(`✅ Enhanced COD payment completed for order ${orderId}, Transaction: ${codTransactionId || 'N/A'}`);
+    console.log(` Enhanced COD payment completed for order ${orderId}, Transaction: ${codTransactionId || 'N/A'}`);
 
     return {
       success: true,
@@ -2011,7 +2011,7 @@ const completeCODPaymentWithTransaction = async (orderId, deliveredBy = 'admin')
     };
 
   } catch (error) {
-    console.error('❌ Error completing enhanced COD payment:', error);
+    console.error(' Error completing enhanced COD payment:', error);
     throw error;
   }
 };

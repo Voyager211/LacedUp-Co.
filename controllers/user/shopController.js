@@ -60,7 +60,7 @@ const getProducts = async (req, res) => {
       if (brand.includes(',')) {
         const brandIds = brand.split(',').filter(id => id.trim());
         
-        // ✅ Validate all brands are active
+        //  Validate all brands are active
         const activeBrands = await Brand.find({
           _id: { $in: brandIds },
           isDeleted: false,
@@ -86,7 +86,7 @@ const getProducts = async (req, res) => {
           });
         }
       } else {
-        // ✅ Single brand - validate it's active
+        //  Single brand - validate it's active
         const requestedBrand = await Brand.findById(brand).select('isActive isDeleted').lean();
         if (requestedBrand && !requestedBrand.isDeleted && requestedBrand.isActive) {
           filter.brand = brand;
@@ -572,7 +572,7 @@ const loadShopPage = async (req, res) => {
       userWishlistProductIds
     });
   } catch (err) {
-    console.error('❌ Error loading shop page:', err);
+    console.error(' Error loading shop page:', err);
     res.status(500).send('Internal Server Error');
   }
 };
@@ -858,7 +858,7 @@ const loadProductDetails = async (req, res) => {
     });
 
   } catch (err) {
-    console.error('❌ Error loading product details:', err);
+    console.error(' Error loading product details:', err);
     res.status(500).render('errors/server-error', {
       title: 'Server Error',
       message: 'Something went wrong while loading the product details.',

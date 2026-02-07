@@ -37,12 +37,12 @@ const addTransaction = async (userId, transactionData) => {
     throw new Error('Invalid transaction type');
   }
 
-  // ✅ FIXED: Manually generate transactionId here
+  // Manually generate transactionId here
   const transactionId = `TXN${Date.now()}${Math.floor(Math.random() * 10000)}`;
 
   // Create transaction object
   const transaction = {
-    transactionId: transactionId,  // ✅ Set it here!
+    transactionId: transactionId, 
     type: transactionData.type,
     amount: transactionData.amount,
     description: transactionData.description,
@@ -88,7 +88,6 @@ const getPaginatedTransactions = async (userId, page = 1, limit = 10, type = nul
   const skip = (page - 1) * limit;
 
   try {
-    // ✅ FIXED: Simpler approach - get wallet and paginate in JavaScript
     const wallet = await Wallet.findOne({ userId });
 
     if (!wallet) {
@@ -187,11 +186,11 @@ const updateTransactionStatus = async (userId, transactionId, status) => {
 const addPendingTransaction = async (userId, transactionData) => {
   const wallet = await getOrCreateWallet(userId);
 
-  // ✅ FIXED: Manually generate transactionId here
+  // Manually generate transactionId here
   const transactionId = `TXN${Date.now()}${Math.floor(Math.random() * 10000)}`;
 
   const transaction = {
-    transactionId: transactionId,  // ✅ Set it here!
+    transactionId: transactionId,
     type: 'credit',
     amount: transactionData.amount,
     description: transactionData.description,
@@ -200,7 +199,7 @@ const addPendingTransaction = async (userId, transactionData) => {
     razorpayOrderId: transactionData.razorpayOrderId || null,
     razorpayPaymentId: transactionData.razorpayPaymentId || null,
     date: new Date(),
-    balanceAfter: wallet.balance // Balance not changed yet
+    balanceAfter: wallet.balance
   };
 
   wallet.transactions.push(transaction);
@@ -339,7 +338,7 @@ const addCredit = async (userId, amount, description, orderId = null) => {
       orderId: orderId
     });
 
-    console.log(`✅ Credit added: ₹${amount} credited to user ${userId} - ${description}`);
+    console.log(`Credit added: ₹${amount} credited to user ${userId} - ${description}`);
 
     return {
       success: true,
@@ -350,7 +349,7 @@ const addCredit = async (userId, amount, description, orderId = null) => {
     };
 
   } catch (error) {
-    console.error('❌ Error adding credit:', error);
+    console.error('Error adding credit:', error);
     return {
       success: false,
       message: error.message || 'Failed to add credit',
@@ -390,7 +389,7 @@ const addReturnRefund = async (userId, amount, orderId, returnId) => {
       returnId: returnId
     });
 
-    console.log(`✅ Return refund processed: ₹${amount} credited to user ${userId} for order ${orderId}, return ${returnId}`);
+    console.log(`Return refund processed: ₹${amount} credited to user ${userId} for order ${orderId}, return ${returnId}`);
 
     return {
       success: true,
@@ -402,7 +401,7 @@ const addReturnRefund = async (userId, amount, orderId, returnId) => {
     };
 
   } catch (error) {
-    console.error('❌ Error processing return refund:', error);
+    console.error('Error processing return refund:', error);
     return {
       success: false,
       message: error.message || 'Failed to process return refund',
@@ -448,7 +447,7 @@ const deductAmount = async (userId, amount, description, orderId = null) => {
       orderId: orderId
     });
 
-    console.log(`✅ Amount deducted: ₹${amount} deducted from user ${userId} - ${description}`);
+    console.log(`Amount deducted: ₹${amount} deducted from user ${userId} - ${description}`);
 
     return {
       success: true,
@@ -459,7 +458,7 @@ const deductAmount = async (userId, amount, description, orderId = null) => {
     };
 
   } catch (error) {
-    console.error('❌ Error deducting amount:', error);
+    console.error('Error deducting amount:', error);
     return {
       success: false,
       message: error.message || 'Failed to deduct amount',

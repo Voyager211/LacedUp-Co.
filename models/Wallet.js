@@ -18,7 +18,6 @@ const walletSchema = new mongoose.Schema(
         transactionId: {
           type: String,
           required: true
-          // ✅ REMOVED: unique constraint - enforced at app level instead
         },
         type: {
           type: String,
@@ -76,7 +75,7 @@ const walletSchema = new mongoose.Schema(
   }
 );
 
-// ✅ Generate unique transaction ID for new transactions
+//  Generate unique transaction ID for new transactions
 walletSchema.pre('save', function (next) {
   this.transactions.forEach((transaction) => {
     if (!transaction.transactionId) {
@@ -89,33 +88,33 @@ walletSchema.pre('save', function (next) {
   next();
 });
 
-// ✅ Virtual to get latest transaction
+//  Virtual to get latest transaction
 walletSchema.virtual('latestTransaction').get(function () {
   return this.transactions.length > 0
     ? this.transactions[this.transactions.length - 1]
     : null;
 });
 
-// ✅ Virtual to get total transaction count
+//  Virtual to get total transaction count
 walletSchema.virtual('transactionCount').get(function () {
   return this.transactions.length;
 });
 
-// ✅ Virtual to get total credits
+//  Virtual to get total credits
 walletSchema.virtual('totalCredits').get(function () {
   return this.transactions
     .filter((t) => t.type === 'credit' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 });
 
-// ✅ Virtual to get total debits
+//  Virtual to get total debits
 walletSchema.virtual('totalDebits').get(function () {
   return this.transactions
     .filter((t) => t.type === 'debit' && t.status === 'completed')
     .reduce((sum, t) => sum + t.amount, 0);
 });
 
-// ✅ Enable virtuals in JSON output
+//  Enable virtuals in JSON output
 walletSchema.set('toJSON', { virtuals: true });
 
 // ============================================
@@ -125,28 +124,28 @@ walletSchema.set('toJSON', { virtuals: true });
 // Primary index for user wallet lookups
 walletSchema.index({ userId: 1 });
 
-// ✅ COMPOUND INDEXES: For common query patterns
+//  COMPOUND INDEXES: For common query patterns
 walletSchema.index({ userId: 1, updatedAt: -1 }); // User wallets by last update
 walletSchema.index({ userId: 1, balance: -1 }); // User wallet balance queries
 
-// ✅ TRANSACTION INDEXES: For efficient transaction queries
+//  TRANSACTION INDEXES: For efficient transaction queries
 walletSchema.index({ 'transactions.date': -1 }); // Latest transactions first
 walletSchema.index({ 'transactions.transactionId': 1 }); // Transaction lookups
 walletSchema.index({ 'transactions.type': 1, 'transactions.date': -1 }); // Filter by type + date
 walletSchema.index({ 'transactions.status': 1 }); // Filter by status
 
-// ✅ ORDER & RETURN RELATED TRANSACTIONS
+//  ORDER & RETURN RELATED TRANSACTIONS
 walletSchema.index({ 'transactions.orderId': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.returnId': 1 }, { sparse: true });
 
-// ✅ RAZORPAY PAYMENT TRACKING
+//  RAZORPAY PAYMENT TRACKING
 walletSchema.index({ 'transactions.razorpayPaymentId': 1 }, { sparse: true });
 walletSchema.index({ 'transactions.razorpayOrderId': 1 }, { sparse: true });
 
-// ✅ PAGINATION INDEX: For wallet transaction page (userId + date sorted)
+//  PAGINATION INDEX: For wallet transaction page (userId + date sorted)
 walletSchema.index({ userId: 1, 'transactions.date': -1 });
 
-// ✅ PAYMENT METHOD TRACKING
+//  PAYMENT METHOD TRACKING
 walletSchema.index(
   { userId: 1, 'transactions.paymentMethod': 1, 'transactions.date': -1 },
   { sparse: true }

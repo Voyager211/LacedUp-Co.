@@ -9,7 +9,7 @@ class PriceInvalidationService {
    */
   static async invalidateProductPrices(productIds) {
     try {
-      console.log(`🗑️ Invalidating cached prices for ${productIds.length} products...`);
+      console.log(`Invalidating cached prices for ${productIds.length} products...`);
       
       // Remove cached finalPrice values to force recalculation
       await Product.updateMany(
@@ -17,9 +17,9 @@ class PriceInvalidationService {
         { $unset: { 'variants.$[].finalPrice': '', 'variants.$[].finalPriceUpdatedAt': '' } }
       );
       
-      console.log(`✅ Invalidated cached prices for ${productIds.length} products`);
+      console.log(` Invalidated cached prices for ${productIds.length} products`);
     } catch (error) {
-      console.error('❌ Error invalidating product prices:', error);
+      console.error(' Error invalidating product prices:', error);
       throw error;
     }
   }
@@ -42,7 +42,7 @@ class PriceInvalidationService {
       
       return productIds.length;
     } catch (error) {
-      console.error('❌ Error invalidating brand prices:', error);
+      console.error(' Error invalidating brand prices:', error);
       throw error;
     }
   }
@@ -65,7 +65,7 @@ class PriceInvalidationService {
       
       return productIds.length;
     } catch (error) {
-      console.error('❌ Error invalidating category prices:', error);
+      console.error(' Error invalidating category prices:', error);
       throw error;
     }
   }
@@ -75,7 +75,7 @@ class PriceInvalidationService {
    */
   static async recalculateProductPrices(productIds) {
     try {
-      console.log(`🔄 Recalculating prices for ${productIds.length} products...`);
+      console.log(` Recalculating prices for ${productIds.length} products...`);
       
       const products = await Product.find({ 
         _id: { $in: productIds } 
@@ -87,9 +87,9 @@ class PriceInvalidationService {
         await product.save();
       }
       
-      console.log(`✅ Recalculated prices for ${productIds.length} products`);
+      console.log(` Recalculated prices for ${productIds.length} products`);
     } catch (error) {
-      console.error('❌ Error recalculating product prices:', error);
+      console.error(' Error recalculating product prices:', error);
       throw error;
     }
   }
@@ -99,7 +99,7 @@ class PriceInvalidationService {
    */
   static async refreshAllPrices() {
     try {
-      console.log('🔄 Starting full price refresh...');
+      console.log(' Starting full price refresh...');
       
       const products = await Product.find({ 
         isDeleted: false,
@@ -116,10 +116,10 @@ class PriceInvalidationService {
         console.log(`Processed batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(productIds.length/batchSize)}`);
       }
       
-      console.log(`✅ Refreshed prices for ${productIds.length} products`);
+      console.log(` Refreshed prices for ${productIds.length} products`);
       return productIds.length;
     } catch (error) {
-      console.error('❌ Error refreshing all prices:', error);
+      console.error(' Error refreshing all prices:', error);
       throw error;
     }
   }

@@ -6,16 +6,16 @@ const isAdmin = require('../../middlewares/isAdmin');
 // Apply admin authentication middleware to all routes
 router.use(isAdmin);
 
-// ============================================
+
 // DASHBOARD PAGE RENDER
-// ============================================
+
 
 // Render dashboard page
 router.get('/', dashboardController.renderDashboard);
 
-// ============================================
+
 // API ENDPOINTS FOR DASHBOARD ANALYTICS
-// ============================================
+
 
 // Dashboard overview statistics
 router.get('/api/stats', dashboardController.getDashboardStats);
@@ -26,26 +26,26 @@ router.get('/api/sales', dashboardController.getSalesData);
 // Revenue distribution by payment method
 router.get('/api/revenue-distribution', dashboardController.getRevenueDistribution);
 
-// ✅ UPDATED: Best selling products (supports limit parameter)
+//  Best selling products (supports limit parameter)
 router.get('/api/best-selling-products', dashboardController.getBestSellingProducts);
 
-// ✅ NEW: Best selling categories (top 10)
+//  Best selling categories (top 10)
 router.get('/api/best-selling-categories', dashboardController.getBestSellingCategories);
 
-// ✅ NEW: Best selling brands (top 10)
+//  Best selling brands (top 10)
 router.get('/api/best-selling-brands', dashboardController.getBestSellingBrands);
 
-// ============================================
-// BACKWARDS COMPATIBILITY (OPTIONAL)
-// ============================================
 
-// ✅ Keep old endpoints for backwards compatibility (return first item from list)
+// BACKWARDS COMPATIBILITY (OPTIONAL)
+
+
+//  Keep old endpoints for backwards compatibility (return first item from list)
 router.get('/api/best-selling-category', dashboardController.getBestSellingCategory);
 router.get('/api/best-selling-brand', dashboardController.getBestSellingBrand);
 
-// ============================================
+
 // REPORT GENERATION
-// ============================================
+
 
 // Export ledger report as PDF
 router.get('/ledger-report/export-pdf', dashboardController.exportLedgerPDF);
